@@ -15,10 +15,15 @@ export function isValidStripeSignature(
 ): boolean {
   const parts = header.split(',').map((part) => part.split('=') as [string, string])
   const timestamp = Number(parts.find(([key]) => key === 't')?.[1])
-  if (!Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > SIGNATURE_TOLERANCE_SECONDS) {
+  if (
+    !Number.isFinite(timestamp) ||
+    Math.abs(nowSeconds - timestamp) > SIGNATURE_TOLERANCE_SECONDS
+  ) {
     return false
   }
-  const expected = Buffer.from(createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex'))
+  const expected = Buffer.from(
+    createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex'),
+  )
   return parts
     .filter(([key]) => key === 'v1')
     .some(([, signature]) => {

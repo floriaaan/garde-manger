@@ -47,7 +47,7 @@ const sections: LegalSection[] = [
       <>
         <Facts
           items={[
-            ['Abonnement Garde-manger', '2 € TTC par mois'],
+            ['Abonnement Garde-manger', '0,99 € TTC par mois'],
             ['TVA', 'Non assujetti à la TVA'],
           ]}
         />

@@ -35,6 +35,7 @@ function fakeSettings(
           limit: null,
           resetsAt: null,
           expiresAt: null,
+          cancelsAtPeriodEnd: false,
           ...overrides.access,
         },
       }
@@ -95,7 +96,8 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
 
   test('records usage after a successful hosted call, not before', async ({ assert }) => {
     const original = GeminiReceiptExtractionAdapter.prototype.extract
-    GeminiReceiptExtractionAdapter.prototype.extract = async () => ({}) as Awaited<ReturnType<typeof original>>
+    GeminiReceiptExtractionAdapter.prototype.extract = async () =>
+      ({}) as Awaited<ReturnType<typeof original>>
     try {
       const settings = fakeSettings('gemini', { access: { plan: 'free', limit: 5, used: 2 } })
       const quota = fakeQuota()
@@ -110,7 +112,8 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
 
   test('does not record usage on self-hosted (uncapped) instances', async ({ assert }) => {
     const original = GeminiReceiptExtractionAdapter.prototype.extract
-    GeminiReceiptExtractionAdapter.prototype.extract = async () => ({}) as Awaited<ReturnType<typeof original>>
+    GeminiReceiptExtractionAdapter.prototype.extract = async () =>
+      ({}) as Awaited<ReturnType<typeof original>>
     try {
       const settings = fakeSettings('gemini')
       const quota = fakeQuota()

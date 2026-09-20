@@ -18,7 +18,9 @@ export const stripeWebhookValidator = vine.compile(
         current_period_end: vine.number().nullable().optional(),
         items: vine
           .object({
-            data: vine.array(vine.object({ current_period_end: vine.number().nullable().optional() })),
+            data: vine.array(
+              vine.object({ current_period_end: vine.number().nullable().optional() }),
+            ),
           })
           .optional(),
         metadata: vine.record(vine.string()).optional(),

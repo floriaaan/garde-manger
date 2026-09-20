@@ -6,7 +6,7 @@
  * - anyone with a capped quota → say how much is left.
  */
 import type { ReactNode } from 'react'
-import { Linking, Pressable } from 'react-native'
+import { Image, Linking, Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { BadgeCheckIcon, CircleCheckIcon, SparklesIcon } from '../dashboard/dashboard-icons.js'
@@ -38,7 +38,11 @@ export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   )
 }
 
+const mascotGold = require('../../../assets/mascot-gold.png')
+
 const PAYWALL_BENEFITS = ['Scan de tickets et de frigo', 'Recettes générées à volonté', 'Partagé avec tout le foyer']
+
+const MASCOT_GUTTER = 96
 
 /** The screen's one dark surface — same `brandDeep` + ember glow as the hero card; the paywall and the active-plan card both wear it (never together). */
 function DarkSurface({ testID, palette, children }: { testID: string; palette: SoftPalette; children: ReactNode }) {
@@ -60,6 +64,13 @@ function DarkSurface({ testID, palette, children }: { testID: string; palette: S
       }}
     >
       <HeroWarmGlow warm={palette.accentWarm} ground={palette.brandDeep} />
+      {/* The gold mascot: the same character, in the tier's colour. Headers reserve `MASCOT_GUTTER` so titles wrap beside it. */}
+      <Image
+        source={mascotGold}
+        resizeMode="contain"
+        accessibilityLabel=""
+        style={{ position: 'absolute', top: 10, right: 10, width: 108, height: 108 }}
+      />
       {children}
     </YStack>
   )
@@ -89,7 +100,7 @@ export function SubscriptionActiveCard({
   return (
     <DarkSurface testID="subscription-active" palette={palette}>
       <YStack padding="$5" gap="$4">
-        <YStack gap="$2">
+        <YStack gap="$2" paddingRight={MASCOT_GUTTER}>
           <XStack
             alignSelf="flex-start"
             alignItems="center"
@@ -177,7 +188,7 @@ export function SubscriptionPaywall({
   return (
     <DarkSurface testID="subscription-paywall" palette={palette}>
       <YStack padding="$5" gap="$4">
-        <YStack gap="$2">
+        <YStack gap="$2" paddingRight={MASCOT_GUTTER}>
           {reason ? (
             <XStack
               alignSelf="flex-start"
@@ -201,7 +212,7 @@ export function SubscriptionPaywall({
 
         <XStack alignItems="flex-end" gap="$2.5">
           <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
-            2€
+            0,99€
           </Text>
           <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>
             par mois,{'\n'}pour tout le foyer
@@ -226,7 +237,7 @@ export function SubscriptionPaywall({
           disabled={pending}
           testID="subscription-paywall-cta"
           accessibilityRole="button"
-          accessibilityLabel="S’abonner pour 2 euros par mois"
+          accessibilityLabel="S’abonner pour 0,99 euro par mois"
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack

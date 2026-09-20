@@ -75,6 +75,7 @@
       "./jest.setup.ts"
     ],
     "moduleNameMapper": {
+      "^react(/.*)?$": "<rootDir>/node_modules/react$1",
       "^(.+)\\.js$": "$1"
     },
     "transformIgnorePatterns": [

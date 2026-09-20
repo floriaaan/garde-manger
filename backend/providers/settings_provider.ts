@@ -25,12 +25,14 @@ export default class SettingsProvider {
     })
 
     this.app.container.singleton('settings.billing', async () => {
-      const { StripeBillingAdapter } = await import('#infrastructure/settings/stripe-billing.adapter')
+      const { StripeBillingAdapter } =
+        await import('#infrastructure/settings/stripe-billing.adapter')
       return new StripeBillingAdapter()
     })
 
     this.app.container.singleton('settings.aiQuota', async () => {
-      const { LucidAiQuotaAdapter } = await import('#infrastructure/settings/lucid-ai-quota.adapter')
+      const { LucidAiQuotaAdapter } =
+        await import('#infrastructure/settings/lucid-ai-quota.adapter')
       return new LucidAiQuotaAdapter()
     })
 

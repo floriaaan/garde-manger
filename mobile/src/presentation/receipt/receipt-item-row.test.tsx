@@ -77,7 +77,8 @@ test('a field error is shown on the field it belongs to', async () => {
 })
 
 test('a filled-in date shows in the collapsed summary, same wording as the fridge list', async () => {
-  await renderRow({ item: { ...baseItem, expiresAt: '2026-09-20' }, expanded: false })
+  const inFiveDays = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10)
+  await renderRow({ item: { ...baseItem, expiresAt: inFiveDays }, expanded: false })
 
   expect(screen.getByText(/À consommer sous \d+ j/)).toBeTruthy()
 })

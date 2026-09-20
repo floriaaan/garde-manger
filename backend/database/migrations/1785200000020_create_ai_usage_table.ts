@@ -10,7 +10,12 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table.text('household_id').notNullable().references('id').inTable('household').onDelete('CASCADE')
+      table
+        .text('household_id')
+        .notNullable()
+        .references('id')
+        .inTable('household')
+        .onDelete('CASCADE')
       table.text('period').notNullable()
       table.integer('count').notNullable().defaultTo(0)
       table.primary(['household_id', 'period'])

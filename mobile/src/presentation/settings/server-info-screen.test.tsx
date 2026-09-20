@@ -8,10 +8,12 @@ import { ServerInfoScreen } from './server-info-screen.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
 
+beforeEach(() => jest.clearAllMocks())
+
 async function renderScreen(connector = new FakeFridgeConnector()) {
   await connector.signInSocial()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
+  await render(
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <ConnectorProvider connector={connector}>

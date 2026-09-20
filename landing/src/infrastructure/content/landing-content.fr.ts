@@ -72,7 +72,7 @@ export const landingContentFr: LandingContent = {
         {
           name: 'Abonnement Garde-manger',
           description: 'Scan de tickets et du frigo, recettes avec ce qui reste. Un seul abonnement pour tout le foyer.',
-          price: '2€/mois',
+          price: '0,99€/mois',
         },
       ],
       cta: { label: 'Ouverture bientôt', href: null },
@@ -105,7 +105,7 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Et si je ne veux pas gérer de serveur ?',
       answer:
-        'Une offre clé en main est en préparation : gratuite pour l’essentiel avec 5 utilisations de l’IA par mois, et un abonnement Garde-manger à 2€/mois pour tout le foyer (scan de tickets et du frigo, recettes). Elle n’est pas encore ouverte.',
+        'Une offre clé en main est en préparation : gratuite pour l’essentiel avec 5 utilisations de l’IA par mois, et un abonnement Garde-manger à 0,99€/mois pour tout le foyer (scan de tickets et du frigo, recettes). Elle n’est pas encore ouverte.',
     },
     {
       question: 'Mes données partent-elles ailleurs ?',

@@ -12,12 +12,7 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table
-        .text('household_id')
-        .primary()
-        .references('id')
-        .inTable('household')
-        .onDelete('CASCADE')
+      table.text('household_id').primary().references('id').inTable('household').onDelete('CASCADE')
       table.text('payer_user_id').nullable().references('id').inTable('user').onDelete('SET NULL')
       table.text('store').notNullable().checkIn(['app_store', 'play_store'])
       table.timestamp('expires_at', { useTz: true }).notNullable()

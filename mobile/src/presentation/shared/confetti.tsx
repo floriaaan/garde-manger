@@ -4,7 +4,7 @@
  * chips + lime, then the overlay removes itself via `onDone`. Skipped under
  * Reduce Motion. Pointer-transparent, so it never blocks the screen.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useWindowDimensions, View } from 'react-native'
 import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { useReduceMotion } from './hover.js'
@@ -46,23 +46,24 @@ interface PieceSpec {
   duration: number
 }
 
+function makePieces(palette: SoftPalette, width: number): PieceSpec[] {
+  const colors = [palette.accentLime, palette.chipViolet, palette.chipTeal, palette.chipOrange, palette.chipButter]
+  return Array.from({ length: PIECES }, (_, i) => ({
+    color: colors[i % colors.length]!,
+    x: Math.random() * width,
+    drift: (Math.random() - 0.5) * 120,
+    spin: (Math.random() - 0.5) * 900,
+    size: 8 + Math.random() * 8,
+    delay: Math.random() * 500,
+    duration: 1800 + Math.random() * 1200,
+  }))
+}
+
 export function Confetti({ palette, onDone }: { palette: SoftPalette; onDone: () => void }) {
   const { width, height } = useWindowDimensions()
   const reduceMotion = useReduceMotion()
-  const pieces = useMemo<PieceSpec[]>(() => {
-    const colors = [palette.accentLime, palette.chipViolet, palette.chipTeal, palette.chipOrange, palette.chipButter]
-    return Array.from({ length: PIECES }, (_, i) => ({
-      color: colors[i % colors.length]!,
-      x: Math.random() * width,
-      drift: (Math.random() - 0.5) * 120,
-      spin: (Math.random() - 0.5) * 900,
-      size: 8 + Math.random() * 8,
-      delay: Math.random() * 500,
-      duration: 1800 + Math.random() * 1200,
-    }))
-    // Fixed for the life of one burst.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Random once per burst (lazy initial state; the randomness lives in `makePieces`).
+  const [pieces] = useState(() => makePieces(palette, width))
 
   useEffect(() => {
     const timer = setTimeout(onDone, reduceMotion ? 0 : MAX_MS)

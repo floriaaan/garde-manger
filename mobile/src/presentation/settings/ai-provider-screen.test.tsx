@@ -84,13 +84,13 @@ test('the hosted instance never offers a provider choice', async () => {
 
   await renderScreen(connector)
 
-  await waitFor(() => expect(screen.getByTestId('settings-ai-models')).toBeTruthy())
+  await waitFor(() => expect(screen.getByTestId('ai-provider-official')).toBeTruthy())
   expect(screen.queryByTestId('ai-provider-gemini')).toBeNull()
   expect(screen.queryByTestId('subscription-paywall')).toBeNull()
   expect(screen.getByTestId('ai-quota-hint')).toBeTruthy()
 })
 
-test('a non-subscriber on the hosted instance sees the subscription suggestion', async () => {
+test('a non-subscriber on the hosted instance sees their quota, the paywall lives in Abonnement', async () => {
   const connector = new FakeFridgeConnector()
   jest.spyOn(connector, 'getAiSettings').mockResolvedValue(
     selfHostedSettings({
@@ -101,6 +101,6 @@ test('a non-subscriber on the hosted instance sees the subscription suggestion',
 
   await renderScreen(connector)
 
-  await waitFor(() => expect(screen.getByTestId('subscription-paywall')).toBeTruthy())
-  expect(screen.getByTestId('ai-quota-hint')).toBeTruthy()
+  await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
+  expect(screen.queryByTestId('subscription-paywall')).toBeNull()
 })

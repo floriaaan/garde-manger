@@ -11,7 +11,9 @@ router.post('/api/settings/subscription/portal', [SubscriptionController, 'porta
  * URLs and the checkout runs in a system browser, so this hands the user back to
  * the app through its deep link — the browser sheet closes on it.
  */
-router.get('/api/settings/subscription/return', ({ response }) => response.redirect('gardemanger://subscription'))
+router.get('/api/settings/subscription/return', ({ response }) =>
+  response.redirect('gardemanger://subscription'),
+)
 
 /**
  * Public: Stripe has no session, it authenticates by signing the body with

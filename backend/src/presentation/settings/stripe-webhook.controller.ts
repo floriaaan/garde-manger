@@ -18,7 +18,11 @@ export default class StripeWebhookController {
     const rawBody = ctx.request.raw() ?? ''
     if (!secret || !isValidStripeSignature(rawBody, signature, secret)) {
       ctx.logger.warn(
-        { action: 'settings.stripe_webhook', reason: !secret ? 'secret_not_configured' : 'invalid_signature', hasSignature: signature !== '' },
+        {
+          action: 'settings.stripe_webhook',
+          reason: !secret ? 'secret_not_configured' : 'invalid_signature',
+          hasSignature: signature !== '',
+        },
         'stripe webhook rejected',
       )
       return ctx.response.status(401).json({ error: { type: 'unauthorized' } })
@@ -33,7 +37,11 @@ export default class StripeWebhookController {
         // The endpoint may be subscribed to more than we act on — ack, don't 400 and get retried.
         if (!payload.type?.startsWith('customer.subscription.')) {
           ctx.logger.info(
-            { action: 'settings.stripe_webhook', stripeEventId: payload.id, stripeEventType: payload.type },
+            {
+              action: 'settings.stripe_webhook',
+              stripeEventId: payload.id,
+              stripeEventType: payload.type,
+            },
             'stripe webhook ignored: not a subscription event',
           )
           return ctx.response.status(200).json({ ok: true })
@@ -43,7 +51,9 @@ export default class StripeWebhookController {
         const currentPeriodEnd =
           subscription.current_period_end ?? subscription.items?.data[0]?.current_period_end ?? null
         // The portal / dashboard can also cancel on a date (`cancel_at`) without flipping the boolean.
-        const cancelAtPeriodEnd = subscription.cancel_at_period_end === true || subscription.cancel_at != null
+        const cancelAtPeriodEnd =
+          subscription.cancel_at_period_end === true ||
+          (subscription.cancel_at !== null && subscription.cancel_at !== undefined)
 
         const outcome = await new HandleStripeWebhook(
           await ctx.containerResolver.make('settings.subscriptions'),

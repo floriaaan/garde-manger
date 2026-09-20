@@ -39,7 +39,7 @@ export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
 export const APP_UPDATE_URL = ''
 
 let currentUrl = DEFAULT_URL
-const listeners: Array<(url: string) => void> = []
+const listeners: ((url: string) => void)[] = []
 
 export function getServerUrl(): string {
   return currentUrl

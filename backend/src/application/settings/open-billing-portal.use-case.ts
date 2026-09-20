@@ -10,16 +10,21 @@ import type { SubscriptionUrlError } from './start-subscription-checkout.use-cas
  * Stripe Customer Portal URL for the household — only its payer may open it,
  * since the portal exposes their card and invoices.
  */
-export class OpenBillingPortal
-  implements UseCase<{ userId: string }, ResultType<{ url: string }, SubscriptionUrlError>>
-{
+export class OpenBillingPortal implements UseCase<
+  { userId: string },
+  ResultType<{ url: string }, SubscriptionUrlError>
+> {
   constructor(
     private readonly billing: BillingPort,
     private readonly subscriptions: SubscriptionPort,
     private readonly households: HouseholdRepository,
   ) {}
 
-  async execute({ userId }: { userId: string }): Promise<ResultType<{ url: string }, SubscriptionUrlError>> {
+  async execute({
+    userId,
+  }: {
+    userId: string
+  }): Promise<ResultType<{ url: string }, SubscriptionUrlError>> {
     const household = await this.households.findByUserId(userId)
     if (!household) return Result.err('no_household')
 

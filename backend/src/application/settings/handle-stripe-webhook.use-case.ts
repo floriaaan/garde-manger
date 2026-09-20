@@ -62,7 +62,8 @@ export class HandleStripeWebhook implements UseCase<StripeSubscriptionEvent, Str
     if (!household) return 'unknown_household'
 
     const now = this.clock.now()
-    const entitled = ENTITLED_STATUSES.has(subscription.status) && subscription.currentPeriodEnd !== null
+    const entitled =
+      ENTITLED_STATUSES.has(subscription.status) && subscription.currentPeriodEnd !== null
     const expiresAt = entitled ? new Date(subscription.currentPeriodEnd! * 1000) : now
 
     // Stripe does not order events: the end of an old subscription (e.g. one

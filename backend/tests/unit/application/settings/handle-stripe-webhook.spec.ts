@@ -101,7 +101,9 @@ test.group('HandleStripeWebhook', () => {
     ])
   })
 
-  test('flags a cancellation scheduled for period end, access kept until then', async ({ assert }) => {
+  test('flags a cancellation scheduled for period end, access kept until then', async ({
+    assert,
+  }) => {
     const subscriptions = new FakeSubscriptionPort()
     await useCase(subscriptions).execute(
       event('customer.subscription.updated', { cancelAtPeriodEnd: true }),

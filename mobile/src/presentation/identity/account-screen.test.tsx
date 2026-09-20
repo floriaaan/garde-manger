@@ -44,7 +44,7 @@ test('saving a new name calls the connector and shows a success hint', async () 
   await fireEvent.changeText(screen.getByTestId('account-name'), 'Nouveau nom')
   await fireEvent.press(screen.getByTestId('account-save-name'))
 
-  await waitFor(() => expect(screen.getByText('Nom mis à jour.')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Nom mis à jour')).toBeTruthy())
 })
 
 test('an owner of a shared household is blocked from deleting and offered the foyer instead', async () => {

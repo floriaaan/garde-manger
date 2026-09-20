@@ -43,10 +43,13 @@ export class StripeBillingAdapter implements BillingPort {
 
   async cancelSubscription(subscriptionId: string): Promise<void> {
     try {
-      const response = await fetch(`${STRIPE_API}/subscriptions/${encodeURIComponent(subscriptionId)}`, {
-        method: 'DELETE',
-        headers: this.headers(),
-      })
+      const response = await fetch(
+        `${STRIPE_API}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+        {
+          method: 'DELETE',
+          headers: this.headers(),
+        },
+      )
       if (!response.ok) throw new Error(`Stripe ${response.status}`)
     } catch (error) {
       logger.warn({ err: error, subscriptionId }, 'stripe.cancel_subscription_failed')
@@ -67,7 +70,8 @@ export class StripeBillingAdapter implements BillingPort {
       headers: { ...this.headers(), 'content-type': 'application/x-www-form-urlencoded' },
       body,
     })
-    if (!response.ok) throw new Error(`Stripe ${path} failed: ${response.status} ${await response.text()}`)
+    if (!response.ok)
+      throw new Error(`Stripe ${path} failed: ${response.status} ${await response.text()}`)
     return (await response.json()) as { url: string }
   }
 }

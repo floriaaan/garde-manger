@@ -119,6 +119,7 @@ import { TourAnchor, TourAnchorProvider } from '../onboarding/tour-anchors.js'
 import { useFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { useShoppingItemsQuery } from '../../application/shopping-list/shopping-items.query.js'
+import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useReceiptsQuery } from '../../application/receipt/receipts.query.js'
 import type { Product } from '../../domain/fridge/product.js'
@@ -132,6 +133,7 @@ const shoppingCartIllustration = require('../../../assets/illustrations/shopping
 const chartIncreasingIllustration = require('../../../assets/illustrations/chart-increasing-3d.png') as ImageSourcePropType
 const receiptIllustration = require('../../../assets/illustrations/receipt-3d.png') as ImageSourcePropType
 const mascotIllustration = require('../../../assets/mascot.png') as ImageSourcePropType
+const mascotGold = require('../../../assets/mascot-gold.png') as ImageSourcePropType
 
 /** Rows shown in the "À consommer en premier" preview before "Voir tout" takes over. */
 const PREVIEW_COUNT = 4
@@ -166,6 +168,8 @@ export function HouseholdDashboard({
   const productsQuery = useProductsQuery()
   const shoppingQuery = useShoppingItemsQuery()
   const householdQuery = useHouseholdQuery()
+  // Subscribers get the gold mascot in place of the regular one; the query is shared with the settings screens.
+  const subscribed = useAiSettingsQuery().data?.access.plan === 'subscriber'
   const receiptsQuery = useReceiptsQuery()
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data])
@@ -310,7 +314,14 @@ export function HouseholdDashboard({
                     actually measures just re-opens the vertical-centering
                     gap the previous pass tried to close by growing the
                     text past its own scale instead. */}
-                <Image source={mascotIllustration} style={{ width: 44, height: 44 }} resizeMode="contain" accessibilityLabel="" />
+                {/* Subscribers get the gold twin of the mascot, same size. */}
+                <Image
+                  testID={subscribed ? 'dashboard-subscriber-badge' : undefined}
+                  source={subscribed ? mascotGold : mascotIllustration}
+                  style={{ width: 48, height: 48 }}
+                  resizeMode="contain"
+                  accessibilityLabel={subscribed ? 'Abonnement actif' : ''}
+                />
                 {/* The foyer, on the foyer's home screen. The one thing that
                     makes this product not a personal fridge tracker — several
                     people on one shelf — used to appear nowhere here, while

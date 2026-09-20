@@ -45,8 +45,7 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
     const availableProviders = allowed.filter((provider) => this.hasCredentials(provider))
     const hosted = env.get('INSTANCE_MODE', 'self-hosted') === 'hosted'
 
-    const stored =
-      householdId && !hosted ? await this.repository.find(householdId) : null
+    const stored = householdId && !hosted ? await this.repository.find(householdId) : null
     const activeProvider = stored?.activeProvider ?? availableProviders[0] ?? allowed[0]
 
     return {
@@ -74,9 +73,7 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
     const now = this.clock.now()
     const subscribed = await this.subscriptions.hasActiveSubscription(householdId)
     const plan = subscribed ? 'subscriber' : 'free'
-    const limit = subscribed
-      ? env.get('AI_QUOTA_SUBSCRIBED', 150)
-      : env.get('AI_QUOTA_FREE', 5)
+    const limit = subscribed ? env.get('AI_QUOTA_SUBSCRIBED', 150) : env.get('AI_QUOTA_FREE', 5)
 
     const [{ used, resetsAt }, subscription] = await Promise.all([
       householdId
