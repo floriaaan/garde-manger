@@ -74,7 +74,7 @@ test.group('NotifyJobFinished', () => {
       sender.sent.map((message) => message.to),
       ['t1', 't2'],
     )
-    assert.equal(sender.sent[0].data?.route, '/tasks')
+    assert.equal(sender.sent[0]!.data?.route, '/tasks')
   })
 
   test('drops tokens the provider reports as dead', async ({ assert }) => {
@@ -104,19 +104,17 @@ test.group('SendExpiryDigest', () => {
     ).execute({ today: '2026-09-20' })
 
     assert.equal(result.sent, 1)
-    assert.equal(sender.sent[0].to, 't1')
-    assert.equal(sender.sent[0].title, '4 produits expirent bientôt')
-    assert.equal(sender.sent[0].body, 'Lait, Yaourt, Beurre et 1 autre')
+    assert.equal(sender.sent[0]!.to, 't1')
+    assert.equal(sender.sent[0]!.title, '4 produits expirent bientôt')
+    assert.equal(sender.sent[0]!.body, 'Lait, Yaourt, Beurre et 1 autre')
     assert.sameMembers(tokens.digested, ['t1', 't2'])
   })
 
   test('is a no-op when every device was already served', async ({ assert }) => {
     const sender = new FakeSender()
-    const result = await new SendExpiryDigest(
-      new FakeTokens([], []),
-      products({}),
-      sender,
-    ).execute({ today: '2026-09-20' })
+    const result = await new SendExpiryDigest(new FakeTokens([], []), products({}), sender).execute(
+      { today: '2026-09-20' },
+    )
     assert.equal(result.sent, 0)
     assert.lengthOf(sender.sent, 0)
   })

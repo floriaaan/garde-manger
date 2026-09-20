@@ -80,7 +80,9 @@ export default class JobProvider {
       jobs,
       run: async (job) => {
         await runJob.execute(job)
-        await notifyJobFinished.execute(job).catch((error) => logger.error({ err: error }, 'Job push failed'))
+        await notifyJobFinished
+          .execute(job)
+          .catch((error) => logger.error({ err: error }, 'Job push failed'))
       },
       purge: () => purge.execute(),
       clock,

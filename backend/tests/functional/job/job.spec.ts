@@ -84,17 +84,20 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
     assert,
   }) => {
     const cookie = await signUpWithHousehold(client, 'job-dismiss-twice@example.com')
-    const id = (await enqueueReceipt(client, cookie)).body().job.id
+    const enqueued = await enqueueReceipt(client, cookie)
+    const id = enqueued.body().job.id
     await db.from('ai_job').where('id', id).update({ status: 'failed', finished_at: new Date() })
 
     await client.delete(`/api/jobs/${id}`).headers({ cookie })
-    const hidden = (await client.get('/api/jobs').headers({ cookie })).body().jobs
+    const hiddenResponse = await client.get('/api/jobs').headers({ cookie })
+    const hidden = hiddenResponse.body().jobs
     assert.lengthOf(hidden, 1)
     assert.isNotNull(hidden[0].dismissedAt)
 
     const restored = await client.post(`/api/jobs/${id}/restore`).headers({ cookie })
     restored.assertStatus(204)
-    const back = (await client.get('/api/jobs').headers({ cookie })).body().jobs
+    const backResponse = await client.get('/api/jobs').headers({ cookie })
+    const back = backResponse.body().jobs
     assert.isNull(back[0].dismissedAt)
 
     await client.delete(`/api/jobs/${id}`).headers({ cookie })
@@ -173,13 +176,14 @@ test.group('push tokens', (group) => {
     const token = 'ExponentPushToken[abc]'
     const body = { token, platform: 'ios' }
 
-    ;(await client.post('/api/push-tokens').headers({ cookie }).json(body)).assertStatus(204)
-    ;(await client.post('/api/push-tokens').headers({ cookie }).json(body)).assertStatus(204)
+    const registered = await client.post('/api/push-tokens').headers({ cookie }).json(body)
+    registered.assertStatus(204)
+    const again = await client.post('/api/push-tokens').headers({ cookie }).json(body)
+    again.assertStatus(204)
     assert.lengthOf(await db.from('push_token').where('token', token), 1)
 
-    ;(
-      await client.delete('/api/push-tokens').headers({ cookie }).json({ token })
-    ).assertStatus(204)
+    const removed = await client.delete('/api/push-tokens').headers({ cookie }).json({ token })
+    removed.assertStatus(204)
     assert.lengthOf(await db.from('push_token').where('token', token), 0)
   })
 

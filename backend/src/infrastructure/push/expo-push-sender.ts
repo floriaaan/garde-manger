@@ -23,7 +23,7 @@ export class ExpoPushSender implements PushSender {
         const response = await fetch(EXPO_PUSH_URL, {
           method: 'POST',
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Content-Type': 'application/json',
             ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
           },
@@ -34,7 +34,7 @@ export class ExpoPushSender implements PushSender {
         const { data } = (await response.json()) as { data: ExpoTicket[] }
         data.forEach((ticket, index) => {
           if (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered') {
-            invalidTokens.push(batch[index].to)
+            invalidTokens.push(batch[index]!.to)
           }
         })
       } catch (error) {
