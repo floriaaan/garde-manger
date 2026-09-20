@@ -90,7 +90,7 @@ export function FridgeScanItemRow({
             borderWidth={2}
             borderColor={item.included ? palette.freshText : palette.inkSecondary}
           >
-            {item.included ? <CircleCheckIcon size={16} color="#FFFFFF" /> : null}
+            {item.included ? <CircleCheckIcon size={16} color={palette.onDark} /> : null}
           </YStack>
         </Pressable>
 
@@ -106,12 +106,12 @@ export function FridgeScanItemRow({
           accessibilityHint={expanded ? 'Replier ce produit' : 'Modifier ce produit'}
           style={[pointerCursor, { flex: 1 }]}
         >
-          <XStack alignItems="center" gap="$2" minHeight={44} opacity={item.included ? 1 : 0.5}>
-            <YStack flex={1}>
-              <Text fontSize={15} fontWeight="700" color={hasError ? palette.expiredText : palette.ink} numberOfLines={1}>
+          <XStack alignItems="center" gap="$2" minHeight={44}>
+            <YStack flex={1} opacity={item.included ? 1 : 0.6}>
+              <Text fontSize={15} fontWeight="700" textDecorationLine={item.included ? 'none' : 'line-through'} color={hasError ? palette.expiredText : palette.ink} numberOfLines={1}>
                 {item.name || 'Produit sans nom'}
               </Text>
-              <Text fontSize={12} fontWeight="500" color={item.duplicate ? palette.soonText : palette.inkSecondary} numberOfLines={1}>
+              <Text fontSize={13} fontWeight="500" color={item.duplicate ? palette.soonText : palette.inkSecondary} numberOfLines={1}>
                 {item.duplicate ? `Déjà au frigo${summary ? ` · ${summary}` : ''}` : summary}
               </Text>
             </YStack>

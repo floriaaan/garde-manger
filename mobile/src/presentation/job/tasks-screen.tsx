@@ -8,7 +8,7 @@ import { ScreenHeader } from '../shared/screen-header.js'
 import { ProgressBar } from '../shared/progress-bar.js'
 import { PillButton } from '../shared/pill-button.js'
 import { goBack } from '../shared/navigation.js'
-import { pointerCursor } from '../shared/hover.js'
+import { pointerCursor, useScreenReader } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { ArchiveIcon, ChefHatIcon, ClockIcon, PencilIcon, ReceiptIcon, RefreshIcon, ScanLineIcon, TrashIcon, XIcon } from '../dashboard/dashboard-icons.js'
@@ -109,6 +109,7 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
   const hide = useHideJobMutation()
   const remove = useDeleteJobMutation()
   const restore = useRestoreJobMutation()
+  const screenReader = useScreenReader()
   const active = isJobActive(job)
   const failed = job.status === 'failed'
   const quota = failed && job.error?.type === 'ai_quota_exceeded'
@@ -141,15 +142,15 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
       gap="$2"
       style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 2 }}
     >
-      <XStack alignItems="center" gap="$3">
+      <XStack alignItems="center" gap="$3" flexWrap="wrap">
         <YStack width={36} height={36} borderRadius={12} backgroundColor={failed ? palette.expiredBg : palette.freshBg} alignItems="center" justifyContent="center">
           <Icon size={19} color={tint} />
         </YStack>
-        <YStack flex={1}>
+        <YStack flex={1} minWidth={140}>
           <Text fontSize={15} fontWeight="800" color={palette.ink}>
             {JOB_TITLES[job.kind]}
           </Text>
-          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
             {taskAge(job.finishedAt ?? job.createdAt)}
           </Text>
         </YStack>
@@ -174,6 +175,17 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
         </Text>
       )}
       {quota && canSubscribe ? <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" /> : null}
+      {screenReader && !active ? (
+        // The swipe is invisible to VoiceOver/TalkBack: the same actions, as buttons.
+        <XStack alignItems="center" gap="$4" flexWrap="wrap">
+          {job.dismissedAt ? (
+            <TextAction testID={`task-${job.id}-restore-a11y`} label="Démasquer" color={palette.ink} icon={(c) => <ArchiveIcon size={15} color={c} />} onPress={() => restore.mutate(job.id)} />
+          ) : (
+            <TextAction testID={`task-${job.id}-dismiss-a11y`} label="Masquer" color={palette.ink} icon={(c) => <XIcon size={15} color={c} />} onPress={() => hide.mutate(job.id)} />
+          )}
+          <TextAction testID={`task-${job.id}-delete-a11y`} label="Supprimer" color={palette.expiredText} icon={(c) => <TrashIcon size={15} color={c} />} onPress={() => remove.mutate(job)} />
+        </XStack>
+      ) : null}
       {partial ? (
         <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
           <XStack alignItems="center" gap="$4">
@@ -248,7 +260,7 @@ function SwipeAction({ side, label, icon, background, color, onPress, testID }: 
     <Pressable testID={testID} onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={pointerCursor}>
       <YStack width={92} height="100%" marginLeft={side === 'right' ? 10 : 0} marginRight={side === 'left' ? 10 : 0} borderRadius={22} backgroundColor={background} alignItems="center" justifyContent="center" gap="$1">
         {icon}
-        <Text fontSize={12} fontWeight="700" color={color}>
+        <Text fontSize={13} fontWeight="700" color={color}>
           {label}
         </Text>
       </YStack>

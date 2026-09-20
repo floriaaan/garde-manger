@@ -5,13 +5,16 @@ import { router, usePathname } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { ProgressBar } from '../shared/progress-bar.js'
 import { pointerCursor } from '../shared/hover.js'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { SIDEBAR_WIDTH, useAppShellLayout } from '../shared/app-shell.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import { useJobsQuery } from '../../application/job/jobs.query.js'
 import { isJobActive } from '../../domain/job/job.js'
 import { JOB_TITLES, activeLabel, isBehindAnother } from './job-labels.js'
 
-/** Clears the tab bar on phones; the pill is a shortcut to the task center, not part of the layout. */
-const ABOVE_TAB_BAR = 96
+/** Tab bar height above the home-indicator inset, plus a gap. The pill is a shortcut, not part of the layout. */
+const TAB_BAR_CLEARANCE = 62
+const WIDE_MARGIN = 16
 
 /** iOS 26+ only: earlier iOS and Android keep the flat pastel card. */
 const LIQUID_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable()
@@ -38,6 +41,8 @@ function Card({ palette, children }: { palette: SoftPalette; children: ReactNode
 export function ActiveJobPill() {
   const palette = useSoftPalette()
   const pathname = usePathname()
+  // Wide layouts trade the tab bar for a sidebar: sit above the bottom edge, right of the sidebar.
+  const { isWide } = useAppShellLayout({ kind: 'tab' })
   const jobs = useJobsQuery().data ?? []
   const active = jobs.filter(isJobActive)
   const job = active[active.length - 1]
@@ -48,12 +53,24 @@ export function ActiveJobPill() {
   const more = active.length > 1 ? ` · +${active.length - 1}` : ''
 
   return (
-    <YStack position="absolute" left={16} right={16} bottom={ABOVE_TAB_BAR} alignItems="center" pointerEvents="box-none">
+    // SafeAreaView, not useSafeAreaInsets(): the hook throws outside a provider (cf. toast-pill.tsx).
+    <SafeAreaView
+      edges={['bottom']}
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: isWide ? SIDEBAR_WIDTH + WIDE_MARGIN * 2 : 16,
+        right: 16,
+        bottom: 0,
+        paddingBottom: isWide ? WIDE_MARGIN : TAB_BAR_CLEARANCE,
+        alignItems: 'center',
+      }}
+    >
       <Pressable
         testID="active-job-pill"
         onPress={() => router.push('/tasks')}
         accessibilityRole="button"
-        accessibilityLabel={`${JOB_TITLES[job.kind]} en cours. Ouvrir les tâches`}
+        accessibilityLabel={`${JOB_TITLES[job.kind]} en cours${determinate ? `, ${done} sur ${total}` : ''}${more ? `, et ${active.length - 1} autre${active.length > 2 ? 's' : ''}` : ''}. Ouvrir les tâches`}
         style={[pointerCursor, { width: '100%', maxWidth: 360 }]}
       >
         <Card palette={palette}>
@@ -74,6 +91,6 @@ export function ActiveJobPill() {
           />
         </Card>
       </Pressable>
-    </YStack>
+    </SafeAreaView>
   )
 }

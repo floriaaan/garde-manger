@@ -7,7 +7,8 @@
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable } from 'react-native'
+import { Animated, Easing, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -21,7 +22,7 @@ import { goBack } from '../shared/navigation.js'
 import { failureMessage } from '../job/job-labels.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { CameraIcon, CircleCheckIcon, CircleXIcon, ClockIcon, RefreshIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
+import { CameraIcon, CircleCheckIcon, CircleXIcon, ClockIcon, RefreshIcon, TriangleAlertIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import type { ReceiptItemErrors } from '../receipt/receipt-item-row.js'
 import { useEnqueueFridgeScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
 import { useJobQuery } from '../../application/job/jobs.query.js'
@@ -484,16 +485,36 @@ export function FridgeScanReviewScreen({
         />
         {items.length > 0 ? actionBar : null}
       </KeyboardAvoidingView>
-      <Modal visible={viewerUri !== null} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
-        <Pressable
-          testID="fridge-scan-photo-viewer"
-          onPress={() => setViewerUri(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer la photo"
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 16 }}
-        >
-          {viewerUri ? <Image source={{ uri: viewerUri }} resizeMode="contain" style={{ width: '100%', height: '85%' }} /> : null}
-        </Pressable>
+      <Modal
+        visible={viewerUri !== null}
+        transparent
+        animationType="fade"
+        supportedOrientations={['portrait', 'landscape']}
+        onRequestClose={() => setViewerUri(null)}
+      >
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' }}>
+          {/* Native pinch-zoom on iOS (ScrollView zoom); Android shows the photo fitted. */}
+          <ScrollView
+            testID="fridge-scan-photo-viewer"
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+          >
+            {viewerUri ? <Image source={{ uri: viewerUri }} resizeMode="contain" style={{ width: '100%', height: '100%', minHeight: 320 }} /> : null}
+          </ScrollView>
+          <Pressable
+            testID="fridge-scan-photo-viewer-close"
+            onPress={() => setViewerUri(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer la photo"
+            style={[pointerCursor, { position: 'absolute', top: 12, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }]}
+          >
+            <XIcon size={20} color="#FFFFFF" />
+          </Pressable>
+        </SafeAreaView>
       </Modal>
     </AppShell>
   )

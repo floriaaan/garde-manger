@@ -152,7 +152,7 @@ function goToTab(tab: SidebarSection) {
 const IS_NATIVE_TAB_PLATFORM = Platform.OS === 'ios'
 
 /** The fixed desktop sidebar, and the `$4` of `layoutSurface` around the content pane. */
-const SIDEBAR_WIDTH = 220
+export const SIDEBAR_WIDTH = 220
 const FRAME_PADDING = 16
 
 /** Layout facts a screen needs to build its own scroll container against (see `scrollable={false}`). */

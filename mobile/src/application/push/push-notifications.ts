@@ -18,6 +18,8 @@ const TOKEN_KEY = 'push_token'
 
 export type EnablePushResult = 'enabled' | 'denied' | 'unavailable'
 
+let lastHandled: string | null = null
+
 const isSupported = Platform.OS === 'ios' || Platform.OS === 'android'
 
 async function currentToken(): Promise<string | null> {
@@ -93,9 +95,17 @@ export async function listenToNotifications(open: (route: string) => void): Prom
       shouldSetBadge: false,
     }),
   })
-  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+  // A tap that launched the app from a killed state fires before any listener exists:
+  // it is only readable afterwards. `handled` keeps a re-mount from replaying it.
+  const handle = (response: import('expo-notifications').NotificationResponse) => {
+    const id = response.notification.request.identifier
+    if (id === lastHandled) return
+    lastHandled = id
     const route = response.notification.request.content.data?.route
     if (typeof route === 'string') open(route)
-  })
+  }
+  const subscription = Notifications.addNotificationResponseReceivedListener(handle)
+  const launched = await Notifications.getLastNotificationResponseAsync()
+  if (launched) handle(launched)
   return () => subscription.remove()
 }

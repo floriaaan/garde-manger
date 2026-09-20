@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { router } from 'expo-router'
 import Constants from 'expo-constants'
 import { Text, YStack } from '../shared/tamagui-typed.js'
@@ -11,7 +11,6 @@ import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import {
     HomeIcon,
-  BellIcon,
   LogOutIcon,
     ServerIcon,
   SettingsIcon,
@@ -20,12 +19,13 @@ import {
   WalletIcon,
 } from '../dashboard/dashboard-icons.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
+import { NotificationsRow } from './notifications-row.js'
 import { NUDGE_RATIO } from './ai-access-cards.js'
 import { initials } from '../shared/member-avatars.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
 import { useConnector } from '../../application/shared/connector-context.js'
-import { disablePush, enablePush, isPushEnabled } from '../../application/push/push-notifications.js'
+import { disablePush } from '../../application/push/push-notifications.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
@@ -88,24 +88,6 @@ export function SettingsScreen() {
   const instance = useInstanceInfoQuery()
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const connector = useConnector()
-  const [pushEnabled, setPushEnabled] = useState(false)
-  const [pushNote, setPushNote] = useState<string | null>(null)
-  useEffect(() => {
-    void isPushEnabled().then(setPushEnabled)
-  }, [])
-
-  async function togglePush() {
-    setPushNote(null)
-    if (pushEnabled) {
-      await disablePush(connector)
-      setPushEnabled(false)
-      return
-    }
-    const result = await enablePush(connector)
-    setPushEnabled(result === 'enabled')
-    if (result === 'denied') setPushNote('Autorise les notifications dans les réglages du téléphone.')
-    if (result === 'unavailable') setPushNote('Indisponible sur cet appareil ou cette version de l’app.')
-  }
   const [hint] = useHint()
   const refresh = usePullToRefresh(
     () => session.refetch(),
@@ -189,6 +171,7 @@ export function SettingsScreen() {
           palette={palette}
           onPress={() => router.push('/account')}
         />
+        <NotificationsRow palette={palette} />
         <SectionLabel palette={palette} marginTop="$2">Ton foyer</SectionLabel>
         <IdentityCard
           testID="settings-household"
@@ -235,22 +218,6 @@ export function SettingsScreen() {
 
       <YStack marginTop="$3" gap="$3">
         <SectionLabel palette={palette} marginTop="$2">Le service</SectionLabel>
-        <IdentityCard
-          testID="settings-notifications"
-          bg={palette.mintPale}
-          labelColor={palette.mintPaleText}
-          chipColor={palette.chipTeal}
-          icon={<BellIcon size={18} color={palette.onDark} />}
-          label="Notifications"
-          value={pushEnabled ? 'Activées' : 'Désactivées'}
-          secondary={
-            pushNote ?? 'Produits qui expirent bientôt, et analyses terminées.'
-          }
-          corner="b"
-          palette={palette}
-          onPress={togglePush}
-          accessibilityLabel={`Notifications ${pushEnabled ? 'activées' : 'désactivées'}. Appuie pour ${pushEnabled ? 'les désactiver' : 'les activer'}.`}
-        />
         <IdentityCard
           testID="settings-ai-provider"
           bg={palette.lavender}
