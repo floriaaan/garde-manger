@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Animated, Easing, Platform } from 'react-native'
+import * as Haptics from 'expo-haptics'
+import { haptic } from './haptics.js'
 import { IS_ANDROID } from './material.js'
 
 /**
@@ -166,6 +168,9 @@ export function useBlobDrift({ rangeX = BLOB_DRIFT_X_RANGE, amplitudeY = BLOB_DR
  * reads as two responses to one tap. Callers pass `android_ripple={ripple(…)}`
  * (see material.ts) and get a flat `scale` of 1 here, so the same component
  * feels like iOS on iOS and like Material on Android without a fork.
+ *
+ * Every press-in also fires a light haptic tick, so each control built on this
+ * hook gets tactile feedback for free (no-op on web, see `haptic`).
  */
 export function useHoverPress() {
   const [scale] = useState(() => new Animated.Value(1))
@@ -182,7 +187,10 @@ export function useHoverPress() {
     scale,
     onHoverIn: () => to(1.035, 6),
     onHoverOut: () => to(1, 6),
-    onPressIn: () => to(0.96, 5),
+    onPressIn: () => {
+      haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light))
+      to(0.96, 5)
+    },
     onPressOut: () => to(1, 4),
   }
 }
