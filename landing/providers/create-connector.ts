@@ -7,6 +7,6 @@ export function createConnector(): LandingConnector {
   if (import.meta.env.VITE_CONNECTOR !== 'http') return new FakeLandingConnector()
   return new HttpLandingConnector({
     apiUrl: (import.meta.env.VITE_API_URL ?? 'http://localhost:3333').replace(/\/$/, ''),
-    githubRepo: import.meta.env.VITE_GITHUB_REPO ?? 'floriaaan/fridge-ai',
+    githubRepo: import.meta.env.VITE_GITHUB_REPO ?? 'floriaaan/garde-manger',
   })
 }

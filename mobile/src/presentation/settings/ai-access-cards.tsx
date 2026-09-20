@@ -17,7 +17,7 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
-const SETUP_GUIDE_URL = 'https://github.com/floriaaan/fridge-ai/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
+const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   return (

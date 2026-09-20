@@ -19,7 +19,7 @@ const ORGANIZATION_JSON_LD = {
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'iOS, Android',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-  sameAs: ['https://github.com/floriaaan/fridge-ai'],
+  sameAs: ['https://github.com/floriaaan/garde-manger'],
 }
 
 export const Route = createRootRouteWithContext<{

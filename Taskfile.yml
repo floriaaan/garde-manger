@@ -200,7 +200,7 @@ tasks:
   up:
     desc: Start the production-like stack.
     cmds:
-      - "{{.COMPOSE}} up -d --build"
+      - "{{.COMPOSE}} pull && {{.COMPOSE}} up -d"
 
   down:
     desc: Stop the stack.
@@ -215,7 +215,7 @@ tasks:
   up:app-only:
     desc: Start the app without the observability stack (db + backend only).
     cmds:
-      - "{{.COMPOSE}} up -d --build db backend"
+      - "{{.COMPOSE}} pull db backend && {{.COMPOSE}} up -d db backend"
 
   obs:down:
     desc: Stop the observability stack, leaving the app running.

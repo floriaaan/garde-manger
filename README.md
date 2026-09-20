@@ -11,28 +11,111 @@ Two ways to use it:
 
 ## Installation
 
-You need a machine with Docker (Compose v2) and `git`, on the same network as the phones. Budget ~2 GB of RAM with observability, a few hundred MB without.
+You need a machine with Docker (Compose v2), on the same network as the phones. Budget a few hundred MB of RAM (~2 GB more with observability).
 
-### 1. Get the code and configure
+### 1. Create the compose file
+
+The images are built by the CI and published on GHCR: no clone, no build. Save this as `docker-compose.yml` on your server:
+
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: garde_manger
+      POSTGRES_PASSWORD: CHANGE_ME_DB_PASSWORD
+      POSTGRES_DB: garde_manger
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U garde_manger -d garde_manger']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ghcr.io/floriaaan/garde-manger-backend:main
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '3333:3333'
+    volumes:
+      - storage:/app/data
+    # Lets OLLAMA_BASE_URL reach an Ollama running on the host (Linux too).
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3333
+      LOG_LEVEL: info
+
+      # Secrets: generate each with `openssl rand -base64 32`
+      APP_KEY: CHANGE_ME
+      BETTER_AUTH_SECRET: CHANGE_ME
+      ENCRYPTION_KEY: CHANGE_ME
+
+      # How the phones reach the API: LAN IP or public domain, never localhost
+      APP_URL: http://192.168.1.42:3333
+      NETWORK_URL: http://192.168.1.42:3333
+      # exp:// = Expo Go, gardemanger:// = the installed app
+      CORS_ORIGIN: exp://,gardemanger://
+
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: garde_manger
+      DB_PASSWORD: CHANGE_ME_DB_PASSWORD
+      DB_DATABASE: garde_manger
+      STORAGE_ROOT: /app/data/storage
+
+      # Sign-in (PocketID / Google are enabled when their variables are set)
+      DISABLE_PASSWORD_LOGIN: 'false'
+      POCKETID_ISSUER_URL: ''
+      POCKETID_CLIENT_ID: ''
+      POCKETID_CLIENT_SECRET: ''
+      GOOGLE_CLIENT_ID: ''
+      GOOGLE_CLIENT_SECRET: ''
+
+      # AI: receipt scan + recipes. Fill at least one provider.
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: ''
+      OPENAI_API_KEY: ''
+      OLLAMA_BASE_URL: ''            # e.g. http://host.docker.internal:11434
+      OLLAMA_VISION_MODEL: ''        # e.g. llava
+      OLLAMA_TEXT_MODEL: ''          # e.g. llama3.1
+
+      HOME_ASSISTANT_ALLOWED_HOSTS: ''
+
+      PUBLIC_STATS_ENABLED: 'false'
+      DEPLOY_ENV: production
+      APP_VERSION: main
+
+      # Observability off: no collector in this file
+      OTEL_ENABLED: 'false'
+      OTEL_SERVICE_NAME: garde-manger-backend
+      TELEMETRY_INGEST_ENABLED: 'false'
+
+volumes:
+  pgdata:
+  storage:
+```
+
+Then fill in the values:
 
 ```bash
-git clone https://github.com/floriaaan/fridge-ai.git && cd fridge-ai
-cp .env.example .env
+# Prints three secrets: paste them into APP_KEY, BETTER_AUTH_SECRET and ENCRYPTION_KEY
+for k in APP_KEY BETTER_AUTH_SECRET ENCRYPTION_KEY; do echo "$k=$(openssl rand -base64 32)"; done
 
-# Generates the three required secrets (APP_KEY, BETTER_AUTH_SECRET, ENCRYPTION_KEY)
-for k in APP_KEY BETTER_AUTH_SECRET ENCRYPTION_KEY; do sed -i.bak "s|^$k=.*|$k=$(openssl rand -base64 32)|" .env; done; rm .env.bak
+ipconfig getifaddr en0          # your server's IP on macOS
+hostname -I | awk '{print $1}'  # ... on Linux
 ```
 
-Then, in `.env`, replace `NETWORK_URL`'s IP with your server's address on your network:
-
-```bash
-ipconfig getifaddr en0          # macOS
-hostname -I | awk '{print $1}'  # Linux
-```
-
-```dotenv
-NETWORK_URL=http://192.168.1.42:3333
-```
+- `APP_URL` and `NETWORK_URL`: your server's address as seen by the phones (`http://192.168.1.42:3333`), not `localhost`.
+- `CHANGE_ME_DB_PASSWORD`: the same password in both places (`db` and `backend`).
+- At least one AI provider, otherwise receipt scanning and recipes stay off.
 
 ### 2. Start
 
@@ -40,24 +123,21 @@ NETWORK_URL=http://192.168.1.42:3333
 docker compose up -d
 ```
 
-The first run builds the API image (1 to 2 minutes). Database migrations run automatically on startup. Check:
+Database migrations run automatically on startup. Check:
 
 ```bash
 curl http://localhost:3333/health
 # {"status":"ok"}
 ```
 
-This starts Postgres, the API, and observability (OpenTelemetry Collector + OpenObserve at http://127.0.0.1:5080). On a modest machine, without observability:
-
-```bash
-docker compose up -d db backend
-```
+This runs Postgres and the API, without observability (see [Observability](#observability)).
 
 ### 3. Run the app on your phone
 
-The app isn't on the stores yet. In the meantime it runs in [Expo Go](https://expo.dev/go) (App Store / Play Store), from a computer on the same network with Node.js 24+:
+The app isn't on the stores yet. In the meantime it runs in [Expo Go](https://expo.dev/go) (App Store / Play Store), from a computer on the same network with `git` and Node.js 24+:
 
 ```bash
+git clone https://github.com/floriaaan/garde-manger.git && cd garde-manger
 corepack enable
 pnpm install
 cp mobile/.env.example mobile/.env
@@ -75,11 +155,11 @@ cd mobile && pnpm start
 
 Scan the QR code with the camera app (iOS) or Expo Go (Android), create an account, then a household. Other members create their own account and join the household with its invite code.
 
-> If the connection fails with an origin error, check that `CORS_ORIGIN` in `.env` includes `exp://` (Expo Go) — that's the default value.
+> If the connection fails with an origin error, check that `CORS_ORIGIN` in your compose file includes `exp://` (Expo Go) — that's the default value.
 
 ## Configuration
 
-Everything is set in `.env` (commented), then `docker compose up -d` to apply.
+Everything is set in the `environment:` block of the `backend` service, then `docker compose up -d` to apply.
 
 ### AI (receipt scanning, recipes)
 
@@ -115,12 +195,12 @@ On PocketID's side, the redirect URL is based on `NETWORK_URL` ([ADR 0005](docs/
 
 ### Observability
 
-Change `OPENOBSERVE_ROOT_EMAIL`, `OPENOBSERVE_ROOT_PASSWORD` and `OTLP_STORE_AUTH` together before exposing anything. Ports stay on `127.0.0.1`. Details in [docs/observabilite.md](docs/observabilite.md).
+Off in the compose file above. To enable it (OpenTelemetry Collector + OpenObserve), use the repository's [`compose.yml`](compose.yml) with its [`.env.example`](.env.example) instead. Change `OPENOBSERVE_ROOT_EMAIL`, `OPENOBSERVE_ROOT_PASSWORD` and `OTLP_STORE_AUTH` together before exposing anything. Details in [docs/observabilite.md](docs/observabilite.md).
 
 ## Day to day
 
 ```bash
-git pull && docker compose up -d --build   # update (migrations included)
+docker compose pull && docker compose up -d   # update (migrations included)
 docker compose logs -f backend             # API logs
 docker compose down                        # stop (data stays)
 ```
