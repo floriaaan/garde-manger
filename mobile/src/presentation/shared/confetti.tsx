@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useWindowDimensions, View } from 'react-native'
 import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
+import { subscribeConfetti } from '../../application/shared/confetti.js'
 import { useReduceMotion } from './hover.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 
@@ -80,20 +81,12 @@ export function Confetti({ palette, onDone }: { palette: SoftPalette; onDone: ()
   )
 }
 
-/** Fire a burst from anywhere (an application hook, no component needed); `ConfettiHost`, mounted once at the root, plays it. */
-const bursts = new Set<() => void>()
-export function celebrate() {
-  bursts.forEach((fire) => fire())
-}
-
 export function ConfettiHost() {
   const palette = useSoftPalette()
   // A counter as the key restarts the burst if one fires while another is still falling.
   const [burst, setBurst] = useState<number | null>(null)
   useEffect(() => {
-    const fire = () => setBurst((n) => (n ?? 0) + 1)
-    bursts.add(fire)
-    return () => void bursts.delete(fire)
+    return subscribeConfetti(() => setBurst((n) => (n ?? 0) + 1))
   }, [])
   const done = useCallback(() => setBurst(null), [])
   return burst === null ? null : <Confetti key={burst} palette={palette} onDone={done} />

@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import { traceAction } from '#presentation/shared/trace-action'
-import { isValidStripeSignature } from '#infrastructure/settings/stripe-signature'
+import { isValidStripeSignature } from '#application/settings/stripe-signature'
 import { stripeWebhookValidator } from './stripe-webhook.validator.js'
 import { HandleStripeWebhook } from '#application/settings/handle-stripe-webhook.use-case'
 
