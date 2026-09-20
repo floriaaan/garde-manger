@@ -2,9 +2,12 @@ import env from '#start/env'
 import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings-provider.interface'
 import type { AiProviderSettingsRepository } from '#domain/settings/interfaces/ai-provider-settings-repository.interface'
 import type { SubscriptionPort } from '#domain/settings/interfaces/subscription-port.interface'
+import type { AiQuotaPort } from '#domain/settings/interfaces/ai-quota-port.interface'
 import type { EffectiveAiSettings } from '#domain/settings/effective-ai-settings'
+import type { AiAccess } from '#domain/settings/ai-access'
 import type { AiProvider } from '#domain/settings/ai-provider.vo'
-import { isCloudAiProvider, parseAllowedProviders } from '#domain/settings/ai-provider.vo'
+import { parseAllowedProviders } from '#domain/settings/ai-provider.vo'
+import type { Clock } from '#domain/shared/clock.interface'
 
 /**
  * The fixed model each cloud provider's adapters use — kept in sync by hand
@@ -23,34 +26,69 @@ const CLOUD_MODELS: Record<'gemini' | 'openai', { vision: string; text: string }
  * precedence to `AuthSettingsProvider` in `arr` (DB wins once it exists, env
  * is the first-boot fallback, cf. docs/adr/0007).
  *
- * Three filters narrow `AI_PROVIDER` down to what a foyer may actually pick:
- * the whitelist itself, credentials being present, and the subscription gate
- * on cloud providers. A provider that clears the first two but not the third
- * lands in `lockedProviders` instead of disappearing.
+ * `INSTANCE_MODE` is the only switch between the two worlds this class
+ * serves: self-hosted never touches `subscriptions`/`quota` and never caps
+ * anything; hosted always does, and hides `PATCH /api/settings/ai` behind
+ * `canChooseProvider: false` since the operator fixes the provider via
+ * `AI_PROVIDER`.
  */
 export class EnvAiSettingsProvider implements AiSettingsProvider {
   constructor(
     private readonly repository: AiProviderSettingsRepository,
     private readonly subscriptions: SubscriptionPort,
+    private readonly quota: AiQuotaPort,
+    private readonly clock: Clock,
   ) {}
 
   async resolveEffective(householdId: string | null): Promise<EffectiveAiSettings> {
     const allowed = parseAllowedProviders(env.get('AI_PROVIDER', ''))
-    const configured = allowed.filter((provider) => this.hasCredentials(provider))
+    const availableProviders = allowed.filter((provider) => this.hasCredentials(provider))
+    const hosted = env.get('INSTANCE_MODE', 'self-hosted') === 'hosted'
 
-    const subscribed = await this.subscriptions.hasActiveSubscription(householdId)
-    const lockedProviders = subscribed ? [] : configured.filter(isCloudAiProvider)
-    const availableProviders = configured.filter((provider) => !lockedProviders.includes(provider))
-
-    const stored = householdId ? await this.repository.find(householdId) : null
+    const stored = householdId && !hosted ? await this.repository.find(householdId) : null
     const activeProvider = stored?.activeProvider ?? availableProviders[0] ?? allowed[0]
 
     return {
       activeProvider,
       source: stored ? 'database' : 'environment',
       availableProviders,
-      lockedProviders,
+      canChooseProvider: !hosted,
       models: this.modelsFor(activeProvider),
+      access: await this.resolveAccess(householdId, hosted),
+    }
+  }
+
+  private async resolveAccess(householdId: string | null, hosted: boolean): Promise<AiAccess> {
+    if (!hosted) {
+      return {
+        plan: 'self-hosted',
+        used: 0,
+        limit: null,
+        resetsAt: null,
+        expiresAt: null,
+        cancelsAtPeriodEnd: false,
+      }
+    }
+
+    const now = this.clock.now()
+    const subscribed = await this.subscriptions.hasActiveSubscription(householdId)
+    const plan = subscribed ? 'subscriber' : 'free'
+    const limit = subscribed ? env.get('AI_QUOTA_SUBSCRIBED', 150) : env.get('AI_QUOTA_FREE', 5)
+
+    const [{ used, resetsAt }, subscription] = await Promise.all([
+      householdId
+        ? this.quota.usage(householdId, limit, now)
+        : Promise.resolve({ used: 0, limit, resetsAt: null }),
+      subscribed && householdId ? this.subscriptions.find(householdId) : Promise.resolve(null),
+    ])
+
+    return {
+      plan,
+      used,
+      limit,
+      resetsAt,
+      expiresAt: subscription?.expiresAt ?? null,
+      cancelsAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
     }
   }
 

@@ -15,6 +15,8 @@
  * retry on the same photo, and an explicit success state that says what
  * landed in the fridge.
  */
+import { ConnectedPaywall } from '../settings/ai-access-cards.js'
+import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useEffect, useRef, useState } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -56,6 +58,7 @@ interface ScanError {
   title: string
   message: string
   recovery: 'retry' | null
+  quota?: boolean
 }
 
 function toScanError(error: ApiError): ScanError {
@@ -64,6 +67,11 @@ function toScanError(error: ApiError): ScanError {
   // instance. Offering "Réessayer" here would just repeat the same failure.
   if (error.type === 'provider_not_configured') {
     return { title: 'Extraction indisponible', message: error.message, recovery: null }
+  }
+  // Same reasoning as `provider_not_configured` — no retry fixes a spent
+  // monthly quota, only a subscription (or next month) does.
+  if (error.type === 'ai_quota_exceeded') {
+    return { title: 'Quota atteint', message: error.message, recovery: null, quota: true }
   }
   if (error.type === 'network_error') {
     return { title: 'Connexion impossible', message: error.message, recovery: 'retry' }
@@ -119,6 +127,7 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const scanReceipt = useScanReceiptMutation()
+  const { canSubscribe } = useAiSubscribe()
   const importReceipt = useImportReceiptMutation()
   const nav = { kind: 'stack' as const }
   const { isWide, hasMobileNav } = useAppShellLayout(nav)
@@ -373,28 +382,34 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
             the bottom of the screen for the same reason as the success
             state: the thumb-reachable zone, not wherever the message ends. */}
         <YStack flex={1} minHeight={0} alignItems="center">
-          <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" paddingTop="$6">
-            <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
-              <CircleXIcon size={30} color={palette.expiredText} />
+          {scanError.quota && canSubscribe ? (
+            <YStack flex={1} width="100%" justifyContent="center" paddingTop="$6">
+              <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
             </YStack>
-            <Text testID="receipt-scan-error-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
-              {scanError.title}
-            </Text>
-            {/* The backend's own message — what actually failed (a bad photo,
-                a missing AI-provider key, an unreachable server), not one
-                catch-all sentence for every cause. */}
-            <Text
-              testID="receipt-scan-error"
-              fontSize={13}
-              fontWeight="500"
-              color={palette.inkSecondary}
-              textAlign="center"
-              maxWidth={320}
-              accessibilityLiveRegion="polite"
-            >
-              {scanError.message}
-            </Text>
-          </YStack>
+          ) : (
+            <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" paddingTop="$6">
+              <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
+                <CircleXIcon size={30} color={palette.expiredText} />
+              </YStack>
+              <Text testID="receipt-scan-error-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
+                {scanError.title}
+              </Text>
+              {/* The backend's own message — what actually failed (a bad photo,
+                  a missing AI-provider key, an unreachable server), not one
+                  catch-all sentence for every cause. */}
+              <Text
+                testID="receipt-scan-error"
+                fontSize={13}
+                fontWeight="500"
+                color={palette.inkSecondary}
+                textAlign="center"
+                maxWidth={320}
+                accessibilityLiveRegion="polite"
+              >
+                {scanError.message}
+              </Text>
+            </YStack>
+          )}
           <YStack width="100%" gap="$2" paddingBottom="$2">
             {/* Retry re-reads the same photo. It used to route back to the
                 camera, throwing away the shot the user had just framed — and

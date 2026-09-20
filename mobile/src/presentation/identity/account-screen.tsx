@@ -71,7 +71,7 @@ export function AccountScreen() {
   async function handleLinkSocial(provider: 'pocketid' | 'google') {
     const result = await linkSocial.mutateAsync(provider)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
@@ -79,27 +79,27 @@ export function AccountScreen() {
 
   async function handleSaveName(trimmed: string) {
     if (!trimmed) {
-      showHint('Le nom ne peut pas être vide.')
+      showHint('Le nom ne peut pas être vide.', 'error')
       return
     }
     const result = await updateName.mutateAsync(trimmed)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     queryClient.invalidateQueries({ queryKey: ['session'] })
-    showHint('Nom mis à jour.', 'success')
+    showHint('Nom mis à jour', 'success')
   }
 
   async function handleChangePassword() {
     const result = await changePassword.mutateAsync({ currentPassword, newPassword })
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     setCurrentPassword('')
     setNewPassword('')
-    showHint('Mot de passe mis à jour.', 'success')
+    showHint('Mot de passe mis à jour', 'success', { description: 'Utilise-le à ta prochaine connexion.' })
   }
 
   function handleRequestDelete() {
@@ -114,7 +114,7 @@ export function AccountScreen() {
     const result = await deleteAccount.mutateAsync(canChangePassword ? deletePassword : undefined)
     if (!result.ok) {
       setDeleteSheetOpen(false)
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     setDeleteSheetOpen(false)

@@ -172,7 +172,7 @@ export function ThresholdScreen({
     })
     const parsed = parseInviteCode(clip ?? '')
     if (!parsed) {
-      showHint('Pas de code dans le presse-papier.')
+      showHint('Presse-papier vide', 'error', { description: 'Copie d’abord le code d’invitation.' })
       return
     }
     setCode(parsed)

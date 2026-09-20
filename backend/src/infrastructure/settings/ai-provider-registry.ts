@@ -9,11 +9,13 @@ import { GeminiFridgeScanExtractionAdapter } from './gemini-fridge-scan-extracti
 import { OpenAiFridgeScanExtractionAdapter } from './openai-fridge-scan-extraction.adapter.js'
 import { OllamaFridgeScanExtractionAdapter } from './ollama-fridge-scan-extraction.adapter.js'
 import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings-provider.interface'
+import type { AiQuotaPort } from '#domain/settings/interfaces/ai-quota-port.interface'
 import type { ReceiptExtractionPort } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
 import type { RecipeGenerationPort } from '#domain/recipe/interfaces/recipe-generation-port.interface'
 import type { FridgeScanExtractionPort } from '#domain/fridge/interfaces/fridge-scan-extraction-port.interface'
 import type { AiProvider } from '#domain/settings/ai-provider.vo'
-import { SubscriptionRequiredError } from '#domain/settings/subscription.errors'
+import type { Clock } from '#domain/shared/clock.interface'
+import { AiQuotaExceededError } from '#domain/settings/ai-quota-exceeded.error'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
 import { RecipeGenerationUnavailableError } from '#domain/recipe/recipe-generation.errors'
 
@@ -25,11 +27,13 @@ import { RecipeGenerationUnavailableError } from '#domain/recipe/recipe-generati
  *
  * The cache is keyed by provider, not by household: adapters are built from
  * env credentials alone and hold no per-foyer state, so two foyers on the
- * same provider share one instance.
+ * same provider share one raw instance. Quota is enforced and recorded one
+ * layer up (`wrap`), around the cached instance, since it *is* per-household.
  */
 function createResolver<T>(
   build: (provider: AiProvider) => T,
   unavailable: (provider: AiProvider) => Error,
+  wrap: (adapter: T, onSuccess: () => Promise<void>) => T,
 ) {
   const cache = new Map<AiProvider, T>()
   let testOverride: T | null = null
@@ -46,25 +50,32 @@ function createResolver<T>(
       cache.clear()
     },
 
-    async resolve(settings: AiSettingsProvider, householdId: string | null): Promise<T> {
+    async resolve(
+      settings: AiSettingsProvider,
+      quota: AiQuotaPort,
+      clock: Clock,
+      householdId: string | null,
+    ): Promise<T> {
       if (testOverride) return testOverride
 
       const effective = await settings.resolveEffective(householdId)
       const provider = effective.activeProvider
 
-      // The stored choice can outlive its entitlement (subscription lapsed)
-      // or its credentials (key removed from the env). Refuse here rather
-      // than letting the adapter spend the operator's key.
-      if (effective.lockedProviders.includes(provider))
-        throw new SubscriptionRequiredError(provider)
       if (!effective.availableProviders.includes(provider)) throw unavailable(provider)
 
-      const cached = cache.get(provider)
-      if (cached) return cached
+      // Quota lapses can outlive the provider choice — refused here rather
+      // than letting the adapter spend the operator's key on a call that
+      // will never be billed back.
+      const { access } = effective
+      if (access.plan !== 'self-hosted' && access.limit !== null && access.used >= access.limit) {
+        throw new AiQuotaExceededError(access.limit)
+      }
 
-      const adapter = build(provider)
-      cache.set(provider, adapter)
-      return adapter
+      const cached = cache.get(provider) ?? build(provider)
+      cache.set(provider, cached)
+
+      if (access.plan === 'self-hosted' || !householdId) return cached
+      return wrap(cached, () => quota.record(householdId, clock.now()))
     },
   }
 }
@@ -84,6 +95,13 @@ const receiptExtraction = createResolver<ReceiptExtractionPort>(
     }
   },
   (provider) => new ReceiptExtractionUnavailableError(provider),
+  (adapter, onSuccess) => ({
+    async extract(image) {
+      const draft = await adapter.extract(image)
+      await onSuccess()
+      return draft
+    },
+  }),
 )
 
 const recipeGeneration = createResolver<RecipeGenerationPort>(
@@ -101,6 +119,13 @@ const recipeGeneration = createResolver<RecipeGenerationPort>(
     }
   },
   (provider) => new RecipeGenerationUnavailableError(provider),
+  (adapter, onSuccess) => ({
+    async generate(context) {
+      const drafts = await adapter.generate(context)
+      await onSuccess()
+      return drafts
+    },
+  }),
 )
 
 const fridgeScanExtraction = createResolver<FridgeScanExtractionPort>(
@@ -119,6 +144,13 @@ const fridgeScanExtraction = createResolver<FridgeScanExtractionPort>(
   },
   // Fridge scan is a vision call like the receipt one, and shares its errors.
   (provider) => new ReceiptExtractionUnavailableError(provider),
+  (adapter, onSuccess) => ({
+    async extract(image) {
+      const draft = await adapter.extract(image)
+      await onSuccess()
+      return draft
+    },
+  }),
 )
 
 export function __setReceiptExtractionOverrideForTests(port: ReceiptExtractionPort | null): void {
@@ -137,21 +169,27 @@ export function __setFridgeScanExtractionOverrideForTests(
 
 export function resolveReceiptExtractionAdapter(
   settings: AiSettingsProvider,
+  quota: AiQuotaPort,
+  clock: Clock,
   householdId: string | null,
 ): Promise<ReceiptExtractionPort> {
-  return receiptExtraction.resolve(settings, householdId)
+  return receiptExtraction.resolve(settings, quota, clock, householdId)
 }
 
 export function resolveRecipeGenerationAdapter(
   settings: AiSettingsProvider,
+  quota: AiQuotaPort,
+  clock: Clock,
   householdId: string | null,
 ): Promise<RecipeGenerationPort> {
-  return recipeGeneration.resolve(settings, householdId)
+  return recipeGeneration.resolve(settings, quota, clock, householdId)
 }
 
 export function resolveFridgeScanExtractionAdapter(
   settings: AiSettingsProvider,
+  quota: AiQuotaPort,
+  clock: Clock,
   householdId: string | null,
 ): Promise<FridgeScanExtractionPort> {
-  return fridgeScanExtraction.resolve(settings, householdId)
+  return fridgeScanExtraction.resolve(settings, quota, clock, householdId)
 }

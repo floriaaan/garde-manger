@@ -34,6 +34,7 @@ export function IdentityCard({
   icon,
   label,
   value,
+  valueBadge,
   secondary,
   trailing,
   footer,
@@ -49,6 +50,8 @@ export function IdentityCard({
   icon: ReactNode
   label: string
   value: string
+  /** Inline right after the value — e.g. the official instance's certified badge. */
+  valueBadge?: ReactNode
   secondary?: string
   /** Right-aligned badge on the label row — the foyer's role. */
   trailing?: ReactNode
@@ -116,9 +119,12 @@ export function IdentityCard({
           {/* Two lines, not one: this card exists because "Le foyer de Florian"
               was cut to "Le foyer de F…". Buying the width and keeping the
               one-line clamp would have kept the scissors. */}
-          <Text fontSize={20} fontWeight="800" color={palette.ink} marginTop="$0.5" numberOfLines={2}>
-            {value}
-          </Text>
+          <XStack alignItems="center" gap="$1.5" marginTop="$0.5">
+            <Text flexShrink={1} fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={2}>
+              {value}
+            </Text>
+            {valueBadge}
+          </XStack>
           {secondary ? (
             <Text fontSize={12} fontWeight="500" color={labelColor} marginTop="$0.5" numberOfLines={1}>
               {secondary}

@@ -83,16 +83,19 @@ export function OffersSection({ content }: { content: LandingContent }) {
             </div>
 
             <div>
-              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-col items-stretch gap-2">
                 {hosted.tiers.map((tier, index) => (
                   <div key={tier.name} className="contents">
                     {index > 0 && (
                       <PlusIcon aria-hidden className="size-6 shrink-0 self-center text-soon-on-dark" strokeWidth={3} />
                     )}
-                    <div className={cn(index === 0 ? 'corners-a' : 'corners-b', 'flex-1 self-stretch bg-black/22 p-5')}>
+                    <div className={cn(index === 0 ? 'corners-a' : 'corners-b', 'bg-black/22 p-5')}>
                       <p className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
                         {index > 0 && <SparklesIcon aria-hidden className="size-5 text-soon-on-dark" />}
                         {tier.name}
+                        {tier.price && (
+                          <span className="text-sm font-semibold text-soon-on-dark">{tier.price}</span>
+                        )}
                       </p>
                       <p className="mt-1.5 text-[15px] text-white/80">{tier.description}</p>
                     </div>

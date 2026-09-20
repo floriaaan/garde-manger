@@ -35,6 +35,8 @@ import { ArrowLeftRightIcon, HomeIcon, LogOutIcon, UserIcon, UsersIcon, XIcon } 
 import { IdentityCard } from '../settings/identity-card.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
+import { useRenameHouseholdMutation } from '../../application/identity/rename-household.mutation.js'
+import { AuthField } from './auth-field.js'
 import { useRegenerateInviteCodeMutation } from '../../application/identity/regenerate-invite-code.mutation.js'
 import { useRemoveHouseholdMemberMutation } from '../../application/identity/remove-household-member.mutation.js'
 import { useLeaveHouseholdMutation } from '../../application/identity/leave-household.mutation.js'
@@ -48,6 +50,7 @@ export function HouseholdScreen() {
   const household = useHouseholdQuery()
   const session = useSessionQuery()
   const regenerate = useRegenerateInviteCodeMutation()
+  const rename = useRenameHouseholdMutation()
   const removeMember = useRemoveHouseholdMemberMutation()
   const leave = useLeaveHouseholdMutation()
   const transferOwnership = useTransferHouseholdOwnershipMutation()
@@ -64,29 +67,43 @@ export function HouseholdScreen() {
   async function handleRegenerate() {
     const result = await regenerate.mutateAsync(undefined)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint('Nouveau code généré. L’ancien ne marche plus.')
+    showHint('Nouveau code généré', 'success', { description: 'L’ancien code ne marche plus.' })
+  }
+
+  async function handleRename(name: string) {
+    if (!name) {
+      showHint('Le nom ne peut pas être vide.', 'error')
+      return
+    }
+    const result = await rename.mutateAsync(name)
+    if (!result.ok) {
+      showHint(result.error.message, 'error')
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['household'] })
+    showHint('Foyer renommé', 'success', { description: 'Tous les membres voient le nouveau nom.' })
   }
 
   async function handleRemove(member: HouseholdMember) {
     setMemberToRemove(null)
     const result = await removeMember.mutateAsync(member.userId)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(`${member.name} ne fait plus partie du foyer.`)
+    showHint(`${member.name} ne fait plus partie du foyer`, 'success')
   }
 
   async function handleLeave() {
     setConfirmLeave(false)
     const result = await leave.mutateAsync(undefined)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     // Not sign-in. Leaving a foyer is not leaving the account — the session
@@ -102,11 +119,11 @@ export function HouseholdScreen() {
     setTransferPickerOpen(false)
     const result = await transferOwnership.mutateAsync(member.userId)
     if (!result.ok) {
-      showHint(result.error.message)
+      showHint(result.error.message, 'error')
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(`${member.name} est désormais propriétaire du foyer.`)
+    showHint(`${member.name} est propriétaire du foyer`, 'success', { description: 'Tu restes membre.' })
   }
 
   const refresh = usePullToRefresh(() => household.refetch())
@@ -168,6 +185,10 @@ export function HouseholdScreen() {
       <Text testID="household-name" fontSize={13} fontWeight="600" color={palette.inkSecondary} accessibilityRole="header">
         {data.name}
       </Text>
+
+      {isOwner ? (
+        <HouseholdNameEditor initialName={data.name} pending={rename.isPending} onSave={handleRename} />
+      ) : null}
 
       {data.inviteCode ? (
         <InviteShareCard
@@ -381,5 +402,31 @@ function MemberRow({
         </Pressable>
       ) : null}
     </XStack>
+  )
+}
+
+// Own component so `name` seeds from `initialName` once, at mount — same
+// pattern as the account screen's `NameEditor`.
+function HouseholdNameEditor({
+  initialName,
+  pending,
+  onSave,
+}: {
+  initialName: string
+  pending: boolean
+  onSave: (trimmed: string) => void
+}) {
+  const [name, setName] = useState(initialName)
+  return (
+    <YStack marginTop="$4" gap="$2">
+      <AuthField testID="household-rename-field" label="Nom du foyer" value={name} onChangeText={setName} autoCapitalize="words" />
+      <AuthButton
+        testID="household-rename-save"
+        label="Renommer"
+        pending={pending}
+        disabled={!name.trim() || name.trim() === initialName}
+        onPress={() => onSave(name.trim())}
+      />
+    </YStack>
   )
 }

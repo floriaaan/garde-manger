@@ -58,10 +58,21 @@ export default await Env.create(new URL('../', import.meta.url), {
   OLLAMA_VISION_MODEL: Env.schema.string.optional(),
   OLLAMA_TEXT_MODEL: Env.schema.string.optional(),
 
-  // Official SaaS instance: cloud AI providers (Gemini, OpenAI) are billed to
-  // us, so they sit behind a subscription. Self-hosted instances leave this
-  // false and pay their own API bills.
-  SAAS_MODE: Env.schema.boolean.optional(),
+  // Official SaaS instance only (`INSTANCE_MODE=hosted`): monthly AI call
+  // quota per household, free vs. subscriber (cf. docs/adr/0014). Ignored on
+  // self-hosted instances, which are never capped.
+  AI_QUOTA_FREE: Env.schema.number.optional(),
+  AI_QUOTA_SUBSCRIBED: Env.schema.number.optional(),
+
+  // Stripe billing for the hosted subscription (docs/adr/0015). The webhook
+  // secret (`whsec_…`) verifies `POST /api/webhooks/stripe`; unset on a hosted
+  // instance means that route refuses every request. `STRIPE_RETURN_URL` is
+  // where Checkout / the billing portal send the user back to (defaults to
+  // `APP_URL` + `/api/settings/subscription/return`, which bounces into the app).
+  STRIPE_SECRET_KEY: Env.schema.string.optional(),
+  STRIPE_WEBHOOK_SECRET: Env.schema.string.optional(),
+  STRIPE_PRICE_ID: Env.schema.string.optional(),
+  STRIPE_RETURN_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 
   // Root directory for locally-stored images (receipts, products) — cf. ADR-0009.
   STORAGE_ROOT: Env.schema.string.optional(),

@@ -54,6 +54,8 @@ export interface FridgeConnector {
   createHousehold(name: string): Promise<Result<Household, ApiError>>
   joinHousehold(inviteCode: string): Promise<Result<Household, ApiError>>
   regenerateInviteCode(): Promise<Result<string, ApiError>>
+  /** Owner only. Returns the renamed household. */
+  renameHousehold(name: string): Promise<Result<Household, ApiError>>
   removeHouseholdMember(userId: string): Promise<Result<void, ApiError>>
   leaveHousehold(): Promise<Result<void, ApiError>>
   transferHouseholdOwnership(newOwnerId: string): Promise<Result<void, ApiError>>
@@ -108,6 +110,9 @@ export interface FridgeConnector {
   getReceipt(receiptId: string): Promise<{ receipt: Receipt; products: Product[] } | null>
   getAiSettings(): Promise<AiSettings | null>
   setActiveAiProvider(provider: AiProvider): Promise<Result<AiSettings, ApiError>>
+  /** Stripe-hosted page to subscribe (Checkout) or to manage/cancel (billing portal) — opened in a browser, never in-app (ADR 0015). */
+  startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>>
+  openBillingPortal(): Promise<Result<{ url: string }, ApiError>>
   getHaLink(): Promise<HaLink | null>
   saveHaConnection(input: SaveHaConnectionInput): Promise<Result<HaLink, ApiError>>
   discoverHaTodoEntities(input: DiscoverHaEntitiesInput): Promise<Result<HaTodoEntity[], ApiError>>

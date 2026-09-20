@@ -7,14 +7,28 @@
  */
 import Constants from 'expo-constants'
 import { clearSetting, readSetting, writeSetting } from './app-storage.js'
+import { queryClient } from './query-client.js'
 
 const SERVER_URL_KEY = 'server_url'
 const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? ''
 
 // ponytail: hardcoded until the official SaaS offering actually exists —
 // not env-driven, since there is exactly one and every build should agree
-// on it. Test value for now; swap for the real address once it's live.
-export const OFFICIAL_SERVER_URL = 'http://192.168.1.82:3333'
+// on it. Test value for now: same host as the self-hosted dev backend
+// (EXPO_PUBLIC_API_URL) but port 3334, so a second local `INSTANCE_MODE=hosted`
+// backend on that port is distinguishable from the self-hosted one on 3333.
+// Swap for the real address once the hosted offering is live.
+function localOfficialUrlForTesting(): string {
+  try {
+    const url = new URL(DEFAULT_URL)
+    url.port = '3334'
+    return url.toString().replace(/\/$/, '')
+  } catch {
+    return 'http://192.168.1.12:3334'
+  }
+}
+
+export const OFFICIAL_SERVER_URL = localOfficialUrlForTesting()
 
 /** `expo.version` from app.json — what a self-hosted instance's reported version gets compared against. */
 export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
@@ -25,7 +39,7 @@ export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
 export const APP_UPDATE_URL = ''
 
 let currentUrl = DEFAULT_URL
-const listeners: Array<(url: string) => void> = []
+const listeners: ((url: string) => void)[] = []
 
 export function getServerUrl(): string {
   return currentUrl
@@ -51,6 +65,9 @@ export async function setServerUrl(url: string): Promise<void> {
   await writeSetting(SERVER_URL_KEY, url)
   currentUrl = url
   listeners.forEach((listener) => listener(url))
+  // Every cached answer (session, household, AI settings, instance mode) came
+  // from the previous server; reset refetches mounted queries against the new one.
+  void queryClient.resetQueries()
 }
 
 /** Dev-only "reset app state" escape hatch (Réglages' Debug menu) — drops the chosen server back to `DEFAULT_URL` so `/server-choice` starts fresh instead of pre-picked. */
@@ -58,6 +75,7 @@ export async function clearServerUrl(): Promise<void> {
   await clearSetting(SERVER_URL_KEY)
   currentUrl = DEFAULT_URL
   listeners.forEach((listener) => listener(currentUrl))
+  void queryClient.resetQueries()
 }
 
 /** Lets `auth-client.ts` rebuild its client when the server changes — better-auth bakes `baseURL` in at creation, so there is no other way to point it elsewhere. */

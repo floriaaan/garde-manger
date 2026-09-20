@@ -98,6 +98,10 @@ OLLAMA_TEXT_MODEL=llama3.1
 
 The active provider can then be switched at runtime from the app's settings ([ADR 0007](docs/adr/0007-provider-ia-changeable-a-chaud.md)).
 
+Self-hosted instances are never rate-limited on AI usage. Only the official hosted
+instance (`INSTANCE_MODE=hosted`) applies a per-household monthly quota, raised by an
+in-app subscription ([ADR 0014](docs/adr/0014-abonnement-ia-par-foyer-via-revenuecat.md), [ADR 0015](docs/adr/0015-paiement-stripe-sans-stores.md)).
+
 ### Sign-in via PocketID (optional)
 
 ```dotenv

@@ -188,13 +188,13 @@ export function RecipeListScreen() {
     const result = await deleteRecipe.mutateAsync(recipe.id)
     setDeletingId(null)
     if (result.ok) {
-      showHint(`« ${recipe.title} » supprimée`)
+      showHint('Recette supprimée', 'success', { description: `« ${recipe.title} »` })
       return
     }
     // Put it back exactly where it was, then say so.
     if (previous) queryClient.setQueryData<Recipe[]>(['recipes'], previous)
     else await recipesQuery.refetch()
-    showHint(`« ${recipe.title} » n’a pas pu être supprimée — elle est toujours là.`)
+    showHint('Suppression impossible', 'error', { description: `« ${recipe.title} » est toujours là.` })
   }
 
   return (

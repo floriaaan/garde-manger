@@ -65,6 +65,11 @@ tasks:
       - ../dev/kill-port.sh "${PORT:-3333}"
       - pnpm run dev
 
+  stripe:listen:
+    desc: Forward Stripe subscription webhooks to the local backend (needs the Stripe CLI; prints the STRIPE_WEBHOOK_SECRET to use).
+    cmds:
+      - stripe listen --events customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to "localhost:${PORT:-3333}/api/webhooks/stripe"
+
   backend:migrate:
     desc: Run pending database migrations.
     dir: backend

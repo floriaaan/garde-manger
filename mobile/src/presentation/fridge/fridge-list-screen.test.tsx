@@ -121,17 +121,11 @@ test('groups products onto a shelf per compartment, and drops shelves that hold 
 })
 
 test('opened on the "dates dépassées" window, the cabinet holds only what a past date already lost', async () => {
-  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] })
-  jest.setSystemTime(new Date('2026-09-15T00:00:00.000Z'))
-  try {
-    await renderWithProviders(<FridgeListScreen expiryWindow="expired" />)
+  await renderWithProviders(<FridgeListScreen expiryWindow="expired" />)
 
-    await waitFor(() => expect(screen.getByText('Jambon blanc')).toBeTruthy())
-    expect(screen.queryByText('Petits pois surgelés')).toBeNull()
-    expect(screen.queryByText('Riz basmati')).toBeNull()
-  } finally {
-    jest.useRealTimers()
-  }
+  await waitFor(() => expect(screen.getByText('Jambon blanc')).toBeTruthy())
+  expect(screen.queryByText('Petits pois surgelés')).toBeNull()
+  expect(screen.queryByText('Riz basmati')).toBeNull()
 })
 
 test('opened on the "cette semaine" window, the cabinet holds what is still savable', async () => {

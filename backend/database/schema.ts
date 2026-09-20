@@ -8,22 +8,7 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AccountSchema extends BaseModel {
-  static $columns = [
-    'accessToken',
-    'accessTokenExpiresAt',
-    'accountId',
-    'createdAt',
-    'id',
-    'idToken',
-    'issuer',
-    'password',
-    'providerId',
-    'refreshToken',
-    'refreshTokenExpiresAt',
-    'scope',
-    'updatedAt',
-    'userId',
-  ] as const
+  static $columns = ['accessToken', 'accessTokenExpiresAt', 'accountId', 'createdAt', 'id', 'idToken', 'issuer', 'password', 'providerId', 'refreshToken', 'refreshTokenExpiresAt', 'scope', 'updatedAt', 'userId'] as const
   $columns = AccountSchema.$columns
   @column()
   declare accessToken: string | null
@@ -38,7 +23,7 @@ export class AccountSchema extends BaseModel {
   @column()
   declare idToken: string | null
   @column()
-  declare issuer: string
+  declare issuer: string | null
   @column({ serializeAs: null })
   declare password: string | null
   @column()
@@ -56,10 +41,12 @@ export class AccountSchema extends BaseModel {
 }
 
 export class AiProviderSettingSchema extends BaseModel {
-  static $columns = ['activeProvider', 'id', 'updatedAt', 'updatedBy'] as const
+  static $columns = ['activeProvider', 'householdId', 'id', 'updatedAt', 'updatedBy'] as const
   $columns = AiProviderSettingSchema.$columns
   @column()
   declare activeProvider: string
+  @column()
+  declare householdId: string
   @column({ isPrimary: true })
   declare id: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -68,21 +55,19 @@ export class AiProviderSettingSchema extends BaseModel {
   declare updatedBy: string | null
 }
 
+export class AiUsageSchema extends BaseModel {
+  static $columns = ['count', 'householdId', 'period'] as const
+  $columns = AiUsageSchema.$columns
+  @column()
+  declare count: number
+  @column({ isPrimary: true })
+  declare householdId: string
+  @column()
+  declare period: string
+}
+
 export class HomeAssistantLinkSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'direction',
-    'enabled',
-    'encryptedToken',
-    'householdId',
-    'id',
-    'instanceUrl',
-    'lastError',
-    'lastSyncAt',
-    'todoEntityId',
-    'todoEntityName',
-    'updatedAt',
-  ] as const
+  static $columns = ['createdAt', 'direction', 'enabled', 'encryptedToken', 'householdId', 'id', 'instanceUrl', 'lastError', 'lastSyncAt', 'todoEntityId', 'todoEntityName', 'updatedAt'] as const
   $columns = HomeAssistantLinkSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -142,25 +127,54 @@ export class HouseholdMemberSchema extends BaseModel {
   declare userId: string
 }
 
+export class HouseholdSubscriptionSchema extends BaseModel {
+  static $columns = ['cancelAtPeriodEnd', 'expiresAt', 'householdId', 'payerUserId', 'stripeCustomerId', 'stripeSubscriptionId', 'updatedAt'] as const
+  $columns = HouseholdSubscriptionSchema.$columns
+  @column()
+  declare cancelAtPeriodEnd: boolean
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare householdId: string
+  @column()
+  declare payerUserId: string | null
+  @column()
+  declare stripeCustomerId: string | null
+  @column()
+  declare stripeSubscriptionId: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class PasskeySchema extends BaseModel {
+  static $columns = ['aaguid', 'backedUp', 'counter', 'createdAt', 'credentialId', 'deviceType', 'id', 'name', 'publicKey', 'transports', 'userId'] as const
+  $columns = PasskeySchema.$columns
+  @column()
+  declare aaguid: string | null
+  @column()
+  declare backedUp: boolean
+  @column()
+  declare counter: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column()
+  declare credentialId: string
+  @column()
+  declare deviceType: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare name: string | null
+  @column()
+  declare publicKey: string
+  @column()
+  declare transports: string | null
+  @column()
+  declare userId: string
+}
+
 export class ProductSchema extends BaseModel {
-  static $columns = [
-    'categories',
-    'category',
-    'createdAt',
-    'expiresAt',
-    'householdId',
-    'id',
-    'imageKey',
-    'location',
-    'name',
-    'openedAt',
-    'openfoodfactId',
-    'price',
-    'quantity',
-    'receiptId',
-    'unit',
-    'updatedAt',
-  ] as const
+  static $columns = ['categories', 'category', 'createdAt', 'expiresAt', 'householdId', 'id', 'imageKey', 'initialQuantity', 'location', 'name', 'openedAt', 'openfoodfactId', 'price', 'quantity', 'receiptId', 'unit', 'updatedAt'] as const
   $columns = ProductSchema.$columns
   @column()
   declare categories: any | null
@@ -176,6 +190,8 @@ export class ProductSchema extends BaseModel {
   declare id: string
   @column()
   declare imageKey: string | null
+  @column()
+  declare initialQuantity: number
   @column()
   declare location: string
   @column()
@@ -196,18 +212,45 @@ export class ProductSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ProductOutcomeSchema extends BaseModel {
+  static $columns = ['amount', 'categories', 'category', 'discardReason', 'expiresAt', 'householdId', 'id', 'kind', 'location', 'occurredAt', 'price', 'productId', 'productName', 'recipeId', 'recordedBy', 'unit'] as const
+  $columns = ProductOutcomeSchema.$columns
+  @column()
+  declare amount: number
+  @column()
+  declare categories: any | null
+  @column()
+  declare category: string
+  @column()
+  declare discardReason: string | null
+  @column.dateTime()
+  declare expiresAt: DateTime | null
+  @column()
+  declare householdId: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare kind: string
+  @column()
+  declare location: string
+  @column.dateTime()
+  declare occurredAt: DateTime
+  @column()
+  declare price: string | null
+  @column()
+  declare productId: string
+  @column()
+  declare productName: string
+  @column()
+  declare recipeId: string | null
+  @column()
+  declare recordedBy: string | null
+  @column()
+  declare unit: string
+}
+
 export class ReceiptSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'householdId',
-    'id',
-    'imageKey',
-    'itemsCount',
-    'scannedAt',
-    'storeName',
-    'totalAmount',
-    'updatedAt',
-  ] as const
+  static $columns = ['createdAt', 'householdId', 'id', 'imageKey', 'itemsCount', 'scannedAt', 'storeName', 'totalAmount', 'updatedAt'] as const
   $columns = ReceiptSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -230,19 +273,7 @@ export class ReceiptSchema extends BaseModel {
 }
 
 export class RecipeSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'createdBy',
-    'description',
-    'householdId',
-    'id',
-    'imageKey',
-    'instructions',
-    'preparationTime',
-    'source',
-    'tags',
-    'title',
-  ] as const
+  static $columns = ['createdAt', 'createdBy', 'description', 'householdId', 'id', 'imageKey', 'instructions', 'preparationTime', 'source', 'tags', 'title'] as const
   $columns = RecipeSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -269,14 +300,7 @@ export class RecipeSchema extends BaseModel {
 }
 
 export class RecipeCookSchema extends BaseModel {
-  static $columns = [
-    'cookedAt',
-    'cookedBy',
-    'householdId',
-    'id',
-    'productsUsed',
-    'recipeId',
-  ] as const
+  static $columns = ['cookedAt', 'cookedBy', 'householdId', 'id', 'productsUsed', 'recipeId'] as const
   $columns = RecipeCookSchema.$columns
   @column.dateTime()
   declare cookedAt: DateTime
@@ -293,15 +317,7 @@ export class RecipeCookSchema extends BaseModel {
 }
 
 export class RecipeIngredientSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'id',
-    'label',
-    'productId',
-    'quantity',
-    'recipeId',
-    'unit',
-  ] as const
+  static $columns = ['createdAt', 'id', 'label', 'productId', 'quantity', 'recipeId', 'unit'] as const
   $columns = RecipeIngredientSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -320,16 +336,7 @@ export class RecipeIngredientSchema extends BaseModel {
 }
 
 export class SessionSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'expiresAt',
-    'id',
-    'ipAddress',
-    'token',
-    'updatedAt',
-    'userAgent',
-    'userId',
-  ] as const
+  static $columns = ['createdAt', 'expiresAt', 'id', 'ipAddress', 'token', 'updatedAt', 'userAgent', 'userId'] as const
   $columns = SessionSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -350,19 +357,7 @@ export class SessionSchema extends BaseModel {
 }
 
 export class ShoppingItemSchema extends BaseModel {
-  static $columns = [
-    'checked',
-    'createdAt',
-    'haSyncedAt',
-    'haUid',
-    'householdId',
-    'id',
-    'name',
-    'quantity',
-    'source',
-    'unit',
-    'updatedAt',
-  ] as const
+  static $columns = ['checked', 'createdAt', 'haSyncedAt', 'haUid', 'householdId', 'id', 'name', 'quantity', 'source', 'unit', 'updatedAt'] as const
   $columns = ShoppingItemSchema.$columns
   @column()
   declare checked: boolean
@@ -389,15 +384,7 @@ export class ShoppingItemSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'email',
-    'emailVerified',
-    'id',
-    'image',
-    'name',
-    'updatedAt',
-  ] as const
+  static $columns = ['createdAt', 'email', 'emailVerified', 'id', 'image', 'name', 'updatedAt'] as const
   $columns = UserSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

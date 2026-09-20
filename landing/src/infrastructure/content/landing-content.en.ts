@@ -65,8 +65,15 @@ export const landingContentEn: LandingContent = {
       description: 'No server, no updates, no backups to manage. Your household is ready as soon as you sign up.',
       perks: ['Hosted and backed up for you', 'Automatic updates', 'Your own account, one shared household'],
       tiers: [
-        { name: 'Free', description: 'Inventory, expiry dates, shared shopping list.' },
-        { name: 'AI plan', description: 'Receipts in one photo and recipes with what’s left.' },
+        {
+          name: 'Free',
+          description: 'Inventory, expiry dates, shared shopping list, and 5 AI uses a month to try it out.',
+        },
+        {
+          name: 'Garde-manger plan',
+          description: 'Receipt and fridge scanning, recipes with what’s left. One subscription for the whole household.',
+          price: '€2/month',
+        },
       ],
       cta: { label: 'Opening soon', href: null },
     },
@@ -93,17 +100,17 @@ export const landingContentEn: LandingContent = {
     {
       question: 'Is it really free?',
       answer:
-        'Yes. The code is MIT-licensed and self-hosting is fully featured, AI included: bring your own Gemini or OpenAI key, or run a local model. Nothing is held back for a paid tier.',
+        'Yes, if you host your own instance: the code is MIT-licensed and everything is included, AI too (your own Gemini or OpenAI key, or a local model). Otherwise, the official instance has a free tier that lets you use the app, with AI usage quotas.',
     },
     {
       question: 'What if I don’t want to run a server?',
       answer:
-        'A hosted plan is in the works: free for the essentials, with a subscription for the AI features (receipt scanning, recipes). It isn’t open yet.',
+        'A hosted plan is in the works: free for the essentials with 5 AI uses a month, and a €2/month Garde-manger plan for the whole household (receipt and fridge scanning, recipes). It isn’t open yet.',
     },
     {
       question: 'Does my data go anywhere else?',
       answer:
-        'The app only talks to your server. It’s the one querying OpenFoodFacts or the AI provider you picked — and with Ollama, nothing leaves your home.',
+        'The official instance is hosted in Europe and GDPR-compliant. Self-hosted instances are privacy by design: the app only talks to your server, and with a local Ollama model nothing leaves your home.',
     },
     {
       question: 'Can several people use it?',
@@ -113,7 +120,7 @@ export const landingContentEn: LandingContent = {
     {
       question: 'How do I sign in?',
       answer:
-        'With email and password, or through your own PocketID instance. Password login can be turned off to use PocketID only.',
+        'With email and password, or with an existing account (social sign-in). On your own instance, password login can be turned off to allow only that.',
     },
     {
       question: 'What devices does it run on?',
@@ -157,6 +164,7 @@ export const landingContentEn: LandingContent = {
       navLabel: 'Footer',
       navApp: 'The app',
       navProject: 'The project',
+      navLegal: 'Legal',
       links: {
         features: 'Features',
         start: 'Two ways to get started',

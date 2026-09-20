@@ -9,7 +9,7 @@ import { PillButton } from '../shared/pill-button.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { showToast } from '../../application/shared/toast.js'
-import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import {
   CircleCheckIcon,
   HomeIcon,
@@ -19,9 +19,12 @@ import {
   SettingsIcon,
   SparklesIcon,
   TriangleAlertIcon,
+  BadgeCheckIcon,
+  WalletIcon,
 } from '../dashboard/dashboard-icons.js'
 import { resetWelcomeSeen } from '../welcome/use-welcome-seen.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
+import { NUDGE_RATIO } from './ai-access-cards.js'
 import { initials } from '../shared/member-avatars.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
@@ -62,6 +65,23 @@ const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 
 // name with the word "gérer" after it — it shows who is in the foyer
 // (member avatars) and what you are in it (role badge), so the tap has
 // something to promise.
+/** Names what the cards under it are about: yours, the household's, the service's. */
+function SectionLabel({ palette, marginTop, children }: { palette: SoftPalette; marginTop?: '$2'; children: string }) {
+  return (
+    <Text
+      fontSize={12}
+      fontWeight="800"
+      letterSpacing={0.6}
+      textTransform="uppercase"
+      color={palette.inkSecondary}
+      marginTop={marginTop}
+      accessibilityRole="header"
+    >
+      {children}
+    </Text>
+  )
+}
+
 export function SettingsScreen() {
   const palette = useSoftPalette()
   const session = useSessionQuery()
@@ -197,6 +217,23 @@ export function SettingsScreen() {
     },
   ]
 
+  // Never state a fact about the plan before the plan has loaded.
+  const plan = settings.data?.access.plan
+  const subscriptionValue = plan === 'subscriber' ? 'Actif' : plan === 'free' ? 'Offre gratuite' : settings.data ? 'Non applicable' : '—'
+  const subscriptionSecondary = !settings.data
+    ? settings.isError
+      ? 'Tire pour réessayer.'
+      : 'Chargement…'
+    : plan === 'self-hosted'
+      ? 'Serveur auto-hébergé : IA sans limite.'
+      : plan === 'subscriber'
+        ? 'IA pour tout le foyer.'
+        : settings.data.access.limit !== null
+          ? settings.data.access.used / settings.data.access.limit >= NUDGE_RATIO
+            ? `${settings.data.access.used}/${settings.data.access.limit} · Plus d’appels avec l’abonnement`
+            : `${settings.data.access.used}/${settings.data.access.limit} appels IA ce mois-ci.`
+          : 'Un quota d’IA gratuit chaque mois.'
+
   return (
     <AppShell nav={{ kind: 'stack' }} hint={hint} refresh={refresh}
       header={
@@ -209,6 +246,7 @@ export function SettingsScreen() {
       }
     >
       <YStack gap="$3" marginTop="$5">
+        <SectionLabel palette={palette}>Toi</SectionLabel>
         <IdentityCard
           testID="settings-account"
           bg={palette.cream}
@@ -226,6 +264,7 @@ export function SettingsScreen() {
           palette={palette}
           onPress={() => router.push('/account')}
         />
+        <SectionLabel palette={palette} marginTop="$2">Ton foyer</SectionLabel>
         <IdentityCard
           testID="settings-household"
           bg={palette.mintPale}
@@ -251,9 +290,26 @@ export function SettingsScreen() {
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
         />
+        {plan === 'self-hosted' ? null : (
+          <IdentityCard
+            testID="settings-subscription"
+            bg={palette.butter}
+            labelColor={palette.butterText}
+            chipColor={palette.chipButter}
+            icon={<WalletIcon size={18} color={palette.onDark} />}
+            label="Abonnement"
+            value={subscriptionValue}
+            secondary={subscriptionSecondary}
+            accessibilityLabel={`Abonnement, ${subscriptionValue}. ${subscriptionSecondary}`}
+            corner="a"
+            palette={palette}
+            onPress={() => router.push('/subscription')}
+          />
+        )}
       </YStack>
 
-      <YStack marginTop="$3" gap="$2">
+      <YStack marginTop="$3" gap="$3">
+        <SectionLabel palette={palette} marginTop="$2">Le service</SectionLabel>
         <IdentityCard
           testID="settings-ai-provider"
           bg={palette.lavender}
@@ -264,31 +320,39 @@ export function SettingsScreen() {
           // What the section governs, before what it offers. Named
           // "Fournisseur IA", it asked the foyer to pick between three
           // vendors without ever saying what the pick changes.
-          value={settings.data?.activeProvider ? PROVIDER_LABELS[settings.data.activeProvider] : '—'}
+          value={
+            settings.data && !settings.data.canChooseProvider
+              ? 'Gérée par Garde-manger'
+              : settings.data?.activeProvider
+                ? PROVIDER_LABELS[settings.data.activeProvider]
+                : '—'
+          }
           secondary="Lit tes tickets de caisse et invente tes recettes."
-          corner="a"
+          corner="b"
           palette={palette}
           onPress={() => router.push('/ai-provider')}
         />
-      </YStack>
-
-      <YStack marginTop="$3" gap="$2">
         <IdentityCard
           testID="settings-instance"
-          bg={palette.rosePale}
-          labelColor={palette.rosePaleText}
-          chipColor={palette.chipRose}
+          bg={palette.cream}
+          labelColor={palette.creamText}
+          chipColor={palette.chipOrange}
           icon={<ServerIcon size={17} color={palette.onDark} />}
           label="Serveur"
           value={
             instance.data
-              ? instance.data.name ?? (instance.data.mode === 'hosted' ? 'Garde-manger hébergé' : 'Garde-manger auto-hébergé')
+              ? instance.data.name ?? (instance.data.mode === 'hosted' ? 'Garde-manger officiel' : 'Garde-manger auto-hébergé')
               : '—'
+          }
+          valueBadge={
+            instance.data?.mode === 'hosted' ? <BadgeCheckIcon size={18} color={palette.chipTeal} /> : undefined
           }
           // No raw URL or version here — that's technical detail, not a
           // setting; "Changer de serveur" is what this card leads to.
-          secondary={instance.data ? 'Connecté à ce serveur.' : 'Impossible de contacter ce serveur.'}
-          corner="b"
+          secondary={
+            instance.data ? 'Connecté à ce serveur.' : instance.isError ? 'Impossible de contacter ce serveur.' : 'Chargement…'
+          }
+          corner="a"
           palette={palette}
           onPress={() => router.push('/server-info')}
         />

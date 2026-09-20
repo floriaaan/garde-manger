@@ -15,7 +15,7 @@ export interface SetActiveAiProviderInput {
 }
 
 export type SetActiveAiProviderError =
-  'not_owner' | 'provider_not_configured' | 'subscription_required'
+  'not_owner' | 'provider_not_configured' | 'provider_choice_disabled'
 
 export class SetActiveAiProvider implements UseCase<
   SetActiveAiProviderInput,
@@ -36,9 +36,9 @@ export class SetActiveAiProvider implements UseCase<
     if (!household || household.ownerId !== input.userId) return Result.err('not_owner')
 
     const effective = await this.settingsProvider.resolveEffective(household.id)
-    if (effective.lockedProviders.includes(input.provider)) {
-      return Result.err('subscription_required')
-    }
+    // Hosted instance: the operator fixes the provider via `AI_PROVIDER`,
+    // there is nothing to switch (cf. docs/superpowers/specs/2026-09-18-ai-subscription-design.md).
+    if (!effective.canChooseProvider) return Result.err('provider_choice_disabled')
     if (!effective.availableProviders.includes(input.provider)) {
       return Result.err('provider_not_configured')
     }

@@ -4,6 +4,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useHasSeenWelcome } from '../../presentation/welcome/use-welcome-seen.js'
+import { BootSplash } from '../../presentation/shared/boot-splash.js'
 
 /**
  * iOS: real `NativeTabs` — Liquid Glass on iOS 26+, standard native bar
@@ -78,11 +79,11 @@ export default function TabsLayout() {
   const session = useSessionQuery()
   const household = useHouseholdQuery()
 
-  if (hasSeenWelcome === null) return null
+  if (hasSeenWelcome === null) return <BootSplash />
   if (!hasSeenWelcome) return <Redirect href="/welcome" />
-  if (session.isPending) return null
+  if (session.isPending) return <BootSplash />
   if (!session.data) return <Redirect href="/(auth)/sign-in" />
-  if (household.isPending) return null
+  if (household.isPending) return <BootSplash />
   // Success-and-empty, never merely "no data": a failed read is not a missing
   // foyer, and redirecting on one would answer an unreachable server by
   // telling a member their household does not exist. On an error the tabs

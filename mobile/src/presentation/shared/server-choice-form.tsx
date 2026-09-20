@@ -169,8 +169,9 @@ export function ServerChoiceForm({
   onSave: (url: string, info: InstanceInfo) => void | Promise<void>
 }) {
   const connector = useConnector()
-  const [mode, setMode] = useState<Mode>('self-hosted')
-  const [url, setUrl] = useState(defaultUrl ?? getDefaultServerUrl())
+  const initialUrl = defaultUrl ?? getDefaultServerUrl()
+  const [mode, setMode] = useState<Mode>(initialUrl === OFFICIAL_SERVER_URL ? 'official' : 'self-hosted')
+  const [url, setUrl] = useState(initialUrl)
   const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

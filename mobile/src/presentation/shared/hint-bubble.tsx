@@ -5,7 +5,8 @@
  * here so new screens don't reinvent it or, worse, ship a silent no-op.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, Easing } from 'react-native'
+import type { ReactNode } from 'react'
+import { AccessibilityInfo, Animated, Easing, Platform, Pressable } from 'react-native'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { IS_ANDROID, materialRoles, surfaceShadow } from './material.js'
@@ -13,8 +14,12 @@ import { TOAST_PILL_STYLE, ToastPillLayer, toastPillShadow } from './toast-pill.
 import { CircleCheckIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { useReduceMotion } from './hover.js'
 
+const IS_WEB = Platform.OS === 'web'
+
 /** Hints clear themselves: a toast that never leaves stops reading as feedback. */
 const HINT_MS = 3200
+/** A hint carrying an action stays long enough to be read and tapped. */
+const HINT_ACTION_MS = 6000
 
 export interface Hint {
   message: string
@@ -30,16 +35,24 @@ export interface Hint {
    * own hero block is already the one `brandDeep` surface there.
    */
   kind?: 'success' | 'error'
+  /** A second, quieter line under the message. */
+  description?: string
+  /** Overrides the kind's icon; called with the text colour. */
+  icon?: (color: string) => ReactNode
+  /** An optional tap target ("Annuler", "Voir") — the hint then accepts touches. */
+  action?: { label: string; onPress: () => void }
 }
 
-export function useHint(): [Hint | null, (message: string, kind?: Hint['kind']) => void] {
+export type HintExtras = Pick<Hint, 'description' | 'icon' | 'action'>
+
+export function useHint(): [Hint | null, (message: string, kind?: Hint['kind'], extras?: HintExtras) => void] {
   const [hint, setHint] = useState<Hint | null>(null)
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const show = useCallback((message: string, kind?: Hint['kind']) => {
+  const show = useCallback((message: string, kind?: Hint['kind'], extras?: HintExtras) => {
     if (timeout.current) clearTimeout(timeout.current)
-    setHint({ message, kind })
-    timeout.current = setTimeout(() => setHint(null), HINT_MS)
+    setHint({ message, kind, ...extras })
+    timeout.current = setTimeout(() => setHint(null), extras?.action ? HINT_ACTION_MS : HINT_MS)
   }, [])
 
   useEffect(
@@ -86,6 +99,10 @@ export function HintBubble({ hint, palette }: { hint: Hint | null; palette: Soft
 
   useEffect(() => {
     if (hint) {
+      // `accessibilityLiveRegion` is Android-only (web maps it to aria-live): VoiceOver needs an explicit announcement.
+      if (Platform.OS === 'ios') {
+        AccessibilityInfo.announceForAccessibility([hint.message, hint.description].filter(Boolean).join('. '))
+      }
       Animated.timing(progress, {
         toValue: 1,
         duration: reduceMotion ? 0 : 220,
@@ -117,7 +134,7 @@ export function HintBubble({ hint, palette }: { hint: Hint | null; palette: Soft
     return (
       <Animated.View
         style={[{ position: 'absolute', left: 16, right: 16, bottom: 96 }, androidEntrance]}
-        pointerEvents="none"
+        pointerEvents={rendered.action ? 'box-none' : 'none'}
         accessibilityLiveRegion="polite"
       >
         <YStack
@@ -129,9 +146,25 @@ export function HintBubble({ hint, palette }: { hint: Hint | null; palette: Soft
           justifyContent="center"
           style={surfaceShadow(palette, 3, { offsetY: 6, opacity: 0.2, radius: 12 })}
         >
-          <Text fontSize={14} fontWeight="500" color={roles.inverseOnSurface}>
-            {rendered.message}
-          </Text>
+          <XStack alignItems="center" gap="$3">
+            <YStack flex={1}>
+              <Text fontSize={14} fontWeight="500" color={roles.inverseOnSurface}>
+                {rendered.message}
+              </Text>
+              {rendered.description ? (
+                <Text fontSize={12} color={roles.inverseOnSurface} opacity={0.8}>
+                  {rendered.description}
+                </Text>
+              ) : null}
+            </YStack>
+            {rendered.action ? (
+              <Pressable onPress={rendered.action.onPress} accessibilityRole="button" hitSlop={8}>
+                <Text fontSize={14} fontWeight="700" color={roles.inverseOnSurface}>
+                  {rendered.action.label}
+                </Text>
+              </Pressable>
+            ) : null}
+          </XStack>
         </YStack>
       </Animated.View>
     )
@@ -149,23 +182,24 @@ export function HintBubble({ hint, palette }: { hint: Hint | null; palette: Soft
       : rendered.kind === 'error'
         ? palette.expiredText
         : palette.brandDeepText
-  const Icon =
+  const KindIcon =
     rendered.kind === 'success'
       ? CircleCheckIcon
       : rendered.kind === 'error'
         ? TriangleAlertIcon
         : null
+  const icon = rendered.icon ? rendered.icon(text) : KindIcon ? <KindIcon size={18} color={text} /> : null
 
   return (
-    <ToastPillLayer progress={progress} pointerEvents="none">
+    <ToastPillLayer progress={progress} pointerEvents={rendered.action ? 'box-none' : 'none'} fullWidth={!IS_WEB}>
       <XStack
         alignItems="center"
-        gap="$2"
+        gap="$3"
         backgroundColor={bg}
         accessibilityLiveRegion="polite"
-        style={[TOAST_PILL_STYLE, toastPillShadow(palette)]}
+        style={[TOAST_PILL_STYLE, { maxWidth: undefined }, toastPillShadow(palette)]}
       >
-        {Icon ? <Icon size={18} color={text} /> : null}
+        {icon}
         {/* No `flex={1}` (unlike the old edge-to-edge card): the pill now
             shrink-wraps to its content up to `maxWidth`, and `flex={1}` on
             a `Text` inside a content-sized row resolves to zero width in
@@ -174,9 +208,24 @@ export function HintBubble({ hint, palette }: { hint: Hint | null; palette: Soft
             old full-width row where the parent had a real, non-content-sized
             width to distribute. `ToastHost`'s pill never had this bug: its
             `Text` was never given `flex={1}` to begin with. */}
-        <Text fontSize={13} fontWeight="700" color={text}>
-          {rendered.message}
-        </Text>
+        {/* `flexShrink`, not `flex={1}`, on web: the pill is fit-content there and `flex={1}` inside a content-sized row resolves to zero width. */}
+        <YStack {...(IS_WEB ? { flexShrink: 1 } : { flex: 1 })}>
+          <Text fontSize={13} fontWeight="700" color={text}>
+            {rendered.message}
+          </Text>
+          {rendered.description ? (
+            <Text fontSize={12} color={text} opacity={0.8}>
+              {rendered.description}
+            </Text>
+          ) : null}
+        </YStack>
+        {rendered.action ? (
+          <Pressable onPress={rendered.action.onPress} accessibilityRole="button" hitSlop={8}>
+            <Text fontSize={13} fontWeight="800" color={text}>
+              {rendered.action.label}
+            </Text>
+          </Pressable>
+        ) : null}
       </XStack>
     </ToastPillLayer>
   )

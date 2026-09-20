@@ -133,7 +133,7 @@ export function ShoppingListScreen() {
 
   async function handleToggle(item: ShoppingItem, next: boolean) {
     const result = await updateItem.mutateAsync({ itemId: item.id, patch: { checked: next } })
-    if (!result.ok) showHint(result.error.message)
+    if (!result.ok) showHint(result.error.message, 'error')
   }
 
   function handleEdit(item: ShoppingItem) {
@@ -143,7 +143,7 @@ export function ShoppingListScreen() {
   async function handleDelete(item: ShoppingItem) {
     setSheetItem(null)
     const result = await deleteItem.mutateAsync(item.id)
-    if (!result.ok) showHint(result.error.message)
+    if (!result.ok) showHint(result.error.message, 'error')
   }
 
   return (

@@ -312,6 +312,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
         ? `${missing.length} ingrédient${missing.length > 1 ? 's ajoutés' : ' ajouté'} à la liste de courses`
         : `${failures.length} ingrédient${failures.length > 1 ? 's n’ont' : ' n’a'} pas pu être ajouté`,
       failures.length === 0 ? 'success' : 'error',
+      failures.length === 0 ? { action: { label: 'Voir', onPress: () => router.push('/shopping-list') } } : undefined,
     )
   }
 

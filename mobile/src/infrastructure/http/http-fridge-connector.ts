@@ -91,6 +91,19 @@ async function appendImagePart(formData: FormData, imageUri: string, filename: s
   }
 }
 
+const SESSION_TIMEOUT_MS = 5000
+
+/**
+ * A session check that fails (unreachable server, timeout, error response) is
+ * treated as a closed session: the stored cookie is dropped and `null` sends
+ * the gates to sign-in, rather than leaving a half-alive session behind.
+ */
+function closeSession(action: string, error: unknown): null {
+  reportFailure(action, error)
+  authClient.signOut().catch(() => {})
+  return null
+}
+
 export class HttpFridgeConnector implements FridgeConnector {
   /** Raw `fetch`, not `apiFetch`: `url` is a candidate server, not necessarily the one currently configured — this must never read `getServerUrl()`. */
   async getInstanceInfo(url: string): Promise<InstanceInfo | null> {
@@ -107,13 +120,20 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async getSession(): Promise<Session | null> {
+    // Aborted rather than left to the OS: an unreachable server otherwise
+    // holds the launch gates (which render nothing while this is pending)
+    // on a blank screen for the length of the TCP timeout. `null` falls through
+    // to the sign-in gate, which is where a dead server now shows up.
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS)
     try {
-      const { data } = await authClient.getSession()
+      const { data, error } = await authClient.getSession({ fetchOptions: { signal: controller.signal } })
+      if (error) return closeSession('identity.get_session', error)
       return toSession(data)
     } catch (error) {
-      // Return null if session check fails, this prevents blocking app startup
-      reportFailure('identity.get_session', error)
-      return null
+      return closeSession('identity.get_session', error)
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -242,6 +262,15 @@ export class HttpFridgeConnector implements FridgeConnector {
       '/api/households/join',
       { method: 'POST', body: JSON.stringify({ inviteCode }) },
       { action: 'identity.join_household' },
+    )
+    return result.ok ? Result.ok(result.value.household) : Result.err(result.error)
+  }
+
+  async renameHousehold(name: string): Promise<Result<Household, ApiError>> {
+    const result = await apiFetch<{ household: Household }>(
+      '/api/households/mine',
+      { method: 'PATCH', body: JSON.stringify({ name }) },
+      { action: 'identity.rename_household' },
     )
     return result.ok ? Result.ok(result.value.household) : Result.err(result.error)
   }
@@ -574,6 +603,24 @@ export class HttpFridgeConnector implements FridgeConnector {
       '/api/settings/ai',
       { method: 'PATCH', body: JSON.stringify({ provider }) },
       { action: 'settings.set_active_ai_provider' },
+    )
+    return result.ok ? Result.ok(result.value) : Result.err(result.error)
+  }
+
+  async startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>> {
+    const result = await apiFetch<{ url: string }>(
+      '/api/settings/subscription/checkout',
+      { method: 'POST' },
+      { action: 'settings.start_checkout' },
+    )
+    return result.ok ? Result.ok(result.value) : Result.err(result.error)
+  }
+
+  async openBillingPortal(): Promise<Result<{ url: string }, ApiError>> {
+    const result = await apiFetch<{ url: string }>(
+      '/api/settings/subscription/portal',
+      { method: 'POST' },
+      { action: 'settings.open_billing_portal' },
     )
     return result.ok ? Result.ok(result.value) : Result.err(result.error)
   }

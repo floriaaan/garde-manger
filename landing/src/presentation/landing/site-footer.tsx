@@ -5,29 +5,46 @@ import { GithubIcon } from '../ui/github-icon.js'
 import { illustrationSrc } from './illustration.js'
 import { ScribbleUnderline } from './scribble-underline.js'
 
+const LEGAL_LINKS = [
+  { href: '/legal', label: 'Mentions légales' },
+  { href: '/privacy', label: 'Confidentialité' },
+  { href: '/cgu', label: 'CGU' },
+  { href: '/cgv', label: 'CGV' },
+  { href: '/privacy#cookies', label: 'Cookies' },
+  { href: '/cgv#mediation', label: 'Médiation / Litiges' },
+]
+
 /**
  * A closing call to action on a mint card that bookends the hero, with the
  * links, a clipped giant wordmark and the illustration credit.
  */
 export function SiteFooter({ content }: { content: LandingContent }) {
-  const { repositoryUrl, ui } = content
+  const { repositoryUrl, ui, locale } = content
+  // Hash links must survive on the legal pages, where they'd otherwise stay on that page.
+  const home = locale === 'en' ? '/en' : '/'
   const columns = [
     {
       title: ui.footer.navApp,
       links: [
-        { href: '#fonctionnalites', label: ui.footer.links.features },
-        { href: '#demarrer', label: ui.footer.links.start },
-        { href: '#faq', label: ui.footer.links.faq },
+        { href: `${home}#fonctionnalites`, label: ui.footer.links.features },
+        { href: `${home}#demarrer`, label: ui.footer.links.start },
+        { href: `${home}#faq`, label: ui.footer.links.faq },
       ],
     },
     {
       title: ui.footer.navProject,
       links: [
         { href: repositoryUrl, label: ui.footer.links.github },
-        { href: '#auto-hebergement', label: ui.footer.links.selfHost },
+        { href: `${home}#auto-hebergement`, label: ui.footer.links.selfHost },
         { href: `${repositoryUrl}/blob/main/LICENSE`, label: ui.footer.links.license },
         { href: `${repositoryUrl}/issues`, label: ui.footer.links.issues },
       ],
+    },
+    {
+      title: ui.footer.navLegal,
+      // The legal texts are French only, whatever the locale of the landing.
+      lang: 'fr',
+      links: LEGAL_LINKS,
     },
   ]
 
@@ -47,13 +64,6 @@ export function SiteFooter({ content }: { content: LandingContent }) {
           height={80}
           className="pointer-events-none absolute top-10 right-[8%] hidden size-20 rotate-12 lg:block"
         />
-        <img
-          src={illustrationSrc('shopping-cart')}
-          alt=""
-          width={64}
-          height={64}
-          className="pointer-events-none absolute top-44 right-[30%] hidden size-16 -rotate-12 lg:block"
-        />
 
         <div className="relative mx-auto grid max-w-7xl gap-14 px-6 pt-16 sm:px-10 sm:pt-20 lg:grid-cols-[1.5fr_1fr]">
           <div>
@@ -64,7 +74,7 @@ export function SiteFooter({ content }: { content: LandingContent }) {
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild size="lg">
-                <a href="#demarrer">
+                <a href={`${home}#demarrer`}>
                   {ui.cta.start} <ArrowRightIcon aria-hidden data-motion="nudge" />
                 </a>
               </Button>
@@ -76,11 +86,11 @@ export function SiteFooter({ content }: { content: LandingContent }) {
             </div>
           </div>
 
-          <nav aria-label={ui.footer.navLabel} className="grid grid-cols-2 gap-8 lg:pt-3">
+          <nav aria-label={ui.footer.navLabel} className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:pt-3">
             {columns.map((column) => (
               <div key={column.title}>
                 <p className="text-sm font-bold tracking-wide text-ink/70 uppercase">{column.title}</p>
-                <ul className="mt-4 space-y-3 text-[17px] font-semibold text-ink">
+                <ul lang={'lang' in column ? column.lang : undefined} className="mt-4 space-y-2.5 text-sm font-semibold text-ink">
                   {column.links.map((link) => (
                     <li key={link.label}>
                       <a

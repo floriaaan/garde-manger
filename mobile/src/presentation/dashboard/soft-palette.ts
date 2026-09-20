@@ -136,6 +136,10 @@ export interface SoftPalette {
   mintPaleText: string
   rosePale: string
   rosePaleText: string
+  /** The pale sun-yellow card (Abonnement) — butter, a pastel beside cream/lavender/mint; `chipButter` is its icon chip. */
+  butter: string
+  butterText: string
+  chipButter: string
   fresh: string
   freshBg: string
   freshText: string
@@ -231,9 +235,12 @@ const light: SoftPalette = {
   lavender: '#EFEAFB',
   lavenderText: '#635B85',
   mintPale: '#E1F3E6',
-  mintPaleText: '#3D7A57',
+  mintPaleText: '#35704E',
   rosePale: '#FBE4EC',
   rosePaleText: '#9C3D63',
+  butter: '#FFF1BF',
+  butterText: '#7A5A00',
+  chipButter: '#A86F0E',
   fresh: '#3FAE6B',
   freshBg: '#DFF3E4',
   freshText: '#1F6B44',
@@ -328,6 +335,9 @@ const dark: SoftPalette = {
   mintPaleText: '#8FD3A9',
   rosePale: '#2E1620',
   rosePaleText: '#E2A0BA',
+  butter: '#2A2210',
+  butterText: '#E9CF8A',
+  chipButter: '#A8741A',
   fresh: '#4FC080',
   freshBg: '#153B25',
   freshText: '#7EDCA5',

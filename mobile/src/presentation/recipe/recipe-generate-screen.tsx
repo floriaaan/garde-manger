@@ -36,6 +36,8 @@
  * above the button that caused them and stay there — "Ajoute des produits…"
  * is a state you act on, not a toast to catch.
  */
+import { ConnectedPaywall } from '../settings/ai-access-cards.js'
+import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useState } from 'react'
 import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
@@ -100,6 +102,7 @@ type Recovery = 'add-product' | 'retry' | null
 interface GenerationError {
   message: string
   recovery: Recovery
+  quota?: boolean
 }
 
 function recoveryFor(type: string): Recovery {
@@ -131,6 +134,7 @@ export function RecipeGenerateScreen() {
   const productsQuery = useProductsQuery()
   const householdQuery = useHouseholdQuery()
   const generate = useGenerateRecipesMutation()
+  const { canSubscribe } = useAiSubscribe()
   const [wish, setWish] = useState<RecipeWish>(EMPTY_WISH)
   const [error, setError] = useState<GenerationError | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState<'reset' | 'close' | null>(null)
@@ -177,7 +181,11 @@ export function RecipeGenerateScreen() {
     setError(null)
     const result = await generate.mutateAsync(composeRecipePrompt(wish))
     if (!result.ok) {
-      setError({ message: result.error.message, recovery: recoveryFor(result.error.type) })
+      setError({
+        message: result.error.message,
+        recovery: recoveryFor(result.error.type),
+        quota: result.error.type === 'ai_quota_exceeded',
+      })
       return
     }
     const [first] = result.value
@@ -390,7 +398,9 @@ export function RecipeGenerateScreen() {
           maxWidth={layout.isWide ? 640 : undefined}
           alignSelf="center"
         >
-          {error ? (
+          {error?.quota && canSubscribe ? (
+            <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
+          ) : error ? (
             <XStack
               testID="recipes-generate-error"
               alignItems="center"

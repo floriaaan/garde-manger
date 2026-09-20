@@ -6,9 +6,9 @@ export function SiteHeader({ content }: { content: LandingContent }) {
   const { ui, locale } = content
   const home = locale === 'en' ? '/en' : '/'
   const nav = [
-    { href: '#fonctionnalites', label: ui.nav.features },
-    { href: '#demarrer', label: ui.nav.start },
-    { href: '#faq', label: ui.nav.faq },
+    { href: `${home}#fonctionnalites`, label: ui.nav.features },
+    { href: `${home}#demarrer`, label: ui.nav.start },
+    { href: `${home}#faq`, label: ui.nav.faq },
   ]
 
   return (
@@ -32,7 +32,7 @@ export function SiteHeader({ content }: { content: LandingContent }) {
         <div className="flex items-center gap-4">
           <LocaleSwitcher locale={locale} />
           <Button asChild>
-            <a href="#demarrer">
+            <a href={`${home}#demarrer`}>
               {ui.cta.start} <ArrowRightIcon aria-hidden data-motion="nudge" />
             </a>
           </Button>

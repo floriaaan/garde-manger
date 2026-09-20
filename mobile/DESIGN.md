@@ -32,7 +32,7 @@ colors:
   lavender: "#EFEAFB"
   lavender-text: "#635B85"
   mint-pale: "#E1F3E6"
-  mint-pale-text: "#3D7A57"
+  mint-pale-text: "#35704E"
   fresh: "#3FAE6B"
   fresh-bg: "#DFF3E4"
   fresh-text: "#1F6B44"
@@ -130,6 +130,7 @@ Status (fresh/soon/expired) is always icon **and** color **and** word — a `Sta
 - Near-white mint blob ground on mobile; near-white warm-gray "mat" surround with an inset white content card on tablet/desktop — never a flat rectangle gradient, always a soft off-center radial blob.
 - Exactly one dark, rich surface (the hero card) carries the "sole high-contrast block" role; everything else is light.
 - Lime is reserved for interactive/progress meaning, never decoration.
+- Exception: the AI quota bar (`AiQuotaHint`) fills with `mint-pale-text`, not lime — lime on a white or pastel surface is ~1.3:1, and a progress fill still has to clear 3:1. Its track is `ink` at 22 %. On the dark paywall the price and check marks are `on-dark`; lime there belongs to the CTA alone.
 - Asymmetric corner radii (each major card gets its own, slightly different, corner set) instead of one uniform radius everywhere.
 - Every status is icon + color + word, never color alone.
 - Every pressable spring-scales on hover (web) and press (all platforms) — a felt, not just visual, response.

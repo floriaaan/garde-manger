@@ -4,17 +4,6 @@ export type AiProvider = 'gemini' | 'openai' | 'ollama'
 export const AI_PROVIDERS: readonly [AiProvider, ...AiProvider[]] = ['gemini', 'openai', 'ollama']
 
 /**
- * Providers billed to whoever runs the instance (its own API keys) — the
- * ones the SaaS puts behind a subscription. Ollama runs on hardware the
- * operator already pays for, so it is never gated.
- */
-export const CLOUD_AI_PROVIDERS: readonly AiProvider[] = ['gemini', 'openai']
-
-export function isCloudAiProvider(provider: AiProvider): boolean {
-  return CLOUD_AI_PROVIDERS.includes(provider)
-}
-
-/**
  * `AI_PROVIDER=gemini,ollama` — the ordered whitelist of providers the
  * instance exposes. Empty or unset means "every provider the credentials
  * allow"; the first entry is the default a household gets before anyone has

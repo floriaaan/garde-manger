@@ -4,6 +4,7 @@ import { serializeError } from '#presentation/shared/error-serializer'
 import { traceAction } from '#presentation/shared/trace-action'
 import {
   createHouseholdValidator,
+  renameHouseholdValidator,
   joinHouseholdValidator,
   transferHouseholdOwnershipValidator,
 } from './household.validator.js'
@@ -11,11 +12,21 @@ import { toHouseholdDto } from './household.dto.js'
 import { CreateHousehold } from '#application/identity/create-household.use-case'
 import { JoinHousehold } from '#application/identity/join-household.use-case'
 import { GetMyHousehold } from '#application/identity/get-my-household.use-case'
+import { RenameHousehold } from '#application/identity/rename-household.use-case'
 import { RegenerateInviteCode } from '#application/identity/regenerate-invite-code.use-case'
 import { RemoveHouseholdMember } from '#application/identity/remove-household-member.use-case'
+import { RevokePayerSubscriptions } from '#application/settings/revoke-payer-subscriptions.use-case'
 import { LeaveHousehold } from '#application/identity/leave-household.use-case'
 import { DeleteHousehold } from '#application/identity/delete-household.use-case'
 import { TransferHouseholdOwnership } from '#application/identity/transfer-household-ownership.use-case'
+
+async function revokePayerSubscriptions(ctx: HttpContext, userId: string) {
+  await new RevokePayerSubscriptions(
+    await ctx.containerResolver.make('settings.subscriptions'),
+    await ctx.containerResolver.make('settings.billing'),
+    await ctx.containerResolver.make('shared.clock'),
+  ).execute({ userId })
+}
 
 export default class HouseholdController {
   async mine(ctx: HttpContext) {
@@ -103,6 +114,35 @@ export default class HouseholdController {
     )
   }
 
+  async rename(ctx: HttpContext) {
+    const user = requireAuthenticatedUser(ctx)
+    return traceAction(
+      ctx,
+      'identity',
+      RenameHousehold,
+      async () => {
+        const payload = await ctx.request.validateUsing(renameHouseholdValidator)
+        const households = await ctx.containerResolver.make('identity.households')
+        const userDirectory = await ctx.containerResolver.make('identity.userDirectory')
+
+        const result = await new RenameHousehold(households).execute({
+          userId: user.id,
+          name: payload.name,
+        })
+        if (!result.ok) {
+          const { status, body } = serializeError(result.error)
+          ctx.response.status(status).json(body)
+          return result
+        }
+
+        const members = await userDirectory.findByIds(result.value.members.map((m) => m.userId))
+        ctx.response.json({ household: toHouseholdDto(result.value, user.id, members) })
+        return result
+      },
+      { isError: (r) => !r.ok, entityId: (r) => (r.ok ? r.value.id : undefined) },
+    )
+  }
+
   async regenerateInviteCode(ctx: HttpContext) {
     const user = requireAuthenticatedUser(ctx)
     return traceAction(
@@ -148,6 +188,10 @@ export default class HouseholdController {
           return result
         }
 
+        // The removed member may be who paid for the foyer's abonnement —
+        // the entitlement they bought ends the moment they're no longer in it.
+        await revokePayerSubscriptions(ctx, ctx.params.userId)
+
         ctx.response.status(204).send('')
         return result
         // `:userId`, not `:id` — this route names its param differently, so
@@ -172,6 +216,10 @@ export default class HouseholdController {
           ctx.response.status(status).json(body)
           return result
         }
+
+        // Cf. `removeMember` above — leaving is the same entitlement cutoff
+        // as being removed, just self-initiated.
+        await revokePayerSubscriptions(ctx, user.id)
 
         ctx.response.status(204).send('')
         return result

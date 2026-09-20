@@ -98,6 +98,10 @@ OLLAMA_TEXT_MODEL=llama3.1
 
 Le fournisseur actif se change ensuite à chaud depuis les réglages de l’app ([ADR 0007](docs/adr/0007-provider-ia-changeable-a-chaud.md)).
 
+Une instance auto-hébergée n'est jamais plafonnée sur l'usage IA. Seule l'instance
+officielle hébergée (`INSTANCE_MODE=hosted`) applique un quota mensuel par foyer,
+relevé par un abonnement dans l'app ([ADR 0014](docs/adr/0014-abonnement-ia-par-foyer-via-revenuecat.md), [ADR 0015](docs/adr/0015-paiement-stripe-sans-stores.md)).
+
 ### Connexion via PocketID (optionnel)
 
 ```dotenv

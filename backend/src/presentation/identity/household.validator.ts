@@ -11,3 +11,5 @@ export const joinHouseholdValidator = vine.compile(
 export const transferHouseholdOwnershipValidator = vine.compile(
   vine.object({ newOwnerId: vine.string().trim().minLength(1) }),
 )
+
+export const renameHouseholdValidator = createHouseholdValidator

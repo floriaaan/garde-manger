@@ -65,8 +65,15 @@ export const landingContentFr: LandingContent = {
       description: 'Pas de serveur, pas de mises à jour, pas de sauvegardes à gérer. Ton foyer est prêt dès l’inscription.',
       perks: ['Hébergé et sauvegardé pour toi', 'Mises à jour automatiques', 'Chacun son compte, un foyer partagé'],
       tiers: [
-        { name: 'Gratuit', description: 'Inventaire, dates de péremption, liste de courses partagée.' },
-        { name: 'Abonnement IA', description: 'Tickets de caisse en une photo et recettes avec ce qui reste.' },
+        {
+          name: 'Gratuit',
+          description: 'Inventaire, dates de péremption, liste de courses partagée, et 5 utilisations de l’IA par mois pour essayer.',
+        },
+        {
+          name: 'Abonnement Garde-manger',
+          description: 'Scan de tickets et du frigo, recettes avec ce qui reste. Un seul abonnement pour tout le foyer.',
+          price: '0,99€/mois',
+        },
       ],
       cta: { label: 'Ouverture bientôt', href: null },
     },
@@ -93,17 +100,17 @@ export const landingContentFr: LandingContent = {
     {
       question: 'C’est vraiment gratuit ?',
       answer:
-        'Oui. Le code est sous licence MIT et l’auto-hébergement est complet, IA comprise : tu branches ta clé Gemini ou OpenAI, ou un modèle local via Ollama. Rien n’est réservé à une version payante.',
+        'Oui, si tu héberges ta propre instance : le code est sous licence MIT et tout est inclus, IA comprise (ta clé Gemini ou OpenAI, ou un modèle local via Ollama). Sinon, l’instance officielle propose une offre gratuite qui permet d’utiliser l’application, avec des quotas d’utilisation de l’IA.',
     },
     {
       question: 'Et si je ne veux pas gérer de serveur ?',
       answer:
-        'Une offre clé en main est en préparation : gratuite pour l’essentiel, avec un abonnement pour les fonctionnalités IA (scan de tickets, recettes). Elle n’est pas encore ouverte.',
+        'Une offre clé en main est en préparation : gratuite pour l’essentiel avec 5 utilisations de l’IA par mois, et un abonnement Garde-manger à 0,99€/mois pour tout le foyer (scan de tickets et du frigo, recettes). Elle n’est pas encore ouverte.',
     },
     {
       question: 'Mes données partent-elles ailleurs ?',
       answer:
-        'L’app ne parle qu’à ton serveur. C’est lui qui interroge OpenFoodFacts ou le fournisseur IA que tu as choisi — et avec Ollama, rien ne sort de chez toi.',
+        'L’instance officielle est hébergée en Europe, dans le respect du RGPD. Les instances auto-hébergées sont privacy by design : l’app ne parle qu’à ton serveur, et avec un modèle local Ollama, rien ne sort de chez toi.',
     },
     {
       question: 'On peut être plusieurs ?',
@@ -113,7 +120,7 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Comment se connecte-t-on ?',
       answer:
-        'Par email et mot de passe, ou via ton instance PocketID. Le mot de passe peut être désactivé pour n’utiliser que PocketID.',
+        'Par email et mot de passe, ou avec un compte existant (connexion sociale). Sur ton instance, le mot de passe peut être désactivé pour n’autoriser que cette connexion.',
     },
     {
       question: 'Sur quels appareils ?',
@@ -157,6 +164,7 @@ export const landingContentFr: LandingContent = {
       navLabel: 'Pied de page',
       navApp: 'L’app',
       navProject: 'Le projet',
+      navLegal: 'Légal',
       links: {
         features: 'Fonctionnalités',
         start: 'Deux façons de s’y mettre',

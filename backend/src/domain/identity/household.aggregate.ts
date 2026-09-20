@@ -69,6 +69,10 @@ export class Household extends AggregateRoot<string> {
     return this.props.createdAt
   }
 
+  rename(name: string): void {
+    this.props.name = name
+  }
+
   regenerateInviteCode(newCode: InviteCode): void {
     this.props.inviteCode = newCode
   }

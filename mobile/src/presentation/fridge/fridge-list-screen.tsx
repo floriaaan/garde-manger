@@ -433,7 +433,7 @@ export function FridgeListScreen({
     }
     await products.refetch()
     if (failures.length > 0) {
-      showHint(`${failures.length} produit${failures.length > 1 ? 's n’ont' : ' n’a'} pas pu être retiré${failures.length > 1 ? 's' : ''}.`)
+      showHint(`${failures.length} produit${failures.length > 1 ? 's n’ont' : ' n’a'} pas pu être retiré${failures.length > 1 ? 's' : ''}.`, 'error')
     }
   }
 

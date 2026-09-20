@@ -40,11 +40,14 @@ export function toastPillShadow(palette: SoftPalette) {
 export function ToastPillLayer({
   progress,
   pointerEvents,
+  fullWidth = false,
   children,
 }: {
   progress: Animated.Value
   /** `"box-none"` when the pill itself is pressable (`ToastHost`'s dismiss tap); `"none"` for a purely informational toast (`HintBubble`) that must never block the screen under it. */
   pointerEvents: 'box-none' | 'none'
+  /** Stretch the pill across the screen instead of shrink-wrapping it — for a hint with a description or an action. */
+  fullWidth?: boolean
   children: ReactNode
 }) {
   return (
@@ -56,7 +59,7 @@ export function ToastPillLayer({
         left: 16,
         right: 16,
         top: 0,
-        alignItems: 'center',
+        alignItems: fullWidth ? 'stretch' : 'center',
         zIndex: 1000,
       }}
     >

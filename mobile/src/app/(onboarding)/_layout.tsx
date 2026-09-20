@@ -1,4 +1,5 @@
 import { Redirect, Stack } from 'expo-router'
+import { BootSplash } from '../../presentation/shared/boot-splash.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 
@@ -20,9 +21,9 @@ export default function OnboardingLayout() {
   const session = useSessionQuery()
   const household = useHouseholdQuery()
 
-  if (session.isPending) return null
+  if (session.isPending) return <BootSplash />
   if (!session.data) return <Redirect href="/(auth)/sign-in" />
-  if (household.isPending) return null
+  if (household.isPending) return <BootSplash />
   if (household.data) return <Redirect href="/(tabs)" />
   // A failed read lands here too, and the threshold is the right place for it:
   // both of its actions answer `already_in_household` by re-reading, so

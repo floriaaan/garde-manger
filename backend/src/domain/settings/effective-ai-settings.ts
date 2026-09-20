@@ -1,17 +1,18 @@
 import type { AiProvider } from './ai-provider.vo.js'
+import type { AiAccess } from './ai-access.js'
 
 /** Never persisted — `AiSettingsProvider.resolveEffective()`'s return shape. */
 export interface EffectiveAiSettings {
   activeProvider: AiProvider
   source: 'database' | 'environment'
-  /** Whitelisted, credentialed, and not paywalled — what the foyer can pick. */
+  /** Whitelisted and credentialed — what the foyer can pick from. */
   availableProviders: AiProvider[]
   /**
-   * Whitelisted and credentialed, but behind a subscription this household
-   * does not have. Shown in the picker as locked rather than hidden, so the
-   * paywall explains itself instead of looking like a missing key.
+   * Whether the foyer may pick among `availableProviders` at all — `false`
+   * on the hosted instance, where the operator fixes the provider via
+   * `AI_PROVIDER` and `PATCH /api/settings/ai` is refused.
    */
-  lockedProviders: AiProvider[]
+  canChooseProvider: boolean
   /**
    * The vision/text models the active provider actually uses — `''` when
    * unset (only possible for Ollama, whose model names are env-configured
@@ -19,4 +20,5 @@ export interface EffectiveAiSettings {
    * that would otherwise fail with a bare `provider_not_configured`.
    */
   models: { vision: string; text: string }
+  access: AiAccess
 }

@@ -4,6 +4,8 @@
  * `receipt-review-screen.tsx`, reusing its row component (`showPrice`
  * false: the fridge scan has no price to show or edit).
  */
+import { ConnectedPaywall } from '../settings/ai-access-cards.js'
+import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useState } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -65,6 +67,7 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const scan = useFridgeScan(imageUris)
+  const { canSubscribe } = useAiSubscribe()
   const existingProducts = useProductsQuery()
   const importProducts = useImportProductsMutation()
   const nav = { kind: 'stack' as const }
@@ -197,20 +200,29 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
   }
 
   if (scan.blockedByProvider) {
-    const providerError = scan.states.find((s) => s.status === 'failed' && s.error.type === 'provider_not_configured')
+    const providerError = scan.states.find(
+      (s) => s.status === 'failed' && (s.error.type === 'provider_not_configured' || s.error.type === 'ai_quota_exceeded'),
+    )
+    const quotaExceeded = providerError?.status === 'failed' && providerError.error.type === 'ai_quota_exceeded'
     return (
       <AppShell nav={nav} header={header}>
-        <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
-          <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
-            <TriangleAlertIcon size={30} color={palette.expiredText} />
+        {quotaExceeded && canSubscribe ? (
+          <YStack flex={1} justifyContent="center">
+            <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
           </YStack>
-          <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
-            Extraction indisponible
-          </Text>
-          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
-            {providerError && providerError.status === 'failed' ? providerError.error.message : ''}
-          </Text>
-        </YStack>
+        ) : (
+          <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
+            <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
+              <TriangleAlertIcon size={30} color={palette.expiredText} />
+            </YStack>
+            <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
+              {quotaExceeded ? 'Quota atteint' : 'Extraction indisponible'}
+            </Text>
+            <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
+              {providerError && providerError.status === 'failed' ? providerError.error.message : ''}
+            </Text>
+          </YStack>
+        )}
       </AppShell>
     )
   }
