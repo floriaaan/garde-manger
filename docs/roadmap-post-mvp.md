@@ -51,6 +51,9 @@ Plan d'implémentation : `docs/superpowers/plans/2026-09-13-product-outcome.md`.
 
 ## 2. Notifications de péremption
 
+> **Implémenté (V1 push serveur)** — cf. [ADR-0018](adr/0018-notifications-push-expo.md). Les
+> décisions ouvertes ci-dessous y sont tranchées ; il reste à valider sur un build EAS.
+
 **Pourquoi :** c'est la fonctionnalité qui fait revenir dans l'app au quotidien. Le
 dashboard montre ce qui expire, mais seulement si on l'ouvre. Aucune notification
 n'existe aujourd'hui (`expo-notifications` n'est pas installé).

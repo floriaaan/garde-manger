@@ -16,6 +16,8 @@ export interface Job {
   createdAt: string
   startedAt: string | null
   finishedAt: string | null
+  /** Hidden from the to-do list (and the badge) but still listed until deleted. */
+  dismissedAt: string | null
 }
 
 /** Mirrors `toScanDraftDto`. A draft is what the AI extracted, waiting for the member to review it. */

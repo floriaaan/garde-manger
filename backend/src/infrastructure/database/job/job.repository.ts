@@ -108,7 +108,6 @@ export class LucidJobRepository implements JobRepository {
     const rows = await db
       .from('ai_job')
       .where('household_id', householdId)
-      .whereNull('dismissed_at')
       .where((q) => q.whereIn('status', ['queued', 'running']).orWhere('finished_at', '>=', since))
       .orderBy('created_at', 'desc')
       .limit(20)

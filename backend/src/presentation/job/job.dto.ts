@@ -19,6 +19,7 @@ export function toJobDto(job: Job) {
     createdAt: job.createdAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
+    dismissedAt: job.dismissedAt?.toISOString() ?? null,
   }
 }
 

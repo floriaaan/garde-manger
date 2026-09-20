@@ -6,7 +6,7 @@ import { pointerCursor } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useJobsQuery } from '../../application/job/jobs.query.js'
 import { isJobActive } from '../../domain/job/job.js'
-import { JOB_TITLES, activeLabel } from './job-labels.js'
+import { JOB_TITLES, activeLabel, isBehindAnother } from './job-labels.js'
 
 /** Clears the tab bar on phones; the pill is a shortcut to the task center, not part of the layout. */
 const ABOVE_TAB_BAR = 96
@@ -40,7 +40,7 @@ export function ActiveJobPill() {
               {more}
             </Text>
             <Text fontSize={12} fontWeight="600" color={palette.freshText}>
-              {determinate ? `${done}/${total}` : activeLabel(job)}
+              {determinate ? `${done}/${total}` : activeLabel(job, isBehindAnother(job, jobs))}
             </Text>
           </XStack>
           <ProgressBar

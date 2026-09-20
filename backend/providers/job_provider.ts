@@ -47,10 +47,15 @@ export default class JobProvider {
         container.make('settings.resolveFridgeScanExtractionPort'),
         container.make('settings.resolveRecipeGenerationPort'),
       ])
+    const [pushTokens, pushSender] = await Promise.all([
+      container.make('push.tokens'),
+      container.make('push.sender'),
+    ])
     const logger = await container.make('logger')
 
     const { RunJob } = await import('#application/job/run-job.use-case')
     const { PurgeExpired } = await import('#application/job/purge-expired.use-case')
+    const { NotifyJobFinished } = await import('#application/push/notify-job-finished.use-case')
     const { JobRunner } = await import('#infrastructure/job/job-runner')
 
     const runJob = new RunJob({
@@ -69,9 +74,14 @@ export default class JobProvider {
     })
     const purge = new PurgeExpired(drafts, jobs, storage, clock)
 
+    const notifyJobFinished = new NotifyJobFinished(pushTokens, pushSender)
+
     this.runner = new JobRunner({
       jobs,
-      run: (job) => runJob.execute(job),
+      run: async (job) => {
+        await runJob.execute(job)
+        await notifyJobFinished.execute(job).catch((error) => logger.error({ err: error }, 'Job push failed'))
+      },
       purge: () => purge.execute(),
       clock,
       maxConcurrency: env.get('JOB_MAX_CONCURRENCY', 2),

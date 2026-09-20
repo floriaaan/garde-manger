@@ -7,9 +7,9 @@ export const JOB_TITLES: Record<JobKind, string> = {
 }
 
 /** The one line under the title while the job is not finished. */
-export function activeLabel(job: Job): string {
+export function activeLabel(job: Job, behind = false): string {
   const { done, total } = job.progress
-  if (job.status === 'queued') return 'En attente…'
+  if (job.status === 'queued') return behind ? 'En attente de l’analyse précédente…' : 'En attente…'
   if (job.kind === 'fridge_scan') return `Photo ${Math.min(done + 1, total)} sur ${total}`
   return job.kind === 'recipe_generation' ? 'Cuisine en cours…' : 'Lecture en cours…'
 }
@@ -40,4 +40,36 @@ export function outcomeRoute(job: Job): { pathname: string; params?: Record<stri
       : { pathname: '/fridge-scan/review', params }
   }
   return { pathname: '/tasks' }
+}
+
+/** A queued job waits when the household already has another one running (one at a time per foyer). */
+export function isBehindAnother(job: Job, jobs: Job[]): boolean {
+  return job.status === 'queued' && jobs.some((other) => other.id !== job.id && other.status === 'running')
+}
+
+/** What went wrong and what to do about it — the backend message stays a fallback, it is not written for members. */
+export function failureMessage(job: Job): string {
+  switch (job.error?.type) {
+    case 'ai_quota_exceeded':
+      return 'Quota gratuit atteint. Passe à l’offre IA pour continuer.'
+    case 'provider_not_configured':
+      return 'L’IA n’est pas configurée sur ce serveur. Demande à l’administrateur.'
+    default:
+      return `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
+  }
+}
+
+/** Errors a second attempt cannot fix. */
+export function isRetryable(job: Job): boolean {
+  return job.status === 'failed' && job.error?.type !== 'ai_quota_exceeded' && job.error?.type !== 'provider_not_configured'
+}
+
+/** "à l’instant" / "il y a 5 min" / "il y a 3 h" / "hier" — the age of a task, which the task center is otherwise silent about. */
+export function taskAge(iso: string, now: Date = new Date()): string {
+  const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000)
+  if (minutes < 1) return 'à l’instant'
+  if (minutes < 60) return `il y a ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `il y a ${hours} h`
+  return hours < 48 ? 'hier' : `il y a ${Math.floor(hours / 24)} j`
 }

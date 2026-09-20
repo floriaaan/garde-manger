@@ -14,7 +14,7 @@ beforeEach(() => jest.clearAllMocks())
 test('says so when there is nothing to show', async () => {
   await renderWithJobs(<TasksScreen />, [])
 
-  await waitFor(() => expect(screen.getByTestId('tasks-empty')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Aucune analyse en cours.')).toBeTruthy())
 })
 
 test('a running job shows its progress and offers no action, only waiting', async () => {
@@ -73,4 +73,29 @@ test('a scan that missed photos offers a targeted retry', async () => {
   fireEvent.press(screen.getByTestId('task-job-1-retry-failed'))
 
   await waitFor(() => expect(retry).toHaveBeenCalledWith('job-1'))
+})
+
+test('a hidden job stays listed under Masquées and can be deleted', async () => {
+  const { connector } = await renderWithJobs(<TasksScreen />, [
+    makeJob({ status: 'succeeded', result: { draftId: 'd-1' }, dismissedAt: '2026-09-20T11:00:00.000Z' }),
+  ])
+  const dismiss = jest.spyOn(connector, 'dismissJob')
+
+  await waitFor(() => expect(screen.getByText('Masquées')).toBeTruthy())
+  expect(screen.getByText('Rien de terminé pour le moment.')).toBeTruthy()
+
+  expect(screen.queryByTestId('task-job-1-dismiss')).toBeNull()
+  fireEvent.press(screen.getByTestId('task-job-1-delete'))
+  await waitFor(() => expect(dismiss).toHaveBeenCalledWith('job-1'))
+})
+
+test('a hidden job can be restored from the swipe actions', async () => {
+  const { connector } = await renderWithJobs(<TasksScreen />, [
+    makeJob({ status: 'succeeded', result: { draftId: 'd-1' }, dismissedAt: '2026-09-20T11:00:00.000Z' }),
+  ])
+  const restore = jest.spyOn(connector, 'restoreJob')
+
+  await waitFor(() => expect(screen.getByTestId('task-job-1-restore')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('task-job-1-restore'))
+  await waitFor(() => expect(restore).toHaveBeenCalledWith('job-1'))
 })

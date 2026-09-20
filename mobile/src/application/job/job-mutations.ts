@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useDomainMutation } from '../shared/use-domain-mutation.js'
-import { removeJob, upsertJob } from './jobs.query.js'
+import { JOBS_KEY, upsertJob } from './jobs.query.js'
 import type { Result } from '../../domain/shared/result.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 import type { Job } from '../../domain/job/job.js'
@@ -42,6 +42,31 @@ export function useRetryJobMutation() {
 export function useDismissJobMutation() {
   const queryClient = useQueryClient()
   return useDomainMutation((connector, jobId: string) => connector.dismissJob(jobId), {
-    onSuccess: (_result, jobId) => removeJob(queryClient, jobId),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: JOBS_KEY }),
   })
+}
+
+/** Hides a finished job. */
+export const useHideJobMutation = useDismissJobMutation
+
+export function useRestoreJobMutation() {
+  const queryClient = useQueryClient()
+  return useDomainMutation((connector, jobId: string) => connector.restoreJob(jobId), {
+    onSettled: () => queryClient.invalidateQueries({ queryKey: JOBS_KEY }),
+  })
+}
+
+/**
+ * Deletes a job outright. The server hides on the first DELETE and removes on
+ * the second, so a visible job needs both; a hidden one only the second.
+ */
+export function useDeleteJobMutation() {
+  const queryClient = useQueryClient()
+  return useDomainMutation(
+    async (connector, job: Job) => {
+      if (!job.dismissedAt) await connector.dismissJob(job.id)
+      return connector.dismissJob(job.id)
+    },
+    { onSettled: () => queryClient.invalidateQueries({ queryKey: JOBS_KEY }) },
+  )
 }

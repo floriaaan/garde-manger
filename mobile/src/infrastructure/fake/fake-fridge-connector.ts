@@ -538,6 +538,7 @@ export class FakeFridgeConnector implements FridgeConnector {
       createdAt: new Date().toISOString(),
       startedAt: null,
       finishedAt: null,
+      dismissedAt: null,
     }
     this.jobs.unshift(job)
     void this.runJob(job, units)
@@ -627,7 +628,28 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async dismissJob(jobId: string): Promise<Result<void, ApiError>> {
-    this.jobs = this.jobs.filter((j) => j.id !== jobId)
+    const job = this.jobs.find((j) => j.id === jobId)
+    // Mirrors the server: dismissing hides, dismissing a hidden job deletes.
+    if (job && !job.dismissedAt && job.status !== 'queued') job.dismissedAt = new Date().toISOString()
+    else this.jobs = this.jobs.filter((j) => j.id !== jobId)
+    return Result.ok(undefined)
+  }
+
+  async restoreJob(jobId: string): Promise<Result<void, ApiError>> {
+    const job = this.jobs.find((j) => j.id === jobId)
+    if (job) job.dismissedAt = null
+    return Result.ok(undefined)
+  }
+
+  readonly pushTokens = new Set<string>()
+
+  async registerPushToken(token: string): Promise<Result<void, ApiError>> {
+    this.pushTokens.add(token)
+    return Result.ok(undefined)
+  }
+
+  async unregisterPushToken(token: string): Promise<Result<void, ApiError>> {
+    this.pushTokens.delete(token)
     return Result.ok(undefined)
   }
 

@@ -120,48 +120,13 @@ test('a foyer that could not be read is unavailable, not absent', async () => {
 // account-scoped one, so it lives on the Foyer page next to invite/members
 // rather than on Réglages.
 
-test('the debug menu triggers a network toast on tap', async () => {
+test('the debug entry opens the debug screen', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('debug-menu-open')).toBeTruthy())
   fireEvent.press(screen.getByTestId('debug-menu-open'))
 
-  await waitFor(() => expect(screen.getByTestId('debug-toast-network-error')).toBeTruthy())
-  await fireEvent.press(screen.getByTestId('debug-toast-network-error'))
-
-  // `showToast` has no subscriber mounted in this test tree (`ToastHost`
-  // lives at the app root, not under `SettingsScreen`) — pressing without
-  // throwing is the assertion: the debug button must degrade to a no-op
-  // outside the full app, never crash the screen it's on.
-})
-
-test('the debug menu triggers a hint via the same HintBubble every real action uses', async () => {
-  await renderAuthenticated()
-
-  fireEvent.press(screen.getByTestId('debug-menu-open'))
-  await waitFor(() => expect(screen.getByTestId('debug-hint-success')).toBeTruthy())
-  await fireEvent.press(screen.getByTestId('debug-hint-success'))
-
-  await waitFor(() => expect(screen.getByText('Ajouté au frigo. (debug)')).toBeTruthy())
-})
-
-test('the debug menu’s "Réinitialiser l’état de l’app" signs out, clears the welcome flag and chosen server, and previews it immediately', async () => {
-  const SecureStore = jest.requireMock('expo-secure-store')
-  const connector = new FakeFridgeConnector()
-  await renderAuthenticated(connector)
-
-  fireEvent.press(screen.getByTestId('debug-menu-open'))
-  await waitFor(() => expect(screen.getByTestId('debug-reset-app-state')).toBeTruthy())
-  await fireEvent.press(screen.getByTestId('debug-reset-app-state'))
-
-  // Signs out first: `/welcome` finishes onto `/(auth)/sign-up`, which
-  // redirects straight back to the tabs whenever a session exists — this
-  // button previews the onboarding flow, and a still-signed-in preview
-  // never reaches it.
-  await waitFor(async () => expect(await connector.getSession()).toBeNull())
-  await waitFor(() => expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('garde-manger.welcome.seen'))
-  await waitFor(() => expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('server_url'))
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/welcome'))
+  expect(router.push).toHaveBeenCalledWith('/debug')
 })
 
 test('shows the instance card with the name, without the raw server URL or version', async () => {

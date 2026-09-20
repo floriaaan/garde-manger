@@ -116,6 +116,11 @@ export interface FridgeConnector {
   retryJob(jobId: string): Promise<Result<Job, ApiError>>
   /** Cancels a queued job, hides a finished one. A running job is left alone. */
   dismissJob(jobId: string): Promise<Result<void, ApiError>>
+  /** Brings a hidden job back. */
+  restoreJob(jobId: string): Promise<Result<void, ApiError>>
+  /** Registers this device for push notifications; re-sending a known token is fine. */
+  registerPushToken(token: string, platform: 'ios' | 'android'): Promise<Result<void, ApiError>>
+  unregisterPushToken(token: string): Promise<Result<void, ApiError>>
   getScanDrafts(): Promise<ScanDraft[]>
   getScanDraft(draftId: string): Promise<ScanDraft | null>
   discardScanDraft(draftId: string): Promise<Result<void, ApiError>>

@@ -615,6 +615,30 @@ export class HttpFridgeConnector implements FridgeConnector {
     )
   }
 
+  async restoreJob(jobId: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      `/api/jobs/${jobId}/restore`,
+      { method: 'POST' },
+      { action: 'job.restore', attributes: { 'entity.id': jobId } },
+    )
+  }
+
+  async registerPushToken(token: string, platform: 'ios' | 'android'): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      '/api/push-tokens',
+      { method: 'POST', body: JSON.stringify({ token, platform }) },
+      { action: 'push.register' },
+    )
+  }
+
+  async unregisterPushToken(token: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      '/api/push-tokens',
+      { method: 'DELETE', body: JSON.stringify({ token }) },
+      { action: 'push.unregister' },
+    )
+  }
+
   async getScanDrafts(): Promise<ScanDraft[]> {
     const result = await apiFetch<{ drafts: ScanDraft[] }>('/api/scan-drafts', undefined, {
       action: 'job.get_scan_drafts',

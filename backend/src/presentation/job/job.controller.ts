@@ -14,6 +14,7 @@ import { ListJobs } from '#application/job/list-jobs.use-case'
 import { GetJob } from '#application/job/get-job.use-case'
 import { RetryJob } from '#application/job/retry-job.use-case'
 import { DismissJob } from '#application/job/dismiss-job.use-case'
+import { RestoreJob } from '#application/job/restore-job.use-case'
 import { GetScanDraft } from '#application/job/get-scan-draft.use-case'
 import { ListScanDrafts } from '#application/job/list-scan-drafts.use-case'
 import { DiscardScanDraft } from '#application/job/discard-scan-draft.use-case'
@@ -134,6 +135,30 @@ export default class JobController {
         return result
       },
       { isError: (r) => !r.ok, action: 'job.dismiss' },
+    )
+  }
+
+  async restore(ctx: HttpContext) {
+    requireAuthenticatedUser(ctx)
+    return traceAction(
+      ctx,
+      'job',
+      RestoreJob,
+      async () => {
+        const jobs = await ctx.containerResolver.make('job.jobs')
+        const result = await new RestoreJob(jobs).execute({
+          householdId: ctx.household.id,
+          jobId: ctx.params.id,
+        })
+        if (!result.ok) {
+          const { status, body } = serializeError(result.error)
+          ctx.response.status(status).json(body)
+          return result
+        }
+        ctx.response.status(204).send('')
+        return result
+      },
+      { isError: (r) => !r.ok, action: 'job.restore' },
     )
   }
 

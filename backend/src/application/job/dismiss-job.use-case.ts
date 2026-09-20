@@ -7,7 +7,8 @@ import type { Result as ResultType } from '#domain/shared/result'
 
 /**
  * A queued job is cancelled (row and photos gone); a finished one is hidden
- * from the task center. A running one is left alone — the provider call is
+ * (still listed, flagged `dismissedAt`); dismissing a hidden one deletes it,
+ * and its draft with it. A running one is left alone — the provider call is
  * already paid for, interrupting it saves nothing.
  */
 export class DismissJob implements UseCase<
@@ -29,6 +30,8 @@ export class DismissJob implements UseCase<
 
     if (job.status === 'queued') {
       for (const key of job.input.imageKeys ?? []) await this.storage.delete(key)
+      await this.jobs.delete(job.id)
+    } else if (job.dismissedAt) {
       await this.jobs.delete(job.id)
     } else if (job.status !== 'running') {
       job.dismiss(this.clock.now())

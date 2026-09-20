@@ -11,6 +11,7 @@ router
     router.get('/jobs', [JobController, 'index'])
     router.get('/jobs/:id', [JobController, 'show'])
     router.post('/jobs/:id/retry', [JobController, 'retry'])
+    router.post('/jobs/:id/restore', [JobController, 'restore'])
     router.delete('/jobs/:id', [JobController, 'dismiss'])
     router.get('/scan-drafts', [JobController, 'listDrafts'])
     router.get('/scan-drafts/:id', [JobController, 'showDraft'])

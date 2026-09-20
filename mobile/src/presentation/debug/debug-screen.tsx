@@ -29,6 +29,16 @@ import { resetWelcomeSeen, useHasSeenWelcome } from '../welcome/use-welcome-seen
 
 const SIGN_OUT_TIMEOUT_MS = 2000
 
+/** Screens that only appear after an action (a scan, a job), so they are hard to reach by hand. */
+const SCREENS: [string, string][] = [
+  ['Tâches', '/tasks'],
+  ['Scanner un ticket', '/receipts/scan'],
+  ['Scanner le frigo', '/fridge-scan/scan'],
+  ['Générer des recettes', '/(tabs)/recipes/generate'],
+  ['Relecture ticket (sans brouillon)', '/receipts/review'],
+  ['Relecture frigo (sans brouillon)', '/fridge-scan/review'],
+]
+
 export function DebugScreen() {
   const palette = useSoftPalette()
   const session = useSessionQuery()
@@ -81,6 +91,19 @@ export function DebugScreen() {
               {value}
             </Text>
           </YStack>
+        ))}
+        <Text fontSize={12} fontWeight="800" color={palette.inkSecondary} marginTop="$3">
+          Écrans à action
+        </Text>
+        {SCREENS.map(([label, href]) => (
+          <PillButton
+            key={href}
+            testID={`debug-open-${href}`}
+            tone="quiet"
+            label={label}
+            palette={palette}
+            onPress={() => router.push(href as Parameters<typeof router.push>[0])}
+          />
         ))}
         <PillButton
           testID="debug-show-splash"

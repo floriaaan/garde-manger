@@ -79,6 +79,29 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
     assert.isNull(await db.from('ai_job').where('id', id).first())
   })
 
+  test('dismissing a finished job hides it, dismissing it again deletes it', async ({
+    client,
+    assert,
+  }) => {
+    const cookie = await signUpWithHousehold(client, 'job-dismiss-twice@example.com')
+    const id = (await enqueueReceipt(client, cookie)).body().job.id
+    await db.from('ai_job').where('id', id).update({ status: 'failed', finished_at: new Date() })
+
+    await client.delete(`/api/jobs/${id}`).headers({ cookie })
+    const hidden = (await client.get('/api/jobs').headers({ cookie })).body().jobs
+    assert.lengthOf(hidden, 1)
+    assert.isNotNull(hidden[0].dismissedAt)
+
+    const restored = await client.post(`/api/jobs/${id}/restore`).headers({ cookie })
+    restored.assertStatus(204)
+    const back = (await client.get('/api/jobs').headers({ cookie })).body().jobs
+    assert.isNull(back[0].dismissedAt)
+
+    await client.delete(`/api/jobs/${id}`).headers({ cookie })
+    await client.delete(`/api/jobs/${id}`).headers({ cookie })
+    assert.isNull(await db.from('ai_job').where('id', id).first())
+  })
+
   test('import with an unknown draftId answers 404', async ({ client }) => {
     const cookie = await signUpWithHousehold(client, 'job-draft-404@example.com')
     const response = await client
@@ -133,5 +156,39 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
 
     const after = await client.get('/api/scan-drafts').headers({ cookie })
     assert.lengthOf(after.body().drafts, 0)
+  })
+})
+
+test.group('push tokens', (group) => {
+  group.each.setup(async () => {
+    await db.beginGlobalTransaction()
+  })
+  group.each.teardown(() => db.rollbackGlobalTransaction())
+
+  test('registers a token, re-registering is idempotent, unregistering removes it', async ({
+    client,
+    assert,
+  }) => {
+    const cookie = await signUpWithHousehold(client, 'push-token@example.com')
+    const token = 'ExponentPushToken[abc]'
+    const body = { token, platform: 'ios' }
+
+    ;(await client.post('/api/push-tokens').headers({ cookie }).json(body)).assertStatus(204)
+    ;(await client.post('/api/push-tokens').headers({ cookie }).json(body)).assertStatus(204)
+    assert.lengthOf(await db.from('push_token').where('token', token), 1)
+
+    ;(
+      await client.delete('/api/push-tokens').headers({ cookie }).json({ token })
+    ).assertStatus(204)
+    assert.lengthOf(await db.from('push_token').where('token', token), 0)
+  })
+
+  test('rejects an unknown platform', async ({ client }) => {
+    const cookie = await signUpWithHousehold(client, 'push-bad@example.com')
+    const response = await client
+      .post('/api/push-tokens')
+      .headers({ cookie })
+      .json({ token: 'x', platform: 'web' })
+    response.assertStatus(422)
   })
 })

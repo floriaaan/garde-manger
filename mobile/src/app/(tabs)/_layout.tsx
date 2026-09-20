@@ -6,6 +6,7 @@ import { useHouseholdQuery } from '../../application/identity/household.query.js
 import { useHasSeenWelcome } from '../../presentation/welcome/use-welcome-seen.js'
 import { JobHost } from '../../presentation/job/job-host.js'
 import { ActiveJobPill } from '../../presentation/job/active-job-pill.js'
+import { PushHost } from '../../presentation/push/push-host.js'
 import { BootSplash } from '../../presentation/shared/boot-splash.js'
 
 /**
@@ -98,6 +99,7 @@ export default function TabsLayout() {
     <>
       {Platform.OS === 'ios' ? <IosTabs /> : <DefaultTabs />}
       <JobHost />
+      <PushHost />
       <ActiveJobPill />
     </>
   )

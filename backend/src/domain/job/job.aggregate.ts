@@ -196,4 +196,8 @@ export class Job {
   dismiss(now: Date): void {
     this.props.dismissedAt = now
   }
+
+  restore(): void {
+    this.props.dismissedAt = null
+  }
 }

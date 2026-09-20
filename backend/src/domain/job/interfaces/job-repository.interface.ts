@@ -6,7 +6,7 @@ export interface JobRepository {
   /** Job and draft commit together — never a finished job without a readable draft. */
   saveWithDraft(job: Job, draft: ScanDraft): Promise<void>
   findById(id: string): Promise<Job | null>
-  /** Active jobs, plus finished ones since `since`; dismissed ones excluded. */
+  /** Active jobs, plus finished ones since `since`; dismissed ones included, flagged by `dismissedAt`. */
   listForHousehold(householdId: string, since: Date): Promise<Job[]>
   /** Atomically claims one runnable job (one running job per household). `null` = nothing to do. */
   claimNext(now: Date): Promise<Job | null>

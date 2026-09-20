@@ -17,6 +17,7 @@ export function makeJob(overrides: Partial<Job> = {}): Job {
     createdAt: '2026-09-20T10:00:00.000Z',
     startedAt: '2026-09-20T10:00:01.000Z',
     finishedAt: null,
+    dismissedAt: null,
     ...overrides,
   }
 }

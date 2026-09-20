@@ -39,7 +39,3 @@ export function useJobQuery(jobId: string | undefined): UseQueryResult<Job | nul
 export function upsertJob(queryClient: QueryClient, job: Job): void {
   queryClient.setQueryData<Job[]>(JOBS_KEY, (jobs = []) => [job, ...jobs.filter((j) => j.id !== job.id)])
 }
-
-export function removeJob(queryClient: QueryClient, jobId: string): void {
-  queryClient.setQueryData<Job[]>(JOBS_KEY, (jobs = []) => jobs.filter((j) => j.id !== jobId))
-}
