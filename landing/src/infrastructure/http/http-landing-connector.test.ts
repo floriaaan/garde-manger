@@ -11,13 +11,13 @@ function fakeFetch(routes: Record<string, { status: number; body?: unknown }>): 
   }
 }
 
-const REPO = 'https://api.github.com/repos/floriaaan/fridge-ai'
+const REPO = 'https://api.github.com/repos/floriaaan/garde-manger'
 
 describe('HttpLandingConnector', () => {
   test('getInstanceStats() returns null when the instance has not opted in (404)', async () => {
     const connector = new HttpLandingConnector({
       apiUrl: 'http://api',
-      githubRepo: 'floriaaan/fridge-ai',
+      githubRepo: 'floriaaan/garde-manger',
       fetch: fakeFetch({ 'http://api/api/public/stats': { status: 404 } }),
     })
 
@@ -28,7 +28,7 @@ describe('HttpLandingConnector', () => {
     const stats = { households: 2, productsConsumed: 10, recipesGenerated: 1 }
     const connector = new HttpLandingConnector({
       apiUrl: 'http://api',
-      githubRepo: 'floriaaan/fridge-ai',
+      githubRepo: 'floriaaan/garde-manger',
       fetch: fakeFetch({ 'http://api/api/public/stats': { status: 200, body: { stats } } }),
     })
 
@@ -38,7 +38,7 @@ describe('HttpLandingConnector', () => {
   test('getInstanceStats() throws on a server error rather than claiming "disabled"', async () => {
     const connector = new HttpLandingConnector({
       apiUrl: 'http://api',
-      githubRepo: 'floriaaan/fridge-ai',
+      githubRepo: 'floriaaan/garde-manger',
       fetch: fakeFetch({ 'http://api/api/public/stats': { status: 500 } }),
     })
 
@@ -48,13 +48,13 @@ describe('HttpLandingConnector', () => {
   test('getProjectInfo() maps the repo and treats a missing release as no version', async () => {
     const connector = new HttpLandingConnector({
       apiUrl: 'http://api',
-      githubRepo: 'floriaaan/fridge-ai',
+      githubRepo: 'floriaaan/garde-manger',
       fetch: fakeFetch({
         [REPO]: {
           status: 200,
           body: {
-            full_name: 'floriaaan/fridge-ai',
-            html_url: 'https://github.com/floriaaan/fridge-ai',
+            full_name: 'floriaaan/garde-manger',
+            html_url: 'https://github.com/floriaaan/garde-manger',
             stargazers_count: 7,
             license: { spdx_id: 'MIT' },
           },
@@ -64,8 +64,8 @@ describe('HttpLandingConnector', () => {
     })
 
     expect(await connector.getProjectInfo()).toEqual({
-      repository: 'floriaaan/fridge-ai',
-      url: 'https://github.com/floriaaan/fridge-ai',
+      repository: 'floriaaan/garde-manger',
+      url: 'https://github.com/floriaaan/garde-manger',
       stars: 7,
       license: 'MIT',
       latestVersion: null,

@@ -40,6 +40,45 @@ export class AccountSchema extends BaseModel {
   declare userId: string
 }
 
+export class AiJobSchema extends BaseModel {
+  static $columns = ['attempts', 'createdAt', 'createdBy', 'dismissedAt', 'errorType', 'finishedAt', 'householdId', 'id', 'input', 'kind', 'lockedAt', 'progress', 'result', 'runAt', 'startedAt', 'status', 'traceparent'] as const
+  $columns = AiJobSchema.$columns
+  @column()
+  declare attempts: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdBy: string | null
+  @column.dateTime()
+  declare dismissedAt: DateTime | null
+  @column()
+  declare errorType: string | null
+  @column.dateTime()
+  declare finishedAt: DateTime | null
+  @column()
+  declare householdId: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare input: any
+  @column()
+  declare kind: string
+  @column.dateTime()
+  declare lockedAt: DateTime | null
+  @column()
+  declare progress: any
+  @column()
+  declare result: any | null
+  @column.dateTime()
+  declare runAt: DateTime
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column()
+  declare traceparent: string | null
+}
+
 export class AiProviderSettingSchema extends BaseModel {
   static $columns = ['activeProvider', 'householdId', 'id', 'updatedAt', 'updatedBy'] as const
   $columns = AiProviderSettingSchema.$columns
@@ -249,6 +288,25 @@ export class ProductOutcomeSchema extends BaseModel {
   declare unit: string
 }
 
+export class PushTokenSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'lastDigestOn', 'platform', 'token', 'updatedAt', 'userId'] as const
+  $columns = PushTokenSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: string
+  @column.date()
+  declare lastDigestOn: DateTime | null
+  @column()
+  declare platform: string
+  @column()
+  declare token: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: string
+}
+
 export class ReceiptSchema extends BaseModel {
   static $columns = ['createdAt', 'householdId', 'id', 'imageKey', 'itemsCount', 'scannedAt', 'storeName', 'totalAmount', 'updatedAt'] as const
   $columns = ReceiptSchema.$columns
@@ -333,6 +391,29 @@ export class RecipeIngredientSchema extends BaseModel {
   declare recipeId: string
   @column()
   declare unit: string | null
+}
+
+export class ScanDraftSchema extends BaseModel {
+  static $columns = ['createdAt', 'expiresAt', 'householdId', 'id', 'imageKeys', 'jobId', 'kind', 'payload', 'status'] as const
+  $columns = ScanDraftSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare householdId: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare imageKeys: any
+  @column()
+  declare jobId: string
+  @column()
+  declare kind: string
+  @column()
+  declare payload: any
+  @column()
+  declare status: string
 }
 
 export class SessionSchema extends BaseModel {

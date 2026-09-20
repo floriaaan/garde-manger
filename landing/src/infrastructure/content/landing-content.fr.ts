@@ -4,7 +4,7 @@ import type { LandingContent } from '../../domain/content/landing-content.js'
 // HTTP side once a CMS or a backend endpoint serves it.
 export const landingContentFr: LandingContent = {
   locale: 'fr',
-  repositoryUrl: 'https://github.com/floriaaan/fridge-ai',
+  repositoryUrl: 'https://github.com/floriaaan/garde-manger',
   hero: {
     eyebrow: 'Open source · clé en main ou chez toi',
     titleBefore: 'Du frigo à l’assiette, ',
@@ -89,11 +89,11 @@ export const landingContentFr: LandingContent = {
         'Open source, licence MIT',
       ],
       commands: [
-        'git clone https://github.com/floriaaan/fridge-ai.git && cd fridge-ai',
+        'git clone https://github.com/floriaaan/garde-manger.git && cd garde-manger',
         'cp .env.example .env   # secrets + IP du serveur',
         'docker compose up -d',
       ],
-      cta: { label: 'Lire le guide', href: 'https://github.com/floriaaan/fridge-ai#installation' },
+      cta: { label: 'Lire le guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
   faq: [

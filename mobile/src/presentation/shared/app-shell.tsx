@@ -34,6 +34,8 @@ import { Animated, Platform, Pressable, ScrollView, useWindowDimensions } from '
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { BlurView } from 'expo-blur'
 import { router } from 'expo-router'
+import * as Haptics from 'expo-haptics'
+import { haptic } from './haptics.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useReduceMotion } from './hover.js'
 import { IS_ANDROID, materialRoles, ripple, surfaceShadow } from './material.js'
@@ -234,7 +236,10 @@ export function Fab({ onScan }: { onScan: () => void }) {
       onPress={onScan}
       onHoverIn={() => spring(1.06, 6, 200)}
       onHoverOut={() => spring(1, 5, 160)}
-      onPressIn={() => spring(0.86, 5, 200)}
+      onPressIn={() => {
+        haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))
+        spring(0.86, 5, 200)
+      }}
       onPressOut={() => spring(1, 4, 160)}
       testID="scan-fab"
       accessibilityRole="button"
@@ -271,7 +276,11 @@ function TabBarItem({ section, active }: { section: SidebarSection; active: bool
   const color = active ? palette.accentLimeText : palette.inkSecondary
   return (
     <Pressable
-      onPress={() => (active ? undefined : goToTab(section))}
+      onPress={() => {
+        if (active) return
+        haptic(() => Haptics.selectionAsync())
+        goToTab(section)
+      }}
       accessibilityRole="button"
       accessibilityLabel={TAB_LABELS[section]}
       accessibilityState={{ selected: active }}
@@ -311,7 +320,11 @@ function MaterialNavItem({ section, active }: { section: SidebarSection; active:
   const color = active ? roles.onSecondaryContainer : roles.onSurfaceVariant
   return (
     <Pressable
-      onPress={() => (active ? undefined : goToTab(section))}
+      onPress={() => {
+        if (active) return
+        haptic(() => Haptics.selectionAsync())
+        goToTab(section)
+      }}
       accessibilityRole="tab"
       accessibilityLabel={TAB_LABELS[section]}
       accessibilityState={{ selected: active }}

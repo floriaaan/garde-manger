@@ -13,8 +13,8 @@ export class FakeLandingConnector implements LandingConnector {
       recipesGenerated: 736,
     },
     private readonly project: ProjectInfo = {
-      repository: 'floriaaan/fridge-ai',
-      url: 'https://github.com/floriaaan/fridge-ai',
+      repository: 'floriaaan/garde-manger',
+      url: 'https://github.com/floriaaan/garde-manger',
       stars: 42,
       license: 'MIT',
       latestVersion: null,
