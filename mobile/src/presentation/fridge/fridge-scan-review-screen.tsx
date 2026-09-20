@@ -6,31 +6,40 @@
  */
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
-import { useState } from 'react'
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Easing, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
-import { PulseDots } from '../shared/pulse-dots.js'
+import { ProgressBar } from '../shared/progress-bar.js'
 import { AuthButton } from '../identity/auth-button.js'
-import { pointerCursor } from '../shared/hover.js'
+import { PillButton } from '../shared/pill-button.js'
+import { pointerCursor, useReduceMotion } from '../shared/hover.js'
 import { goBack } from '../shared/navigation.js'
+import { failureMessage } from '../job/job-labels.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { CameraIcon, CircleCheckIcon, CircleXIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
-import { ReceiptItemRow, type EditableReceiptItem, type ReceiptItemErrors } from '../receipt/receipt-item-row.js'
-import { useFridgeScan } from '../../application/fridge/use-fridge-scan.js'
+import { CameraIcon, CircleCheckIcon, CircleXIcon, ClockIcon, RefreshIcon, TriangleAlertIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import type { ReceiptItemErrors } from '../receipt/receipt-item-row.js'
+import { useEnqueueFridgeScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
+import { useJobQuery } from '../../application/job/jobs.query.js'
+import { useScanDraftQuery, SCAN_DRAFTS_KEY } from '../../application/job/scan-drafts.query.js'
+import { useWatchJob } from '../../application/job/watched-jobs.js'
+import { isJobActive } from '../../domain/job/job.js'
+import type { Job } from '../../domain/job/job.js'
+import type { ApiError } from '../../domain/shared/api-error.js'
 import { useImportProductsMutation } from '../../application/fridge/import-products.mutation.js'
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { isLikelyDuplicate } from '../../domain/fridge/fridge-scan-merge.js'
+import { FridgeScanItemRow, type EditableFridgeItem } from './fridge-scan-item-row.js'
+import { LOCATION_LABELS } from './product-fields.js'
+import type { LocationValue } from '../../domain/fridge/location.js'
 import type { FridgeScanDraftItem, ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
 
-interface EditableFridgeItem extends EditableReceiptItem {
-  included: boolean
-  duplicate: boolean
-}
+const LOCATION_ORDER: LocationValue[] = ['fridge', 'freezer', 'pantry']
 
 function estimateExpiresAt(expiresInDays: number | null): string | null {
   if (expiresInDays === null) return null
@@ -63,10 +72,46 @@ function parseDateOrNull(value: string): string | null | 'invalid' {
   return date.toISOString()
 }
 
-export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
+type PhotoState = 'pending' | 'running' | 'done' | 'failed'
+
+/** Per-photo state, derived from the job's counters: `done` counts successes, `failed` lists the missed indexes. */
+function photoStates(job: Job | null, count: number): PhotoState[] {
+  if (!job) return Array.from({ length: count }, () => 'pending')
+  const active = isJobActive(job)
+  let succeeded = 0
+  return Array.from({ length: count }, (_, index) => {
+    if (job.progress.failed.includes(index)) return 'failed'
+    if (!active || succeeded < job.progress.done) {
+      succeeded += 1
+      return 'done'
+    }
+    return job.status === 'running' ? 'running' : 'pending'
+  })
+}
+
+export function FridgeScanReviewScreen({
+  imageUris,
+  jobId: jobIdParam,
+  draftId: draftIdParam,
+}: {
+  imageUris?: string[]
+  jobId?: string
+  draftId?: string
+}) {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
-  const scan = useFridgeScan(imageUris)
+  const enqueueScan = useEnqueueFridgeScanMutation()
+  const retryJob = useRetryJobMutation()
+  const [jobId, setJobId] = useState<string | undefined>(jobIdParam)
+  const [enqueueError, setEnqueueError] = useState<ApiError | null>(null)
+  const startedRef = useRef(false)
+  const seededRef = useRef(false)
+  const job = useJobQuery(jobId).data ?? null
+  useWatchJob(jobId)
+  const draftId = draftIdParam ?? job?.result?.draftId
+  const draft = useScanDraftQuery(draftId).data ?? null
+  const photos = imageUris ?? []
+  const states = photoStates(job, photos.length)
   const { canSubscribe } = useAiSubscribe()
   const existingProducts = useProductsQuery()
   const importProducts = useImportProductsMutation()
@@ -75,20 +120,45 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
 
   const [items, setItems] = useState<EditableFridgeItem[]>([])
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [viewerUri, setViewerUri] = useState<string | null>(null)
   const [itemErrors, setItemErrors] = useState<Record<number, ReceiptItemErrors>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [imported, setImported] = useState<number | null>(null)
 
-  // Reseeds the editable list whenever the merged draft changes (a retried
-  // photo lands), adjusting state during render rather than in an effect —
-  // React's documented pattern, one render instead of two. `scan.items` is
-  // memoized, so this runs once per change, never per render.
-  const [seededFrom, setSeededFrom] = useState<typeof scan.items | null>(null)
-  if (scan.done && seededFrom !== scan.items) {
-    const existing = existingProducts.data ?? []
-    setSeededFrom(scan.items)
-    setItems(scan.items.map((item) => toEditable(item, isLikelyDuplicate(item, existing))))
+  async function runScan() {
+    if (!imageUris || imageUris.length === 0) return
+    setEnqueueError(null)
+    const result = await enqueueScan.mutateAsync(imageUris)
+    if (!result.ok) {
+      setEnqueueError(result.error)
+      return
+    }
+    setJobId(result.value.id)
+    // A remount must find the job, not the photos — else it would enqueue twice.
+    router.setParams({ jobId: result.value.id, imageUris: undefined })
   }
+
+  useEffect(() => {
+    if (startedRef.current || jobIdParam || draftIdParam) return
+    startedRef.current = true
+    runScan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Seeds the editable list once from the server draft, once the fridge is known for duplicates —
+  // later polls (a retried photo lands) must not clobber the member's edits.
+  const scanItems = draft?.kind === 'fridge' ? draft.draft.items : null
+  useEffect(() => {
+    if (seededRef.current || !scanItems || existingProducts.isPending) return
+    seededRef.current = true
+    const existing = existingProducts.data ?? []
+    // Grouped by where each product goes, in the order a member walks the kitchen; sorted once so row indexes stay stable.
+    setItems(
+      scanItems
+        .map((item) => toEditable(item, isLikelyDuplicate(item, existing)))
+        .sort((a, b) => LOCATION_ORDER.indexOf(a.location) - LOCATION_ORDER.indexOf(b.location)),
+    )
+  }, [scanItems, existingProducts.isPending, existingProducts.data])
 
   function updateItem(index: number, next: EditableFridgeItem) {
     setItems((current) => current.map((item, i) => (i === index ? next : item)))
@@ -153,13 +223,14 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
       return
     }
 
-    const result = await importProducts.mutateAsync(parsed)
+    const result = await importProducts.mutateAsync({ items: parsed, draftId })
     if (!result.ok) {
       setSubmitError(result.error.type === 'validation_failed' ? 'Certains champs sont invalides. Vérifie les produits.' : result.error.message)
       return
     }
 
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: SCAN_DRAFTS_KEY })
     setImported(result.value.products.length)
   }
 
@@ -171,7 +242,7 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
       icon={(color) => <CameraIcon size={19} color={color} />}
       title="Vérifier le frigo"
       subtitle={
-        scan.done && items.length > 0 && imported === null
+        draft && items.length > 0 && imported === null
           ? `${items.length} produit${items.length > 1 ? 's' : ''} détecté${items.length > 1 ? 's' : ''} — touche-en un pour le corriger`
           : undefined
       }
@@ -199,11 +270,10 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
     )
   }
 
-  if (scan.blockedByProvider) {
-    const providerError = scan.states.find(
-      (s) => s.status === 'failed' && (s.error.type === 'provider_not_configured' || s.error.type === 'ai_quota_exceeded'),
-    )
-    const quotaExceeded = providerError?.status === 'failed' && providerError.error.type === 'ai_quota_exceeded'
+  const failure = job?.status === 'failed' ? job.error : enqueueError
+  const failureText = job?.status === 'failed' ? failureMessage(job) : (failure?.message ?? '')
+  if (failure && (failure.type === 'provider_not_configured' || failure.type === 'ai_quota_exceeded')) {
+    const quotaExceeded = failure.type === 'ai_quota_exceeded'
     return (
       <AppShell nav={nav} header={header}>
         {quotaExceeded && canSubscribe ? (
@@ -215,11 +285,11 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
             <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
               <TriangleAlertIcon size={30} color={palette.expiredText} />
             </YStack>
-            <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
+            <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink}>
               {quotaExceeded ? 'Quota atteint' : 'Extraction indisponible'}
             </Text>
             <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
-              {providerError && providerError.status === 'failed' ? providerError.error.message : ''}
+              {failureText}
             </Text>
           </YStack>
         )}
@@ -227,74 +297,147 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
     )
   }
 
-  if (!scan.done) {
-    const settled = scan.states.filter((s) => s.status === 'done' || s.status === 'failed').length
+  if (failure && !draft) {
     return (
       <AppShell nav={nav} header={header}>
-        <YStack alignItems="center" gap="$4" marginTop="$8">
-          {/* Every photo, each carrying its own state: the wait is per photo,
-              so is the progress — a failed shot shows up here, not only
-              once the whole batch has landed. */}
-          <XStack testID="fridge-scan-reading-photos" gap="$2.5" flexWrap="wrap" justifyContent="center">
-            {imageUris.map((uri, index) => (
-              <PhotoProgress key={uri} uri={uri} state={scan.states[index]?.status ?? 'pending'} palette={palette} />
-            ))}
-          </XStack>
-          <PulseDots palette={palette} size={12} testID="fridge-scan-reading-dots" label="Lecture des photos en cours" />
-          <YStack alignItems="center" gap="$1">
-            <Text fontSize={17} fontWeight="800" color={palette.ink}>
-              L’IA fait l’inventaire…
+        <YStack marginTop="$6" alignItems="center">
+          <ResultCard palette={palette} tone="expired" icon={<TriangleAlertIcon size={28} color={palette.expiredText} />}>
+            <Text testID="fridge-scan-failed-title" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
+              Analyse impossible
             </Text>
-            <Text testID="fridge-scan-progress" fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-              {settled} / {scan.states.length} photos analysées
+            <Text fontSize={14} fontWeight="500" lineHeight={20} color={palette.inkSecondary} textAlign="center">
+              {failureText}
             </Text>
-          </YStack>
+            <PillButton
+              testID="fridge-scan-retry-all"
+              label="Réessayer"
+              centered
+              palette={palette}
+              icon={(color) => <RefreshIcon size={16} color={color} />}
+              onPress={() => (job ? retryJob.mutate(job.id) : runScan())}
+            />
+          </ResultCard>
         </YStack>
       </AppShell>
     )
   }
 
-  const failedCount = scan.states.filter((s) => s.status === 'failed').length
+  if (!draft) {
+    const total = job?.progress.total ?? photos.length
+    const settled = job ? job.progress.done + job.progress.failed.length : 0
+    return (
+      <AppShell nav={nav} header={header}>
+        <YStack alignItems="center" gap="$4" marginTop="$6">
+          <YStack
+            width="100%"
+            maxWidth={420}
+            backgroundColor={palette.creamPill}
+            borderRadius={26}
+            padding="$5"
+            gap="$5"
+            alignItems="center"
+            style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 3 }}
+          >
+            {/* Every photo, each carrying its own state: the wait is per photo,
+                so is the progress — a failed shot shows up here, not only
+                once the whole batch has landed. */}
+            <XStack testID="fridge-scan-reading-photos" gap="$3" flexWrap="wrap" justifyContent="center">
+              {photos.map((uri, index) => (
+                <PhotoProgress key={uri} uri={uri} state={states[index] ?? 'pending'} palette={palette} size={photos.length > 3 ? 88 : 104} tall position={`${index + 1} sur ${photos.length}`} />
+              ))}
+            </XStack>
+            <YStack alignItems="center" gap="$1">
+              <Text fontSize={22} fontWeight="800" color={palette.ink} textAlign="center">
+                L’IA fait l’inventaire…
+              </Text>
+              <Text testID="fridge-scan-progress" fontSize={14} fontWeight="600" color={palette.inkSecondary} textAlign="center">
+                {job?.status === 'queued' || !job ? 'En attente…' : `${settled} / ${total} photos analysées`}
+              </Text>
+            </YStack>
+            <YStack width="100%">
+              <ProgressBar
+                palette={palette}
+                value={job && total > 0 ? settled : undefined}
+                total={job && total > 0 ? total : undefined}
+                testID="fridge-scan-reading-bar"
+                label="Lecture des photos en cours"
+              />
+            </YStack>
+          </YStack>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={300}>
+            Tu peux quitter cet écran : retrouve l’analyse dans Tâches quand elle est prête.
+          </Text>
+          <PillButton
+            testID="fridge-scan-review-later"
+            label="Je reviens plus tard"
+            tone="quiet"
+            centered
+            palette={palette}
+            icon={(color) => <ClockIcon size={16} color={color} />}
+            onPress={() => router.replace('/(tabs)')}
+          />
+        </YStack>
+      </AppShell>
+    )
+  }
 
+  const failedCount = job?.progress.failed.length ?? 0
+
+  const allIncluded = items.length > 0 && includedCount === items.length
   const listHeader = (
-    <YStack gap="$3" marginBottom="$2">
+    <YStack gap="$2">
       {failedCount > 0 ? (
         <YStack backgroundColor={palette.expiredBg} borderRadius={14} padding="$3" gap="$2">
           <Text fontSize={13} fontWeight="700" color={palette.expiredText}>
-            {failedCount} photo{failedCount > 1 ? 's' : ''} sur {scan.states.length} n’a pas pu être analysée{failedCount > 1 ? 's' : ''}.
+            {failedCount} photo{failedCount > 1 ? 's' : ''} sur {job?.progress.total ?? photos.length} n’a pas pu être analysée{failedCount > 1 ? 's' : ''}.
           </Text>
-          <XStack gap="$2" flexWrap="wrap">
-            {scan.states.map((s, index) =>
-              s.status === 'failed' ? (
-                <Pressable
-                  key={index}
-                  testID={`fridge-scan-retry-${index}`}
-                  onPress={() => scan.retry(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Réessayer la photo ${index + 1}`}
-                  style={pointerCursor}
-                >
-                  <XStack alignItems="center" minHeight={36} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.cream}>
-                    <Text fontSize={12} fontWeight="700" color={palette.creamText}>
-                      Réessayer la photo {index + 1}
-                    </Text>
-                  </XStack>
-                </Pressable>
-              ) : null,
-            )}
-          </XStack>
+          <Pressable
+            testID="fridge-scan-retry-failed"
+            onPress={() => job && retryJob.mutate(job.id)}
+            accessibilityRole="button"
+            accessibilityLabel="Réessayer les photos manquantes"
+            style={pointerCursor}
+          >
+            <XStack alignItems="center" alignSelf="flex-start" minHeight={36} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.cream}>
+              <Text fontSize={12} fontWeight="700" color={palette.creamText}>
+                Réessayer {failedCount > 1 ? 'les photos manquantes' : 'la photo manquante'}
+              </Text>
+            </XStack>
+          </Pressable>
         </YStack>
       ) : null}
       <XStack gap="$2.5" flexWrap="wrap">
-        {imageUris.map((uri, index) => (
-          <PhotoProgress key={uri} uri={uri} state={scan.states[index]?.status ?? 'pending'} palette={palette} size={56} />
+        {photos.map((uri, index) => (
+          <PhotoProgress
+            key={uri}
+            uri={uri}
+            state={states[index] ?? 'pending'}
+            palette={palette}
+            size={56}
+            position={`${index + 1} sur ${photos.length}`}
+            onPress={() => setViewerUri(uri)}
+          />
         ))}
       </XStack>
+      {items.length > 1 ? (
+        <Pressable
+          testID="fridge-scan-toggle-all"
+          onPress={() => setItems((current) => current.map((item) => ({ ...item, included: !allIncluded })))}
+          accessibilityRole="button"
+          accessibilityLabel={allIncluded ? 'Tout décocher' : 'Tout cocher'}
+          style={[pointerCursor, { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' }]}
+        >
+          <Text fontSize={13} fontWeight="700" color={palette.ink}>
+            {allIncluded ? 'Tout décocher' : 'Tout cocher'}
+          </Text>
+        </Pressable>
+      ) : null}
     </YStack>
   )
 
-  const listFooter = (
-    <YStack gap="$2" marginTop="$3">
+  // Pinned under the list: with twenty products the way out must not be twenty rows away.
+  const actionBar = (
+    <YStack gap="$2" paddingTop="$3" paddingBottom="$4" paddingHorizontal={20} width="100%" maxWidth={isWide ? 640 : undefined} alignSelf="center" backgroundColor={palette.gradientBottom}>
       {submitError ? (
         <Text testID="fridge-scan-review-error" fontSize={13} fontWeight="600" color={palette.expiredText} accessibilityLiveRegion="polite">
           {submitError}
@@ -320,59 +463,143 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
           ListEmptyComponent={<EmptyItems palette={palette} />}
           renderItem={({ item, index }) => (
-            <YStack gap="$1">
-              {item.duplicate ? (
-                <XStack alignItems="center" gap="$2">
-                  <Pressable
-                    testID={`fridge-scan-item-${index}-include`}
-                    onPress={() => updateItem(index, { ...item, included: !item.included })}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: item.included }}
-                    accessibilityLabel={item.included ? 'Ne pas ajouter ce produit' : 'Ajouter quand même ce produit'}
-                    style={pointerCursor}
-                  >
-                    <XStack alignItems="center" gap="$1.5" minHeight={32} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.soonBg}>
-                      <TriangleAlertIcon size={13} color={palette.soonText} />
-                      <Text fontSize={12} fontWeight="700" color={palette.soonText}>
-                        {item.included ? 'Déjà au frigo · ajouté quand même' : 'Déjà au frigo · touche pour l’ajouter'}
-                      </Text>
-                    </XStack>
-                  </Pressable>
-                </XStack>
+            <YStack gap="$1" paddingBottom="$2">
+              {index === 0 || items[index - 1]?.location !== item.location ? (
+                <Text fontSize={13} fontWeight="800" color={palette.inkSecondary} marginTop={index === 0 ? 0 : '$3'} marginBottom="$1">
+                  {LOCATION_LABELS[item.location]}
+                </Text>
               ) : null}
-              <YStack opacity={item.included ? 1 : 0.5}>
-                <ReceiptItemRow
-                  index={index}
-                  item={item}
-                  expanded={expandedIndex === index}
-                  onToggle={() => setExpandedIndex((current) => (current === index ? null : index))}
-                  onChange={(next) => updateItem(index, { ...item, ...next })}
-                  onRemove={() => removeItem(index)}
-                  errors={itemErrors[index]}
-                  showPrice={false}
-                />
-              </YStack>
+              <FridgeScanItemRow
+                index={index}
+                item={item}
+                expanded={expandedIndex === index}
+                onToggleExpanded={() => setExpandedIndex((current) => (current === index ? null : index))}
+                onChange={(next) => updateItem(index, next)}
+                onRemove={() => removeItem(index)}
+                errors={itemErrors[index]}
+              />
             </YStack>
           )}
         />
+        {items.length > 0 ? actionBar : null}
       </KeyboardAvoidingView>
+      <Modal
+        visible={viewerUri !== null}
+        transparent
+        animationType="fade"
+        supportedOrientations={['portrait', 'landscape']}
+        onRequestClose={() => setViewerUri(null)}
+      >
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' }}>
+          {/* Native pinch-zoom on iOS (ScrollView zoom); Android shows the photo fitted. */}
+          <ScrollView
+            testID="fridge-scan-photo-viewer"
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+          >
+            {viewerUri ? <Image source={{ uri: viewerUri }} resizeMode="contain" style={{ width: '100%', height: '100%', minHeight: 320 }} /> : null}
+          </ScrollView>
+          <Pressable
+            testID="fridge-scan-photo-viewer-close"
+            onPress={() => setViewerUri(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer la photo"
+            style={[pointerCursor, { position: 'absolute', top: 12, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }]}
+          >
+            <XIcon size={20} color="#FFFFFF" />
+          </Pressable>
+        </SafeAreaView>
+      </Modal>
     </AppShell>
   )
 }
 
 function EmptyItems({ palette }: { palette: SoftPalette }) {
   return (
-    <YStack gap="$2" paddingVertical="$4">
-      <Text fontSize={14} fontWeight="700" color={palette.ink}>
-        Aucun produit détecté
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
-        L’IA n’a rien reconnu sur ces photos. Reprends-en en cadrant bien l’intérieur du frigo.
-      </Text>
+    <YStack alignItems="center" marginTop="$4">
+      <ResultCard palette={palette} tone="soon" icon={<CameraIcon size={28} color={palette.soonText} />}>
+        <Text fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
+          Aucun produit détecté
+        </Text>
+        <Text fontSize={14} fontWeight="500" lineHeight={20} color={palette.inkSecondary} textAlign="center">
+          L’IA n’a rien reconnu sur ces photos. Reprends-en en cadrant bien l’intérieur du frigo.
+        </Text>
+        <PillButton
+          testID="fridge-scan-retake"
+          label="Reprendre des photos"
+          centered
+          palette={palette}
+          icon={(color) => <CameraIcon size={16} color={color} />}
+          onPress={() => router.replace('/fridge-scan/scan')}
+        />
+      </ResultCard>
     </YStack>
+  )
+}
+
+/** The waiting card's sibling for the moments the scan stops: same surface, an icon and a way forward. */
+function ResultCard({
+  palette,
+  tone,
+  icon,
+  children,
+}: {
+  palette: SoftPalette
+  tone: 'expired' | 'soon'
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <YStack
+      width="100%"
+      maxWidth={420}
+      backgroundColor={palette.creamPill}
+      borderRadius={26}
+      padding="$5"
+      gap="$3"
+      alignItems="center"
+      style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 3 }}
+    >
+      <YStack width={56} height={56} borderRadius={20} backgroundColor={tone === 'expired' ? palette.expiredBg : palette.soonBg} alignItems="center" justifyContent="center">
+        {icon}
+      </YStack>
+      {children}
+    </YStack>
+  )
+}
+
+/** The scan line that sweeps a photo while the AI reads it — the one moving thing on the waiting screen. */
+function ScanSweep({ height, color }: { height: number; color: string }) {
+  const reduceMotion = useReduceMotion()
+  const [sweep] = useState(() => new Animated.Value(0))
+  useEffect(() => {
+    if (reduceMotion) return
+    const loop = Animated.loop(
+      Animated.timing(sweep, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [reduceMotion, sweep])
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        height: 3,
+        backgroundColor: color,
+        opacity: reduceMotion ? 0 : 1,
+        transform: [{ translateY: sweep.interpolate({ inputRange: [0, 1], outputRange: [0, height - 3] }) }],
+      }}
+    />
   )
 }
 
@@ -381,35 +608,61 @@ function PhotoProgress({
   state,
   palette,
   size = 72,
+  tall = false,
+  position,
+  onPress,
 }: {
   uri: string
   state: 'pending' | 'running' | 'done' | 'failed'
   palette: SoftPalette
   size?: number
+  /** Portrait tile (4:5) for the waiting screen; square for the compact strip above the list. */
+  tall?: boolean
+  /** "2 sur 4" — announced with the state, so a tile is never a bare picture. */
+  position: string
+  /** Opens the photo full-size. */
+  onPress?: () => void
 }) {
+  const height = tall ? Math.round(size * 1.25) : size
+  const stateLabel = { pending: 'en attente', running: 'en cours de lecture', done: 'analysée', failed: 'non analysée' }[state]
   return (
-    <YStack opacity={state === 'pending' ? 0.45 : 1}>
-      <Image
-        source={{ uri }}
-        resizeMode="cover"
-        style={{ width: size, height: size, borderRadius: 14, backgroundColor: palette.cream }}
-      />
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress}
+      accessible
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`Photo ${position}, ${stateLabel}`}
+      accessibilityHint={onPress ? 'Agrandir la photo' : undefined}
+      style={onPress ? pointerCursor : undefined}
+    >
+      <YStack
+        width={size}
+        height={height}
+        borderRadius={18}
+        overflow="hidden"
+        backgroundColor={palette.cream}
+        borderWidth={state === 'running' ? 2 : 0}
+        borderColor={palette.freshText}
+      >
+        <Image source={{ uri }} resizeMode="cover" style={{ width: '100%', height: '100%', opacity: state === 'pending' ? 0.45 : 1 }} />
+        {state === 'failed' ? <YStack position="absolute" top={0} left={0} right={0} bottom={0} backgroundColor={palette.expiredBg} opacity={0.55} /> : null}
+        {state === 'running' ? <ScanSweep height={height} color={palette.accentLime} /> : null}
+      </YStack>
       {state === 'done' || state === 'failed' ? (
         <YStack
           position="absolute"
-          top={-6}
+          bottom={-6}
           right={-6}
-          width={24}
-          height={24}
+          width={26}
+          height={26}
           borderRadius={999}
           backgroundColor={state === 'done' ? palette.freshBg : palette.expiredBg}
           alignItems="center"
           justifyContent="center"
-          accessibilityLabel={state === 'done' ? 'Photo analysée' : 'Photo non analysée'}
         >
-          {state === 'done' ? <CircleCheckIcon size={15} color={palette.freshText} /> : <CircleXIcon size={15} color={palette.expiredText} />}
+          {state === 'done' ? <CircleCheckIcon size={16} color={palette.freshText} /> : <CircleXIcon size={16} color={palette.expiredText} />}
         </YStack>
       ) : null}
-    </YStack>
+    </Pressable>
   )
 }

@@ -4,36 +4,33 @@ import Constants from 'expo-constants'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
-import { ActionSheet, type ActionSheetOption } from '../shared/action-sheet.js'
+import { ActionSheet } from '../shared/action-sheet.js'
 import { PillButton } from '../shared/pill-button.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { usePullToRefresh } from '../shared/pull-to-refresh.js'
-import { showToast } from '../../application/shared/toast.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import {
-  CircleCheckIcon,
-  HomeIcon,
+    HomeIcon,
   LogOutIcon,
-  RefreshIcon,
-  ServerIcon,
+    ServerIcon,
   SettingsIcon,
   SparklesIcon,
-  TriangleAlertIcon,
-  BadgeCheckIcon,
+    BadgeCheckIcon,
   WalletIcon,
 } from '../dashboard/dashboard-icons.js'
-import { resetWelcomeSeen } from '../welcome/use-welcome-seen.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
+import { NotificationsRow } from './notifications-row.js'
 import { NUDGE_RATIO } from './ai-access-cards.js'
 import { initials } from '../shared/member-avatars.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
+import { useConnector } from '../../application/shared/connector-context.js'
+import { disablePush } from '../../application/push/push-notifications.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useInstanceInfoQuery } from '../../application/instance/instance-info.query.js'
-import { clearServerUrl } from '../../application/shared/server-config.js'
 import type { AiProvider } from '../../domain/settings/ai-settings.js'
 
 const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 'OpenAI', ollama: 'Ollama' }
@@ -90,8 +87,8 @@ export function SettingsScreen() {
   const settings = useAiSettingsQuery()
   const instance = useInstanceInfoQuery()
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
-  const [debugMenuOpen, setDebugMenuOpen] = useState(false)
-  const [hint, showHint] = useHint()
+  const connector = useConnector()
+  const [hint] = useHint()
   const refresh = usePullToRefresh(
     () => session.refetch(),
     () => household.refetch(),
@@ -99,34 +96,11 @@ export function SettingsScreen() {
     () => instance.refetch(),
   )
 
-  // Clears every device-local first-run flag and previews the result
-  // immediately rather than asking whoever is testing it to force-quit and
-  // relaunch — the whole point of a dev tool is not costing more than the
-  // thing it's checking. Also signs out: `/welcome` finishes onto
-  // `/(auth)/sign-up`, and `(auth)/_layout.tsx` redirects straight to the
-  // tabs whenever a session exists — previewing the onboarding flow while
-  // still signed in bounced off that gate before this reached `/welcome` at
-  // all. Best-effort: a sign-out failure here shouldn't block the one thing
-  // this button is for.
-  //
-  // Clears the chosen server too, not just the welcome flag — a reset that
-  // still landed on `/server-choice` pre-picked with the last real server
-  // wasn't previewing first launch, it was previewing "second launch".
-  async function handleResetAppState() {
-    setDebugMenuOpen(false)
-    try {
-      await signOut.mutateAsync(undefined)
-      await session.refetch()
-    } catch {
-      // Preview it anyway — see comment above.
-    }
-    await resetWelcomeSeen()
-    await clearServerUrl()
-    router.replace('/welcome')
-  }
-
   async function handleSignOut() {
     setConfirmingSignOut(false)
+    // Before the session goes: the call is authenticated, and this device must
+    // stop receiving the previous account's pushes.
+    await disablePush(connector, { keepPreference: true })
     try {
       await signOut.mutateAsync(undefined)
     } catch {
@@ -149,73 +123,6 @@ export function SettingsScreen() {
   ]
     .filter(Boolean)
     .join('. ')
-
-  // Every row closes the sheet on its own press — a debug action fires once
-  // and gets out of the way, the same recipe `ActionSheet`'s real callers use.
-  const debugOptions: ActionSheetOption[] = [
-    {
-      testID: 'debug-toast-network-error',
-      label: 'Toast réseau',
-      icon: (color) => <TriangleAlertIcon size={16} color={color} />,
-      tint: palette.chipOrange,
-      onPress: () => {
-        setDebugMenuOpen(false)
-        showToast('Impossible de contacter le serveur. (debug)')
-      },
-    },
-    {
-      testID: 'debug-toast-info',
-      label: 'Toast info',
-      icon: (color) => <CircleCheckIcon size={16} color={color} />,
-      tint: palette.chipTeal,
-      onPress: () => {
-        setDebugMenuOpen(false)
-        showToast('Reconnecté au serveur. (debug)', 'info')
-      },
-    },
-    {
-      testID: 'debug-hint-success',
-      label: 'Hint succès',
-      icon: (color) => <CircleCheckIcon size={16} color={color} />,
-      tint: palette.fresh,
-      onPress: () => {
-        setDebugMenuOpen(false)
-        showHint('Ajouté au frigo. (debug)', 'success')
-      },
-    },
-    {
-      testID: 'debug-hint-error',
-      label: 'Hint erreur',
-      icon: (color) => <TriangleAlertIcon size={16} color={color} />,
-      tint: palette.expired,
-      onPress: () => {
-        setDebugMenuOpen(false)
-        showHint('Une erreur est survenue. (debug)', 'error')
-      },
-    },
-    {
-      testID: 'debug-hint-neutral',
-      label: 'Hint neutre',
-      icon: (color) => <SparklesIcon size={16} color={color} />,
-      tint: palette.chipViolet,
-      onPress: () => {
-        setDebugMenuOpen(false)
-        showHint('Bientôt disponible. (debug)')
-      },
-    },
-    {
-      // Not `destructive`: it touches no household data, only local device
-      // flags — the red treatment is reserved for a row that can hurt the
-      // foyer's shared state, which this can't.
-      testID: 'debug-reset-app-state',
-      label: 'Réinitialiser l’état de l’app',
-      icon: (color) => <RefreshIcon size={16} color={color} />,
-      tint: palette.navCardViolet,
-      onPress: () => {
-        void handleResetAppState()
-      },
-    },
-  ]
 
   // Never state a fact about the plan before the plan has loaded.
   const plan = settings.data?.access.plan
@@ -264,6 +171,7 @@ export function SettingsScreen() {
           palette={palette}
           onPress={() => router.push('/account')}
         />
+        <NotificationsRow palette={palette} />
         <SectionLabel palette={palette} marginTop="$2">Ton foyer</SectionLabel>
         <IdentityCard
           testID="settings-household"
@@ -358,9 +266,7 @@ export function SettingsScreen() {
         />
       </YStack>
 
-      {/* Dev-only: one menu instead of a growing row of pills — the row was
-          already wrapping to two lines at five buttons, and "Réinitialiser
-          l'onboarding" made it six. Never bundled into a release build. */}
+      {/* Dev-only door to `/debug` (also reachable by triple-tapping the logo on the auth screens). Never bundled into a release build. */}
       {__DEV__ ? (
         <YStack marginTop="$8" gap="$2">
           <Text fontSize={13} fontWeight="800" color={palette.ink}>
@@ -368,19 +274,12 @@ export function SettingsScreen() {
           </Text>
           <PillButton
             testID="debug-menu-open"
-            label="Outils de debug"
+            label="Ouvrir le menu debug"
             tone="quiet"
             size="dense"
             palette={palette}
             icon={(color) => <SettingsIcon size={14} color={color} />}
-            onPress={() => setDebugMenuOpen(true)}
-          />
-          <ActionSheet
-            visible={debugMenuOpen}
-            onClose={() => setDebugMenuOpen(false)}
-            title="Outils de debug"
-            description="Jamais en build de production."
-            options={debugOptions}
+            onPress={() => router.push('/debug')}
           />
         </YStack>
       ) : null}

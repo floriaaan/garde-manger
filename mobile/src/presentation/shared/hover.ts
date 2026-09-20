@@ -79,6 +79,25 @@ export function useReduceMotion(): boolean {
   return reduced
 }
 
+/** Tracks VoiceOver / TalkBack. Gesture-only affordances need a visible twin while it is on. */
+export function useScreenReader(): boolean {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    let mounted = true
+    AccessibilityInfo.isScreenReaderEnabled?.()
+      .then((value) => {
+        if (mounted) setEnabled(value)
+      })
+      .catch(() => {})
+    const subscription = AccessibilityInfo.addEventListener('screenReaderChanged', setEnabled)
+    return () => {
+      mounted = false
+      subscription.remove()
+    }
+  }, [])
+  return enabled
+}
+
 /**
  * Default drift range for `useBlobDrift`, exported so a caller sizing the
  * oversized layer that motion happens inside (see `BlobBackground`'s

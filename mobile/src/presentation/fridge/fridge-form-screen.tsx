@@ -18,64 +18,23 @@ import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { AppShell } from '../shared/app-shell.js'
 import { BackButton } from '../shared/back-button.js'
 import { FormCard } from '../shared/form-card.js'
-import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import {
-  ArchiveIcon,
-  CalendarIcon,
-  PackageIcon,
-  PencilIcon,
-  RefrigeratorIcon,
-  ScaleIcon,
-  ScanLineIcon,
-  SnowflakeIcon,
-  XIcon,
-} from '../dashboard/dashboard-icons.js'
-import { daysUntilExpiry, expiryLabel } from '../dashboard/product-status.js'
-import { FormField } from './form-field.js'
+import { PackageIcon, ScanLineIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ProductFields } from './product-fields.js'
 import { useProductQuery } from '../../application/fridge/product.query.js'
 import { useProductLookupQuery } from '../../application/fridge/product-lookup.query.js'
 import { useCreateProductMutation } from '../../application/fridge/create-product.mutation.js'
 import { useUpdateProductMutation } from '../../application/fridge/update-product.mutation.js'
 import { Quantity } from '../../domain/fridge/quantity.js'
-import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 
 type FridgeFormMode = { mode: 'create' } | { mode: 'edit'; productId: string }
 
-const LOCATION_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
-
-/** Same glyph per compartment as the fridge screen's filters and shelf headers. */
-const LOCATION_ICONS: Record<LocationValue, (color: string) => React.ReactNode> = {
-  fridge: (color) => <RefrigeratorIcon size={CHIP_ICON_SIZE} color={color} />,
-  freezer: (color) => <SnowflakeIcon size={CHIP_ICON_SIZE} color={color} />,
-  pantry: (color) => <ArchiveIcon size={CHIP_ICON_SIZE} color={color} />,
-}
-
-/** The units a fridge actually holds. Free text stays available beside them. */
-const UNIT_SUGGESTIONS = ['g', 'kg', 'mL', 'L', 'pièce(s)']
-
 /** Category the backend gets when the user leaves the field empty — it requires one. */
 const DEFAULT_CATEGORY = 'Autre'
-
-const DATE_SHORTCUTS: { label: string; days: number | null }[] = [
-  { label: '3 jours', days: 3 },
-  { label: '1 semaine', days: 7 },
-  { label: '1 mois', days: 30 },
-  { label: 'Sans date', days: null },
-]
-
-/** Local calendar date, `YYYY-MM-DD` — the format the field and the backend both read. */
-function isoDay(offsetDays: number): string {
-  const date = new Date()
-  date.setDate(date.getDate() + offsetDays)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
 
 export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => void; prefillBarcode?: string }) {
   const palette = useSoftPalette()
@@ -165,15 +124,6 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
   const createProduct = useCreateProductMutation()
   const updateProduct = useUpdateProductMutation()
   const pending = createProduct.isPending || updateProduct.isPending
-
-  const expiryDays = expiresAt.trim().length > 0 ? daysUntilExpiry({ expiresAt: expiresAt.trim() }) : null
-
-  function edit<T>(setter: (value: T) => void) {
-    return (value: T) => {
-      setTouched(true)
-      setter(value)
-    }
-  }
 
   function handleBack() {
     if (touched) {
@@ -280,104 +230,20 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
 
           <YStack marginTop="$4">
             <FormCard palette={palette} gap="$3">
-              <FormField
-                testID="fridge-form-name"
-                label="Nom"
-                value={name}
-                onChangeText={edit(setName)}
+              <ProductFields
                 palette={palette}
-                error={fieldErrors.name}
-                icon={(color) => <PencilIcon size={13} color={color} />}
+                testIDPrefix="fridge-form"
+                values={{ name, amount, unit, expiresAt, location }}
+                errors={fieldErrors}
+                onChange={(patch) => {
+                  setTouched(true)
+                  if (patch.name !== undefined) setName(patch.name)
+                  if (patch.amount !== undefined) setAmount(patch.amount)
+                  if (patch.unit !== undefined) setUnit(patch.unit)
+                  if (patch.expiresAt !== undefined) setExpiresAt(patch.expiresAt)
+                  if (patch.location !== undefined) setLocation(patch.location)
+                }}
               />
-
-              <XStack gap="$2">
-                <YStack flex={1}>
-                  <FormField
-                    testID="fridge-form-amount"
-                    label="Quantité"
-                    value={amount}
-                    onChangeText={edit(setAmount)}
-                    palette={palette}
-                    keyboardType="number-pad"
-                    hint="Nombre entier"
-                    error={fieldErrors.amount}
-                    icon={(color) => <ScaleIcon size={13} color={color} />}
-                  />
-                </YStack>
-                <YStack flex={1}>
-                  <FormField
-                    testID="fridge-form-unit"
-                    label="Unité"
-                    value={unit}
-                    onChangeText={edit(setUnit)}
-                    palette={palette}
-                    autoCapitalize="none"
-                  />
-                </YStack>
-              </XStack>
-              <XStack gap="$2.5" flexWrap="wrap">
-                {UNIT_SUGGESTIONS.map((suggestion) => (
-                  <Chip
-                    key={suggestion}
-                    testID={`fridge-form-unit-${suggestion}`}
-                    label={suggestion}
-                    selected={unit === suggestion}
-                    onPress={() => edit(setUnit)(suggestion)}
-                    palette={palette}
-                    size="dense"
-                  />
-                ))}
-              </XStack>
-
-              <YStack gap="$2">
-                <FormField
-                  testID="fridge-form-expires-at"
-                  label="Date de péremption"
-                  value={expiresAt}
-                  onChangeText={edit(setExpiresAt)}
-                  palette={palette}
-                  keyboardType="numbers-and-punctuation"
-                  placeholder="AAAA-MM-JJ"
-                  hint={expiryDays !== null ? expiryLabel(expiryDays) : undefined}
-                  error={fieldErrors.expiresAt}
-                  icon={(color) => <CalendarIcon size={13} color={color} />}
-                />
-                <XStack gap="$2.5" flexWrap="wrap">
-                  {DATE_SHORTCUTS.map((shortcut) => (
-                    <Chip
-                      key={shortcut.label}
-                      testID={`fridge-form-expires-in-${shortcut.days ?? 'none'}`}
-                      label={shortcut.days === null ? shortcut.label : `+ ${shortcut.label}`}
-                      selected={shortcut.days === null ? expiresAt === '' : expiresAt === isoDay(shortcut.days)}
-                      onPress={() => edit(setExpiresAt)(shortcut.days === null ? '' : isoDay(shortcut.days))}
-                      palette={palette}
-                      size="dense"
-                    />
-                  ))}
-                </XStack>
-              </YStack>
-
-              <YStack gap="$1">
-                <XStack alignItems="center" gap="$1.5">
-                  <ArchiveIcon size={13} color={palette.inkSecondary} />
-                  <Text fontSize={12} fontWeight="700" color={palette.ink}>
-                    Emplacement
-                  </Text>
-                </XStack>
-                <XStack gap="$3" flexWrap="wrap">
-                  {LOCATIONS.map((loc) => (
-                    <Chip
-                      key={loc}
-                      testID={`fridge-form-location-${loc}`}
-                      label={LOCATION_LABELS[loc]}
-                      selected={location === loc}
-                      onPress={() => edit(setLocation)(loc)}
-                      palette={palette}
-                      icon={LOCATION_ICONS[loc]}
-                    />
-                  ))}
-                </XStack>
-              </YStack>
 
               {error ? (
                 <Text fontSize={13} fontWeight="600" color={palette.expiredText} accessibilityLiveRegion="polite">

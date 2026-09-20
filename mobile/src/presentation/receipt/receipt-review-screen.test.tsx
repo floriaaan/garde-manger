@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { router } from 'expo-router'
@@ -6,6 +6,9 @@ import { ConnectorProvider } from '../../application/shared/connector-context.js
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { ReceiptReviewScreen } from './receipt-review-screen.js'
+
+// The job is picked up by the 2s poll, longer than `waitFor`'s default.
+configure({ asyncUtilTimeout: 5000 })
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
@@ -18,7 +21,7 @@ jest.mock('expo-router', () => ({
 // harness once already).
 function renderWithProviders(children: ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const connector = new FakeFridgeConnector()
+  const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   return render(
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
@@ -114,7 +117,7 @@ test('bulk location puts every item in the chosen place', async () => {
 test('shows a retry hint when the scan fails', async () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const connector = new FakeFridgeConnector()
-  connector.scanReceipt = jest
+  connector.enqueueReceiptScan = jest
     .fn()
     .mockResolvedValue({ ok: false, error: { type: 'extraction_failed', message: "L'extraction du ticket a échoué — réessayez avec une photo plus nette." } })
 
@@ -138,7 +141,7 @@ test('shows a retry hint when the scan fails', async () => {
     await fireEvent.press(screen.getByTestId('receipt-review-retry'))
   })
 
-  expect(connector.scanReceipt).toHaveBeenCalledTimes(2)
+  expect(connector.enqueueReceiptScan).toHaveBeenCalledTimes(2)
   expect(router.replace).not.toHaveBeenCalled()
 })
 
@@ -147,7 +150,7 @@ test('hides the retry button when no retry can fix the failure', async () => {
   const connector = new FakeFridgeConnector()
   // A missing AI-provider key is an admin fix, not a "try again" — retrying
   // would just fail the same way a second time.
-  connector.scanReceipt = jest
+  connector.enqueueReceiptScan = jest
     .fn()
     .mockResolvedValue({ ok: false, error: { type: 'provider_not_configured', message: 'Ce provider IA ne dispose pas des identifiants nécessaires.' } })
 

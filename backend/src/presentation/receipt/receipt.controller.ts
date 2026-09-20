@@ -1,77 +1,17 @@
-import { readFile } from 'node:fs/promises'
 import type { HttpContext } from '@adonisjs/core/http'
-import logger from '@adonisjs/core/services/logger'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
 import { traceAction } from '#presentation/shared/trace-action'
 import { importReceiptValidator } from './receipt.validator.js'
-import { toReceiptDraftDto, toReceiptDto } from './receipt.dto.js'
+import { toReceiptDto } from './receipt.dto.js'
 import { toProductDto } from '#presentation/fridge/product.dto'
-import { ScanReceipt } from '#application/receipt/scan-receipt.use-case'
+import { GetScanDraft } from '#application/job/get-scan-draft.use-case'
+import { FinalizeScanDraft } from '#application/job/finalize-scan-draft.use-case'
 import { ImportReceipt } from '#application/receipt/import-receipt.use-case'
 import { GetReceipt } from '#application/receipt/get-receipt.use-case'
 import { ListReceipts } from '#application/receipt/list-receipts.use-case'
 
 export default class ReceiptController {
-  async scan(ctx: HttpContext) {
-    requireAuthenticatedUser(ctx)
-    return traceAction(
-      ctx,
-      'receipt',
-      ScanReceipt,
-      async () => {
-        const image = ctx.request.file('image', {
-          extnames: ['jpg', 'jpeg', 'png', 'webp'],
-          size: '10mb',
-        })
-        if (!image || !image.tmpPath) {
-          // The most common real cause of "extraction impossible" with nothing
-          // in the AI-adapter logs: the multipart upload itself never produced
-          // a usable file (wrong field name, no file attached, tmp write
-          // failed) — this used to fall straight through to a generic
-          // extraction_failed with no trace anywhere.
-          logger.warn(
-            { field: 'image', hasFile: Boolean(image), clientName: image?.clientName },
-            'receipt scan: no usable file in upload',
-          )
-          const { status, body } = serializeError('extraction_failed')
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-        if (!image.isValid) {
-          logger.warn(
-            {
-              clientName: image.clientName,
-              size: image.size,
-              extname: image.extname,
-              errors: image.errors,
-            },
-            'receipt scan: uploaded file failed validation',
-          )
-          const { status, body } = serializeError('extraction_failed')
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-
-        const buffer = await readFile(image.tmpPath)
-        const resolveExtraction = await ctx.containerResolver.make(
-          'settings.resolveReceiptExtractionPort',
-        )
-        const extraction = await resolveExtraction(ctx.household.id)
-
-        const result = await new ScanReceipt(extraction).execute({ image: buffer })
-        if (!result.ok) {
-          const { status, body } = serializeError(result.error)
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-        ctx.response.json({ draft: toReceiptDraftDto(result.value) })
-        return { failed: false }
-      },
-      { isError: (r) => r.failed, action: 'receipt.scan' },
-    )
-  }
-
   async importReceipt(ctx: HttpContext) {
     requireAuthenticatedUser(ctx)
     return traceAction(
@@ -80,6 +20,20 @@ export default class ReceiptController {
       ImportReceipt,
       async () => {
         const payload = await ctx.request.validateUsing(importReceiptValidator)
+        const scanDrafts = await ctx.containerResolver.make('job.scanDrafts')
+        // A draft-backed import carries the scanned photo over to the receipt; the
+        // key comes from the server-side draft, never from client input.
+        const draft = payload.draftId
+          ? await new GetScanDraft(scanDrafts).execute({
+              householdId: ctx.household.id,
+              draftId: payload.draftId,
+            })
+          : null
+        if (payload.draftId && (!draft || draft.kind !== 'receipt')) {
+          const { status, body } = serializeError('draft_not_found')
+          ctx.response.status(status).json(body)
+          return { ok: false as const, error: 'draft_not_found' as const }
+        }
         const receipts = await ctx.containerResolver.make('receipt.receipts')
         const products = await ctx.containerResolver.make('fridge.products')
         const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
@@ -90,9 +44,9 @@ export default class ReceiptController {
           storeName: payload.storeName,
           scannedAt: payload.scannedAt,
           totalAmount: payload.totalAmount,
-          // imageKey is always server-generated (no phase-2 write path exists yet); never
-          // sourced from client input to avoid unsanitized data reaching filesystem paths.
-          imageKey: null,
+          // Server-generated only (the draft's stored photo); never sourced from client
+          // input to avoid unsanitized data reaching filesystem paths.
+          imageKey: draft?.imageKeys[0] ?? null,
           items: payload.items.map((item) => ({
             name: item.name,
             quantity: item.quantity,
@@ -107,6 +61,11 @@ export default class ReceiptController {
           const { status, body } = serializeError(result.error)
           ctx.response.status(status).json(body)
           return result
+        }
+
+        if (draft) {
+          const storage = await ctx.containerResolver.make('shared.storage')
+          await new FinalizeScanDraft(scanDrafts, storage).execute(draft)
         }
 
         ctx.response.status(201).json({

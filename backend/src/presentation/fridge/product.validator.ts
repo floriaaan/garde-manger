@@ -58,6 +58,7 @@ export const productOutcomeStatsValidator = vine.compile(
 
 export const importProductsValidator = vine.compile(
   vine.object({
+    draftId: vine.string().trim().minLength(1).optional(),
     items: vine
       .array(
         vine.object({

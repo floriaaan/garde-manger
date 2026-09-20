@@ -28,6 +28,7 @@ function renderDashboard(overrides: Partial<React.ComponentProps<typeof Househol
             onAddProduct={noop}
             onOpenStats={noop}
             onOpenSettings={noop}
+            onOpenTasks={noop}
             onOpenReceipts={noop}
             onOpenHousehold={noop}
             {...overrides}
@@ -103,6 +104,7 @@ test('an empty fridge offers the two ways to fill it instead of a dead sentence'
             onAddProduct={onAddProduct}
             onOpenStats={noop}
             onOpenSettings={noop}
+            onOpenTasks={noop}
             onOpenReceipts={noop}
             onOpenHousehold={noop}
           />
@@ -189,6 +191,7 @@ test('a stat card that shows a dash does not announce a number', async () => {
             onAddProduct={noop}
             onOpenStats={noop}
             onOpenSettings={noop}
+            onOpenTasks={noop}
             onOpenReceipts={noop}
             onOpenHousehold={noop}
           />

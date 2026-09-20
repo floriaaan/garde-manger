@@ -79,6 +79,7 @@ import { Animated, Image, type ImageSourcePropType, Pressable, type ScrollView }
 import {
   ChefHatIcon,
   ChevronRightIcon,
+  ClockIcon,
   CircleXIcon,
   LayoutGridIcon,
   PackageIcon,
@@ -92,6 +93,9 @@ import {
 } from './dashboard-icons.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress, useReduceMotion } from '../shared/hover.js'
+import { useJobsQuery } from '../../application/job/jobs.query.js'
+import { useReviewableDraftsQuery } from '../../application/job/scan-drafts.query.js'
+import { isJobActive } from '../../domain/job/job.js'
 import { AppShell } from '../shared/app-shell.js'
 import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { goToScan } from '../shared/scan-sheet.js'
@@ -100,6 +104,7 @@ import { StatCard } from './stat-card.js'
 import { HeroWarmGlow } from './hero-warm-glow.js'
 import { NavCard } from './nav-card.js'
 import { receiptsSummary } from './receipts-row.js'
+import { ScanDraftBanner } from './scan-draft-banner.js'
 import { MemberAvatars } from '../shared/member-avatars.js'
 import { PillButton } from '../shared/pill-button.js'
 import { useSoftPalette } from './soft-palette.js'
@@ -148,6 +153,7 @@ export interface HouseholdDashboardProps {
   onAddProduct: () => void
   onOpenStats: () => void
   onOpenSettings: () => void
+  onOpenTasks: () => void
   onOpenReceipts: () => void
   onOpenHousehold: () => void
 }
@@ -161,6 +167,7 @@ export function HouseholdDashboard({
   onAddProduct,
   onOpenStats,
   onOpenSettings,
+  onOpenTasks,
   onOpenReceipts,
   onOpenHousehold,
 }: HouseholdDashboardProps) {
@@ -246,6 +253,10 @@ export function HouseholdDashboard({
   )
   const seeAllHover = useHoverPress()
   const settingsHover = useHoverPress()
+const tasksHover = useHoverPress()
+const activeJobs = (useJobsQuery().data ?? []).filter(isJobActive).length
+// Running jobs plus drafts waiting for review: everything that asks for the member's attention.
+const pendingTasks = activeJobs + useReviewableDraftsQuery().length
 
   /**
    * The first-run tour runs over this screen rather than in front of it, so it
@@ -365,6 +376,49 @@ export function HouseholdDashboard({
               {/* Was an 11px grey text link — the app's only route to Réglages,
                   and invisible next to a 40px illustration. Now a real 44pt
                   icon button (the Sidebar carries its own entry on desktop). */}
+              <Pressable
+                onPress={onOpenTasks}
+                testID="open-tasks"
+                onHoverIn={tasksHover.onHoverIn}
+                onHoverOut={tasksHover.onHoverOut}
+                onPressIn={tasksHover.onPressIn}
+                onPressOut={tasksHover.onPressOut}
+                accessibilityRole="button"
+                accessibilityLabel={pendingTasks > 0 ? `Tâches, ${pendingTasks} à suivre` : 'Tâches'}
+                style={pointerCursor}
+              >
+                <Animated.View style={{ transform: [{ scale: tasksHover.scale }] }}>
+                  <YStack
+                    width={44}
+                    height={44}
+                    borderRadius={999}
+                    backgroundColor={palette.cream}
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <ClockIcon size={19} color={palette.ink} />
+                    {pendingTasks > 0 ? (
+                      <YStack
+                        testID="open-tasks-badge"
+                        position="absolute"
+                        top={-4}
+                        right={-4}
+                        minWidth={18}
+                        height={18}
+                        paddingHorizontal={4}
+                        borderRadius={999}
+                        backgroundColor={palette.freshText}
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text fontSize={11} fontWeight="800" color="#FFFFFF">
+                          {pendingTasks}
+                        </Text>
+                      </YStack>
+                    ) : null}
+                  </YStack>
+                </Animated.View>
+              </Pressable>
               <Pressable
                 onPress={onOpenSettings}
                 testID="open-settings"
@@ -619,6 +673,9 @@ export function HouseholdDashboard({
                 Accès rapide
               </Text>
             </XStack>
+            <YStack marginTop="$3">
+              <ScanDraftBanner palette={palette} />
+            </YStack>
             <TourAnchor id="navcards">
             <YStack gap="$3" marginTop="$3">
               <XStack gap="$3">

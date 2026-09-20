@@ -5,7 +5,6 @@ const ReceiptController = () => import('./receipt.controller.js')
 
 router
   .group(() => {
-    router.post('/receipts/scan', [ReceiptController, 'scan'])
     router.post('/receipts/import', [ReceiptController, 'importReceipt'])
     router.get('/receipts', [ReceiptController, 'index'])
     router.get('/receipts/:id', [ReceiptController, 'show'])

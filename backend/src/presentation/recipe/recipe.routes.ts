@@ -4,14 +4,13 @@ import { middleware } from '#start/kernel'
 const RecipeController = () => import('./recipe.controller.js')
 
 /**
- * `generate`/`suggestions` registered ahead of `:id` — same route-ordering
+ * `suggestions` registered ahead of `:id` — same route-ordering
  * lesson as `product.routes.ts` (expiring-soon/lookup vs :id).
  */
 router
   .group(() => {
     router.get('/recipes', [RecipeController, 'index'])
     router.post('/recipes', [RecipeController, 'store'])
-    router.post('/recipes/generate', [RecipeController, 'generate'])
     router.get('/recipes/suggestions', [RecipeController, 'suggestions'])
     router.get('/recipes/:id', [RecipeController, 'show'])
     router.post('/recipes/:id/cooked', [RecipeController, 'cooked'])

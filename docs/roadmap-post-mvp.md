@@ -51,6 +51,9 @@ Plan d'implémentation : `docs/superpowers/plans/2026-09-13-product-outcome.md`.
 
 ## 2. Notifications de péremption
 
+> **Implémenté (V1 push serveur)** — cf. [ADR-0018](adr/0018-notifications-push-expo.md). Les
+> décisions ouvertes ci-dessous y sont tranchées ; il reste à valider sur un build EAS.
+
 **Pourquoi :** c'est la fonctionnalité qui fait revenir dans l'app au quotidien. Le
 dashboard montre ce qui expire, mais seulement si on l'ouvre. Aucune notification
 n'existe aujourd'hui (`expo-notifications` n'est pas installé).
@@ -109,6 +112,11 @@ couvre les courses, pas ce qui est déjà dans le frigo au premier lancement.
 (`FridgeScanExtractionPort`), extraction IA multimodale en un seul appel (ADR-0006),
 écran de relecture identique à l'import de ticket avant création des produits. Aucun
 changement de schéma requis sur `product`.
+
+**Livré (2026-09-20) :** le scan tourne en tâche asynchrone — une seule tâche pour les
+N photos, résultat conservé dans un brouillon à relire (ADR-0016, ADR-0017). Les
+notifications push à la fin d'une tâche restent en V2 : la V1 se limite à l'in-app
+(toasts, pastille, écran Tâches).
 
 **Points d'attention :** sans ticket, pas de prix ni de date d'achat — la date de
 péremption doit être estimée par catégorie comme pour l'import de ticket

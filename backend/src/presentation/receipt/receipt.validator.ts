@@ -7,6 +7,7 @@ const dateSchema = vine.date({ formats: { utc: true } })
 
 export const importReceiptValidator = vine.compile(
   vine.object({
+    draftId: vine.string().trim().minLength(1).optional(),
     storeName: vine.string().trim().minLength(1).maxLength(120),
     scannedAt: dateSchema,
     totalAmount: vine.number().positive(),

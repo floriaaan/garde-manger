@@ -185,12 +185,28 @@ test('lookupProductByBarcode() returns null for an unknown barcode', async () =>
   expect(await connector.lookupProductByBarcode('0000000000000')).toBeNull()
 })
 
-test('scanReceipt() resolves with the fixture draft regardless of the imageUri', async () => {
-  const connector = new FakeFridgeConnector()
-  const result = await connector.scanReceipt('file://anything.jpg')
+/** Polls the fake's job list until the job is terminal — the fake's worker is a detached promise. */
+async function settled(connector: FakeFridgeConnector, jobId: string) {
+  for (let i = 0; i < 200; i++) {
+    const job = (await connector.getJobs()).find((j) => j.id === jobId)
+    if (job && job.status !== 'queued' && job.status !== 'running') return job
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  throw new Error('job never settled')
+}
 
-  expect(result.ok).toBe(true)
-  if (result.ok) expect(result.value.storeName).toBe('Carrefour')
+test('enqueueReceiptScan() answers queued, then leaves a receipt draft once the job succeeds', async () => {
+  const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
+  const enqueued = await connector.enqueueReceiptScan('file://anything.jpg')
+
+  expect(enqueued.ok).toBe(true)
+  if (!enqueued.ok) return
+  expect(enqueued.value.status).toBe('queued')
+
+  const job = await settled(connector, enqueued.value.id)
+  expect(job.status).toBe('succeeded')
+  const draft = await connector.getScanDraft(job.result?.draftId ?? '')
+  expect(draft?.kind === 'receipt' && draft.draft.storeName).toBe('Carrefour')
 })
 
 test('importReceipt() creates a receipt and one product per item, linked by receiptId', async () => {
@@ -269,32 +285,24 @@ test('setActiveAiProvider() rejects a provider that is not in availableProviders
   expect(result.ok).toBe(false)
 })
 
-test('generating a recipe takes time, the way the model it stands in for does', async () => {
-  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] })
-  try {
-    const connector = new FakeFridgeConnector()
-    let settled = false
-    const pending = connector.generateRecipes().then((result) => {
-      settled = true
-      return result
-    })
+test('generating recipes is a job: queued at once, terminal only after the model latency', async () => {
+  const connector = new FakeFridgeConnector({ aiLatencyMs: 50 })
+  const enqueued = await connector.enqueueRecipeGeneration(undefined)
 
-    await Promise.resolve()
-    expect(settled).toBe(false)
+  expect(enqueued.ok && enqueued.value.status).toBe('queued')
+  if (!enqueued.ok) return
+  const job = await settled(connector, enqueued.value.id)
 
-    await jest.advanceTimersByTimeAsync(5000)
-    const result = await pending
-
-    expect(result.ok).toBe(true)
-  } finally {
-    jest.useRealTimers()
-  }
+  expect(job.status).toBe('succeeded')
+  expect(job.result?.recipeIds?.length).toBeGreaterThan(0)
 })
 
 test('the latency is a constructor knob, so a test that only wants the data pays nothing', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
+  const enqueued = await connector.enqueueRecipeGeneration(undefined)
+  if (!enqueued.ok) throw new Error('enqueue failed')
 
-  const result = await connector.generateRecipes()
+  const job = await settled(connector, enqueued.value.id)
 
-  expect(result.ok).toBe(true)
+  expect(job.status).toBe('succeeded')
 })

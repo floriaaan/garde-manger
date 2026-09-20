@@ -2,13 +2,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
 import { traceAction } from '#presentation/shared/trace-action'
-import {
-  cookRecipeValidator,
-  generateRecipesValidator,
-  saveRecipeValidator,
-} from './recipe.validator.js'
+import { cookRecipeValidator, saveRecipeValidator } from './recipe.validator.js'
 import { toRecipeDto, toRecipeDraftDto } from './recipe.dto.js'
-import { GenerateRecipes } from '#application/recipe/generate-recipes.use-case'
 import { SuggestRecipes } from '#application/recipe/suggest-recipes.use-case'
 import { SaveRecipe } from '#application/recipe/save-recipe.use-case'
 import { ListRecipes } from '#application/recipe/list-recipes.use-case'
@@ -53,42 +48,6 @@ export default class RecipeController {
         return { failed: false }
       },
       { isError: (r) => r.failed, action: 'recipe.get_recipe' },
-    )
-  }
-
-  async generate(ctx: HttpContext) {
-    const user = requireAuthenticatedUser(ctx)
-    return traceAction(
-      ctx,
-      'recipe',
-      GenerateRecipes,
-      async () => {
-        const { prompt } = await ctx.request.validateUsing(generateRecipesValidator)
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const products = await ctx.containerResolver.make('fridge.products')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const resolveGeneration = await ctx.containerResolver.make(
-          'settings.resolveRecipeGenerationPort',
-        )
-        const generation = await resolveGeneration(ctx.household.id)
-
-        const result = await new GenerateRecipes(
-          recipes,
-          products,
-          generation,
-          idGenerator,
-          clock,
-        ).execute({ householdId: ctx.household.id, createdBy: user.id, prompt })
-        if (!result.ok) {
-          const { status, body } = serializeError(result.error)
-          ctx.response.status(status).json(body)
-          return result
-        }
-        ctx.response.status(201).json({ recipes: result.value.map(toRecipeDto) })
-        return result
-      },
-      { isError: (r) => !r.ok },
     )
   }
 

@@ -20,6 +20,7 @@ export default function HomeScreen() {
       onAddProduct={() => router.navigate('/(tabs)/fridge/new')}
       onOpenStats={() => router.push('/stats')}
       onOpenSettings={() => router.push('/settings')}
+      onOpenTasks={() => router.push('/tasks')}
       onOpenReceipts={() => router.push('/receipts')}
       onOpenHousehold={() => router.push('/household')}
     />

@@ -28,6 +28,8 @@ export interface ImportReceiptItemInput {
 }
 
 export interface ImportReceiptInput {
+  /** The scan draft this import comes from — the server then keeps its photo on the receipt. */
+  draftId?: string
   storeName: string
   scannedAt: string
   totalAmount: number

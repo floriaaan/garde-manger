@@ -17,9 +17,8 @@ import type { RecordProductOutcomeInput, RecordedProductOutcome } from '../../do
 import type { ProductOutcomeStats } from '../../domain/fridge/product-outcome-stats.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 import type { ProductLookupResult } from '../../domain/fridge/product-lookup-result.js'
-import type { ReceiptDraft } from '../../domain/receipt/receipt-draft.js'
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
-import type { FridgeScanDraft, ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
+import type { ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
 import type {
   HaLink,
@@ -28,6 +27,7 @@ import type {
   DiscoverHaEntitiesInput,
   BindHaListInput,
 } from '../../domain/home-assistant/ha-link.js'
+import type { Job, ScanDraft } from '../../domain/job/job.js'
 import type { InstanceInfo } from '../../domain/instance/instance-info.js'
 
 function toSession(
@@ -62,11 +62,16 @@ function reportFailure(operation: string, error: unknown): void {
 }
 
 /**
- * Shared by `scanReceipt` and `scanFridgePhoto` — same `file://`/`blob:`
+ * Shared by `enqueueReceiptScan` and `enqueueFridgeScan` — same `file://`/`blob:`
  * URI-to-`FormData`-part dance either way, see the comment this used to
- * carry alone in `scanReceipt` below.
+ * carry alone in the receipt enqueue below.
  */
-async function appendImagePart(formData: FormData, imageUri: string, filename: string): Promise<void> {
+async function appendImagePart(
+  formData: FormData,
+  imageUri: string,
+  filename: string,
+  field = 'image',
+): Promise<void> {
   // The old RN `{ uri, name, type }` shim is dead: since Expo SDK 53,
   // `expo/fetch` replaces both `fetch` and `FormData.prototype.append`
   // globally (native included, not just web — see
@@ -81,13 +86,13 @@ async function appendImagePart(formData: FormData, imageUri: string, filename: s
     // produced in-memory — re-fetching it just hands back the same bytes
     // as a real Blob. `expo-file-system`'s `File` (below) is native-only.
     const blob = await (await fetch(imageUri)).blob()
-    formData.append('image', blob, filename)
+    formData.append(field, blob, filename)
   } else {
     // `File` implements the `Blob` interface, so it's exactly the kind of
     // part `expo/fetch`'s `FormData` expects — reading a local `file://`
     // URI into a real Blob without a manual `fetch`+`.blob()` round-trip,
     // which isn't guaranteed to work against `file://` on the new fetch.
-    formData.append('image', new File(imageUri), filename)
+    formData.append(field, new File(imageUri), filename)
   }
 }
 
@@ -423,13 +428,13 @@ export class HttpFridgeConnector implements FridgeConnector {
     return result.ok ? result.value.recipe : null
   }
 
-  async generateRecipes(prompt?: string): Promise<Result<Recipe[], ApiError>> {
-    const result = await apiFetch<{ recipes: Recipe[] }>(
-      '/api/recipes/generate',
+  async enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>> {
+    const result = await apiFetch<{ job: Job }>(
+      '/api/jobs/recipe-generation',
       { method: 'POST', body: JSON.stringify(prompt ? { prompt } : {}) },
-      { action: 'recipe.generate_recipes' },
+      { action: 'job.enqueue_recipe_generation' },
     )
-    return result.ok ? Result.ok(result.value.recipes) : Result.err(result.error)
+    return result.ok ? Result.ok(result.value.job) : Result.err(result.error)
   }
 
   async cookRecipe(recipeId: string, productIds: string[]): Promise<Result<Recipe, ApiError>> {
@@ -542,28 +547,30 @@ export class HttpFridgeConnector implements FridgeConnector {
     return result.value.result
   }
 
-  async scanReceipt(imageUri: string): Promise<Result<ReceiptDraft, ApiError>> {
+  async enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>> {
     const formData = new FormData()
     await appendImagePart(formData, imageUri, 'receipt.jpg')
-    const result = await apiFetchMultipart<{ draft: ReceiptDraft }>('/api/receipts/scan', formData, {
-      action: 'receipt.scan',
+    const result = await apiFetchMultipart<{ job: Job }>('/api/jobs/receipt-scan', formData, {
+      action: 'job.enqueue_receipt_scan',
     })
-    return result.ok ? Result.ok(result.value.draft) : Result.err(result.error)
+    return result.ok ? Result.ok(result.value.job) : Result.err(result.error)
   }
 
-  async scanFridgePhoto(imageUri: string): Promise<Result<FridgeScanDraft, ApiError>> {
+  async enqueueFridgeScan(imageUris: string[]): Promise<Result<Job, ApiError>> {
     const formData = new FormData()
-    await appendImagePart(formData, imageUri, 'fridge.jpg')
-    const result = await apiFetchMultipart<{ draft: FridgeScanDraft }>('/api/products/scan', formData, {
-      action: 'fridge.scan',
+    for (const [index, uri] of imageUris.entries()) {
+      await appendImagePart(formData, uri, `fridge-${index}.jpg`, 'images')
+    }
+    const result = await apiFetchMultipart<{ job: Job }>('/api/jobs/fridge-scan', formData, {
+      action: 'job.enqueue_fridge_scan',
     })
-    return result.ok ? Result.ok(result.value.draft) : Result.err(result.error)
+    return result.ok ? Result.ok(result.value.job) : Result.err(result.error)
   }
 
-  async importProducts(items: ImportProductsItemInput[]): Promise<Result<{ products: Product[] }, ApiError>> {
+  async importProducts(items: ImportProductsItemInput[], draftId?: string): Promise<Result<{ products: Product[] }, ApiError>> {
     const result = await apiFetch<{ products: Product[] }>(
       '/api/products/import',
-      { method: 'POST', body: JSON.stringify({ items }) },
+      { method: 'POST', body: JSON.stringify({ items, draftId }) },
       { action: 'fridge.import' },
     )
     return result.ok ? Result.ok(result.value) : Result.err(result.error)
@@ -576,6 +583,83 @@ export class HttpFridgeConnector implements FridgeConnector {
       { action: 'receipt.import' },
     )
     return result.ok ? Result.ok(result.value) : Result.err(result.error)
+  }
+
+  async getJobs(): Promise<Job[]> {
+    const result = await apiFetch<{ jobs: Job[] }>('/api/jobs', undefined, { action: 'job.get_jobs' })
+    return result.ok ? result.value.jobs : []
+  }
+
+  async getJob(jobId: string): Promise<Job | null> {
+    const result = await apiFetch<{ job: Job }>(`/api/jobs/${jobId}`, undefined, {
+      action: 'job.get_job',
+      attributes: { 'entity.id': jobId },
+    })
+    return result.ok ? result.value.job : null
+  }
+
+  async retryJob(jobId: string): Promise<Result<Job, ApiError>> {
+    const result = await apiFetch<{ job: Job }>(
+      `/api/jobs/${jobId}/retry`,
+      { method: 'POST' },
+      { action: 'job.retry', attributes: { 'entity.id': jobId } },
+    )
+    return result.ok ? Result.ok(result.value.job) : Result.err(result.error)
+  }
+
+  async dismissJob(jobId: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      `/api/jobs/${jobId}`,
+      { method: 'DELETE' },
+      { action: 'job.dismiss', attributes: { 'entity.id': jobId } },
+    )
+  }
+
+  async restoreJob(jobId: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      `/api/jobs/${jobId}/restore`,
+      { method: 'POST' },
+      { action: 'job.restore', attributes: { 'entity.id': jobId } },
+    )
+  }
+
+  async registerPushToken(token: string, platform: 'ios' | 'android'): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      '/api/push-tokens',
+      { method: 'POST', body: JSON.stringify({ token, platform }) },
+      { action: 'push.register' },
+    )
+  }
+
+  async unregisterPushToken(token: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      '/api/push-tokens',
+      { method: 'DELETE', body: JSON.stringify({ token }) },
+      { action: 'push.unregister' },
+    )
+  }
+
+  async getScanDrafts(): Promise<ScanDraft[]> {
+    const result = await apiFetch<{ drafts: ScanDraft[] }>('/api/scan-drafts', undefined, {
+      action: 'job.get_scan_drafts',
+    })
+    return result.ok ? result.value.drafts : []
+  }
+
+  async getScanDraft(draftId: string): Promise<ScanDraft | null> {
+    const result = await apiFetch<{ draft: ScanDraft }>(`/api/scan-drafts/${draftId}`, undefined, {
+      action: 'job.get_scan_draft',
+      attributes: { 'entity.id': draftId },
+    })
+    return result.ok ? result.value.draft : null
+  }
+
+  async discardScanDraft(draftId: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>(
+      `/api/scan-drafts/${draftId}`,
+      { method: 'DELETE' },
+      { action: 'job.discard_scan_draft', attributes: { 'entity.id': draftId } },
+    )
   }
 
   async getReceipts(): Promise<Receipt[]> {

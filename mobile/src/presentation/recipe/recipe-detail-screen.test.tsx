@@ -37,7 +37,12 @@ test('separates what the foyer already owns from what it has to buy', async () =
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   // A generated recipe is the case where the backend links ingredients to
   // real products; the seeded fixtures carry none.
-  await connector.generateRecipes()
+  const enqueued = await connector.enqueueRecipeGeneration(undefined)
+  if (!enqueued.ok) throw new Error('enqueue failed')
+  await waitFor(async () => {
+    const jobs = await connector.getJobs()
+    expect(jobs.find((j) => j.id === enqueued.value.id)?.status).toBe('succeeded')
+  })
   const [generated] = await connector.getRecipes()
   renderRecipe(generated.id, connector)
 
