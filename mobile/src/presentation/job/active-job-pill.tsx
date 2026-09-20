@@ -42,7 +42,7 @@ export function ActiveJobPill() {
   const palette = useSoftPalette()
   const pathname = usePathname()
   // Wide layouts trade the tab bar for a sidebar: sit above the bottom edge, right of the sidebar.
-  const { isWide } = useAppShellLayout({ kind: 'tab' })
+  const { isWide } = useAppShellLayout({ kind: 'tab', tab: 'frigo', onScan: () => {} })
   const jobs = useJobsQuery().data ?? []
   const active = jobs.filter(isJobActive)
   const job = active[active.length - 1]

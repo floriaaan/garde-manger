@@ -40,6 +40,7 @@ function job(overrides: Partial<Job> = {}): Job {
     createdAt: '2026-09-20T10:00:00.000Z',
     startedAt: null,
     finishedAt: null,
+    dismissedAt: null,
     ...overrides,
   }
 }

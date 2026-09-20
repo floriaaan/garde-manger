@@ -12,6 +12,7 @@ function job(id: string, status: Job['status']): Job {
     createdAt: '2026-09-20T10:00:00.000Z',
     startedAt: null,
     finishedAt: null,
+    dismissedAt: null,
   }
 }
 

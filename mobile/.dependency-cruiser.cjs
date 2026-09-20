@@ -15,7 +15,7 @@ module.exports = {
   options: {
     tsConfig: { fileName: 'tsconfig.json' },
     exclude: {
-      path: 'node_modules|\\.test\\.',
+      path: 'node_modules|\\.test\\.|/test-utils\\.',
     },
   },
 }
