@@ -30,7 +30,7 @@ async function signUpWithHousehold(client: import('@japa/api-client').ApiClient,
   return cookie
 }
 
-test.group('recipe: generate, suggestions, save, list, detail, delete', (group) => {
+test.group('recipe: suggestions, save, list, detail, delete', (group) => {
   group.each.setup(async () => {
     await db.beginGlobalTransaction()
   })
@@ -39,20 +39,6 @@ test.group('recipe: generate, suggestions, save, list, detail, delete', (group) 
   group.each.setup(() => {
     __setRecipeGenerationOverrideForTests(fakeGeneration)
     return () => __setRecipeGenerationOverrideForTests(null)
-  })
-
-  test('generate persists the fake drafts', async ({ client, assert }) => {
-    const cookie = await signUpWithHousehold(client, 'recipe-generate@example.com')
-    const response = await client
-      .post('/api/recipes/generate')
-      .headers({ cookie })
-      .json({ prompt: 'quelque chose de rapide' })
-    response.assertStatus(201)
-    assert.lengthOf(response.body().recipes, 1)
-    response.assertBodyContains({ recipes: [{ title: 'Gratin de courgettes', source: 'ai' }] })
-
-    const list = await client.get('/api/recipes').headers({ cookie })
-    assert.lengthOf(list.body().recipes, 1)
   })
 
   test('suggestions does not persist', async ({ client, assert }) => {

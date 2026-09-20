@@ -24,7 +24,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
-import { PulseDots } from '../shared/pulse-dots.js'
+import { ProgressBar } from '../shared/progress-bar.js'
 import { FormCard } from '../shared/form-card.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { pointerCursor } from '../shared/hover.js'
@@ -34,7 +34,10 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { CalendarIcon, CircleCheckIcon, CircleXIcon, ReceiptIcon, StoreIcon, WalletIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
 import { ReceiptItemRow, type EditableReceiptItem, type ReceiptItemErrors } from './receipt-item-row.js'
-import { useScanReceiptMutation } from '../../application/receipt/scan-receipt.mutation.js'
+import { useEnqueueReceiptScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
+import { useJobQuery } from '../../application/job/jobs.query.js'
+import { useScanDraftQuery, SCAN_DRAFTS_KEY } from '../../application/job/scan-drafts.query.js'
+import { useWatchJob } from '../../application/job/watched-jobs.js'
 import { useImportReceiptMutation } from '../../application/receipt/import-receipt.mutation.js'
 import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
@@ -123,10 +126,25 @@ function toEditable(item: ReceiptDraftItem, scannedAt: string): EditableReceiptI
   }
 }
 
-export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
+/**
+ * Three ways in, one screen: `imageUri` (fresh from the scanner — enqueues the
+ * scan), `jobId` (a scan already running, re-opened from the task center) or
+ * `draftId` (a finished scan, re-opened from a toast or the dashboard banner).
+ * The scan itself runs on the server, so leaving this screen never loses it.
+ */
+export function ReceiptReviewScreen({
+  imageUri,
+  jobId: jobIdParam,
+  draftId: draftIdParam,
+}: {
+  imageUri?: string
+  jobId?: string
+  draftId?: string
+}) {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
-  const scanReceipt = useScanReceiptMutation()
+  const enqueueScan = useEnqueueReceiptScanMutation()
+  const retryJob = useRetryJobMutation()
   const { canSubscribe } = useAiSubscribe()
   const importReceipt = useImportReceiptMutation()
   const nav = { kind: 'stack' as const }
@@ -138,30 +156,57 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
   const [items, setItems] = useState<EditableReceiptItem[]>([])
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [itemErrors, setItemErrors] = useState<Record<number, ReceiptItemErrors>>({})
-  const [scanError, setScanError] = useState<ScanError | null>(null)
+  const [enqueueError, setEnqueueError] = useState<ScanError | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [imported, setImported] = useState<number | null>(null)
+  const [jobId, setJobId] = useState<string | undefined>(jobIdParam)
   const startedRef = useRef(false)
+  const seededRef = useRef(false)
+
+  const job = useJobQuery(jobId).data ?? null
+  useWatchJob(jobId)
+  const draftId = draftIdParam ?? job?.result?.draftId
+  const draft = useScanDraftQuery(draftId).data ?? null
 
   async function runScan() {
-    setScanError(null)
-    const result = await scanReceipt.mutateAsync(imageUri)
+    if (!imageUri) return
+    setEnqueueError(null)
+    const result = await enqueueScan.mutateAsync(imageUri)
     if (!result.ok) {
-      setScanError(toScanError(result.error))
+      setEnqueueError(toScanError(result.error))
       return
     }
-    setStoreName(result.value.storeName)
-    setScannedAt(result.value.scannedAt.slice(0, 10))
-    setTotalAmount(String(result.value.totalAmount))
-    setItems(result.value.items.map((item) => toEditable(item, result.value.scannedAt)))
+    setJobId(result.value.id)
+    // A remount (navigation, fast refresh) must find the job, not the photo — else it would enqueue twice.
+    router.setParams({ jobId: result.value.id, imageUri: undefined })
   }
 
   useEffect(() => {
-    if (startedRef.current) return
+    if (startedRef.current || jobIdParam || draftIdParam) return
     startedRef.current = true
     runScan()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Seeds the editable form once, from the server draft — later polls must not clobber the member's edits.
+  useEffect(() => {
+    if (seededRef.current || !draft || draft.kind !== 'receipt') return
+    seededRef.current = true
+    setStoreName(draft.draft.storeName)
+    setScannedAt(draft.draft.scannedAt.slice(0, 10))
+    setTotalAmount(String(draft.draft.totalAmount))
+    setItems(draft.draft.items.map((item) => toEditable(item, draft.draft.scannedAt)))
+  }, [draft])
+
+  const scanError: ScanError | null =
+    enqueueError ??
+    (job?.status === 'failed' && job.error ? toScanError(job.error) : null)
+  const scanPending = !scanError && !draft && (enqueueScan.isPending || Boolean(jobId) || Boolean(draftId))
+
+  function retryScan() {
+    if (job?.status === 'failed') retryJob.mutate(job.id)
+    else runScan()
+  }
 
   function updateItem(index: number, next: EditableReceiptItem) {
     setItems((current) => current.map((item, i) => (i === index ? next : item)))
@@ -263,6 +308,7 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
     }
 
     const result = await importReceipt.mutateAsync({
+      draftId: draft?.id,
       storeName: storeName.trim(),
       scannedAt: parsedScannedAt ?? new Date().toISOString(),
       totalAmount: parsedTotalAmount,
@@ -280,6 +326,7 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
 
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['receipts'] })
+    queryClient.invalidateQueries({ queryKey: SCAN_DRAFTS_KEY })
     setImported(result.value.products.length)
   }
 
@@ -336,38 +383,47 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
     )
   }
 
-  if (scanReceipt.isPending && items.length === 0) {
+  if (scanPending && items.length === 0) {
     return (
       <AppShell nav={nav} header={header}>
         <YStack alignItems="center" gap="$3" marginTop="$8">
           {/* The photo itself, small — the same trust the review list gives
               the shot below (see its own comment): the wait is legible as
-              "reading *this* ticket", not a generic spinner. */}
-          <Image
-            testID="receipt-reading-photo"
-            source={{ uri: imageUri }}
-            resizeMode="cover"
-            accessibilityLabel="Photo du ticket en cours de lecture"
-            style={{
-              width: 96,
-              height: 96,
-              borderTopLeftRadius: 22,
-              borderTopRightRadius: 10,
-              borderBottomRightRadius: 22,
-              borderBottomLeftRadius: 10,
-              backgroundColor: palette.cream,
-            }}
-          />
-          {/* The same wait, drawn the same way as the recipe composer's — see
-              DESIGN.md: a wait with no measurable progress is `PulseDots`, not
-              the platform's wheel. This one is the app's longest. */}
-          <PulseDots palette={palette} size={12} testID="receipt-reading-dots" label="Lecture du ticket en cours" />
+              "reading *this* ticket", not a generic spinner. Only there when
+              the scan was started from this screen: a re-opened one has no
+              local photo. */}
+          {imageUri ? (
+            <Image
+              testID="receipt-reading-photo"
+              source={{ uri: imageUri }}
+              resizeMode="cover"
+              accessibilityLabel="Photo du ticket en cours de lecture"
+              style={{
+                width: 96,
+                height: 96,
+                borderTopLeftRadius: 22,
+                borderTopRightRadius: 10,
+                borderBottomRightRadius: 22,
+                borderBottomLeftRadius: 10,
+                backgroundColor: palette.cream,
+              }}
+            />
+          ) : null}
+          <YStack width="100%" maxWidth={280}>
+            <ProgressBar palette={palette} testID="receipt-reading-bar" label="Lecture du ticket en cours" />
+          </YStack>
           <Text fontSize={15} fontWeight="700" color={palette.ink}>
-            Lecture du ticket…
+            {job?.status === 'queued' ? 'En attente…' : 'Lecture du ticket…'}
           </Text>
           <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-            L’IA lit chaque ligne de ta photo. Ça prend en général une dizaine de secondes.
+            L’IA lit chaque ligne de ta photo. Ça prend en général une dizaine de secondes — tu peux faire autre chose, on te prévient.
           </Text>
+          <AuthButton
+            testID="receipt-review-later"
+            label="Je reviens plus tard"
+            variant="secondary"
+            onPress={() => router.replace('/(tabs)')}
+          />
         </YStack>
       </AppShell>
     )
@@ -420,8 +476,8 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
                 testID="receipt-review-retry"
                 label="Réessayer"
                 pendingLabel="Lecture..."
-                pending={scanReceipt.isPending}
-                onPress={runScan}
+                pending={enqueueScan.isPending || retryJob.isPending}
+                onPress={retryScan}
               />
             ) : null}
             <AuthButton
@@ -440,21 +496,23 @@ export function ReceiptReviewScreen({ imageUri }: { imageUri: string }) {
     <YStack gap="$4" marginBottom="$2">
       {/* The shot itself: the user has to be able to check a line against
           the paper it came from. It was passed in and never displayed. */}
-      <Image
-        testID="receipt-review-photo"
-        source={{ uri: imageUri }}
-        resizeMode="cover"
-        accessibilityLabel="Photo du ticket scanné"
-        style={{
-          width: '100%',
-          height: 140,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 14,
-          borderBottomRightRadius: 24,
-          borderBottomLeftRadius: 14,
-          backgroundColor: palette.cream,
-        }}
-      />
+      {imageUri ? (
+        <Image
+          testID="receipt-review-photo"
+          source={{ uri: imageUri }}
+          resizeMode="cover"
+          accessibilityLabel="Photo du ticket scanné"
+          style={{
+            width: '100%',
+            height: 140,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 14,
+            borderBottomRightRadius: 24,
+            borderBottomLeftRadius: 14,
+            backgroundColor: palette.cream,
+          }}
+        />
+      ) : null}
       <FormCard palette={palette} gap="$3">
         <FormField
           testID="receipt-review-store-name"

@@ -6,14 +6,14 @@
  */
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
-import { PulseDots } from '../shared/pulse-dots.js'
+import { ProgressBar } from '../shared/progress-bar.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { pointerCursor } from '../shared/hover.js'
 import { goBack } from '../shared/navigation.js'
@@ -21,7 +21,13 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { CameraIcon, CircleCheckIcon, CircleXIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { ReceiptItemRow, type EditableReceiptItem, type ReceiptItemErrors } from '../receipt/receipt-item-row.js'
-import { useFridgeScan } from '../../application/fridge/use-fridge-scan.js'
+import { useEnqueueFridgeScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
+import { useJobQuery } from '../../application/job/jobs.query.js'
+import { useScanDraftQuery, SCAN_DRAFTS_KEY } from '../../application/job/scan-drafts.query.js'
+import { useWatchJob } from '../../application/job/watched-jobs.js'
+import { isJobActive } from '../../domain/job/job.js'
+import type { Job } from '../../domain/job/job.js'
+import type { ApiError } from '../../domain/shared/api-error.js'
 import { useImportProductsMutation } from '../../application/fridge/import-products.mutation.js'
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { isLikelyDuplicate } from '../../domain/fridge/fridge-scan-merge.js'
@@ -63,10 +69,46 @@ function parseDateOrNull(value: string): string | null | 'invalid' {
   return date.toISOString()
 }
 
-export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
+type PhotoState = 'pending' | 'running' | 'done' | 'failed'
+
+/** Per-photo state, derived from the job's counters: `done` counts successes, `failed` lists the missed indexes. */
+function photoStates(job: Job | null, count: number): PhotoState[] {
+  if (!job) return Array.from({ length: count }, () => 'pending')
+  const active = isJobActive(job)
+  let succeeded = 0
+  return Array.from({ length: count }, (_, index) => {
+    if (job.progress.failed.includes(index)) return 'failed'
+    if (!active || succeeded < job.progress.done) {
+      succeeded += 1
+      return 'done'
+    }
+    return job.status === 'running' ? 'running' : 'pending'
+  })
+}
+
+export function FridgeScanReviewScreen({
+  imageUris,
+  jobId: jobIdParam,
+  draftId: draftIdParam,
+}: {
+  imageUris?: string[]
+  jobId?: string
+  draftId?: string
+}) {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
-  const scan = useFridgeScan(imageUris)
+  const enqueueScan = useEnqueueFridgeScanMutation()
+  const retryJob = useRetryJobMutation()
+  const [jobId, setJobId] = useState<string | undefined>(jobIdParam)
+  const [enqueueError, setEnqueueError] = useState<ApiError | null>(null)
+  const startedRef = useRef(false)
+  const seededRef = useRef(false)
+  const job = useJobQuery(jobId).data ?? null
+  useWatchJob(jobId)
+  const draftId = draftIdParam ?? job?.result?.draftId
+  const draft = useScanDraftQuery(draftId).data ?? null
+  const photos = imageUris ?? []
+  const states = photoStates(job, photos.length)
   const { canSubscribe } = useAiSubscribe()
   const existingProducts = useProductsQuery()
   const importProducts = useImportProductsMutation()
@@ -79,16 +121,35 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [imported, setImported] = useState<number | null>(null)
 
-  // Reseeds the editable list whenever the merged draft changes (a retried
-  // photo lands), adjusting state during render rather than in an effect —
-  // React's documented pattern, one render instead of two. `scan.items` is
-  // memoized, so this runs once per change, never per render.
-  const [seededFrom, setSeededFrom] = useState<typeof scan.items | null>(null)
-  if (scan.done && seededFrom !== scan.items) {
-    const existing = existingProducts.data ?? []
-    setSeededFrom(scan.items)
-    setItems(scan.items.map((item) => toEditable(item, isLikelyDuplicate(item, existing))))
+  async function runScan() {
+    if (!imageUris || imageUris.length === 0) return
+    setEnqueueError(null)
+    const result = await enqueueScan.mutateAsync(imageUris)
+    if (!result.ok) {
+      setEnqueueError(result.error)
+      return
+    }
+    setJobId(result.value.id)
+    // A remount must find the job, not the photos — else it would enqueue twice.
+    router.setParams({ jobId: result.value.id, imageUris: undefined })
   }
+
+  useEffect(() => {
+    if (startedRef.current || jobIdParam || draftIdParam) return
+    startedRef.current = true
+    runScan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Seeds the editable list once from the server draft, once the fridge is known for duplicates —
+  // later polls (a retried photo lands) must not clobber the member's edits.
+  const scanItems = draft?.kind === 'fridge' ? draft.draft.items : null
+  useEffect(() => {
+    if (seededRef.current || !scanItems || existingProducts.isPending) return
+    seededRef.current = true
+    const existing = existingProducts.data ?? []
+    setItems(scanItems.map((item) => toEditable(item, isLikelyDuplicate(item, existing))))
+  }, [scanItems, existingProducts.isPending, existingProducts.data])
 
   function updateItem(index: number, next: EditableFridgeItem) {
     setItems((current) => current.map((item, i) => (i === index ? next : item)))
@@ -153,13 +214,14 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
       return
     }
 
-    const result = await importProducts.mutateAsync(parsed)
+    const result = await importProducts.mutateAsync({ items: parsed, draftId })
     if (!result.ok) {
       setSubmitError(result.error.type === 'validation_failed' ? 'Certains champs sont invalides. Vérifie les produits.' : result.error.message)
       return
     }
 
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: SCAN_DRAFTS_KEY })
     setImported(result.value.products.length)
   }
 
@@ -171,7 +233,7 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
       icon={(color) => <CameraIcon size={19} color={color} />}
       title="Vérifier le frigo"
       subtitle={
-        scan.done && items.length > 0 && imported === null
+        draft && items.length > 0 && imported === null
           ? `${items.length} produit${items.length > 1 ? 's' : ''} détecté${items.length > 1 ? 's' : ''} — touche-en un pour le corriger`
           : undefined
       }
@@ -199,11 +261,9 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
     )
   }
 
-  if (scan.blockedByProvider) {
-    const providerError = scan.states.find(
-      (s) => s.status === 'failed' && (s.error.type === 'provider_not_configured' || s.error.type === 'ai_quota_exceeded'),
-    )
-    const quotaExceeded = providerError?.status === 'failed' && providerError.error.type === 'ai_quota_exceeded'
+  const failure = job?.status === 'failed' ? job.error : enqueueError
+  if (failure && (failure.type === 'provider_not_configured' || failure.type === 'ai_quota_exceeded')) {
+    const quotaExceeded = failure.type === 'ai_quota_exceeded'
     return (
       <AppShell nav={nav} header={header}>
         {quotaExceeded && canSubscribe ? (
@@ -215,11 +275,11 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
             <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center">
               <TriangleAlertIcon size={30} color={palette.expiredText} />
             </YStack>
-            <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
+            <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink}>
               {quotaExceeded ? 'Quota atteint' : 'Extraction indisponible'}
             </Text>
             <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
-              {providerError && providerError.status === 'failed' ? providerError.error.message : ''}
+              {failure.message}
             </Text>
           </YStack>
         )}
@@ -227,8 +287,29 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
     )
   }
 
-  if (!scan.done) {
-    const settled = scan.states.filter((s) => s.status === 'done' || s.status === 'failed').length
+  if (failure && !draft) {
+    return (
+      <AppShell nav={nav} header={header}>
+        <YStack alignItems="center" gap="$3" marginTop="$8">
+          <Text testID="fridge-scan-failed-title" fontSize={17} fontWeight="800" color={palette.ink}>
+            Analyse impossible
+          </Text>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
+            {failure.message}
+          </Text>
+          <AuthButton
+            testID="fridge-scan-retry-all"
+            label="Réessayer"
+            onPress={() => (job ? retryJob.mutate(job.id) : runScan())}
+          />
+        </YStack>
+      </AppShell>
+    )
+  }
+
+  if (!draft) {
+    const total = job?.progress.total ?? photos.length
+    const settled = job ? job.progress.done + job.progress.failed.length : 0
     return (
       <AppShell nav={nav} header={header}>
         <YStack alignItems="center" gap="$4" marginTop="$8">
@@ -236,58 +317,65 @@ export function FridgeScanReviewScreen({ imageUris }: { imageUris: string[] }) {
               so is the progress — a failed shot shows up here, not only
               once the whole batch has landed. */}
           <XStack testID="fridge-scan-reading-photos" gap="$2.5" flexWrap="wrap" justifyContent="center">
-            {imageUris.map((uri, index) => (
-              <PhotoProgress key={uri} uri={uri} state={scan.states[index]?.status ?? 'pending'} palette={palette} />
+            {photos.map((uri, index) => (
+              <PhotoProgress key={uri} uri={uri} state={states[index] ?? 'pending'} palette={palette} />
             ))}
           </XStack>
-          <PulseDots palette={palette} size={12} testID="fridge-scan-reading-dots" label="Lecture des photos en cours" />
+          <YStack width="100%" maxWidth={280}>
+            <ProgressBar
+              palette={palette}
+              value={job && total > 0 ? settled : undefined}
+              total={job && total > 0 ? total : undefined}
+              testID="fridge-scan-reading-bar"
+              label="Lecture des photos en cours"
+            />
+          </YStack>
           <YStack alignItems="center" gap="$1">
             <Text fontSize={17} fontWeight="800" color={palette.ink}>
               L’IA fait l’inventaire…
             </Text>
             <Text testID="fridge-scan-progress" fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-              {settled} / {scan.states.length} photos analysées
+              {job?.status === 'queued' || !job ? 'En attente…' : `${settled} / ${total} photos analysées`}
             </Text>
           </YStack>
+          <AuthButton
+            testID="fridge-scan-review-later"
+            label="Je reviens plus tard"
+            variant="secondary"
+            onPress={() => router.replace('/(tabs)')}
+          />
         </YStack>
       </AppShell>
     )
   }
 
-  const failedCount = scan.states.filter((s) => s.status === 'failed').length
+  const failedCount = job?.progress.failed.length ?? 0
 
   const listHeader = (
     <YStack gap="$3" marginBottom="$2">
       {failedCount > 0 ? (
         <YStack backgroundColor={palette.expiredBg} borderRadius={14} padding="$3" gap="$2">
           <Text fontSize={13} fontWeight="700" color={palette.expiredText}>
-            {failedCount} photo{failedCount > 1 ? 's' : ''} sur {scan.states.length} n’a pas pu être analysée{failedCount > 1 ? 's' : ''}.
+            {failedCount} photo{failedCount > 1 ? 's' : ''} sur {job?.progress.total ?? photos.length} n’a pas pu être analysée{failedCount > 1 ? 's' : ''}.
           </Text>
-          <XStack gap="$2" flexWrap="wrap">
-            {scan.states.map((s, index) =>
-              s.status === 'failed' ? (
-                <Pressable
-                  key={index}
-                  testID={`fridge-scan-retry-${index}`}
-                  onPress={() => scan.retry(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Réessayer la photo ${index + 1}`}
-                  style={pointerCursor}
-                >
-                  <XStack alignItems="center" minHeight={36} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.cream}>
-                    <Text fontSize={12} fontWeight="700" color={palette.creamText}>
-                      Réessayer la photo {index + 1}
-                    </Text>
-                  </XStack>
-                </Pressable>
-              ) : null,
-            )}
-          </XStack>
+          <Pressable
+            testID="fridge-scan-retry-failed"
+            onPress={() => job && retryJob.mutate(job.id)}
+            accessibilityRole="button"
+            accessibilityLabel="Réessayer les photos manquantes"
+            style={pointerCursor}
+          >
+            <XStack alignItems="center" alignSelf="flex-start" minHeight={36} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.cream}>
+              <Text fontSize={12} fontWeight="700" color={palette.creamText}>
+                Réessayer {failedCount > 1 ? 'les photos manquantes' : 'la photo manquante'}
+              </Text>
+            </XStack>
+          </Pressable>
         </YStack>
       ) : null}
       <XStack gap="$2.5" flexWrap="wrap">
-        {imageUris.map((uri, index) => (
-          <PhotoProgress key={uri} uri={uri} state={scan.states[index]?.status ?? 'pending'} palette={palette} size={56} />
+        {photos.map((uri, index) => (
+          <PhotoProgress key={uri} uri={uri} state={states[index] ?? 'pending'} palette={palette} size={56} />
         ))}
       </XStack>
     </YStack>

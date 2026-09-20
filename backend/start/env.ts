@@ -89,6 +89,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   // Mobile telemetry relay (POST /api/telemetry/v1/*) — the app never talks
   // to the collector directly, cf. docs/adr/0011.
   TELEMETRY_INGEST_ENABLED: Env.schema.boolean.optional(),
+
+  // Async AI tasks (cf. docs/adr/0016)
+  JOB_WORKER_ENABLED: Env.schema.boolean.optional(),
+  JOB_MAX_CONCURRENCY: Env.schema.number.optional(),
+  JOB_UNIT_TIMEOUT_MS: Env.schema.number.optional(),
+  SCAN_DRAFT_TTL_HOURS: Env.schema.number.optional(),
   TELEMETRY_OTLP_ENDPOINT: Env.schema.string.optional({ format: 'url', tld: false }),
   TELEMETRY_MAX_BODY_BYTES: Env.schema.number.optional(),
   TELEMETRY_RATE_LIMIT_PER_MINUTE: Env.schema.number.optional(),

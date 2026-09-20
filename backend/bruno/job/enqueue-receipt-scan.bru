@@ -1,0 +1,26 @@
+meta {
+  name: Enqueue receipt scan
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/jobs/receipt-scan
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:multipart-form {
+  image: @file(ticket.jpg)
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.job && body.job.id) {
+    bru.setVar("jobId", body.job.id);
+  }
+}

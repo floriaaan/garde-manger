@@ -1,9 +1,11 @@
-export type ToastVariant = 'error' | 'info'
+export type ToastVariant = 'error' | 'info' | 'success'
 
 export interface ToastMessage {
   id: number
   message: string
   variant: ToastVariant
+  /** One tap-through, e.g. "Relire" — the toast dismisses itself once it is pressed. */
+  action?: { label: string; onPress: () => void }
 }
 
 /**
@@ -18,8 +20,12 @@ export interface ToastMessage {
 let currentId = 0
 let listener: ((toast: ToastMessage) => void) | null = null
 
-export function showToast(message: string, variant: ToastVariant = 'error'): void {
-  listener?.({ id: ++currentId, message, variant })
+export function showToast(
+  message: string,
+  variant: ToastVariant = 'error',
+  action?: ToastMessage['action'],
+): void {
+  listener?.({ id: ++currentId, message, variant, action })
 }
 
 export function subscribeToast(next: (toast: ToastMessage) => void): () => void {

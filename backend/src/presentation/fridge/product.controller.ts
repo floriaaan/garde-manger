@@ -1,6 +1,4 @@
-import { readFile } from 'node:fs/promises'
 import type { HttpContext } from '@adonisjs/core/http'
-import logger from '@adonisjs/core/services/logger'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
 import { traceAction } from '#presentation/shared/trace-action'
@@ -17,7 +15,6 @@ import {
 import { toProductDto } from './product.dto.js'
 import { toProductOutcomeDto } from './product-outcome.dto.js'
 import { toProductOutcomeStatsDto } from './product-outcome-stats.dto.js'
-import { toFridgeScanDraftDto } from './fridge-scan.dto.js'
 import { CreateProduct } from '#application/fridge/create-product.use-case'
 import { UpdateProduct } from '#application/fridge/update-product.use-case'
 import { DeleteProduct } from '#application/fridge/delete-product.use-case'
@@ -27,7 +24,8 @@ import { GetExpiringSoonProducts } from '#application/fridge/get-expiring-soon-p
 import { LookupProduct } from '#application/fridge/lookup-product.use-case'
 import { RecordProductOutcome } from '#application/fridge/record-product-outcome.use-case'
 import { GetProductOutcomeStats } from '#application/fridge/get-product-outcome-stats.use-case'
-import { ScanFridge } from '#application/fridge/scan-fridge.use-case'
+import { GetScanDraft } from '#application/job/get-scan-draft.use-case'
+import { FinalizeScanDraft } from '#application/job/finalize-scan-draft.use-case'
 import { ImportProducts } from '#application/fridge/import-products.use-case'
 
 export default class ProductController {
@@ -218,64 +216,6 @@ export default class ProductController {
     })
   }
 
-  async scan(ctx: HttpContext) {
-    requireAuthenticatedUser(ctx)
-    return traceAction(
-      ctx,
-      'fridge',
-      ScanFridge,
-      async () => {
-        const image = ctx.request.file('image', {
-          extnames: ['jpg', 'jpeg', 'png', 'webp'],
-          size: '10mb',
-        })
-        // Same shape as `ReceiptController.scan` (Task 9): the most common
-        // real cause of "extraction impossible" with nothing in the AI-
-        // adapter logs is the multipart upload itself never producing a
-        // usable file.
-        if (!image || !image.tmpPath) {
-          logger.warn(
-            { field: 'image', hasFile: Boolean(image), clientName: image?.clientName },
-            'fridge scan: no usable file in upload',
-          )
-          const { status, body } = serializeError('extraction_failed')
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-        if (!image.isValid) {
-          logger.warn(
-            {
-              clientName: image.clientName,
-              size: image.size,
-              extname: image.extname,
-              errors: image.errors,
-            },
-            'fridge scan: uploaded file failed validation',
-          )
-          const { status, body } = serializeError('extraction_failed')
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-
-        const buffer = await readFile(image.tmpPath)
-        const resolveExtraction = await ctx.containerResolver.make(
-          'settings.resolveFridgeScanExtractionPort',
-        )
-        const extraction = await resolveExtraction(ctx.household.id)
-
-        const result = await new ScanFridge(extraction).execute({ image: buffer })
-        if (!result.ok) {
-          const { status, body } = serializeError(result.error)
-          ctx.response.status(status).json(body)
-          return { failed: true }
-        }
-        ctx.response.json({ draft: toFridgeScanDraftDto(result.value) })
-        return { failed: false }
-      },
-      { isError: (r) => r.failed, action: 'fridge.scan' },
-    )
-  }
-
   async importProducts(ctx: HttpContext) {
     requireAuthenticatedUser(ctx)
     return traceAction(
@@ -284,6 +224,18 @@ export default class ProductController {
       ImportProducts,
       async () => {
         const payload = await ctx.request.validateUsing(importProductsValidator)
+        const scanDrafts = await ctx.containerResolver.make('job.scanDrafts')
+        const draft = payload.draftId
+          ? await new GetScanDraft(scanDrafts).execute({
+              householdId: ctx.household.id,
+              draftId: payload.draftId,
+            })
+          : null
+        if (payload.draftId && (!draft || draft.kind !== 'fridge')) {
+          const { status, body } = serializeError('draft_not_found')
+          ctx.response.status(status).json(body)
+          return { ok: false as const, error: 'draft_not_found' as const }
+        }
         const products = await ctx.containerResolver.make('fridge.products')
         const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
         const clock = await ctx.containerResolver.make('shared.clock')
@@ -303,6 +255,11 @@ export default class ProductController {
           const { status, body } = serializeError(result.error)
           ctx.response.status(status).json(body)
           return result
+        }
+
+        if (draft) {
+          const storage = await ctx.containerResolver.make('shared.storage')
+          await new FinalizeScanDraft(scanDrafts, storage).execute(draft)
         }
 
         ctx.response.status(201).json({ products: result.value.products.map(toProductDto) })

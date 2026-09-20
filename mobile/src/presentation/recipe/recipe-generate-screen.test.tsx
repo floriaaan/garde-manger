@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
+import type { Job } from '../../domain/job/job.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { RecipeGenerateScreen } from './recipe-generate-screen.js'
 
@@ -28,6 +29,30 @@ function renderComposer(connector = new FakeFridgeConnector({ aiLatencyMs: 0 }))
   return connector
 }
 
+function job(overrides: Partial<Job> = {}): Job {
+  return {
+    id: 'job-1',
+    kind: 'recipe_generation',
+    status: 'queued',
+    progress: { total: 1, done: 0, failed: [] },
+    result: null,
+    error: null,
+    createdAt: '2026-09-20T10:00:00.000Z',
+    startedAt: null,
+    finishedAt: null,
+    ...overrides,
+  }
+}
+
+/** Pins what the enqueue answers and what the jobs poll returns, so a test decides the job's outcome. */
+function stubJob(connector: FakeFridgeConnector, stub: Job) {
+  jest.spyOn(connector, 'enqueueRecipeGeneration').mockResolvedValue({ ok: true, value: stub })
+  jest.spyOn(connector, 'getJobs').mockResolvedValue([stub])
+}
+
+const failedJob = (type: string, message: string) =>
+  job({ status: 'failed', error: { type, message }, finishedAt: '2026-09-20T10:00:05.000Z' })
+
 beforeEach(() => {
   jest.clearAllMocks()
 })
@@ -46,7 +71,7 @@ async function openRefine() {
 
 test('nothing on the sheet is mandatory — submitting untouched sends no prompt', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
-  const generate = jest.spyOn(connector, 'generateRecipes')
+  const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
@@ -58,7 +83,7 @@ test('nothing on the sheet is mandatory — submitting untouched sends no prompt
 
 test('the choices reach the endpoint as one composed prompt, and the sheet closes onto the recipe', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
-  const generate = jest.spyOn(connector, 'generateRecipes')
+  const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
   await openRefine()
@@ -106,15 +131,9 @@ test('a single-choice group swaps instead of stacking', async () => {
   )
 })
 
-test('the seconds-long request gets a real loader, not a quiet button', async () => {
+test('the seconds-long job gets a real loader, not a quiet button', async () => {
   const connector = new FakeFridgeConnector()
-  let release: () => void = () => {}
-  jest.spyOn(connector, 'generateRecipes').mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        release = () => resolve({ ok: true, value: [] })
-      }),
-  )
+  stubJob(connector, job({ status: 'running', startedAt: '2026-09-20T10:00:01.000Z' }))
   renderComposer(connector)
 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
@@ -124,26 +143,19 @@ test('the seconds-long request gets a real loader, not a quiet button', async ()
 
   await waitFor(() => expect(screen.getByTestId('recipes-generating')).toBeTruthy())
   expect(screen.getByText('On écrit ta recette')).toBeTruthy()
-  // The app's own loader, not the OS spinner: three dots in the palette's own
-  // chip colours, so the wait belongs to this product rather than to the
-  // platform's default grey wheel.
-  expect(screen.getByTestId('recipes-generating-dots')).toBeTruthy()
-  // The form is unmounted, not covered: the sheet *becomes* the wait rather
-  // than raising a card over itself, so there is nothing left for a screen
-  // reader to swipe into. That is why the submit button is unreachable here.
+  // The app's own loading bar, in the palette's chip colours — not the OS spinner.
+  expect(screen.getByTestId('recipes-generating-bar')).toBeTruthy()
+  // The member is never trapped: the job runs on the server, so they can leave.
+  fireEvent.press(screen.getByTestId('recipes-generating-later'))
+  expect(router.dismiss).toHaveBeenCalled()
+  // The form is unmounted, not covered: nothing left for a screen reader to swipe into.
   expect(screen.queryByTestId('recipes-generate-submit')).toBeNull()
-
-  release()
-  await waitFor(() => expect(screen.queryByTestId('recipes-generating')).toBeNull())
-  expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy()
 })
 
 test('a generation that has nothing to cook from says why, and the reason stays on screen', async () => {
   const connector = new FakeFridgeConnector()
   jest.spyOn(connector, 'getProducts').mockResolvedValue([])
-  jest
-    .spyOn(connector, 'generateRecipes')
-    .mockResolvedValue({ ok: false, error: { type: 'no_products', message: 'Ajoute des produits au garde-manger pour générer une recette.' } })
+  stubJob(connector, failedJob('no_products', 'Ajoute des produits au garde-manger pour générer une recette.'))
   renderComposer(connector)
 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
@@ -167,7 +179,7 @@ test('the sheet can be closed without generating anything', async () => {
 
 test('a successful call that produced no recipe says so instead of closing in silence', async () => {
   const connector = new FakeFridgeConnector()
-  jest.spyOn(connector, 'generateRecipes').mockResolvedValue({ ok: true, value: [] })
+  stubJob(connector, job({ status: 'succeeded', result: { recipeIds: [] }, finishedAt: '2026-09-20T10:00:05.000Z' }))
   renderComposer(connector)
 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
@@ -184,9 +196,7 @@ test('a successful call that produced no recipe says so instead of closing in si
 test('an empty garde-manger offers the door, before the wait and after it', async () => {
   const connector = new FakeFridgeConnector()
   jest.spyOn(connector, 'getProducts').mockResolvedValue([])
-  jest
-    .spyOn(connector, 'generateRecipes')
-    .mockResolvedValue({ ok: false, error: { type: 'no_products', message: 'Ajoute des produits au garde-manger pour générer une recette.' } })
+  stubJob(connector, failedJob('no_products', 'Ajoute des produits au garde-manger pour générer une recette.'))
   renderComposer(connector)
 
   // Before: the empty state carries the action, not just the diagnosis.
@@ -205,9 +215,7 @@ test('an empty garde-manger offers the door, before the wait and after it', asyn
 
 test('a failure the user can only retry offers exactly that', async () => {
   const connector = new FakeFridgeConnector()
-  jest
-    .spyOn(connector, 'generateRecipes')
-    .mockResolvedValue({ ok: false, error: { type: 'network_error', message: 'Serveur injoignable.' } })
+  stubJob(connector, failedJob('network_error', 'Serveur injoignable.'))
   renderComposer(connector)
 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
@@ -233,7 +241,7 @@ test('every chip announces the group it belongs to, not just its own word', asyn
 
 test('a pantry row is a control, not a caption — tapping it builds the recipe around that product', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
-  const generate = jest.spyOn(connector, 'generateRecipes')
+  const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
   const rows = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))

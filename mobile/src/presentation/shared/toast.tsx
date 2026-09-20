@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Animated, Pressable } from 'react-native'
-import { Text } from './tamagui-typed.js'
+import { Text, XStack } from './tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { TOAST_PILL_STYLE, ToastPillLayer, toastPillShadow } from './toast-pill.js'
 import { subscribeToast, type ToastMessage } from '../../application/shared/toast.js'
 
 const AUTO_DISMISS_MS = 3500
+// A toast with a tap-through gets longer: the thumb has to find it.
+const ACTION_DISMISS_MS = 7000
 
 /** Mounted once at the app root, overlaying every screen. Renders nothing until the first `showToast` call. */
 export function ToastHost() {
@@ -32,7 +34,7 @@ export function ToastHost() {
       progress.setValue(0)
       Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start()
       if (dismissTimer.current) clearTimeout(dismissTimer.current)
-      dismissTimer.current = setTimeout(dismiss, AUTO_DISMISS_MS)
+      dismissTimer.current = setTimeout(dismiss, next.action ? ACTION_DISMISS_MS : AUTO_DISMISS_MS)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -50,9 +52,26 @@ export function ToastHost() {
         onPress={dismiss}
         style={[TOAST_PILL_STYLE, toastPillShadow(palette), { backgroundColor: bg }]}
       >
-        <Text fontSize={13} fontWeight="600" color={text}>
-          {toast.message}
-        </Text>
+        <XStack alignItems="center" gap="$3">
+          <Text fontSize={13} fontWeight="600" color={text} flexShrink={1}>
+            {toast.message}
+          </Text>
+          {toast.action ? (
+            <Pressable
+              onPress={() => {
+                toast.action?.onPress()
+                dismiss()
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={toast.action.label}
+              hitSlop={8}
+            >
+              <Text fontSize={13} fontWeight="800" color={text} textDecorationLine="underline">
+                {toast.action.label}
+              </Text>
+            </Pressable>
+          ) : null}
+        </XStack>
       </Pressable>
     </ToastPillLayer>
   )

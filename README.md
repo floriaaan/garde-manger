@@ -83,7 +83,7 @@ Everything is set in `.env` (commented), then `docker compose up -d` to apply.
 
 ### AI (receipt scanning, recipes)
 
-Without a provider, everything works except these two features. Set at least one provider:
+Without a provider, everything works except these two features. Scans and recipe generation run as background jobs (a Postgres queue, [ADR 0016](docs/adr/0016-file-de-taches-ia-postgres.md)): the app polls, and you can leave the screen while the AI works. The in-process worker is controlled by `JOB_WORKER_ENABLED` and `JOB_MAX_CONCURRENCY`. Set at least one provider:
 
 ```dotenv
 AI_PROVIDER=gemini          # gemini | openai | ollama

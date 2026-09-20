@@ -25,6 +25,7 @@ export default defineConfig({
     () => import('#providers/shopping_list_provider'),
     () => import('#providers/home_assistant_provider'),
     () => import('#providers/recipe_provider'),
+    () => import('#providers/job_provider'),
     () => import('#providers/telemetry_provider'),
     () => import('#providers/instance_provider'),
   ],

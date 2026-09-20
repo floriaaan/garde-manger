@@ -100,6 +100,7 @@ import { StatCard } from './stat-card.js'
 import { HeroWarmGlow } from './hero-warm-glow.js'
 import { NavCard } from './nav-card.js'
 import { receiptsSummary } from './receipts-row.js'
+import { ScanDraftBanner } from './scan-draft-banner.js'
 import { MemberAvatars } from '../shared/member-avatars.js'
 import { PillButton } from '../shared/pill-button.js'
 import { useSoftPalette } from './soft-palette.js'
@@ -619,6 +620,9 @@ export function HouseholdDashboard({
                 Accès rapide
               </Text>
             </XStack>
+            <YStack marginTop="$3">
+              <ScanDraftBanner palette={palette} />
+            </YStack>
             <TourAnchor id="navcards">
             <YStack gap="$3" marginTop="$3">
               <XStack gap="$3">

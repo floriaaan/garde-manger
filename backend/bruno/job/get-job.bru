@@ -1,0 +1,15 @@
+meta {
+  name: Get job
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/jobs/{{jobId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{cookie}}
+}

@@ -19,7 +19,7 @@ jest.mock('../auth/auth-client.js', () => ({
 // `expo-file-system`'s real `File` implements `Blob` via a native binding
 // that jest can't reproduce — its jest-environment stand-in isn't a real
 // `Blob` instance, and Node's own `FormData.append(name, value, filename)`
-// (the 3-arg form `scanReceipt` uses) strictly rejects anything that isn't
+// (the 3-arg form the receipt enqueue uses) strictly rejects anything that isn't
 // one. Swapped for an actual `Blob` here so the test exercises
 // `HttpFridgeConnector`'s own wiring rather than expo-file-system's.
 jest.mock('expo-file-system', () => ({
@@ -243,61 +243,59 @@ test('lookupProductByBarcode() throws, rather than returning null, when the requ
   globalThis.fetch = originalFetch
 })
 
-test('scanReceipt() posts a multipart image and unwraps the draft', async () => {
-  const fetchMock = jest.fn().mockResolvedValue({
-    status: 200,
-    ok: true,
-    json: () =>
-      Promise.resolve({
-        draft: { storeName: 'Carrefour', scannedAt: '2026-08-28T10:00:00.000Z', totalAmount: 24.5, items: [] },
-      }),
-  })
+const queuedJob = {
+  id: 'job-1',
+  kind: 'receipt_scan',
+  status: 'queued',
+  progress: { total: 1, done: 0, failed: [] },
+  result: null,
+  error: null,
+  createdAt: '2026-08-28T10:00:00.000Z',
+  startedAt: null,
+  finishedAt: null,
+}
+
+test('enqueueReceiptScan() posts a multipart image and unwraps the queued job', async () => {
+  const fetchMock = jest.fn().mockResolvedValue({ status: 202, ok: true, json: () => Promise.resolve({ job: queuedJob }) })
   globalThis.fetch = fetchMock as unknown as typeof fetch
 
   const connector = new HttpFridgeConnector()
-  const result = await connector.scanReceipt('file://receipt.jpg')
+  const result = await connector.enqueueReceiptScan('file://receipt.jpg')
 
   expect(result.ok).toBe(true)
-  if (result.ok) expect(result.value.storeName).toBe('Carrefour')
+  if (result.ok) expect(result.value.id).toBe('job-1')
   const [url, init] = fetchMock.mock.calls[0]
-  expect(url).toContain('/api/receipts/scan')
+  expect(url).toContain('/api/jobs/receipt-scan')
   expect(init.body).toBeInstanceOf(FormData)
 
   globalThis.fetch = originalFetch
 })
 
-test('scanReceipt() on web fetches the blob: URI and posts a real Blob part', async () => {
+test('enqueueReceiptScan() on web fetches the blob: URI and posts a real Blob part', async () => {
   // Regression test: web's real FormData/fetch don't understand RN's
   // native `{ uri, name, type }` shim at all — appending it threw
   // "Unsupported FormDataPart implementation" the moment the request body
-  // was serialized, with `scanReceipt` never reaching the network.
+  // was serialized, with the enqueue never reaching the network.
   const originalOS = Platform.OS
   Platform.OS = 'web'
   try {
     const blob = new Blob(['fake-image-bytes'], { type: 'image/jpeg' })
     const fetchMock = jest
       .fn()
-      // First call: scanReceipt's own `fetch(imageUri)` to read the blob: URI back out.
+      // First call: the connector's own `fetch(imageUri)` to read the blob: URI back out.
       .mockResolvedValueOnce({ blob: () => Promise.resolve(blob) })
       // Second call: apiFetchMultipart's request to the backend.
-      .mockResolvedValueOnce({
-        status: 200,
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            draft: { storeName: 'Carrefour', scannedAt: '2026-08-28T10:00:00.000Z', totalAmount: 24.5, items: [] },
-          }),
-      })
+      .mockResolvedValueOnce({ status: 202, ok: true, json: () => Promise.resolve({ job: queuedJob }) })
     globalThis.fetch = fetchMock as unknown as typeof fetch
 
     const connector = new HttpFridgeConnector()
-    const result = await connector.scanReceipt('blob:http://localhost/fake-uri')
+    const result = await connector.enqueueReceiptScan('blob:http://localhost/fake-uri')
 
     expect(result.ok).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[0]?.[0]).toBe('blob:http://localhost/fake-uri')
     const [url, init] = fetchMock.mock.calls[1] ?? []
-    expect(url).toContain('/api/receipts/scan')
+    expect(url).toContain('/api/jobs/receipt-scan')
     expect(init.body).toBeInstanceOf(FormData)
   } finally {
     Platform.OS = originalOS
@@ -305,17 +303,17 @@ test('scanReceipt() on web fetches the blob: URI and posts a real Blob part', as
   }
 })
 
-test('scanReceipt() returns Result.err on an extraction failure', async () => {
+test('enqueueReceiptScan() returns Result.err when the quota is spent', async () => {
   globalThis.fetch = jest.fn().mockResolvedValue({
-    status: 422,
+    status: 402,
     ok: false,
-    json: () => Promise.resolve({ error: { type: 'extraction_failed', message: 'Extraction impossible.' } }),
+    json: () => Promise.resolve({ error: { type: 'ai_quota_exceeded', message: 'Quota atteint.' } }),
   }) as unknown as typeof fetch
 
   const connector = new HttpFridgeConnector()
-  const result = await connector.scanReceipt('file://receipt.jpg')
+  const result = await connector.enqueueReceiptScan('file://receipt.jpg')
 
-  expect(result).toEqual({ ok: false, error: { type: 'extraction_failed', message: 'Extraction impossible.' } })
+  expect(result).toEqual({ ok: false, error: { type: 'ai_quota_exceeded', message: 'Quota atteint.' } })
 
   globalThis.fetch = originalFetch
 })

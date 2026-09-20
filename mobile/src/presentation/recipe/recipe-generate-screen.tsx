@@ -38,13 +38,13 @@
  */
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
-import { PulseDots } from '../shared/pulse-dots.js'
+import { ProgressBar } from '../shared/progress-bar.js'
 import { ScreenHeader } from '../shared/screen-header.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { Chip } from '../shared/chip.js'
@@ -72,7 +72,10 @@ import { daysUntilExpiry, expiryLabel, sortByExpiry } from '../dashboard/product
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import type { Product } from '../../domain/fridge/product.js'
-import { useGenerateRecipesMutation } from '../../application/recipe/generate-recipes.mutation.js'
+import { useEnqueueRecipeGenerationMutation } from '../../application/job/job-mutations.js'
+import { useJobQuery } from '../../application/job/jobs.query.js'
+import { useWatchJob } from '../../application/job/watched-jobs.js'
+import { isJobActive } from '../../domain/job/job.js'
 import {
   composeRecipePrompt,
   countSelections,
@@ -133,10 +136,16 @@ export function RecipeGenerateScreen() {
   const queryClient = useQueryClient()
   const productsQuery = useProductsQuery()
   const householdQuery = useHouseholdQuery()
-  const generate = useGenerateRecipesMutation()
+  const enqueue = useEnqueueRecipeGenerationMutation()
+  const [jobId, setJobId] = useState<string | undefined>()
+  const job = useJobQuery(jobId).data ?? null
+  useWatchJob(jobId)
+  const handledRef = useRef<string | null>(null)
+  // The wait is the job's, not the request's: the enqueue answers at once.
+  const waiting = enqueue.isPending || (job !== null && isJobActive(job))
   const { canSubscribe } = useAiSubscribe()
   const [wish, setWish] = useState<RecipeWish>(EMPTY_WISH)
-  const [error, setError] = useState<GenerationError | null>(null)
+  const [enqueueError, setEnqueueError] = useState<GenerationError | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState<'reset' | 'close' | null>(null)
   // The sheet always opens on `EMPTY_WISH`, so this starts closed. Once open
   // it stays open for the visit; the collapsed row still counts the choices
@@ -176,36 +185,44 @@ export function RecipeGenerateScreen() {
     router.push('/(tabs)/fridge/new')
   }
 
-  async function handleGenerate() {
-    if (generate.isPending) return
-    setError(null)
-    const result = await generate.mutateAsync(composeRecipePrompt(wish))
-    if (!result.ok) {
-      setError({
-        message: result.error.message,
-        recovery: recoveryFor(result.error.type),
-        quota: result.error.type === 'ai_quota_exceeded',
-      })
-      return
-    }
-    const [first] = result.value
-    if (!first) {
-      // A successful call that produced nothing used to dismiss the sheet in
-      // silence: six groups filled, seconds waited, and the app answered by
-      // disappearing. Nothing is invalidated either — the list gained nothing.
-      setError({
-        message: 'Aucune recette n’est sortie de cette demande. Essaie avec moins de contraintes.',
-        recovery: 'retry',
-      })
-      return
-    }
-    queryClient.invalidateQueries({ queryKey: ['recipes'] })
-    // `dismiss()`, not `back()`: expo-router's documented way out of a modal
-    // (SDK 57). And dismiss *before* pushing — replacing the modal route would
-    // present the recipe itself as a modal, which is not what a recipe is.
-    router.dismiss()
-    router.push({ pathname: '/(tabs)/recipes/[id]', params: { id: first.id } })
+  function toError(type: string, message: string): GenerationError {
+    return { message, recovery: recoveryFor(type), quota: type === 'ai_quota_exceeded' }
   }
+
+  async function handleGenerate() {
+    if (waiting) return
+    setEnqueueError(null)
+    const result = await enqueue.mutateAsync(composeRecipePrompt(wish))
+    if (!result.ok) {
+      setEnqueueError(toError(result.error.type, result.error.message))
+      return
+    }
+    setJobId(result.value.id)
+  }
+
+  // The job's own outcome, derived rather than stored: a new enqueue swaps the job and the message goes with it.
+  const [firstRecipeId] = job?.result?.recipeIds ?? []
+  const jobError: GenerationError | null =
+    job?.status === 'failed'
+      ? toError(job.error?.type ?? 'unknown', job.error?.message ?? 'La génération a échoué.')
+      : job?.status === 'succeeded' && !firstRecipeId
+        ? {
+            // A successful call that produced nothing must not dismiss the sheet in silence.
+            message: 'Aucune recette n’est sortie de cette demande. Essaie avec moins de contraintes.',
+            recovery: 'retry',
+          }
+        : null
+  const error = enqueueError ?? jobError
+
+  // Navigates once, on success. `JobHost` stays silent: this screen is watching.
+  useEffect(() => {
+    if (!job || job.status !== 'succeeded' || !firstRecipeId || handledRef.current === job.id) return
+    handledRef.current = job.id
+    queryClient.invalidateQueries({ queryKey: ['recipes'] })
+    // `dismiss()` before pushing — replacing the modal route would present the recipe itself as a modal.
+    router.dismiss()
+    router.push({ pathname: '/(tabs)/recipes/[id]', params: { id: firstRecipeId } })
+  }, [job, firstRecipeId, queryClient])
 
   return (
     <AppShell
@@ -221,16 +238,16 @@ export function RecipeGenerateScreen() {
           // blocking overlay used to enforce with a scrim. The call cannot be
           // cancelled, so an exit here would leave a recipe arriving into a
           // screen that is gone.
-          trailing={generate.isPending ? null : <CloseButton palette={palette} onPress={handleClose} />}
+          trailing={waiting ? null : <CloseButton palette={palette} onPress={handleClose} />}
         />
       }
     >
-      {generate.isPending ? <GeneratingState palette={palette} products={cookingFrom} /> : null}
+      {waiting ? <GeneratingState palette={palette} products={cookingFrom} onLater={() => router.dismiss()} /> : null}
 
       {/* Same recipe as the receipt review's form: without it the pinned
           "Générer" bar sits under the keyboard the moment a cook taps
           "Une envie ?". */}
-      {generate.isPending ? null : (
+      {waiting ? null : (
       <KeyboardAvoidingView
         style={{ flex: 1, minHeight: 0 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -680,9 +697,11 @@ function GenerateButton({
 function GeneratingState({
   palette,
   products,
+  onLater,
 }: {
   palette: SoftPalette
   products: readonly Product[]
+  onLater: () => void
 }) {
   const names = products.map((product) => product.name).slice(0, 3)
   return (
@@ -696,7 +715,9 @@ function GeneratingState({
       gap="$3"
       accessibilityLiveRegion="polite"
     >
-      <PulseDots palette={palette} size={12} testID="recipes-generating-dots" label="Génération en cours" />
+      <YStack width="100%" maxWidth={280}>
+        <ProgressBar palette={palette} testID="recipes-generating-bar" label="Génération en cours" />
+      </YStack>
       <Text fontSize={18} fontWeight="800" color={palette.ink} textAlign="center">
         On écrit ta recette
       </Text>
@@ -705,6 +726,7 @@ function GeneratingState({
           ? `On part de ${names.join(', ')}. Quelques secondes.`
           : 'Quelques secondes, le temps que l’IA réponde.'}
       </Text>
+      <PillButton testID="recipes-generating-later" label="Je reviens plus tard" tone="quiet" palette={palette} onPress={onLater} />
     </YStack>
   )
 }

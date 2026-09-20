@@ -18,13 +18,6 @@ const fakeDraft = {
   ],
 }
 
-// Minimal valid 1x1 PNG — the scan endpoint validates real file content (magic
-// bytes), not just the filename extension, so arbitrary bytes are rejected.
-const fakePngBytes = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAIAAAUAAen63NgAAAAASUVORK5CYII=',
-  'base64',
-)
-
 const fakeExtraction: ReceiptExtractionPort = {
   async extract() {
     return fakeDraft
@@ -41,26 +34,10 @@ async function signUpWithHousehold(client: import('@japa/api-client').ApiClient,
   return cookie
 }
 
-test.group('receipt: scan, import, list, detail', (group) => {
+test.group('receipt: import, list, detail', (group) => {
   group.each.setup(() => {
     __setReceiptExtractionOverrideForTests(fakeExtraction)
     return () => __setReceiptExtractionOverrideForTests(null)
-  })
-
-  test('scan returns the fake draft', async ({ client }) => {
-    const cookie = await signUpWithHousehold(client, 'receipt-scan@example.com')
-    const response = await client
-      .post('/api/receipts/scan')
-      .headers({ cookie })
-      .file('image', fakePngBytes, { filename: 'ticket.png' })
-    response.assertStatus(200)
-    response.assertBodyContains({ draft: { storeName: 'Carrefour', totalAmount: 4.8 } })
-  })
-
-  test('scan with no file returns 422', async ({ client }) => {
-    const cookie = await signUpWithHousehold(client, 'receipt-scan-empty@example.com')
-    const response = await client.post('/api/receipts/scan').headers({ cookie })
-    response.assertStatus(422)
   })
 
   test('import creates the receipt and its products, list/detail reflect them', async ({

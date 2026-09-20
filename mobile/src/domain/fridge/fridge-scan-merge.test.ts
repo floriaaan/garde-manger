@@ -1,4 +1,4 @@
-import { isLikelyDuplicate, mergeScanItems } from './fridge-scan-merge.js'
+import { isLikelyDuplicate } from './fridge-scan-merge.js'
 import type { FridgeScanDraftItem } from './fridge-scan-draft.js'
 import type { Product } from './product.js'
 
@@ -33,23 +33,6 @@ function product(overrides: Partial<Product> = {}): Product {
     ...overrides,
   }
 }
-
-describe('mergeScanItems', () => {
-  test('same name+location across photos: keeps the higher quantity, not the sum', () => {
-    const result = mergeScanItems([item({ quantity: 2 }), item({ quantity: 5 }), item({ quantity: 3 })])
-    expect(result).toEqual([item({ quantity: 5 })])
-  })
-
-  test('same name, different location: kept as two separate items', () => {
-    const result = mergeScanItems([item({ location: 'fridge' }), item({ location: 'freezer' })])
-    expect(result).toHaveLength(2)
-  })
-
-  test('name differs only by accent/case: still treated as the same item', () => {
-    const result = mergeScanItems([item({ name: 'Épinards', quantity: 1 }), item({ name: 'epinards', quantity: 4 })])
-    expect(result).toEqual([item({ name: 'epinards', quantity: 4 })])
-  })
-})
 
 describe('isLikelyDuplicate', () => {
   test('normalized name matches an existing product', () => {

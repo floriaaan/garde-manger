@@ -21,6 +21,7 @@ import type { LinkedAccount } from '../../domain/identity/linked-account.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 import type { ShoppingItem, CreateShoppingItemInput, UpdateShoppingItemInput } from '../../domain/shopping-list/shopping-item.js'
 import type { Recipe } from '../../domain/recipe/recipe.js'
+import type { Job, JobKind, ScanDraft } from '../../domain/job/job.js'
 import type { Product, CreateProductInput, UpdateProductInput } from '../../domain/fridge/product.js'
 import type { ProductOutcome, RecordProductOutcomeInput, RecordedProductOutcome } from '../../domain/fridge/product-outcome.js'
 import type { ProductOutcomeStats, OutcomeBucket } from '../../domain/fridge/product-outcome-stats.js'
@@ -133,6 +134,9 @@ export class FakeFridgeConnector implements FridgeConnector {
   private nextShoppingItemId = 1
   private receipts: Receipt[] = fakeReceipts.map((r) => ({ ...r }))
   private nextReceiptId = 1
+  private jobs: Job[] = []
+  private scanDrafts: ScanDraft[] = []
+  private nextJobId = 1
   /** Counts `fail`-marked URIs seen so far — every third one actually fails. */
   private fridgeScanFailAttempts = 0
   /**
@@ -474,7 +478,7 @@ export class FakeFridgeConnector implements FridgeConnector {
    * expiring — enough to exercise the generate flow's pending/empty/success
    * states without a provider key.
    */
-  async generateRecipes(prompt?: string): Promise<Result<Recipe[], ApiError>> {
+  private async generateRecipesNow(prompt?: string): Promise<Result<Recipe[], ApiError>> {
     // Before the empty-fridge check, not after: the real call spends the same
     // seconds whatever it is about to answer, and a failure that returns
     // instantly while a success takes two seconds teaches the wrong shape.
@@ -515,6 +519,129 @@ export class FakeFridgeConnector implements FridgeConnector {
     }
     this.generatedRecipes.unshift(recipe)
     return Result.ok([recipe])
+  }
+
+
+  /**
+   * The async-task engine, faked: a job is created queued, then a detached
+   * promise walks it through running (one unit per `pretendToThink`) to a
+   * terminal state — same observable lifecycle as the backend worker.
+   */
+  private startJob(kind: JobKind, units: string[]): Job {
+    const job: Job = {
+      id: `fake-job-${this.nextJobId++}`,
+      kind,
+      status: 'queued',
+      progress: { total: units.length, done: 0, failed: [] },
+      result: null,
+      error: null,
+      createdAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+    }
+    this.jobs.unshift(job)
+    void this.runJob(job, units)
+    return job
+  }
+
+  private async runJob(job: Job, units: string[]): Promise<void> {
+    // A beat in `queued`, so the pill and the task center have a state to show.
+    if (this.aiLatencyMs > 0) await new Promise((resolve) => setTimeout(resolve, Math.min(this.aiLatencyMs, 400)))
+    job.status = 'running'
+    job.startedAt = new Date().toISOString()
+
+    if (job.kind === 'recipe_generation') {
+      const result = await this.generateRecipesNow(units[0] || undefined)
+      this.finishJob(job, result.ok ? { recipeIds: result.value.map((r) => r.id) } : null, result.ok ? null : result.error)
+      return
+    }
+
+    const items: import('../../domain/fridge/fridge-scan-draft.js').FridgeScanDraftItem[] = []
+    for (const [index, uri] of units.entries()) {
+      if (job.kind === 'receipt_scan') {
+        await this.pretendToThink()
+        job.progress = { ...job.progress, done: job.progress.done + 1 }
+        continue
+      }
+      const photo = await this.scanFridgePhotoNow(uri)
+      if (photo.ok) {
+        items.push(...photo.value.items)
+        job.progress = { ...job.progress, done: job.progress.done + 1 }
+      } else {
+        job.progress = { ...job.progress, failed: [...job.progress.failed, index] }
+      }
+    }
+
+    if (job.progress.done === 0) {
+      this.finishJob(job, null, { type: 'extraction_failed', message: "L'analyse a échoué." })
+      return
+    }
+    const now = new Date()
+    const base = { id: `fake-draft-${job.id}`, jobId: job.id, createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + 48 * 3_600_000).toISOString() }
+    if (job.kind === 'receipt_scan') {
+      const draft = await this.scanReceiptNow()
+      if (draft.ok) this.scanDrafts.unshift({ ...base, kind: 'receipt', draft: draft.value })
+    } else {
+      this.scanDrafts.unshift({ ...base, kind: 'fridge', draft: { items } })
+    }
+    this.finishJob(job, { draftId: base.id }, null)
+  }
+
+  private finishJob(job: Job, result: Job['result'], error: Job['error']): void {
+    job.status = error ? 'failed' : 'succeeded'
+    job.result = result
+    job.error = error
+    job.finishedAt = new Date().toISOString()
+  }
+
+  async enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>> {
+    return Result.ok({ ...this.startJob('receipt_scan', [imageUri]) })
+  }
+
+  async enqueueFridgeScan(imageUris: string[]): Promise<Result<Job, ApiError>> {
+    return Result.ok({ ...this.startJob('fridge_scan', imageUris) })
+  }
+
+  async enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>> {
+    return Result.ok({ ...this.startJob('recipe_generation', [prompt ?? '']) })
+  }
+
+  async getJobs(): Promise<Job[]> {
+    return this.jobs.map((job) => ({ ...job }))
+  }
+
+  async getJob(jobId: string): Promise<Job | null> {
+    const job = this.jobs.find((j) => j.id === jobId)
+    return job ? { ...job } : null
+  }
+
+  async retryJob(jobId: string): Promise<Result<Job, ApiError>> {
+    const job = this.jobs.find((j) => j.id === jobId)
+    if (!job) return Result.err({ type: 'job_not_found', message: 'Tâche introuvable.' })
+    job.status = 'queued'
+    job.error = null
+    job.finishedAt = null
+    job.progress = { ...job.progress, done: 0, failed: [] }
+    void this.pretendToThink().then(() => this.finishJob(job, job.result, null))
+    return Result.ok({ ...job })
+  }
+
+  async dismissJob(jobId: string): Promise<Result<void, ApiError>> {
+    this.jobs = this.jobs.filter((j) => j.id !== jobId)
+    return Result.ok(undefined)
+  }
+
+  async getScanDrafts(): Promise<ScanDraft[]> {
+    return this.scanDrafts
+  }
+
+  async getScanDraft(draftId: string): Promise<ScanDraft | null> {
+    return this.scanDrafts.find((d) => d.id === draftId) ?? null
+  }
+
+  async discardScanDraft(draftId: string): Promise<Result<void, ApiError>> {
+    this.scanDrafts = this.scanDrafts.filter((d) => d.id !== draftId)
+    return Result.ok(undefined)
   }
 
   async getProducts(params?: { location?: LocationValue; expiringWithinDays?: number }): Promise<Product[]> {
@@ -659,12 +786,13 @@ export class FakeFridgeConnector implements FridgeConnector {
     return fakeProductLookup[barcode] ?? null
   }
 
-  async scanReceipt(_imageUri: string): Promise<Result<ReceiptDraft, ApiError>> {
+  private async scanReceiptNow(): Promise<Result<ReceiptDraft, ApiError>> {
+    await this.pretendToThink()
     return Result.ok({ ...fakeReceiptDraft, items: fakeReceiptDraft.items.map((item) => ({ ...item })) })
   }
 
-  /** ponytail: `fail` in the URI fails one attempt in three, to exercise `useFridgeScan`'s partial-failure path without a backend. */
-  async scanFridgePhoto(imageUri: string): Promise<Result<FridgeScanDraft, ApiError>> {
+  /** ponytail: `fail` in the URI fails one attempt in three, to exercise the partial-failure path of a fridge-scan job without a backend. */
+  private async scanFridgePhotoNow(imageUri: string): Promise<Result<FridgeScanDraft, ApiError>> {
     await this.pretendToThink()
     if (imageUri.includes('fail')) {
       this.fridgeScanFailAttempts += 1
@@ -675,7 +803,8 @@ export class FakeFridgeConnector implements FridgeConnector {
     return Result.ok({ items: fakeFridgeScanDraft.items.map((item) => ({ ...item })) })
   }
 
-  async importProducts(items: ImportProductsItemInput[]): Promise<Result<{ products: Product[] }, ApiError>> {
+  async importProducts(items: ImportProductsItemInput[], draftId?: string): Promise<Result<{ products: Product[] }, ApiError>> {
+    if (draftId) this.scanDrafts = this.scanDrafts.filter((d) => d.id !== draftId)
     const now = new Date().toISOString()
     const products: Product[] = items.map((item) => {
       const product: Product = {
@@ -701,6 +830,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async importReceipt(input: ImportReceiptInput): Promise<Result<{ receipt: Receipt; products: Product[] }, ApiError>> {
+    if (input.draftId) this.scanDrafts = this.scanDrafts.filter((d) => d.id !== input.draftId)
     const now = new Date().toISOString()
     const receipt: Receipt = {
       id: `fake-receipt-new-${this.nextReceiptId++}`,

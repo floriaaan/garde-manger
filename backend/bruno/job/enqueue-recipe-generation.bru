@@ -1,0 +1,26 @@
+meta {
+  name: Enqueue recipe generation
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/jobs/recipe-generation
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:json {
+  { "prompt": "quelque chose de rapide" }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.job && body.job.id) {
+    bru.setVar("jobId", body.job.id);
+  }
+}

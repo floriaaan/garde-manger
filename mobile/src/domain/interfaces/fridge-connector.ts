@@ -11,9 +11,8 @@ import type { RecordProductOutcomeInput, RecordedProductOutcome } from '../fridg
 import type { ProductOutcomeStats } from '../fridge/product-outcome-stats.js'
 import type { LocationValue } from '../fridge/location.js'
 import type { ProductLookupResult } from '../fridge/product-lookup-result.js'
-import type { ReceiptDraft } from '../receipt/receipt-draft.js'
 import type { Receipt, ImportReceiptInput } from '../receipt/receipt.js'
-import type { FridgeScanDraft, ImportProductsItemInput } from '../fridge/fridge-scan-draft.js'
+import type { ImportProductsItemInput } from '../fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../settings/ai-settings.js'
 import type {
   HaLink,
@@ -22,6 +21,7 @@ import type {
   DiscoverHaEntitiesInput,
   BindHaListInput,
 } from '../home-assistant/ha-link.js'
+import type { Job, ScanDraft } from '../job/job.js'
 import type { InstanceInfo } from '../instance/instance-info.js'
 
 /**
@@ -74,8 +74,11 @@ export interface FridgeConnector {
   deleteShoppingItem(itemId: string): Promise<Result<void, ApiError>>
   getRecipes(): Promise<Recipe[]>
   getRecipe(recipeId: string): Promise<Recipe | null>
-  /** `POST /api/recipes/generate` — the backend saves what it generates, so the list query is stale afterwards. */
-  generateRecipes(prompt?: string): Promise<Result<Recipe[], ApiError>>
+  /**
+   * `POST /api/jobs/recipe-generation` — answers at once with a queued job; the
+   * backend saves the recipes when the job succeeds, so the recipe list is stale then.
+   */
+  enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>>
   deleteRecipe(recipeId: string): Promise<Result<void, ApiError>>
   /**
    * "J'ai cuisiné." `productIds` are the garde-manger products this meal used
@@ -101,11 +104,21 @@ export interface FridgeConnector {
   getProductOutcomeStats(days?: number): Promise<ProductOutcomeStats>
   getExpiringSoonProducts(days?: number): Promise<Product[]>
   lookupProductByBarcode(barcode: string): Promise<ProductLookupResult | null>
-  /** One photo per call — see `docs/superpowers/specs/2026-09-16-fridge-scan-photo-design.md`. The caller (`useFridgeScan`) orchestrates and merges N calls. */
-  scanFridgePhoto(imageUri: string): Promise<Result<FridgeScanDraft, ApiError>>
-  importProducts(items: ImportProductsItemInput[]): Promise<Result<{ products: Product[] }, ApiError>>
-  scanReceipt(imageUri: string): Promise<Result<ReceiptDraft, ApiError>>
+  /** One job for all the photos (docs/superpowers/specs/2026-09-20-taches-ia-asynchrones-design.md) — the server merges the results into a single draft. */
+  enqueueFridgeScan(imageUris: string[]): Promise<Result<Job, ApiError>>
+  importProducts(items: ImportProductsItemInput[], draftId?: string): Promise<Result<{ products: Product[] }, ApiError>>
+  enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>>
   importReceipt(input: ImportReceiptInput): Promise<Result<{ receipt: Receipt; products: Product[] }, ApiError>>
+  /** Recent and still-active jobs of the foyer — what the task center and the polling read. */
+  getJobs(): Promise<Job[]>
+  getJob(jobId: string): Promise<Job | null>
+  /** Failed jobs, and scans that missed some photos (only those replay). */
+  retryJob(jobId: string): Promise<Result<Job, ApiError>>
+  /** Cancels a queued job, hides a finished one. A running job is left alone. */
+  dismissJob(jobId: string): Promise<Result<void, ApiError>>
+  getScanDrafts(): Promise<ScanDraft[]>
+  getScanDraft(draftId: string): Promise<ScanDraft | null>
+  discardScanDraft(draftId: string): Promise<Result<void, ApiError>>
   getReceipts(): Promise<Receipt[]>
   getReceipt(receiptId: string): Promise<{ receipt: Receipt; products: Product[] } | null>
   getAiSettings(): Promise<AiSettings | null>
