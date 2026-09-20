@@ -1,15 +1,38 @@
-import { Pressable } from 'react-native'
+import { Platform, Pressable } from 'react-native'
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect'
+import type { ReactNode } from 'react'
 import { router, usePathname } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { ProgressBar } from '../shared/progress-bar.js'
 import { pointerCursor } from '../shared/hover.js'
-import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import { useJobsQuery } from '../../application/job/jobs.query.js'
 import { isJobActive } from '../../domain/job/job.js'
 import { JOB_TITLES, activeLabel, isBehindAnother } from './job-labels.js'
 
 /** Clears the tab bar on phones; the pill is a shortcut to the task center, not part of the layout. */
 const ABOVE_TAB_BAR = 96
+
+/** iOS 26+ only: earlier iOS and Android keep the flat pastel card. */
+const LIQUID_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable()
+
+// Same content either way; only the surface changes. The tint keeps the fresh-green
+// identity and the text colour legible over whatever scrolls beneath.
+function Card({ palette, children }: { palette: SoftPalette; children: ReactNode }) {
+  return LIQUID_GLASS ? (
+    <GlassView
+      glassEffectStyle="regular"
+      tintColor={palette.freshBg}
+      style={{ borderRadius: 18, paddingHorizontal: 16, paddingVertical: 10, gap: 6 }}
+    >
+      {children}
+    </GlassView>
+  ) : (
+    <YStack backgroundColor={palette.freshBg} borderRadius={18} paddingHorizontal="$3" paddingVertical="$2.5" gap="$1.5">
+      {children}
+    </YStack>
+  )
+}
 
 /** Floating status of the oldest running job — "3 tasks" would hide what is actually happening. */
 export function ActiveJobPill() {
@@ -33,7 +56,7 @@ export function ActiveJobPill() {
         accessibilityLabel={`${JOB_TITLES[job.kind]} en cours. Ouvrir les tâches`}
         style={[pointerCursor, { width: '100%', maxWidth: 360 }]}
       >
-        <YStack backgroundColor={palette.freshBg} borderRadius={18} paddingHorizontal="$3" paddingVertical="$2.5" gap="$1.5">
+        <Card palette={palette}>
           <XStack justifyContent="space-between" alignItems="center" gap="$2">
             <Text fontSize={13} fontWeight="800" color={palette.freshText} numberOfLines={1}>
               {JOB_TITLES[job.kind]}
@@ -49,7 +72,7 @@ export function ActiveJobPill() {
             total={determinate ? total : undefined}
             testID="active-job-pill-bar"
           />
-        </YStack>
+        </Card>
       </Pressable>
     </YStack>
   )
