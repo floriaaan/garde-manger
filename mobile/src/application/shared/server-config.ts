@@ -12,23 +12,9 @@ import { queryClient } from './query-client.js'
 const SERVER_URL_KEY = 'server_url'
 const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? ''
 
-// ponytail: hardcoded until the official SaaS offering actually exists —
-// not env-driven, since there is exactly one and every build should agree
-// on it. Test value for now: same host as the self-hosted dev backend
-// (EXPO_PUBLIC_API_URL) but port 3334, so a second local `INSTANCE_MODE=hosted`
-// backend on that port is distinguishable from the self-hosted one on 3333.
-// Swap for the real address once the hosted offering is live.
-function localOfficialUrlForTesting(): string {
-  try {
-    const url = new URL(DEFAULT_URL)
-    url.port = '3334'
-    return url.toString().replace(/\/$/, '')
-  } catch {
-    return 'http://192.168.1.12:3334'
-  }
-}
-
-export const OFFICIAL_SERVER_URL = localOfficialUrlForTesting()
+// Hardcoded, not env-driven: there is exactly one official instance and
+// every build should agree on it.
+export const OFFICIAL_SERVER_URL = 'https://api-gardemanger.floriaaan.fr'
 
 /** `expo.version` from app.json — what a self-hosted instance's reported version gets compared against. */
 export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
