@@ -2,7 +2,7 @@
 
 # Garde-manger
 
-Le garde-manger partagé du foyer : inventaire, dates de péremption, liste de courses commune, tickets de caisse scannés en une photo et recettes avec ce qui reste. Open source, licence MIT.
+Le garde-manger partagé du foyer : inventaire, dates de péremption, liste de courses commune, tickets de caisse ou frigo scannés en une photo et recettes avec ce qui reste. Open source, licence MIT.
 
 Deux façons de s’en servir :
 
@@ -162,9 +162,9 @@ Scanne le QR code avec l’appareil photo (iOS) ou Expo Go (Android), crée un c
 
 Tout se règle dans le bloc `environment:` du service `backend`, puis `docker compose up -d` pour appliquer.
 
-### IA (scan de tickets, recettes)
+### IA (scan de tickets et du frigo, recettes)
 
-Sans fournisseur, tout marche sauf ces deux fonctionnalités. Renseigne au moins un fournisseur :
+Sans fournisseur, tout marche sauf ces fonctionnalités (scan de tickets, scan du frigo, recettes). Sur l'instance hébergée, le scan du frigo fait partie de l'abonnement ; en auto-hébergé, il est inclus. Renseigne au moins un fournisseur :
 
 ```dotenv
 AI_PROVIDER=gemini          # gemini | openai | ollama

@@ -2,7 +2,7 @@
 
 # Garde-manger
 
-The household's shared pantry: inventory, expiry dates, a shared shopping list, receipts scanned in one photo, and recipes with what's left. Open source, MIT licensed.
+The household's shared pantry: inventory, expiry dates, a shared shopping list, receipts or the fridge scanned in one photo, and recipes with what's left. Open source, MIT licensed.
 
 Two ways to use it:
 
@@ -161,9 +161,9 @@ Scan the QR code with the camera app (iOS) or Expo Go (Android), create an accou
 
 Everything is set in the `environment:` block of the `backend` service, then `docker compose up -d` to apply.
 
-### AI (receipt scanning, recipes)
+### AI (receipt and fridge scanning, recipes)
 
-Without a provider, everything works except these two features. Scans and recipe generation run as background jobs (a Postgres queue, [ADR 0016](docs/adr/0016-file-de-taches-ia-postgres.md)): the app polls, and you can leave the screen while the AI works. The in-process worker is controlled by `JOB_WORKER_ENABLED` and `JOB_MAX_CONCURRENCY`. Set at least one provider:
+Without a provider, everything works except these features (receipt scan, fridge scan, recipes). On the hosted instance, fridge scanning is part of the paid plan; self-hosted, it's included. Scans and recipe generation run as background jobs (a Postgres queue, [ADR 0016](docs/adr/0016-file-de-taches-ia-postgres.md)): the app polls, and you can leave the screen while the AI works. The in-process worker is controlled by `JOB_WORKER_ENABLED` and `JOB_MAX_CONCURRENCY`. Set at least one provider:
 
 ```dotenv
 AI_PROVIDER=gemini          # gemini | openai | ollama

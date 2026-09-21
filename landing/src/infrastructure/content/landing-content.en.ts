@@ -6,12 +6,12 @@ export const landingContentEn: LandingContent = {
   locale: 'en',
   repositoryUrl: 'https://github.com/floriaaan/garde-manger',
   hero: {
-    eyebrow: 'Open source · hosted or self-hosted',
+    eyebrow: 'Open source · official app soon, or at home',
     titleBefore: 'From the fridge to the plate, ',
     titleHighlight: 'nothing wasted',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. Hosted for you, or on your own server.',
+      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. The official app is coming soon; you can already self-host it on your own server.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -26,9 +26,9 @@ export const landingContentEn: LandingContent = {
   features: [
     {
       id: 'receipt',
-      title: 'The receipt, in one photo',
+      title: 'The receipt or the fridge, in one photo',
       description:
-        'Every item joins the pantry with its quantity and price. One AI read, no separate OCR step.',
+        'Snap a receipt or the inside of your fridge: every item joins the pantry with its quantity. One AI read, no separate OCR step.',
       illustration: 'receipt',
     },
     {
@@ -57,7 +57,7 @@ export const landingContentEn: LandingContent = {
     titleHighlight: 'Two ways',
     titleAfter: ' to get started',
     subtitle:
-      'Same app, same features. Take the hosted version to start in a minute, or install everything at home so nothing leaves the house.',
+      'Same app, same features. The official app will be the easiest way to start; you can also install everything at home.',
     hosted: {
       label: 'Hosted',
       tag: 'The easy way',
@@ -72,7 +72,7 @@ export const landingContentEn: LandingContent = {
         {
           name: 'Garde-manger plan',
           description: 'Receipt and fridge scanning, recipes with what’s left. One subscription for the whole household.',
-          price: '€2/month',
+          price: '€0.99/month',
         },
       ],
       cta: { label: 'Opening soon', href: null },
@@ -80,19 +80,20 @@ export const landingContentEn: LandingContent = {
     selfHosted: {
       label: 'Self-hosted',
       tag: 'Local-first',
-      title: 'Everything stays home.',
+      title: 'Your server, your database.',
       description:
         'For anyone who wants full control: the API runs on your own machine, the app only ever talks to your server.',
       perks: [
-        'Data never leaves the house',
+        'Your server, your database',
         'Local AI with Ollama, or your Gemini / OpenAI key',
         'Open source, MIT licence',
       ],
       commands: [
-        'git clone https://github.com/floriaaan/garde-manger.git && cd garde-manger',
-        'cp .env.example .env   # secrets + your server’s IP',
+        'nano docker-compose.yml   # the guide’s compose: secrets + IP',
         'docker compose up -d',
+        'curl http://localhost:3333/health',
       ],
+      note: 'The app isn’t on the stores yet: in the meantime, it installs from a computer (temporary). With Ollama, nothing leaves your home.',
       cta: { label: 'Read the guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
@@ -105,12 +106,12 @@ export const landingContentEn: LandingContent = {
     {
       question: 'What if I don’t want to run a server?',
       answer:
-        'A hosted plan is in the works: free for the essentials with 5 AI uses a month, and a €2/month Garde-manger plan for the whole household (receipt and fridge scanning, recipes). It isn’t open yet.',
+        'The official hosted instance is open: free for the essentials with 5 AI uses a month, and a €0.99/month Garde-manger plan for the whole household (receipt and fridge scanning, recipes).',
     },
     {
       question: 'Does my data go anywhere else?',
       answer:
-        'The official instance is hosted in Europe and GDPR-compliant. Self-hosted instances are privacy by design: the app only talks to your server, and with a local Ollama model nothing leaves your home.',
+        'The official instance is hosted in Europe and GDPR-compliant. Self-hosted instances are privacy by design: the app only talks to your server, and with a local Ollama model nothing leaves your home. With a Gemini or OpenAI key, receipt photos are sent to that provider to be read.',
     },
     {
       question: 'Can several people use it?',
@@ -125,7 +126,7 @@ export const landingContentEn: LandingContent = {
     {
       question: 'What devices does it run on?',
       answer:
-        'iOS and Android. The app isn’t on the stores yet: in the meantime, it runs from the repo in Expo Go, pointed at your server.',
+        'iOS and Android. The official app is coming to the stores. In the meantime, and only for self-hosting, it runs from the repo in Expo Go: a temporary solution meant for developers and the curious.',
     },
   ],
   stores: { appStore: null, playStore: null },
@@ -135,6 +136,12 @@ export const landingContentEn: LandingContent = {
     cta: { start: 'Get started', viewOnGithub: 'View on GitHub' },
     featuresHeading: 'Features',
     starsSuffix: 'stars on GitHub',
+    waitlist: {
+      label: 'Your email',
+      submit: 'Notify me',
+      sending: 'Sending…',
+      success: 'Got it! We’ll let you know when the apps are out.',
+    },
     stats: {
       heading: 'Already in kitchens',
       subtitle: 'Live numbers from the hosted instance and the repository.',

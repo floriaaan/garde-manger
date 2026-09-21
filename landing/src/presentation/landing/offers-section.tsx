@@ -1,3 +1,4 @@
+import { useState, type FormEvent } from 'react'
 import { ArrowUpRightIcon, CheckIcon, PlusIcon, SmartphoneIcon, SparklesIcon } from 'lucide-react'
 import type { LandingContent, Offer } from '../../domain/content/landing-content.js'
 import { Button } from '../ui/button.js'
@@ -74,7 +75,7 @@ export function OffersSection({ content }: { content: LandingContent }) {
               />
               <p className="mt-6 max-w-md text-lg text-white/85">{hosted.description}</p>
               <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <OfferCta offer={hosted} />
+                <WaitlistForm ui={ui.waitlist} />
                 <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
                   <SmartphoneIcon aria-hidden className="size-4" />
                   {stores.appStore || stores.playStore ? ui.offers.storesAvailable : ui.offers.storesFallback}
@@ -161,6 +162,7 @@ export function OffersSection({ content }: { content: LandingContent }) {
                 ))}
               </ol>
             </div>
+            <p className="max-w-md text-xs text-pretty text-ink/60">{selfHosted.note}</p>
             <OfferCta offer={selfHosted} variant="quiet" size="default" />
           </div>
         </article>
@@ -236,5 +238,45 @@ function OfferCta({
         {offer.cta.label} <ArrowUpRightIcon aria-hidden data-motion="lift" />
       </a>
     </Button>
+  )
+}
+
+/** Fake waitlist: nothing is sent yet, the submit only simulates it. */
+function WaitlistForm({ ui }: { ui: LandingContent['ui']['waitlist'] }) {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('sending')
+    // ponytail: fake submit, wire to a real endpoint when the hosted offer opens
+    setTimeout(() => setStatus('done'), 900)
+  }
+
+  if (status === 'done') {
+    return (
+      <p role="status" className="inline-flex h-14 items-center gap-3 rounded-full bg-black/22 px-7 font-semibold text-white">
+        <CheckIcon aria-hidden className="size-5 text-soon-on-dark" strokeWidth={3} />
+        {ui.success}
+      </p>
+    )
+  }
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
+      <label className="sr-only" htmlFor="waitlist-email">
+        {ui.label}
+      </label>
+      <input
+        id="waitlist-email"
+        type="email"
+        required
+        autoComplete="email"
+        placeholder={ui.label}
+        disabled={status === 'sending'}
+        className="h-14 w-64 rounded-full bg-white/15 px-6 text-white placeholder:text-white/60 focus-visible:outline-2 focus-visible:outline-white"
+      />
+      <Button type="submit" size="lg" disabled={status === 'sending'}>
+        {status === 'sending' ? ui.sending : ui.submit}
+      </Button>
+    </form>
   )
 }

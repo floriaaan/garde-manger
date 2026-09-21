@@ -6,12 +6,12 @@ export const landingContentFr: LandingContent = {
   locale: 'fr',
   repositoryUrl: 'https://github.com/floriaaan/garde-manger',
   hero: {
-    eyebrow: 'Open source · clé en main ou chez toi',
+    eyebrow: 'Open source · app officielle bientôt, ou chez toi',
     titleBefore: 'Du frigo à l’assiette, ',
     titleHighlight: 'sans rien jeter',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. Clé en main, ou sur ton propre serveur.',
+      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. L’app officielle arrive bientôt ; tu peux déjà l’auto-héberger sur ton propre serveur.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -26,9 +26,9 @@ export const landingContentFr: LandingContent = {
   features: [
     {
       id: 'receipt',
-      title: 'Le ticket de caisse, en une photo',
+      title: 'Le ticket ou le frigo, en une photo',
       description:
-        'Chaque article rejoint le garde-manger avec sa quantité et son prix. Une seule lecture par l’IA, pas d’OCR à part.',
+        'Photographie un ticket de caisse ou l’intérieur du frigo : chaque article rejoint le garde-manger avec sa quantité. Une seule lecture par l’IA, pas d’OCR à part.',
       illustration: 'receipt',
     },
     {
@@ -57,7 +57,7 @@ export const landingContentFr: LandingContent = {
     titleHighlight: 'Deux façons',
     titleAfter: ' de s’y mettre',
     subtitle:
-      'Même app, mêmes fonctionnalités. Prends la version clé en main pour démarrer en une minute, ou installe tout chez toi pour que rien ne quitte la maison.',
+      'Même app, mêmes fonctionnalités. L’app officielle sera la façon la plus simple de démarrer ; tu peux aussi tout installer chez toi.',
     hosted: {
       label: 'Clé en main',
       tag: 'Le plus simple',
@@ -80,19 +80,20 @@ export const landingContentFr: LandingContent = {
     selfHosted: {
       label: 'Auto-hébergé',
       tag: 'Local-first',
-      title: 'Tout reste chez toi.',
+      title: 'Ton serveur, ta base.',
       description:
         'Pour qui veut garder la main : l’API tourne sur ta machine, l’app ne parle qu’à ton serveur.',
       perks: [
-        'Les données ne quittent pas la maison',
+        'Ton serveur, ta base de données',
         'IA locale avec Ollama, ou ta clé Gemini / OpenAI',
         'Open source, licence MIT',
       ],
       commands: [
-        'git clone https://github.com/floriaaan/garde-manger.git && cd garde-manger',
-        'cp .env.example .env   # secrets + IP du serveur',
+        'nano docker-compose.yml   # compose du guide : secrets + IP',
         'docker compose up -d',
+        'curl http://localhost:3333/health',
       ],
+      note: 'L’app n’est pas encore sur les stores : en attendant, elle s’installe depuis un ordinateur (solution provisoire). Avec Ollama, rien ne sort de chez toi.',
       cta: { label: 'Lire le guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
@@ -105,12 +106,12 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Et si je ne veux pas gérer de serveur ?',
       answer:
-        'Une offre clé en main est en préparation : gratuite pour l’essentiel avec 5 utilisations de l’IA par mois, et un abonnement Garde-manger à 0,99€/mois pour tout le foyer (scan de tickets et du frigo, recettes). Elle n’est pas encore ouverte.',
+        'L’instance officielle clé en main est ouverte : gratuite pour l’essentiel avec 5 utilisations de l’IA par mois, et un abonnement Garde-manger à 0,99€/mois pour tout le foyer (scan de tickets et du frigo, recettes).',
     },
     {
       question: 'Mes données partent-elles ailleurs ?',
       answer:
-        'L’instance officielle est hébergée en Europe, dans le respect du RGPD. Les instances auto-hébergées sont privacy by design : l’app ne parle qu’à ton serveur, et avec un modèle local Ollama, rien ne sort de chez toi.',
+        'L’instance officielle est hébergée en Europe, dans le respect du RGPD. Les instances auto-hébergées sont privacy by design : l’app ne parle qu’à ton serveur, et avec un modèle local Ollama, rien ne sort de chez toi. Avec une clé Gemini ou OpenAI, les photos de tickets sont envoyées à ce fournisseur pour être lues.',
     },
     {
       question: 'On peut être plusieurs ?',
@@ -125,7 +126,7 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Sur quels appareils ?',
       answer:
-        'iOS et Android. L’app n’est pas encore sur les stores : en attendant, elle se lance depuis le dépôt dans Expo Go, pointée sur ton serveur.',
+        'iOS et Android. L’app officielle arrive sur les stores. En attendant, et uniquement pour l’auto-hébergement, elle se lance depuis le dépôt dans Expo Go : solution provisoire, réservée aux développeurs et aux curieux.',
     },
   ],
   stores: { appStore: null, playStore: null },
@@ -135,6 +136,12 @@ export const landingContentFr: LandingContent = {
     cta: { start: 'Commencer', viewOnGithub: 'Voir sur GitHub' },
     featuresHeading: 'Fonctionnalités',
     starsSuffix: 'étoiles sur GitHub',
+    waitlist: {
+      label: 'Ton email',
+      submit: 'Me prévenir',
+      sending: 'Envoi…',
+      success: 'C’est noté ! On te prévient à la sortie des apps.',
+    },
     stats: {
       heading: 'Déjà dans les cuisines',
       subtitle: 'Les chiffres de l’instance hébergée et du dépôt, en direct.',
