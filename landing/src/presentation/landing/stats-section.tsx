@@ -7,27 +7,33 @@ import { cn } from '../ui/cn.js'
 import { CORNERS, type CornerSet } from '../ui/corners.js'
 
 /**
- * Live numbers only. A source that is disabled or failing hides its own block
- * rather than showing a guess; while loading a value is an honest "—".
+ * Live numbers only. A source that is disabled, failing, still loading or
+ * too small to impress hides its own block rather than showing dashes or zeros.
  */
+const MIN_HOUSEHOLDS = 10
+
 export function StatsSection({ content }: { content: LandingContent }) {
   const { ui, locale } = content
   const format = (value: number) => value.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')
   const stats = useInstanceStatsQuery()
   const project = useProjectInfoQuery()
 
-  const showStats = stats.isPending || (stats.isSuccess && stats.data !== null)
+  const showStats = stats.isSuccess && stats.data !== null && stats.data.households >= MIN_HOUSEHOLDS
   if (!showStats && !project.isSuccess) return null
 
   return (
-    <section aria-labelledby="stats-title" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
-      <h2 id="stats-title" className="text-center text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-        {ui.stats.heading}
-      </h2>
-      <p className="mx-auto mt-3 max-w-xl text-center text-ink-secondary">{ui.stats.subtitle}</p>
+    <section aria-labelledby={showStats ? 'stats-title' : undefined} className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      {showStats && (
+        <>
+          <h2 id="stats-title" className="text-center text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+            {ui.stats.heading}
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-ink-secondary">{ui.stats.subtitle}</p>
+        </>
+      )}
 
       {showStats && (
-        <ul className="mt-12 grid gap-5 sm:grid-cols-3" aria-busy={stats.isPending}>
+        <ul className="mt-12 grid gap-5 sm:grid-cols-3">
           <StatCard
             corners="a"
             tone="cream"

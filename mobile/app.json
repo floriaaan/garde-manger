@@ -1,16 +1,19 @@
 {
   "expo": {
     "name": "Garde-manger",
-    "slug": "garde-manger-mobile",
-    "version": "1.0.0",
-    
+    "slug": "garde-manger",
+    "version": "1.0.0-rc.1",
     "icon": "./assets/images/icon.png",
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
-      "requireFullScreen": false
+      "requireFullScreen": false,
+      "bundleIdentifier": "com.floriaaan.gardemanger",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +22,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "package": "com.floriaaan.gardemanger",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -58,6 +66,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "floriaaan",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "67dc1735-bcfd-4ccc-a8af-a84df72877b2"
+      }
     }
   }
 }

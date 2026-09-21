@@ -32,6 +32,8 @@ export interface HostedOffer extends Offer {
 
 export interface SelfHostedOffer extends Offer {
   commands: string[]
+  /** Small print under the commands: Expo Go caveat, AI provider privacy. */
+  note: string
 }
 
 export interface FaqEntry {
@@ -57,6 +59,7 @@ export interface LandingUi {
   featuresHeading: string
   /** sr-only suffix after the GitHub star count in the hero eyebrow. */
   starsSuffix: string
+  waitlist: { label: string; submit: string; sending: string; success: string }
   stats: {
     heading: string
     subtitle: string

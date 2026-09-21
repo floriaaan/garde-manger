@@ -1,21 +1,30 @@
 *[English](README.md) · Français*
 
-# Garde-manger
+<p align="center">
+  <img src="landing/public/logo.png" alt="Logo Garde-manger" width="96" />
+</p>
 
-Le garde-manger partagé du foyer : inventaire, dates de péremption, liste de courses commune, tickets de caisse scannés en une photo et recettes avec ce qui reste. Open source, licence MIT.
+<h1 align="center">Garde-manger</h1>
+
+Le garde-manger partagé du foyer : inventaire, dates de péremption, liste de courses commune, tickets de caisse ou frigo scannés en une photo et recettes avec ce qui reste. Open source, licence MIT.
+
+<p align="center">
+  <img src="landing/public/screenshots/accueil.jpg" alt="Écran d’accueil" width="260" />
+  <img src="landing/public/screenshots/recettes.jpg" alt="Écran Recettes" width="260" />
+</p>
 
 Deux façons de s’en servir :
 
-- **Clé en main** — hébergé pour toi, gratuit pour l’essentiel, abonnement pour l’IA. _Pas encore ouvert._
+- **Clé en main** — hébergé pour toi, gratuit pour l’essentiel, abonnement pour l’IA.
 - **Auto-hébergé** — l’API tourne chez toi, l’app ne parle qu’à ton serveur. C’est ce que décrit la suite.
 
 ## Installation
 
 Il faut une machine avec Docker (Compose v2), sur le même réseau que les téléphones. Compte quelques centaines de Mo de RAM (~2 Go de plus avec la supervision).
 
-### 1. Créer le fichier compose
+### 1. Créer le fichier compose et le `.env`
 
-Les images sont construites par la CI et publiées sur GHCR : pas de clone, pas de build. Enregistre ceci en `docker-compose.yml` sur ton serveur :
+Les images sont construites par la CI et publiées sur GHCR : ni clone, ni build. Enregistre ceci sous `docker-compose.yml` sur ton serveur. Il ne contient aucun secret : ils vivent dans le `.env` à côté.
 
 ```yaml
 services:
@@ -24,7 +33,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: garde_manger
-      POSTGRES_PASSWORD: CHANGE_ME_DB_PASSWORD
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: garde_manger
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -35,7 +44,8 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/floriaaan/garde-manger-backend:main
+    # Fige une version de la page Releases (ex. 1.0.0) dès qu’il y en a une ; main suit le développement
+    image: ghcr.io/floriaaan/garde-manger-backend:${GARDE_MANGER_VERSION:-main}
     restart: unless-stopped
     depends_on:
       db:
@@ -44,79 +54,51 @@ services:
       - '3333:3333'
     volumes:
       - storage:/app/data
-    # Permet à OLLAMA_BASE_URL de joindre un Ollama tournant sur l’hôte (Linux aussi).
+    # Permet à OLLAMA_BASE_URL d’atteindre un Ollama installé sur l’hôte (Linux compris).
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    env_file: .env
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3333
       LOG_LEVEL: info
-
-      # Secrets : génère chacun avec `openssl rand -base64 32`
-      APP_KEY: CHANGE_ME
-      BETTER_AUTH_SECRET: CHANGE_ME
-      ENCRYPTION_KEY: CHANGE_ME
-
-      # Comment les téléphones joignent l’API : IP du réseau ou domaine public, jamais localhost
-      APP_URL: http://192.168.1.42:3333
-      NETWORK_URL: http://192.168.1.42:3333
-      # exp:// = Expo Go, gardemanger:// = l’app installée
-      CORS_ORIGIN: exp://,gardemanger://
-
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: garde_manger
-      DB_PASSWORD: CHANGE_ME_DB_PASSWORD
       DB_DATABASE: garde_manger
       STORAGE_ROOT: /app/data/storage
-
-      # Connexion (PocketID / Google s’activent quand leurs variables sont renseignées)
-      DISABLE_PASSWORD_LOGIN: 'false'
-      POCKETID_ISSUER_URL: ''
-      POCKETID_CLIENT_ID: ''
-      POCKETID_CLIENT_SECRET: ''
-      GOOGLE_CLIENT_ID: ''
-      GOOGLE_CLIENT_SECRET: ''
-
-      # IA : scan de tickets + recettes. Renseigne au moins un fournisseur.
-      AI_PROVIDER: gemini
-      GEMINI_API_KEY: ''
-      OPENAI_API_KEY: ''
-      OLLAMA_BASE_URL: ''            # ex. http://host.docker.internal:11434
-      OLLAMA_VISION_MODEL: ''        # ex. llava
-      OLLAMA_TEXT_MODEL: ''          # ex. llama3.1
-
-      HOME_ASSISTANT_ALLOWED_HOSTS: ''
-
-      # Instance. Ne pas toucher en auto-hébergé (aucun quota IA).
-      PUBLIC_STATS_ENABLED: 'false'
-      DEPLOY_ENV: production
-      APP_VERSION: main
-
-      # Supervision désactivée : pas de collecteur dans ce fichier
-      OTEL_ENABLED: 'false'
-      OTEL_SERVICE_NAME: garde-manger-backend
-      TELEMETRY_INGEST_ENABLED: 'false'
 
 volumes:
   pgdata:
   storage:
 ```
 
-Puis renseigne les valeurs :
+Crée ensuite le `.env` à côté. Remplace `192.168.1.42` par l’adresse du serveur vue par les téléphones (IP locale ou domaine, jamais `localhost`) ; les secrets sont générés pour toi :
 
 ```bash
-# Affiche trois secrets : colle-les dans APP_KEY, BETTER_AUTH_SECRET et ENCRYPTION_KEY
-for k in APP_KEY BETTER_AUTH_SECRET ENCRYPTION_KEY; do echo "$k=$(openssl rand -base64 32)"; done
-
-ipconfig getifaddr en0          # IP du serveur sur macOS
-hostname -I | awk '{print $1}'  # ... sur Linux
+IP=192.168.1.42
+# IP du serveur : ipconfig getifaddr en0 (macOS) · hostname -I | awk '{print $1}' (Linux)
+cat > .env <<EOF
+GARDE_MANGER_VERSION=main
+DB_PASSWORD=$(openssl rand -hex 24)
+APP_KEY=$(openssl rand -base64 32)
+BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+ENCRYPTION_KEY=$(openssl rand -base64 32)
+APP_URL=http://$IP:3333
+NETWORK_URL=http://$IP:3333
+# exp:// = Expo Go, gardemanger:// = l’app installée
+CORS_ORIGIN=exp://,gardemanger://
+# IA : scan de tickets et du frigo + recettes. Renseigne au moins un fournisseur (voir Configuration).
+AI_PROVIDER=gemini
+GEMINI_API_KEY=
+EOF
+chmod 600 .env
 ```
 
-- `APP_URL` et `NETWORK_URL` : l’adresse du serveur vue par les téléphones (`http://192.168.1.42:3333`), pas `localhost`.
-- `CHANGE_ME_DB_PASSWORD` : le même mot de passe aux deux endroits (`db` et `backend`).
-- Au moins un fournisseur IA, sinon le scan de tickets et les recettes restent désactivés.
+- `APP_URL` et `NETWORK_URL` : l’adresse du serveur vue par les téléphones, pas `localhost`.
+- Au moins un fournisseur IA, sinon les scans et les recettes restent désactivés. Le reste a des valeurs par défaut raisonnables : la liste complète est dans [`.env.example`](.env.example).
+- Le `.env` contient tes secrets : ne le versionne pas et ne le colle nulle part (`chmod 600 .env`).
 
 ### 2. Démarrer
 
@@ -124,18 +106,25 @@ hostname -I | awk '{print $1}'  # ... sur Linux
 docker compose up -d
 ```
 
-Les migrations de la base passent toutes seules au démarrage. Vérifie :
+Les migrations de la base s’exécutent automatiquement au démarrage. Vérifie :
 
 ```bash
 curl http://localhost:3333/health
 # {"status":"ok"}
 ```
 
-Ça démarre Postgres et l’API, sans supervision (voir [Supervision](#supervision)).
+Ça démarre Postgres et l’API en HTTP simple, sur ton réseau local uniquement. Pour l’exposer ou protéger les sessions, voir [HTTPS](#https). Sans supervision (voir [Supervision](#supervision)).
 
-### 3. Lancer l’app sur ton téléphone
+### 3. Installer l’app sur ton téléphone
 
-L’app n’est pas encore sur les stores. En attendant, elle tourne dans [Expo Go](https://expo.dev/go) (App Store / Play Store), depuis un ordinateur du même réseau avec `git` et Node.js 24+ :
+**Android** : télécharge le dernier `.apk` sur la page [Releases](https://github.com/floriaaan/garde-manger/releases/latest) et ouvre-le (Android te demandera d’autoriser les installations depuis cette source). Au premier lancement, choisis **Auto-hébergé** et saisis l’adresse de ton serveur (`http://192.168.1.42:3333`, pas `localhost`). Crée ensuite un compte, puis un foyer. Les autres membres créent leur propre compte et rejoignent le foyer avec son code d’invitation.
+
+**iOS** : l’app n’est pas encore sur l’App Store ni sur TestFlight. En attendant, passe par Expo Go ci-dessous.
+
+<details>
+<summary>Expo Go (iOS, ou pour développer)</summary>
+
+Solution provisoire : elle tourne dans [Expo Go](https://expo.dev/go) depuis un ordinateur du même réseau avec `git` et Node.js 24+ :
 
 ```bash
 git clone https://github.com/floriaaan/garde-manger.git && cd garde-manger
@@ -154,17 +143,19 @@ EXPO_PUBLIC_API_URL=http://192.168.1.42:3333
 cd mobile && pnpm start
 ```
 
-Scanne le QR code avec l’appareil photo (iOS) ou Expo Go (Android), crée un compte, puis un foyer. Les autres membres créent leur propre compte et rejoignent le foyer avec son code d’invitation.
+Scanne le QR code avec l’appareil photo (iOS) ou Expo Go (Android).
 
-> Si la connexion échoue avec une erreur d’origine, vérifie que `CORS_ORIGIN` dans ton compose contient bien `exp://` (Expo Go) — c’est la valeur par défaut.
+> Si la connexion échoue avec une erreur d’origine, vérifie que `CORS_ORIGIN` dans ton `.env` contient bien `exp://` (Expo Go).
+
+</details>
 
 ## Configuration
 
-Tout se règle dans le bloc `environment:` du service `backend`, puis `docker compose up -d` pour appliquer.
+Tout se règle dans le `.env` à côté du compose (la liste complète est dans [`.env.example`](.env.example)), puis `docker compose up -d` pour appliquer.
 
-### IA (scan de tickets, recettes)
+### IA (scan de tickets et du frigo, recettes)
 
-Sans fournisseur, tout marche sauf ces deux fonctionnalités. Renseigne au moins un fournisseur :
+Sans fournisseur, tout marche sauf ces fonctionnalités (scan de tickets, scan du frigo, recettes). Sur l'instance hébergée, le scan du frigo fait partie de l'abonnement ; en auto-hébergé, il est inclus. Renseigne au moins un fournisseur :
 
 ```dotenv
 AI_PROVIDER=gemini          # gemini | openai | ollama
@@ -196,21 +187,54 @@ Côté PocketID, l’URL de redirection se base sur `NETWORK_URL` ([ADR 0005](do
 
 ### Supervision
 
-Désactivée dans le compose ci-dessus. Pour l’activer (OpenTelemetry Collector + OpenObserve), utilise plutôt le [`compose.yml`](compose.yml) du dépôt avec son [`.env.example`](.env.example). Change `OPENOBSERVE_ROOT_EMAIL`, `OPENOBSERVE_ROOT_PASSWORD` et `OTLP_STORE_AUTH` ensemble avant d’exposer quoi que ce soit. Détails dans [docs/observabilite.md](docs/observabilite.md).
+Désactivée dans le compose ci-dessus (`OTEL_ENABLED` et `TELEMETRY_INGEST_ENABLED` non définis). Pour l’activer (OpenTelemetry Collector + OpenObserve), utilise plutôt le [`compose.yml`](compose.yml) du dépôt avec son [`.env.example`](.env.example). Change `OPENOBSERVE_ROOT_EMAIL`, `OPENOBSERVE_ROOT_PASSWORD` et `OTLP_STORE_AUTH` ensemble avant d’exposer quoi que ce soit. Détails dans [docs/observabilite.md](docs/observabilite.md).
+
+### HTTPS
+
+Le compose ci-dessus sert du HTTP simple : correct sur un réseau domestique de confiance, mais les sessions circulent en clair. Pour l’exposer ou les protéger, place un reverse proxy devant. Avec [Caddy](https://caddyserver.com) (certificats automatiques, il faut un domaine qui pointe vers le serveur) :
+
+```yaml
+  # à ajouter dans docker-compose.yml, et retirer `ports:` du backend
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+```
+
+```
+# Caddyfile
+garde-manger.example.com {
+  reverse_proxy backend:3333
+}
+```
+
+Ajoute `caddy_data:` au bloc `volumes:`, puis mets `APP_URL` et `NETWORK_URL` à `https://garde-manger.example.com` dans le `.env`, et `EXPO_PUBLIC_API_URL` dans l’app.
 
 ## Au quotidien
 
 ```bash
-docker compose pull && docker compose up -d   # mettre à jour (migrations incluses)
 docker compose logs -f backend             # journaux de l’API
 docker compose down                        # arrêter (les données restent)
 ```
 
-Les données vivent dans deux volumes Docker : `pgdata` (la base) et `storage` (photos des tickets et produits). Sauvegarde de la base :
+Les données vivent dans deux volumes Docker : `pgdata` (la base) et `storage` (photos des tickets et produits).
+
+### Mettre à jour
+
+Les migrations s’exécutent automatiquement et ne se défont pas : sauvegarde d’abord, puis passe à une version taguée listée dans le [changelog](CHANGELOG.md) (page [Releases](https://github.com/floriaaan/garde-manger/releases)) :
 
 ```bash
-docker compose exec db pg_dump -U garde_manger garde_manger > garde-manger.sql
+docker compose exec -T db pg_dump -U garde_manger garde_manger > garde-manger-$(date +%F).sql
+# mets GARDE_MANGER_VERSION=X.Y.Z dans .env, puis :
+docker compose pull && docker compose up -d
 ```
+
+Revenir en arrière, c’est restaurer ce dump sur la version précédente : garde le fichier tant que tout n’est pas validé. Sauvegarde aussi le volume `storage` si tu tiens aux photos.
 
 ## Développer
 

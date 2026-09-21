@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 23.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_CONNECTOR": "http",
+        "EXPO_PUBLIC_API_URL": "https://api-gardemanger.floriaaan.fr",
+        "EXPO_PUBLIC_TELEMETRY_ENABLED": "true",
+        "EXPO_PUBLIC_TELEMETRY_SAMPLE_RATIO": "1",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CONNECTOR": "http",
+        "EXPO_PUBLIC_API_URL": "https://api-gardemanger.floriaaan.fr",
+        "EXPO_PUBLIC_TELEMETRY_ENABLED": "true",
+        "EXPO_PUBLIC_TELEMETRY_SAMPLE_RATIO": "1",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
