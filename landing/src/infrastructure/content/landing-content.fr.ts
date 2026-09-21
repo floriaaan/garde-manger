@@ -89,11 +89,11 @@ export const landingContentFr: LandingContent = {
         'Open source, licence MIT',
       ],
       commands: [
-        'nano docker-compose.yml   # compose du guide : secrets + IP',
+        'nano .env   # secrets + IP du serveur',
         'docker compose up -d',
         'curl http://localhost:3333/health',
       ],
-      note: 'L’app n’est pas encore sur les stores : en attendant, elle s’installe depuis un ordinateur (solution provisoire). Avec Ollama, rien ne sort de chez toi.',
+      note: 'L’app n’est pas encore sur les stores : sur Android, tu l’installes via l’APK des Releases. Avec Ollama, rien ne sort de chez toi.',
       cta: { label: 'Lire le guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
@@ -126,7 +126,7 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Sur quels appareils ?',
       answer:
-        'iOS et Android. L’app officielle arrive sur les stores. En attendant, et uniquement pour l’auto-hébergement, elle se lance depuis le dépôt dans Expo Go : solution provisoire, réservée aux développeurs et aux curieux.',
+        'iOS et Android. L’app arrive sur les stores. En attendant, sur Android, elle s’installe avec l’APK publié dans les Releases ; sur iOS, elle passe provisoirement par Expo Go.',
     },
   ],
   stores: { appStore: null, playStore: null },

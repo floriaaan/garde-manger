@@ -89,11 +89,11 @@ export const landingContentEn: LandingContent = {
         'Open source, MIT licence',
       ],
       commands: [
-        'nano docker-compose.yml   # the guide’s compose: secrets + IP',
+        'nano .env   # secrets + your server’s IP',
         'docker compose up -d',
         'curl http://localhost:3333/health',
       ],
-      note: 'The app isn’t on the stores yet: in the meantime, it installs from a computer (temporary). With Ollama, nothing leaves your home.',
+      note: 'The app isn’t on the stores yet: on Android, install it from the APK in Releases. With Ollama, nothing leaves your home.',
       cta: { label: 'Read the guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
@@ -126,7 +126,7 @@ export const landingContentEn: LandingContent = {
     {
       question: 'What devices does it run on?',
       answer:
-        'iOS and Android. The official app is coming to the stores. In the meantime, and only for self-hosting, it runs from the repo in Expo Go: a temporary solution meant for developers and the curious.',
+        'iOS and Android. The app is coming to the stores. In the meantime, on Android it installs from the APK published in Releases; on iOS it temporarily runs through Expo Go.',
     },
   ],
   stores: { appStore: null, playStore: null },
