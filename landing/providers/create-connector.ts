@@ -6,7 +6,7 @@ import type { LandingConnector } from '../src/domain/interfaces/landing-connecto
 export function createConnector(): LandingConnector {
   if (import.meta.env.VITE_CONNECTOR !== 'http') return new FakeLandingConnector()
   return new HttpLandingConnector({
-    apiUrl: (import.meta.env.VITE_API_URL ?? 'http://localhost:3333').replace(/\/$/, ''),
+    apiUrl: (import.meta.env.VITE_API_URL ?? 'https://api-gardemanger.floriaaan.fr').replace(/\/$/, ''),
     githubRepo: import.meta.env.VITE_GITHUB_REPO ?? 'floriaaan/garde-manger',
   })
 }
