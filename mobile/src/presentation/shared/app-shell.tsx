@@ -233,13 +233,17 @@ export function Fab({ onScan }: { onScan: () => void }) {
     // FAB is unchanged by it.
     <TourAnchor id="fab">
     <Pressable
-      onPress={onScan}
+      onPress={() => {
+        // Same reasoning as the shared `Pressable` wrapper (see its own
+        // comment): `onPressIn` fires at touch-down, before RN knows the
+        // gesture is a tap at all — a drag-off or a stolen scroll used to
+        // still buzz. Only `onPress` means the tap actually registered.
+        haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))
+        onScan()
+      }}
       onHoverIn={() => spring(1.06, 6, 200)}
       onHoverOut={() => spring(1, 5, 160)}
-      onPressIn={() => {
-        haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))
-        spring(0.86, 5, 200)
-      }}
+      onPressIn={() => spring(0.86, 5, 200)}
       onPressOut={() => spring(1, 4, 160)}
       testID="scan-fab"
       accessibilityRole="button"
