@@ -240,18 +240,18 @@ test('every chip announces the group it belongs to, not just its own word', asyn
   expect(screen.getByText('15 min')).toBeTruthy()
 })
 
-test('a pantry row is a control, not a caption — tapping it builds the recipe around that product', async () => {
+test('a pantry chip is a control, not a caption — tapping it builds the recipe around that product', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
-  const rows = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
-  const firstRow = rows[0]!
-  expect(firstRow.props.accessibilityState).toMatchObject({ checked: false })
+  const chips = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
+  const firstChip = chips[0]!
+  expect(firstChip.props.accessibilityState).toMatchObject({ selected: false })
 
-  fireEvent.press(firstRow)
+  fireEvent.press(firstChip)
   await waitFor(() =>
-    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ checked: true }),
+    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ selected: true }),
   )
 
   fireEvent.press(screen.getByTestId('recipes-generate-submit'))
@@ -331,19 +331,18 @@ test('the six chip groups are folded away — the composer opens as a shortcut, 
   await waitFor(() => expect(screen.getByTestId('recipes-option-temps-express')).toBeTruthy())
 })
 
-test('a pantry product carries a visible affordance, not a grey caption', async () => {
+test('no pantry product is chosen for the cook — the card proposes, the tap decides', async () => {
   renderComposer()
 
-  const row = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
+  const chip = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
 
-  // A tick box, drawn on every row and announced as one, rather than a word
-  // that only the chosen rows spell out.
-  expect(row.props.accessibilityRole).toBe('checkbox')
-  expect(row.props.accessibilityState).toMatchObject({ checked: false })
+  // Nothing starts selected: the backend already gets the whole garde-manger,
+  // so a pin only ever *adds* an instruction to the prompt.
+  expect(chip.props.accessibilityState).toMatchObject({ selected: false })
 
-  await fireEvent.press(row)
+  await fireEvent.press(chip)
 
   await waitFor(() =>
-    expect(screen.getByTestId('recipes-pin-fake-product-1').props.accessibilityState).toMatchObject({ checked: true }),
+    expect(screen.getByTestId('recipes-pin-fake-product-1').props.accessibilityState).toMatchObject({ selected: true }),
   )
 })

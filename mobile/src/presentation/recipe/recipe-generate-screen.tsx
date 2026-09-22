@@ -52,12 +52,10 @@ import { Chip } from '../shared/chip.js'
 import { PillButton } from '../shared/pill-button.js'
 import { FormField } from '../fridge/form-field.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
-import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import {
   BanIcon,
-  CheckIcon,
   ChefHatIcon,
   CircleXIcon,
   ClockIcon,
@@ -94,8 +92,8 @@ import {
   type RecipeWish,
 } from './recipe-prompt.js'
 
-/** How many products the "on part de" list names before it stops. */
-const COOKING_FROM_COUNT = 4
+/** How many products the card offers before it stops. Chips wrap, rows did not. */
+const PANTRY_SUGGESTION_COUNT = 8
 
 /**
  * An error is a state to act on, not a sentence to read. The backend's
@@ -155,7 +153,7 @@ export function RecipeGenerateScreen() {
   // behind it, so a selection is never hidden without saying so.
   const [refining, setRefining] = useState(false)
 
-  const cookingFrom = sortByExpiry(productsQuery.data ?? []).slice(0, COOKING_FROM_COUNT)
+  const pantry = sortByExpiry(productsQuery.data ?? []).slice(0, PANTRY_SUGGESTION_COUNT)
   const empty = isWishEmpty(wish)
   const chosen = countSelections(wish)
   // The foyer already knows how many people it feeds. Asking a household of
@@ -245,7 +243,7 @@ export function RecipeGenerateScreen() {
         />
       }
     >
-      {waiting ? <GeneratingState palette={palette} products={cookingFrom} onLater={() => router.dismiss()} /> : null}
+      {waiting ? <GeneratingState palette={palette} pinned={wish.pinned} onLater={() => router.dismiss()} /> : null}
 
       {/* Same recipe as the receipt review's form: without it the pinned
           "Générer" bar sits under the keyboard the moment a cook taps
@@ -283,8 +281,8 @@ export function RecipeGenerateScreen() {
             </YStack>
           ) : null}
 
-          <CookingFrom
-            products={cookingFrom}
+          <PantrySuggestions
+            products={pantry}
             loading={productsQuery.isPending}
             palette={palette}
             onAddProduct={goAddProduct}
@@ -525,14 +523,22 @@ function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () =
 }
 
 /**
- * The products the generation will reach for first, by name and by how long
- * they have left. The old caption promised "à partir de ce qui périme
- * bientôt" — a register the product retired (see the copy note in the
- * direction contract above) — and never showed the products either; naming
- * them is what makes the promise checkable, and this is the only place on
- * this screen carrying real household data.
+ * What the garde-manger can offer this recipe — a proposal, never a list the
+ * cook has to accept. Nothing here starts chosen: the backend already receives
+ * the whole garde-manger and is told to pick what goes together, so an
+ * untouched card generates exactly as it did before, and a touched one only
+ * *adds* an instruction ("en utilisant …"). The card used to be headed "On
+ * part de" over four inert-looking rows, which announced four products as
+ * already decided when they were neither chosen nor, on their own, what the
+ * model cooked from.
+ *
+ * The selection control is the screen's own `Chip` — the same one the 24
+ * refine options use — rather than the tick-box rows it replaces: a tick box
+ * is the idiom for a checklist to complete, which is the exact opposite of
+ * what this card is. Only the products with little time left carry their count
+ * ("Yaourt · 2 j"); for the rest the ordering already says it.
  */
-function CookingFrom({
+function PantrySuggestions({
   products,
   loading,
   palette,
@@ -567,15 +573,15 @@ function CookingFrom({
     >
       <XStack alignItems="center" gap="$2">
         {/* The garde-manger's own tab glyph, not a warning triangle: this card
-            lists four products, it does not raise an alarm about them. */}
+            lists products, it does not raise an alarm about them. */}
         <PackageIcon size={14} color={palette.inkSecondary} />
         <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
-          On part de
+          Sous la main
         </Text>
       </XStack>
       {products.length > 0 ? (
         <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          Touche un produit pour insister dessus — la recette tournera autour.
+          Rien n’est imposé : touche un produit pour que la recette tourne autour. Sinon on pioche librement, les plus pressés d’abord.
         </Text>
       ) : null}
       {loading ? (
@@ -599,18 +605,35 @@ function CookingFrom({
           />
         </YStack>
       ) : (
-        products.map((product) => (
-          <PantryRow
-            key={product.id}
-            product={product}
-            pinned={isPinned(product.name)}
-            onPress={() => onTogglePin(product.name)}
-            palette={palette}
-          />
-        ))
+        // gap $3, per `Chip`'s own rule: two chips closer than the sum of their
+        // facing slops have overlapping press areas.
+        <XStack gap="$3" flexWrap="wrap" marginTop="$1">
+          {products.map((product) => (
+            <Chip
+              key={product.id}
+              testID={`recipes-pin-${product.id}`}
+              label={pantryChipLabel(product)}
+              // Drawn "Yaourt · 2 j"; announced with the full sentence the rest
+              // of the app uses for a date.
+              accessibilityLabel={`${product.name} — ${expiryLabel(daysUntilExpiry(product))}`}
+              selected={isPinned(product.name)}
+              onPress={() => onTogglePin(product.name)}
+              palette={palette}
+            />
+          ))}
+        </XStack>
       )}
     </YStack>
   )
+}
+
+/** "Yaourt · 2 j" for the ones that are running out, the bare name for the rest. */
+function pantryChipLabel(product: Product): string {
+  const days = daysUntilExpiry(product)
+  if (days === null || days > 3) return product.name
+  if (days < 0) return `${product.name} · dépassé`
+  if (days === 0) return `${product.name} · aujourd’hui`
+  return `${product.name} · ${days} j`
 }
 
 /**
@@ -699,14 +722,15 @@ function GenerateButton({
  */
 function GeneratingState({
   palette,
-  products,
+  pinned,
   onLater,
 }: {
   palette: SoftPalette
-  products: readonly Product[]
+  /** What the cook pinned, if anything — never products the screen chose for them. */
+  pinned: readonly string[]
   onLater: () => void
 }) {
-  const names = products.map((product) => product.name).slice(0, 3)
+  const names = pinned.slice(0, 3)
   return (
     <YStack
       testID="recipes-generating"
@@ -726,7 +750,7 @@ function GeneratingState({
       </Text>
       <Text fontSize={14} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
         {names.length > 0
-          ? `On part de ${names.join(', ')}. Quelques secondes.`
+          ? `On part de ${joinFr(names)}. Quelques secondes.`
           : 'Quelques secondes, le temps que l’IA réponde.'}
       </Text>
       <PillButton testID="recipes-generating-later" label="Je reviens plus tard" tone="quiet" palette={palette} onPress={onLater} />
@@ -778,88 +802,6 @@ function RecoveryPill({
         >
           <Text fontSize={12} fontWeight="800" color={tone === 'error' ? palette.gradientBottom : palette.accentLimeText}>
             {label}
-          </Text>
-        </XStack>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
-/**
- * A product the generation will reach for — and, on a tap, one it must build
- * around. This is the composer's one genuinely product-specific control: every
- * other group on the screen (meal, time, diet, cuisine) ships in every recipe
- * app, and none of them can name what is on your shelves tonight. The card
- * already listed exactly the right four rows and left them inert.
- */
-function PantryRow({
-  product,
-  pinned,
-  onPress,
-  palette,
-}: {
-  product: Product
-  pinned: boolean
-  onPress: () => void
-  palette: SoftPalette
-}) {
-  const hover = useHoverPress()
-  return (
-    <Pressable
-      testID={`recipes-pin-${product.id}`}
-      onPress={onPress}
-      onHoverIn={hover.onHoverIn}
-      onHoverOut={hover.onHoverOut}
-      onPressIn={hover.onPressIn}
-      onPressOut={hover.onPressOut}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: pinned }}
-      accessibilityLabel={`${pinned ? 'Ne plus insister sur' : 'Insister sur'} ${product.name}`}
-      hitSlop={{ top: 4, bottom: 4, left: 0, right: 0 }}
-      android_ripple={ripple(palette.chipTeal)}
-      style={[pointerCursor, rippleClip(12)]}
-    >
-      <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
-        <XStack
-          alignItems="center"
-          gap="$2.5"
-          minHeight={40}
-          paddingHorizontal="$2.5"
-          paddingVertical="$1.5"
-          borderRadius={12}
-          borderWidth={1}
-          backgroundColor={pinned ? palette.mintPale : 'transparent'}
-          borderColor={pinned ? palette.mintPaleText : palette.creamPillEdge}
-        >
-          {/* The affordance is a tick box — the idiom for "some of these,
-              chosen" — and it is drawn whether or not the row is chosen. It
-              replaces a row that turned entirely lime and carried an
-              800-weight "Insisté" pill: a shout for a choice a cook makes four
-              at a time, doubled by a second grey "Insister" pill repeated down
-              every unchosen row of the card. */}
-          <XStack
-            width={20}
-            height={20}
-            borderRadius={6}
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor={pinned ? palette.mintPaleText : 'transparent'}
-            borderWidth={pinned ? 0 : 1.5}
-            borderColor={palette.creamPillEdge}
-          >
-            {pinned ? <CheckIcon size={13} color={palette.mintPale} /> : null}
-          </XStack>
-          <Text
-            fontSize={13}
-            fontWeight={pinned ? '700' : '600'}
-            color={pinned ? palette.mintPaleText : palette.ink}
-            flex={1}
-            numberOfLines={1}
-          >
-            {product.name}
-          </Text>
-          <Text fontSize={12} fontWeight="500" color={pinned ? palette.mintPaleText : palette.inkSecondary}>
-            {expiryLabel(daysUntilExpiry(product))}
           </Text>
         </XStack>
       </Animated.View>
