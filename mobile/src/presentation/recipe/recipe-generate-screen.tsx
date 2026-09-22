@@ -250,7 +250,7 @@ export function RecipeGenerateScreen() {
       {waiting ? null : (
       <KeyboardAvoidingView
         style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           style={{ flex: 1, minHeight: 0 }}

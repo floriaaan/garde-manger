@@ -602,7 +602,7 @@ export function ReceiptReviewScreen({
     <AppShell nav={nav} scrollable={false} header={header}>
       <KeyboardAvoidingView
         style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Virtualized: a long receipt is a long list, and it used to render
             every row's seven controls at once inside a plain ScrollView. */}

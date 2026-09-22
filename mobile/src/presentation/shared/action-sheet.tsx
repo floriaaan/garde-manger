@@ -124,7 +124,7 @@ export function ActionSheet({
             here (not on the card itself) is what lifts the sheet off every screen edge;
             the card's own radius is uniform on all four corners — floating, not
             edge-to-edge, so a top-only radius would look clipped at the bottom. */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <SafeAreaView edges={['bottom']} style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
             <YStack backgroundColor={palette.layoutSurface} borderRadius={32} style={{ paddingHorizontal: 20, paddingVertical: 20 }} gap="$2.5">
               {title ? (
