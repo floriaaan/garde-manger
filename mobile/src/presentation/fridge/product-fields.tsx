@@ -7,6 +7,9 @@
  * typing — instead of the review carrying its own, heavier set of inputs.
  * Controlled and validation-free: the owner keeps the state and the errors.
  */
+import { useState } from 'react'
+import { Platform } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -36,12 +39,16 @@ const DATE_SHORTCUTS: { label: string; days: number | null }[] = [
 ]
 
 /** Local calendar date, `YYYY-MM-DD` — the format the field and the backend both read. */
-export function isoDay(offsetDays: number): string {
-  const date = new Date()
-  date.setDate(date.getDate() + offsetDays)
+export function toIsoDay(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${date.getFullYear()}-${month}-${day}`
+}
+
+export function isoDay(offsetDays: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return toIsoDay(date)
 }
 
 export interface ProductFieldValues {
@@ -75,6 +82,10 @@ export function ProductFields({
 }) {
   const expiryDays = values.expiresAt.trim().length > 0 ? daysUntilExpiry({ expiresAt: values.expiresAt.trim() }) : null
   const expiryHint = expiryDays !== null ? `${expiryLabel(expiryDays)}${expiryEstimated ? ' · estimée' : ''}` : undefined
+  // Android's picker is a one-shot dialog (fires once, then dismisses itself);
+  // iOS's is an inline spinner that stays mounted while `showPicker` is true.
+  const [showPicker, setShowPicker] = useState(false)
+  const pickerValue = values.expiresAt.trim().length > 0 ? new Date(`${values.expiresAt.trim()}T00:00:00`) : new Date()
 
   return (
     <YStack gap="$3">
@@ -152,7 +163,30 @@ export function ProductFields({
               size="dense"
             />
           ))}
+          <Chip
+            testID={`${testIDPrefix}-expires-pick`}
+            label="Choisir une date"
+            selected={showPicker}
+            onPress={() => setShowPicker((open) => !open)}
+            palette={palette}
+            size="dense"
+            icon={(color) => <CalendarIcon size={CHIP_ICON_SIZE} color={color} />}
+          />
         </XStack>
+        {showPicker ? (
+          <DateTimePicker
+            testID={`${testIDPrefix}-expires-picker`}
+            value={pickerValue}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            onChange={(event, date) => {
+              // Android's dialog dismisses itself either way; iOS's inline spinner
+              // stays open until the field it lives inside is closed some other way.
+              if (Platform.OS === 'android') setShowPicker(false)
+              if (event.type === 'set' && date) onChange({ expiresAt: toIsoDay(date) })
+            }}
+          />
+        ) : null}
       </YStack>
 
       <YStack gap="$1">

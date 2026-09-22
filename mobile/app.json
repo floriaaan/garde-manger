@@ -60,7 +60,8 @@
         {
           "photosPermission": "Garde-manger a besoin d'accéder à tes photos pour importer un ticket de caisse."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
