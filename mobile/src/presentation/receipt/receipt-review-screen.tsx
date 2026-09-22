@@ -31,8 +31,9 @@ import { pointerCursor } from '../shared/hover.js'
 import { goBack } from '../shared/navigation.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { CalendarIcon, CircleCheckIcon, CircleXIcon, FileTextIcon, ReceiptIcon, StoreIcon, WalletIcon } from '../dashboard/dashboard-icons.js'
+import { CircleCheckIcon, CircleXIcon, FileTextIcon, ReceiptIcon, StoreIcon, WalletIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
+import { DateField } from '../fridge/date-field.js'
 import { ReceiptItemRow, type EditableReceiptItem, type ReceiptItemErrors } from './receipt-item-row.js'
 import { useEnqueueReceiptScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
 import { useJobQuery } from '../../application/job/jobs.query.js'
@@ -543,16 +544,7 @@ export function ReceiptReviewScreen({
         />
         <XStack gap="$2">
           <YStack flex={1}>
-            <FormField
-              testID="receipt-review-scanned-at"
-              label="Date du ticket"
-              value={scannedAt}
-              onChangeText={setScannedAt}
-              palette={palette}
-              keyboardType="numbers-and-punctuation"
-              placeholder="AAAA-MM-JJ"
-              icon={(color) => <CalendarIcon size={13} color={color} />}
-            />
+            <DateField testID="receipt-review-scanned-at" label="Date du ticket" value={scannedAt} onChange={setScannedAt} palette={palette} />
           </YStack>
           <YStack flex={1}>
             <FormField
