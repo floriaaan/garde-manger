@@ -7,7 +7,6 @@
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
