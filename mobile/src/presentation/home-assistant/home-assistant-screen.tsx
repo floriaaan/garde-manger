@@ -11,7 +11,7 @@ import { AuthField } from '../identity/auth-field.js'
 import { PillButton } from '../shared/pill-button.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { ArrowLeftIcon, ArrowRightIcon, CircleCheckIcon, HomeIcon, LogOutIcon, RefreshIcon } from '../dashboard/dashboard-icons.js'
@@ -71,7 +71,7 @@ function DirectionRow({
       accessibilityState={{ selected }}
       accessibilityLabel={DIRECTION_LABELS[direction]}
       android_ripple={ripple(palette.ink)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(16)]}
     >
       <XStack
         alignItems="center"

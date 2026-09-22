@@ -5,7 +5,7 @@ import { pointerCursor, useHoverPress } from './hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { ChevronRightIcon } from '../dashboard/dashboard-icons.js'
-import { ripple } from './material.js'
+import { ripple, rippleClip } from './material.js'
 
 export interface ActionSheetOption {
   testID: string
@@ -40,7 +40,7 @@ function ActionSheetRow({ option, palette }: { option: ActionSheetOption; palett
       accessibilityRole="button"
       accessibilityLabel={option.label}
       android_ripple={ripple(option.destructive ? palette.expiredText : palette.ink)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(16)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack

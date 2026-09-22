@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ActivityIndicator, Animated, Pressable } from 'react-native'
 import { Text } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 
 /**
@@ -70,7 +70,7 @@ export function AuthButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: pending }}
       android_ripple={ripple(isPrimary ? palette.accentLimeText : secondaryColor)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(999)]}
     >
       <Animated.View
         style={{

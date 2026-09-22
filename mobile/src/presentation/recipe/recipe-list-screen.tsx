@@ -9,7 +9,7 @@ import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import { ChipGroupSeparator } from '../shared/chip-group-separator.js'
 import { PillButton } from '../shared/pill-button.js'
 import { pointerCursor, pressAreaSlop } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { pullToRefreshControl, usePullToRefresh } from '../shared/pull-to-refresh.js'
@@ -456,7 +456,7 @@ function FilterToken({
       accessibilityRole="button"
       accessibilityLabel={`Retirer le filtre ${label}`}
       android_ripple={ripple(palette.ink)}
-      style={[pointerCursor, pressAreaSlop(8, 4)]}
+      style={[pointerCursor, pressAreaSlop(8, 4), rippleClip(999)]}
     >
       <XStack
         alignItems="center"

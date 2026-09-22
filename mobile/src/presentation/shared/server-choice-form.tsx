@@ -3,7 +3,7 @@ import { Animated, Linking, Platform, Pressable } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useHoverPress } from './hover.js'
-import { ripple } from './material.js'
+import { ripple, rippleClip } from './material.js'
 import { AuthField } from '../identity/auth-field.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { AuthError } from '../identity/auth-error.js'
@@ -56,7 +56,7 @@ function RadioOption({
       accessibilityRole="radio"
       accessibilityState={{ selected, disabled }}
       android_ripple={ripple(palette.chipTeal)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(18)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
@@ -125,7 +125,7 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
         accessibilityState={{ disabled: !canUpdate }}
         android_ripple={canUpdate ? ripple(palette.soonText) : undefined}
         hitSlop={{ top: slop, bottom: slop, left: 8, right: 8 }}
-        style={[pointerCursor, pressAreaSlop(slop, 8)]}
+        style={[pointerCursor, pressAreaSlop(slop, 8), rippleClip(999)]}
       >
         <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: canUpdate ? 1 : 0.5, minHeight: 32, justifyContent: 'center' }}>
           <XStack alignItems="center" gap="$1">

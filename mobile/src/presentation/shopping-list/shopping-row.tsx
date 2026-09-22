@@ -21,7 +21,7 @@ import { HandDrawnCheck } from './hand-drawn-check.js'
 import { CheckedName } from './checked-name.js'
 import { useQuietRowFeedback } from './use-quiet-row-feedback.js'
 import type { ShoppingItem } from '../../domain/shopping-list/shopping-item.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 
 /**
  * How far past the actions panel (in multiples of its own width, 144pt —
@@ -168,7 +168,7 @@ export function ShoppingRow({
         accessibilityLabel={`${item.name}, ${item.quantity.amount} ${item.quantity.unit}`}
         accessibilityHint="Appui long pour modifier ou supprimer"
         android_ripple={ripple(palette.ink)}
-        style={pointerCursor}
+        style={[pointerCursor, rippleClip(10)]}
       >
         <Animated.View
           style={{

@@ -3,7 +3,7 @@ import { Pressable, TextInput } from 'react-native'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { CircleCheckIcon } from '../dashboard/dashboard-icons.js'
 import type { HaTodoEntity } from '../../domain/home-assistant/ha-link.js'
 
@@ -40,7 +40,7 @@ function TodoEntityRow({
       accessibilityState={{ selected }}
       accessibilityLabel={entity.friendlyName}
       android_ripple={ripple(palette.ink)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(16)]}
     >
       <XStack
         alignItems="center"
