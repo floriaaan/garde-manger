@@ -31,7 +31,7 @@ import { pointerCursor } from '../shared/hover.js'
 import { goBack } from '../shared/navigation.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { CalendarIcon, CircleCheckIcon, CircleXIcon, ReceiptIcon, StoreIcon, WalletIcon } from '../dashboard/dashboard-icons.js'
+import { CalendarIcon, CircleCheckIcon, CircleXIcon, FileTextIcon, ReceiptIcon, StoreIcon, WalletIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
 import { ReceiptItemRow, type EditableReceiptItem, type ReceiptItemErrors } from './receipt-item-row.js'
 import { useEnqueueReceiptScanMutation, useRetryJobMutation } from '../../application/job/job-mutations.js'
@@ -45,6 +45,55 @@ import type { ReceiptDraftItem } from '../../domain/receipt/receipt-draft.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 
 const LOCATION_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
+
+function isPdfUri(uri: string): boolean {
+  return uri.toLowerCase().endsWith('.pdf')
+}
+
+/** A PDF import has no photo to preview — `<Image>` can't render one, so it gets a file card instead. */
+function ReceiptPreview({
+  imageUri,
+  palette,
+  testID,
+  height,
+  width = '100%',
+}: {
+  imageUri: string
+  palette: SoftPalette
+  testID: string
+  height: number
+  width?: number | `${number}%`
+}) {
+  const radius = { borderTopLeftRadius: 24, borderTopRightRadius: 14, borderBottomRightRadius: 24, borderBottomLeftRadius: 14 }
+  if (isPdfUri(imageUri)) {
+    return (
+      <YStack
+        testID={testID}
+        width={width}
+        height={height}
+        alignItems="center"
+        justifyContent="center"
+        gap="$2"
+        backgroundColor={palette.cream}
+        style={radius}
+      >
+        <FileTextIcon size={28} color={palette.creamText} />
+        <Text fontSize={12} fontWeight="700" color={palette.creamText}>
+          Ticket PDF
+        </Text>
+      </YStack>
+    )
+  }
+  return (
+    <Image
+      testID={testID}
+      source={{ uri: imageUri }}
+      resizeMode="cover"
+      accessibilityLabel="Photo du ticket scanné"
+      style={{ width, height, backgroundColor: palette.cream, ...radius }}
+    />
+  )
+}
 
 /**
  * An error is a state to act on, not a sentence to read — same contract as
@@ -393,21 +442,7 @@ export function ReceiptReviewScreen({
               the scan was started from this screen: a re-opened one has no
               local photo. */}
           {imageUri ? (
-            <Image
-              testID="receipt-reading-photo"
-              source={{ uri: imageUri }}
-              resizeMode="cover"
-              accessibilityLabel="Photo du ticket en cours de lecture"
-              style={{
-                width: 96,
-                height: 96,
-                borderTopLeftRadius: 22,
-                borderTopRightRadius: 10,
-                borderBottomRightRadius: 22,
-                borderBottomLeftRadius: 10,
-                backgroundColor: palette.cream,
-              }}
-            />
+            <ReceiptPreview testID="receipt-reading-photo" imageUri={imageUri} palette={palette} height={96} width={96} />
           ) : null}
           <YStack width="100%" maxWidth={280}>
             <ProgressBar palette={palette} testID="receipt-reading-bar" label="Lecture du ticket en cours" />
@@ -496,23 +531,7 @@ export function ReceiptReviewScreen({
     <YStack gap="$4" marginBottom="$2">
       {/* The shot itself: the user has to be able to check a line against
           the paper it came from. It was passed in and never displayed. */}
-      {imageUri ? (
-        <Image
-          testID="receipt-review-photo"
-          source={{ uri: imageUri }}
-          resizeMode="cover"
-          accessibilityLabel="Photo du ticket scanné"
-          style={{
-            width: '100%',
-            height: 140,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 14,
-            borderBottomRightRadius: 24,
-            borderBottomLeftRadius: 14,
-            backgroundColor: palette.cream,
-          }}
-        />
-      ) : null}
+      {imageUri ? <ReceiptPreview testID="receipt-review-photo" imageUri={imageUri} palette={palette} height={140} /> : null}
       <FormCard palette={palette} gap="$3">
         <FormField
           testID="receipt-review-store-name"

@@ -1,7 +1,8 @@
-import { Stack } from 'expo-router'
+import { Stack, router } from 'expo-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useShareIntent } from 'expo-share-intent'
 import { ConfettiHost } from '../presentation/shared/confetti.js'
 import { ThemeProvider } from '../presentation/shared/theme-provider.js'
 import { ToastHost } from '../presentation/shared/toast.js'
@@ -40,6 +41,19 @@ export default function RootLayout() {
   useEffect(() => {
     loadStoredServerUrl().then(() => setServerReady(true))
   }, [])
+
+  // A PDF shared into the app from another app (Mail, Files…) lands here as
+  // a share intent, not a route param — the only route the receipt review
+  // screen already knows how to read is `imageUri`, so this just forwards
+  // the shared file's local path into the same flow a camera capture uses.
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent()
+  useEffect(() => {
+    if (!serverReady || !hasShareIntent) return
+    const file = shareIntent.files?.find((f) => f.mimeType === 'application/pdf')
+    if (file) router.push({ pathname: '/receipts/review', params: { imageUri: file.path } })
+    resetShareIntent()
+  }, [serverReady, hasShareIntent, shareIntent, resetShareIntent])
+
   if (!serverReady) return null
 
   return (
