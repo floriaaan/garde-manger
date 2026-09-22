@@ -10,7 +10,8 @@
  * guard before an accidental back throws the typing away.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native'
+import { Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'

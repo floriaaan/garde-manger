@@ -8,7 +8,8 @@
  * the one thing that *does* differ per row and that no generic recipe app can
  * print — how much of the dish is already in the foyer's garde-manger.
  */
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'

@@ -31,7 +31,8 @@
  * (the recipe composer) prefixes each chip with its group.
  */
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useHoverPress } from './hover.js'
 import { ripple, rippleClip } from './material.js'

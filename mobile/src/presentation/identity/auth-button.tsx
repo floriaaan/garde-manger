@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { ActivityIndicator, Animated, Pressable } from 'react-native'
+import { ActivityIndicator, Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'

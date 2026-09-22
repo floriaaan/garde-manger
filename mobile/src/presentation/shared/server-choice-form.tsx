@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Animated, Linking, Platform, Pressable } from 'react-native'
+import { Animated, Linking, Platform } from 'react-native'
+import { Pressable } from './pressable.js'
 import * as Haptics from 'expo-haptics'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useHoverPress } from './hover.js'
@@ -49,6 +50,7 @@ function RadioOption({
         if (!selected) haptic(() => Haptics.selectionAsync())
         onPress()
       }}
+      haptics={false}
       onHoverIn={hover.onHoverIn}
       onHoverOut={hover.onHoverOut}
       onPressIn={hover.onPressIn}
@@ -114,7 +116,6 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
         disabled={!canUpdate}
         onPress={() => {
           if (!canUpdate) return
-          haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light))
           void Linking.openURL(APP_UPDATE_URL)
         }}
         onHoverIn={hover.onHoverIn}

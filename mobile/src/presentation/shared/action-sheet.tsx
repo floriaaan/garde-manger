@@ -1,4 +1,5 @@
-import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable } from 'react-native'
+import { Animated, KeyboardAvoidingView, Modal, Platform } from 'react-native'
+import { Pressable } from './pressable.js'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'

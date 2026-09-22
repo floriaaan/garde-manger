@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import * as Haptics from 'expo-haptics'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
@@ -51,6 +52,9 @@ export function RadioCard({
     <Pressable
       testID={testID}
       onPress={handlePress}
+      // Fires its own selection tick from `handlePress`, and only when the
+      // selection really changes — not the default confirmation tick.
+      haptics={false}
       disabled={disabled}
       onHoverIn={hover.onHoverIn}
       onHoverOut={hover.onHoverOut}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Pressable, TextInput } from 'react-native'
+import { TextInput } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'

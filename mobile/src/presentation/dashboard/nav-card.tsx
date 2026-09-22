@@ -1,4 +1,5 @@
-import { Animated, type ImageSourcePropType, Pressable } from 'react-native'
+import { Animated, type ImageSourcePropType } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { IllustrationSlot } from './illustration-slot.js'

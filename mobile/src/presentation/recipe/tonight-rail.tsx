@@ -13,7 +13,8 @@
  * exists for — one answer, then the other two.
  */
 import { useEffect, useState } from 'react'
-import { Animated, PixelRatio, Pressable, ScrollView } from 'react-native'
+import { Animated, PixelRatio, ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress, useReduceMotion } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'

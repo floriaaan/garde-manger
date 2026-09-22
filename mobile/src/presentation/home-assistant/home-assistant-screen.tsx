@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { Animated, Pressable, Switch } from 'react-native'
+import { Animated, Switch } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
