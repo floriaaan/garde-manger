@@ -7,15 +7,13 @@
  * typing — instead of the review carrying its own, heavier set of inputs.
  * Controlled and validation-free: the owner keeps the state and the errors.
  */
-import { useState } from 'react'
-import { Platform } from 'react-native'
-import DateTimePicker from '@react-native-community/datetimepicker'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { ArchiveIcon, CalendarIcon, PencilIcon, RefrigeratorIcon, ScaleIcon, SnowflakeIcon } from '../dashboard/dashboard-icons.js'
+import { ArchiveIcon, PencilIcon, RefrigeratorIcon, ScaleIcon, SnowflakeIcon } from '../dashboard/dashboard-icons.js'
 import { daysUntilExpiry, expiryLabel } from '../dashboard/product-status.js'
 import { FormField } from './form-field.js'
+import { DateField, toIsoDay } from './date-field.js'
 import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 
@@ -37,13 +35,6 @@ const DATE_SHORTCUTS: { label: string; days: number | null }[] = [
   { label: '1 mois', days: 30 },
   { label: 'Sans date', days: null },
 ]
-
-/** Local calendar date, `YYYY-MM-DD` — the format the field and the backend both read. */
-export function toIsoDay(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
 
 export function isoDay(offsetDays: number): string {
   const date = new Date()
@@ -82,10 +73,6 @@ export function ProductFields({
 }) {
   const expiryDays = values.expiresAt.trim().length > 0 ? daysUntilExpiry({ expiresAt: values.expiresAt.trim() }) : null
   const expiryHint = expiryDays !== null ? `${expiryLabel(expiryDays)}${expiryEstimated ? ' · estimée' : ''}` : undefined
-  // Android's picker is a one-shot dialog (fires once, then dismisses itself);
-  // iOS's is an inline spinner that stays mounted while `showPicker` is true.
-  const [showPicker, setShowPicker] = useState(false)
-  const pickerValue = values.expiresAt.trim().length > 0 ? new Date(`${values.expiresAt.trim()}T00:00:00`) : new Date()
 
   return (
     <YStack gap="$3">
@@ -139,17 +126,14 @@ export function ProductFields({
       </XStack>
 
       <YStack gap="$2">
-        <FormField
+        <DateField
           testID={`${testIDPrefix}-expires-at`}
           label="Date de péremption"
           value={values.expiresAt}
-          onChangeText={(expiresAt) => onChange({ expiresAt })}
+          onChange={(expiresAt) => onChange({ expiresAt })}
           palette={palette}
-          keyboardType="numbers-and-punctuation"
-          placeholder="AAAA-MM-JJ"
           hint={expiryHint}
           error={errors?.expiresAt}
-          icon={(color) => <CalendarIcon size={13} color={color} />}
         />
         <XStack gap="$2.5" flexWrap="wrap">
           {DATE_SHORTCUTS.map((shortcut) => (
@@ -163,30 +147,7 @@ export function ProductFields({
               size="dense"
             />
           ))}
-          <Chip
-            testID={`${testIDPrefix}-expires-pick`}
-            label="Choisir une date"
-            selected={showPicker}
-            onPress={() => setShowPicker((open) => !open)}
-            palette={palette}
-            size="dense"
-            icon={(color) => <CalendarIcon size={CHIP_ICON_SIZE} color={color} />}
-          />
         </XStack>
-        {showPicker ? (
-          <DateTimePicker
-            testID={`${testIDPrefix}-expires-picker`}
-            value={pickerValue}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={(event, date) => {
-              // Android's dialog dismisses itself either way; iOS's inline spinner
-              // stays open until the field it lives inside is closed some other way.
-              if (Platform.OS === 'android') setShowPicker(false)
-              if (event.type === 'set' && date) onChange({ expiresAt: toIsoDay(date) })
-            }}
-          />
-        ) : null}
       </YStack>
 
       <YStack gap="$1">
