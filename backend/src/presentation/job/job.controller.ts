@@ -21,12 +21,17 @@ import { DiscardScanDraft } from '#application/job/discard-scan-draft.use-case'
 
 const MAX_FRIDGE_PHOTOS = 5
 const IMAGE_RULES = { extnames: ['jpg', 'jpeg', 'png', 'webp'], size: '10mb' }
+// A receipt is the one scan a household might already have as a PDF (a
+// mailed invoice, an emailed ticket) instead of a photo — the fridge scan
+// stays camera-only, so its rules are untouched.
+const RECEIPT_RULES = { extnames: [...IMAGE_RULES.extnames, 'pdf'], size: '10mb' }
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
+  pdf: 'application/pdf',
 }
 
 function currentTraceparent(): string | null {
@@ -242,7 +247,7 @@ export default class JobController {
         } else {
           const files =
             kind === 'receipt_scan'
-              ? [ctx.request.file('image', IMAGE_RULES)]
+              ? [ctx.request.file('image', RECEIPT_RULES)]
               : ctx.request.files('images', IMAGE_RULES)
           const usable = files.filter((file) => file?.tmpPath && file.isValid)
           const tooMany = kind === 'fridge_scan' && files.length > MAX_FRIDGE_PHOTOS

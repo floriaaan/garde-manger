@@ -1,7 +1,10 @@
-import type { ReceiptExtractionPort } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
+import type { ReceiptExtractionPort, ReceiptFile } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import { parseReceiptDraftJson } from '#domain/receipt/receipt-draft-parser'
-import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
+import {
+  ReceiptExtractionUnavailableError,
+  ReceiptExtractionUnsupportedFormatError,
+} from '#domain/receipt/receipt-extraction.errors'
 import { RECEIPT_EXTRACTION_PROMPT } from '#domain/receipt/receipt-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 import { fetchWithRetry } from './fetch-with-retry.js'
@@ -12,8 +15,13 @@ export class OllamaReceiptExtractionAdapter implements ReceiptExtractionPort {
     private readonly model: string,
   ) {}
 
-  async extract(image: Buffer): Promise<ReceiptDraft> {
+  async extract({ buffer, contentType }: ReceiptFile): Promise<ReceiptDraft> {
     if (!this.model) throw new ReceiptExtractionUnavailableError('ollama')
+    // Ollama's `/api/generate` `images` field is a raster-image slot — a
+    // local vision model reads pixels, not a PDF's page/text structure, and
+    // sending it one produces a confident wrong answer rather than a clean
+    // failure. Only Gemini and OpenAI's hosted APIs actually parse a PDF.
+    if (contentType === 'application/pdf') throw new ReceiptExtractionUnsupportedFormatError('ollama')
 
     let response: Response
     try {
@@ -23,7 +31,7 @@ export class OllamaReceiptExtractionAdapter implements ReceiptExtractionPort {
         body: JSON.stringify({
           model: this.model,
           prompt: RECEIPT_EXTRACTION_PROMPT,
-          images: [image.toString('base64')],
+          images: [buffer.toString('base64')],
           stream: false,
         }),
       })

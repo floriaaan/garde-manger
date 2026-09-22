@@ -144,7 +144,9 @@ export class RunJob {
     if (!image) return Result.err('extraction_failed')
     return this.attempt(async () => {
       const extraction = await this.deps.resolveReceiptExtraction(job.householdId)
-      return new ScanReceipt(extraction).execute({ image: image.buffer })
+      return new ScanReceipt(extraction).execute({
+        image: { buffer: image.buffer, contentType: image.contentType },
+      })
     }, 'extraction_failed')
   }
 

@@ -19,7 +19,7 @@
  * its own source of drift). The estimate is still just a starting point —
  * the field stays editable, exactly like every other extracted value.
  */
-export const RECEIPT_EXTRACTION_PROMPT = `Analyse cette photo de ticket de caisse et retourne UNIQUEMENT un JSON de la forme :
+export const RECEIPT_EXTRACTION_PROMPT = `Analyse ce ticket de caisse (photo ou PDF scanné) et retourne UNIQUEMENT un JSON de la forme :
 {"storeName": string, "scannedAt": string (ISO 8601), "totalAmount": number, "items": [{"name": string, "quantity": number, "unit": string, "category": string | null, "price": number | null, "expiresInDays": number | null}]}
 
 Règles pour "items" :
