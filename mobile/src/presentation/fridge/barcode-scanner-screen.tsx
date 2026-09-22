@@ -32,8 +32,15 @@ export function BarcodeScannerScreen(props: BarcodeScannerMode) {
       // A form is already open underneath the scanner in the stack — dismiss back onto it
       // and update its `prefillBarcode` param, rather than opening a new form instance
       // (which would discard whatever the user had already typed there).
-      router.back()
-      router.setParams({ prefillBarcode: data })
+      //
+      // `dismissTo`, not `back()` + `setParams()`: the pop is async, so the
+      // `setParams` that followed it landed on the scanner being torn down
+      // rather than the form underneath, and the scan never arrived.
+      router.dismissTo(
+        props.mode === 'edit'
+          ? { pathname: '/(tabs)/fridge/[id]/edit', params: { id: props.productId, prefillBarcode: data } }
+          : { pathname: '/(tabs)/fridge/new', params: { prefillBarcode: data } },
+      )
       return
     }
 
