@@ -317,7 +317,13 @@ function TabBarItem({ section, active }: { section: SidebarSection; active: bool
 function MaterialNavItem({ section, active }: { section: SidebarSection; active: boolean }) {
   const palette = useSoftPalette()
   const roles = materialRoles(palette)
-  const color = active ? roles.onSecondaryContainer : roles.onSurfaceVariant
+  // The icon sits inside the indicator pill when active, so it takes the
+  // pill's own "on" color. The label sits on the bar's plain background
+  // (`surfaceContainer`) whether active or not, so it must read against
+  // *that* — `onSecondaryContainer` here was tuned for text on the lime
+  // pill and went near-invisible against a dark `surfaceContainer`.
+  const iconColor = active ? roles.onSecondaryContainer : roles.onSurfaceVariant
+  const labelColor = active ? roles.onSurface : roles.onSurfaceVariant
   return (
     <Pressable
       onPress={() => {
@@ -340,9 +346,9 @@ function MaterialNavItem({ section, active }: { section: SidebarSection; active:
           justifyContent="center"
           backgroundColor={active ? roles.secondaryContainer : 'transparent'}
         >
-          {TAB_ICONS[section](color)}
+          {TAB_ICONS[section](iconColor)}
         </YStack>
-        <Text fontSize={12} fontWeight={active ? '700' : '500'} color={color}>
+        <Text fontSize={12} fontWeight={active ? '700' : '500'} color={labelColor}>
           {TAB_LABELS[section]}
         </Text>
       </YStack>
