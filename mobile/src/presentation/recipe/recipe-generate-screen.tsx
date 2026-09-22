@@ -52,10 +52,12 @@ import { Chip } from '../shared/chip.js'
 import { PillButton } from '../shared/pill-button.js'
 import { FormField } from '../fridge/form-field.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import {
   BanIcon,
+  CheckIcon,
   ChefHatIcon,
   CircleXIcon,
   ClockIcon,
@@ -573,7 +575,7 @@ function CookingFrom({
       </XStack>
       {products.length > 0 ? (
         <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          Touche un produit pour que la recette tourne autour de lui.
+          Touche un produit pour insister dessus — la recette tournera autour.
         </Text>
       ) : null}
       {loading ? (
@@ -810,49 +812,55 @@ function PantryRow({
       onHoverOut={hover.onHoverOut}
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
-      accessibilityRole="button"
-      accessibilityState={{ selected: pinned }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: pinned }}
       accessibilityLabel={`${pinned ? 'Ne plus insister sur' : 'Insister sur'} ${product.name}`}
       hitSlop={{ top: 4, bottom: 4, left: 0, right: 0 }}
-      style={pointerCursor}
+      android_ripple={ripple(palette.chipTeal)}
+      style={[pointerCursor, rippleClip(12)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
           alignItems="center"
-          gap="$2"
-          minHeight={36}
-          paddingHorizontal="$2"
+          gap="$2.5"
+          minHeight={40}
+          paddingHorizontal="$2.5"
+          paddingVertical="$1.5"
           borderRadius={12}
-          backgroundColor={pinned ? palette.accentLime : 'transparent'}
+          borderWidth={1}
+          backgroundColor={pinned ? palette.mintPale : 'transparent'}
+          borderColor={pinned ? palette.mintPaleText : palette.creamPillEdge}
         >
+          {/* The affordance is a tick box — the idiom for "some of these,
+              chosen" — and it is drawn whether or not the row is chosen. It
+              replaces a row that turned entirely lime and carried an
+              800-weight "Insisté" pill: a shout for a choice a cook makes four
+              at a time, doubled by a second grey "Insister" pill repeated down
+              every unchosen row of the card. */}
+          <XStack
+            width={20}
+            height={20}
+            borderRadius={6}
+            alignItems="center"
+            justifyContent="center"
+            backgroundColor={pinned ? palette.mintPaleText : 'transparent'}
+            borderWidth={pinned ? 0 : 1.5}
+            borderColor={palette.creamPillEdge}
+          >
+            {pinned ? <CheckIcon size={13} color={palette.mintPale} /> : null}
+          </XStack>
           <Text
             fontSize={13}
-            fontWeight="600"
-            color={pinned ? palette.accentLimeText : palette.ink}
+            fontWeight={pinned ? '700' : '600'}
+            color={pinned ? palette.mintPaleText : palette.ink}
             flex={1}
             numberOfLines={1}
           >
             {product.name}
           </Text>
-          <Text fontSize={12} fontWeight="500" color={pinned ? palette.accentLimeText : palette.inkSecondary}>
+          <Text fontSize={12} fontWeight="500" color={pinned ? palette.mintPaleText : palette.inkSecondary}>
             {expiryLabel(daysUntilExpiry(product))}
           </Text>
-          {/* A real, permanently visible affordance. The row used to be
-              transparent until pressed, and the only thing announcing that it
-              could be pressed at all was an 11px grey caption in the card
-              header — for the one control on this screen no other recipe app
-              can offer. */}
-          <XStack
-            alignItems="center"
-            paddingVertical="$1"
-            paddingHorizontal="$2"
-            borderRadius={999}
-            backgroundColor={pinned ? palette.gradientBottom : palette.cream}
-          >
-            <Text fontSize={11} fontWeight="800" color={pinned ? palette.accentLimeText : palette.creamText}>
-              {pinned ? 'Insisté' : 'Insister'}
-            </Text>
-          </XStack>
         </XStack>
       </Animated.View>
     </Pressable>

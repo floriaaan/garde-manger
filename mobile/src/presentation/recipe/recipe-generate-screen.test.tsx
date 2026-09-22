@@ -247,11 +247,11 @@ test('a pantry row is a control, not a caption — tapping it builds the recipe 
 
   const rows = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
   const firstRow = rows[0]!
-  expect(firstRow.props.accessibilityState).toEqual({ selected: false })
+  expect(firstRow.props.accessibilityState).toMatchObject({ checked: false })
 
   fireEvent.press(firstRow)
   await waitFor(() =>
-    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toEqual({ selected: true }),
+    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ checked: true }),
   )
 
   fireEvent.press(screen.getByTestId('recipes-generate-submit'))
@@ -334,7 +334,16 @@ test('the six chip groups are folded away — the composer opens as a shortcut, 
 test('a pantry product carries a visible affordance, not a grey caption', async () => {
   renderComposer()
 
-  await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
+  const row = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
 
-  expect(screen.getAllByText('Insister').length).toBeGreaterThan(0)
+  // A tick box, drawn on every row and announced as one, rather than a word
+  // that only the chosen rows spell out.
+  expect(row.props.accessibilityRole).toBe('checkbox')
+  expect(row.props.accessibilityState).toMatchObject({ checked: false })
+
+  await fireEvent.press(row)
+
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-pin-fake-product-1').props.accessibilityState).toMatchObject({ checked: true }),
+  )
 })
