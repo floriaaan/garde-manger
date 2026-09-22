@@ -169,8 +169,11 @@ export function useBlobDrift({ rangeX = BLOB_DRIFT_X_RANGE, amplitudeY = BLOB_DR
  * (see material.ts) and get a flat `scale` of 1 here, so the same component
  * feels like iOS on iOS and like Material on Android without a fork.
  *
- * Every press-in also fires a light haptic tick, so each control built on this
- * hook gets tactile feedback for free (no-op on web, see `haptic`).
+ * The haptic tick fires on press-*out* (release), not press-in: a touch that
+ * gets dragged off the control before release never triggers the tap, and
+ * firing the tick at touch-down told the finger "this registered" before it
+ * actually had — every control built on this hook gets tactile feedback for
+ * free (no-op on web, see `haptic`).
  */
 export function useHoverPress() {
   const [scale] = useState(() => new Animated.Value(1))
@@ -187,10 +190,10 @@ export function useHoverPress() {
     scale,
     onHoverIn: () => to(1.035, 6),
     onHoverOut: () => to(1, 6),
-    onPressIn: () => {
+    onPressIn: () => to(0.96, 5),
+    onPressOut: () => {
       haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light))
-      to(0.96, 5)
+      to(1, 4)
     },
-    onPressOut: () => to(1, 4),
   }
 }
