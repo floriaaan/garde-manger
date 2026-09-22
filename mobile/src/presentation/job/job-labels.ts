@@ -55,7 +55,10 @@ export function failureMessage(job: Job): string {
     case 'provider_not_configured':
       return 'L’IA n’est pas configurée sur ce serveur. Demande à l’administrateur.'
     default:
-      return `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
+      // A recipe generation has no photo to blame — it failed on the ask.
+      return job.kind === 'recipe_generation'
+        ? `${outcomeMessage(job)}. Réessaie, ou demande quelque chose de plus simple.`
+        : `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
   }
 }
 

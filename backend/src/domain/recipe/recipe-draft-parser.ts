@@ -27,7 +27,7 @@ function parseIngredient(
     )
   }
   const record = raw as Record<string, unknown>
-  if (typeof record.label !== 'string') {
+  if (typeof record.label !== 'string' || record.label.trim().length === 0) {
     throw new RecipeGenerationParseError(
       `recipe ${recipeIndex} ingredient ${ingredientIndex} is missing "label"`,
     )
@@ -57,10 +57,22 @@ function parseDraft(raw: unknown, index: number): RecipeDraft {
   ) {
     throw new RecipeGenerationParseError(`recipe ${index} is missing required fields`)
   }
+  // Shape alone is not enough: a model that declines ("je ne peux pas…"), runs
+  // out of tokens mid-answer or returns a skeleton still hands back a
+  // well-formed object with empty strings and no ingredients. Persisting that
+  // put a blank recipe in the household's library and called the generation a
+  // success — a failed generation must fail, not create something.
+  if (
+    record.title.trim().length === 0 ||
+    record.instructions.trim().length === 0 ||
+    record.ingredients.length === 0
+  ) {
+    throw new RecipeGenerationParseError(`recipe ${index} is empty`)
+  }
   return {
-    title: record.title,
+    title: record.title.trim(),
     description: typeof record.description === 'string' ? record.description : null,
-    instructions: record.instructions,
+    instructions: record.instructions.trim(),
     // `recipe.preparation_time` is an INTEGER column (docs/phase-0/03) —
     // round rather than reject a whole recipe over a fractional AI value.
     preparationTime:
