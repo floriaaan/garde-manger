@@ -148,12 +148,15 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
  * drifting between two hand-copied forms.
  *
  * "Officiel" points at `OFFICIAL_SERVER_URL` — a hardcoded constant, not a
- * self-typed address, since there is exactly one official instance — picking
- * it verifies right away, no separate "Vérifier" tap (there is no field to
- * type into). The single submit button is "Vérifier" until a check
- * succeeds, then becomes `saveLabel` — editing the URL after a successful
- * check drops back to "Vérifier", since the verified server is no longer
- * the one in the field.
+ * self-typed address, since there is exactly one official instance. It is
+ * therefore never verified: there is nothing to check (no field to mistype)
+ * and a reachability probe only turns a momentary blip into a dead end on
+ * the one server the app ships with. Picking it goes straight to `saveLabel`.
+ *
+ * A self-hosted address does need the check, so there the single submit
+ * button is "Vérifier" until one succeeds, then becomes `saveLabel` —
+ * editing the URL afterwards drops back to "Vérifier", since the verified
+ * server is no longer the one in the field.
  */
 export function ServerChoiceForm({
   palette,
@@ -166,7 +169,8 @@ export function ServerChoiceForm({
   defaultUrl?: string
   saveLabel?: string
   fieldLabelColor?: string
-  onSave: (url: string, info: InstanceInfo) => void | Promise<void>
+  /** `info` is `null` for the official server, which is saved without a check. */
+  onSave: (url: string, info: InstanceInfo | null) => void | Promise<void>
 }) {
   const connector = useConnector()
   const initialUrl = defaultUrl ?? getDefaultServerUrl()
@@ -206,8 +210,12 @@ export function ServerChoiceForm({
     return verify(url)
   }
 
+  // The official server skips the check entirely; a self-hosted one is
+  // savable only once `verify` has answered for the address in the field.
+  const ready = mode === 'official' || verified !== null
+
   async function handleSave() {
-    if (!verified) return
+    if (!ready) return
     setSaving(true)
     try {
       await onSave(url, verified)
@@ -228,7 +236,8 @@ export function ServerChoiceForm({
           onPress={() => {
             setMode('official')
             setUrl(OFFICIAL_SERVER_URL)
-            void verify(OFFICIAL_SERVER_URL)
+            setVerified(null)
+            setError(null)
           }}
         />
         <RadioOption
@@ -278,13 +287,13 @@ export function ServerChoiceForm({
 
         <AuthButton
           testID="server-choice-submit"
-          label={verified ? saveLabel : 'Vérifier'}
-          pendingLabel={verified ? 'Sauvegarde...' : 'Vérification...'}
-          pending={verified ? saving : checking}
+          label={ready ? saveLabel : 'Vérifier'}
+          pendingLabel={ready ? 'Sauvegarde...' : 'Vérification...'}
+          pending={ready ? saving : checking}
           disabled={!url.trim()}
-          onPress={verified ? handleSave : handleVerify}
+          onPress={ready ? handleSave : handleVerify}
           icon={
-            verified ? (
+            ready ? (
               <CircleCheckIcon size={16} color={palette.accentLimeText} />
             ) : (
               <SearchIcon size={16} color={palette.accentLimeText} />
