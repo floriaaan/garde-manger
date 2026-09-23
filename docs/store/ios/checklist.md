@@ -7,28 +7,24 @@ Reste la liste ci-dessous, dans l'ordre.
 
 ## 1. Avant le compte Apple (bloquant pour la review)
 
-- [ ] **Page /privacy à jour.** Corriger les 8 écarts listés dans `app-privacy.md`
-      (télémétrie, cookies, push Expo, Open Food Facts, fournisseur IA, Home Assistant,
-      clés d'accès, lien dans l'app).
-- [ ] **Fournisseur IA de production vérifié** (`AI_PROVIDER` sur le serveur officiel)
-      et cohérent avec la page /privacy.
-- [ ] **Accès au debug caché.** Trois appuis sur le logo de l'écran de connexion
-      (`mobile/src/presentation/identity/auth-wordmark.tsx`) ouvrent `/debug` en build
-      de production, avec « Réinitialiser l'application ». Une fonction cachée est un
-      motif de rejet (règle 2.3.1) : restreindre à `__DEV__` ou à la preview.
-- [ ] **Texte « bientôt, hébergé par nous »** de l'écran « Choisis ton serveur »
-      (`mobile/src/presentation/onboarding/server-choice-screen.tsx`) : le serveur
-      officiel existe et c'est lui que la fiche présente. Un « bientôt » peut être lu
-      comme une fonction inachevée (règle 2.1).
+- [x] **Page /privacy à jour.** Les 8 écarts listés dans `app-privacy.md` sont corrigés
+      (télémétrie, cookies, push Expo, Open Food Facts, fournisseur IA — Gemini en
+      production —, Home Assistant, clés d'accès, lien dans l'app).
+- [x] **Fournisseur IA de production vérifié** : Gemini sur le serveur officiel
+      (`AI_PROVIDER=gemini`), et la page /privacy le reflète. Si le serveur officiel
+      change de fournisseur, remettre à jour `landing/src/presentation/legal/privacy-page.tsx`.
+- [x] **Accès au debug caché** restreint à `__DEV__`, sur le tap et sur la route.
+- [x] **Texte « bientôt, hébergé par nous »** retiré : le serveur officiel existe.
 - [ ] **Dépendances natives.** `npx expo-doctor` signale 17 paquets en retard de patch
-      SDK 57 et des modules natifs en double (`expo-constants` 57.0.15 et 57.0.19,
-      `react` 19.2.3 et 19.3.0, à cause de `landing`). Lancer
-      `npx expo install --check` dans `mobile/` et aligner `react` entre `landing` et
-      `mobile`, puis refaire une build Android pour vérifier.
-- [ ] **Passage sur iPad.** L'app n'a jamais tourné sur un iPad. Parcourir chaque écran
-      sur le simulateur iPad, en portrait, en paysage et en Split View étroite (où la
-      barre du bas remplace la barre latérale). Apple teste l'app sur iPad dès que
-      `supportsTablet` est actif.
+      SDK 57, tous alignés sur le SDK 57 courant (voir la note ci-dessous — un bump
+      SDK majeur n'est pas fait ici) ; le doublon de modules natifs (`expo-constants`,
+      `react`) est réglé en alignant la version de `react` entre `landing` et `mobile`.
+      Relancer `npx expo-doctor` après `pnpm install` pour confirmer, et refaire une
+      build Android pour vérifier qu'elle n'a pas régressé.
+- [x] **Passage sur iPad** : l'app est proposée sur iPad, avec la barre latérale au lieu
+      des onglets natifs. Reste à parcourir chaque écran sur le simulateur iPad, en
+      portrait, en paysage et en Split View étroite, avant la build de production —
+      cela n'a encore été vérifié que par lecture du code.
 
 ## 2. Compte Apple Developer
 

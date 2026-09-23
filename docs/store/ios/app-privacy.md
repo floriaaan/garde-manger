@@ -69,31 +69,22 @@ demande que les catégories).
 | Fournisseur IA configuré sur l'instance (Ollama, Gemini ou OpenAI) | Photos de tickets et du frigo, liste de produits pour les recettes | `backend/src/infrastructure/settings/ai-provider-registry.ts` |
 | Collecteur OTLP (endpoint configuré côté backend) | Télémétrie décrite ci-dessus | `backend/src/infrastructure/telemetry/otlp-telemetry-relay.ts` |
 
-## Écarts avec `landing/` /privacy
+## Écarts avec `landing/` /privacy — corrigés
 
 La page `https://gardemanger.floriaaan.fr/privacy`
-(`landing/src/presentation/legal/privacy-page.tsx`) sera l'URL de confidentialité de la
-fiche. À corriger **avant la soumission** : Apple compare la page et le questionnaire.
+(`landing/src/presentation/legal/privacy-page.tsx`) est l'URL de confidentialité de la
+fiche. Les 8 écarts relevés lors de l'audit sont corrigés sur la branche :
 
-1. **Télémétrie de l'app non mentionnée.** Ajouter les diagnostics (performances des
-   requêtes, erreurs, version d'app et d'OS, id de session), l'identifiant pseudonyme et
-   la durée de conservation.
-2. **« Aucun cookie ni traceur »** est inexact : better-auth pose un cookie de session.
-   Sur mobile, la session est un jeton stocké dans le trousseau (`expo-secure-store`).
-   Reformuler en « uniquement des cookies/jetons strictement nécessaires à la
-   connexion ».
-3. **Notifications push non mentionnées.** Ajouter le jeton push, le passage par le
-   service Expo (sous-traitant, hors UE) puis par APNs, et le contenu des
-   notifications.
-4. **Open Food Facts non mentionné.** Ajouter l'envoi des codes-barres.
-5. **Fournisseur IA.** La page affirme qu'un modèle Ollama tourne sur l'infrastructure de
-   l'éditeur. À vérifier dans la configuration de production (`AI_PROVIDER` et variables
-   associées). Si Gemini ou OpenAI est activé, la page est fausse : il faut nommer le
-   fournisseur et signaler le transfert hors UE.
-6. **Home Assistant non mentionné.** Le serveur stocke l'URL et le jeton de l'instance
-   Home Assistant liée (`backend/src/infrastructure/database/home-assistant/`).
-7. **Clés d'accès non mentionnées** parmi les méthodes de connexion (la page cite Google
-   et PocketID). Sur iOS, Google n'est pas proposé (ADR-0020).
-8. **Pas de lien vers la politique dans l'app.** Apple exige l'URL dans App Store Connect
-   et recommande un accès dans l'app (règle 5.1.1(i)). Ajouter une ligne
-   « Confidentialité » dans les réglages ou sur l'écran de connexion.
+1. Télémétrie de l'app (diagnostics, identifiant pseudonyme, durée de conservation) —
+   ajoutée à « Données collectées » et à « Durées de conservation ».
+2. « Aucun cookie ni traceur » — reformulé : aucun traceur publicitaire ou de mesure
+   d'audience, mais un cookie/jeton de session strictement nécessaire à la connexion.
+3. Notifications push — section dédiée : service Expo puis APNs/FCM, jeton et contenu.
+4. Open Food Facts — section dédiée : codes-barres transmis pour identifier un produit.
+5. Fournisseur IA — corrigé : Gemini (Google) en production sur l'instance officielle,
+   pas Ollama, avec la mention du transfert hors UE. À revérifier si `AI_PROVIDER`
+   change côté serveur officiel.
+6. Home Assistant — ajouté à « Données collectées ».
+7. Clés d'accès — ajoutées à la section connexion.
+8. Lien vers la politique dans l'app — ajouté dans Réglages (« Confidentialité » et
+   « Conditions d'utilisation »).
