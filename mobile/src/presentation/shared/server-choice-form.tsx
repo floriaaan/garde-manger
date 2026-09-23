@@ -11,15 +11,10 @@ import { useConnector } from '../../application/shared/connector-context.js'
 import { APP_UPDATE_URL, APP_VERSION, getDefaultServerUrl, OFFICIAL_SERVER_URL } from '../../application/shared/server-config.js'
 import { CircleCheckIcon, RefreshIcon, SearchIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { haptic } from './haptics.js'
-import type { InstanceInfo } from '../../domain/instance/instance-info.js'
+import { isSameVersion, type InstanceInfo } from '../../domain/instance/instance-info.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
 type Mode = 'official' | 'self-hosted'
-
-/** Strips a leading "v" so "v1.2.0" and "1.2.0" compare equal. */
-function normalizeVersion(version: string): string {
-  return version.replace(/^v/i, '')
-}
 
 function RadioOption({
   testID,
@@ -272,7 +267,7 @@ export function ServerChoiceForm({
 
         {/* Non-blocking: server ahead of or behind this build doesn't stop
             sign-in, just offers an update. */}
-        {verified && mode === 'self-hosted' && normalizeVersion(verified.version) !== normalizeVersion(APP_VERSION) ? (
+        {verified && mode === 'self-hosted' && !isSameVersion(verified.version, APP_VERSION) ? (
           <UpdateAppBanner palette={palette} serverVersion={verified.version} />
         ) : null}
 
