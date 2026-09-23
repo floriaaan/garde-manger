@@ -64,5 +64,6 @@ Options étudiées (état des règles à la rédaction, à revérifier avant cha
 - Ajouter l'achat intégré plus tard revient à faire passer `billing` à `true` sur iOS, avec
   un autre circuit derrière `useAiSubscribe()` (StoreKit au lieu de Stripe). Les écrans
   n'auront pas à changer.
+- La connexion Google suit le même mécanisme de capacités (ADR-0020).
 - Revoir cette décision si l'app sort sur la vitrine américaine (lien externe permis) ou si
   les frais de l'entitlement européen baissent.

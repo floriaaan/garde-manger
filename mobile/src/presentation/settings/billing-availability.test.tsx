@@ -17,7 +17,7 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
 import type { PlatformCapabilities } from '../../domain/shared/platform-capabilities.js'
 
-const mockCapabilities: PlatformCapabilities = { billing: true }
+const mockCapabilities: PlatformCapabilities = { billing: true, googleSignIn: true }
 // A getter: the factory runs during the imports above, before `mockCapabilities` is initialised.
 jest.mock('../../application/shared/platform-capabilities.js', () => ({
   get platformCapabilities() {
