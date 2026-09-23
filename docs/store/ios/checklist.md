@@ -15,12 +15,14 @@ Reste la liste ci-dessous, dans l'ordre.
       change de fournisseur, remettre à jour `landing/src/presentation/legal/privacy-page.tsx`.
 - [x] **Accès au debug caché** restreint à `__DEV__`, sur le tap et sur la route.
 - [x] **Texte « bientôt, hébergé par nous »** retiré : le serveur officiel existe.
-- [ ] **Dépendances natives.** `npx expo-doctor` signale 17 paquets en retard de patch
-      SDK 57, tous alignés sur le SDK 57 courant (voir la note ci-dessous — un bump
-      SDK majeur n'est pas fait ici) ; le doublon de modules natifs (`expo-constants`,
-      `react`) est réglé en alignant la version de `react` entre `landing` et `mobile`.
-      Relancer `npx expo-doctor` après `pnpm install` pour confirmer, et refaire une
-      build Android pour vérifier qu'elle n'a pas régressé.
+- [x] **Dépendances natives.** `expo-constants` remonté à `~57.0.19` (dernier patch SDK
+      57) dans `mobile/package.json`. Le doublon `react` (19.2.3 dans `mobile`, requis
+      par le SDK 57, contre 19.3.0 dans `landing`) est réglé en fixant `landing` sur
+      `19.2.3` aussi : `landing` n'est pas une app Expo, rien ne l'oblige à une version
+      plus récente. Pas de bump du SDK Expo lui-même (57 reste la cible). **Reste à
+      faire** : `pnpm install` pour régénérer le lockfile, puis `npx expo-doctor` pour
+      confirmer que les 17 paquets sont désormais à jour, et une build Android pour
+      vérifier l'absence de régression.
 - [x] **Passage sur iPad** : l'app est proposée sur iPad, avec la barre latérale au lieu
       des onglets natifs. Reste à parcourir chaque écran sur le simulateur iPad, en
       portrait, en paysage et en Split View étroite, avant la build de production —
