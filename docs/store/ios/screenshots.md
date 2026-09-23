@@ -1,8 +1,11 @@
 # Captures d'écran App Store
 
-Une seule taille est obligatoire : **iPhone 6,9"**, **1320 × 2868** en portrait. Apple
-réduit ces captures pour les autres iPhone. L'app n'est pas proposée sur iPad
-(`supportsTablet: false`) : aucune capture iPad à fournir.
+Deux tailles sont obligatoires, car l'app est proposée sur iPhone et sur iPad
+(`supportsTablet: true`). Apple réduit ces captures pour les autres modèles.
+
+- **iPhone 6,9"** : **1320 × 2868** en portrait.
+- **iPad 13"** : **2064 × 2752** en portrait. Sur iPad, l'app affiche la barre latérale
+  à la place des onglets.
 
 Entre 1 et 10 captures sont acceptées ; en voici 6. Les trois premières apparaissent
 dans les résultats de recherche : ce sont elles qui comptent.
@@ -13,9 +16,9 @@ dans les résultats de recherche : ce sont elles qui comptent.
    `review-notes.md`). Le foyer « Maison Martin » a alors des produits qui périment dans
    1 à 3 jours, un historique et une liste de courses. Le foyer doit être dans
    `AI_QUOTA_EXEMPT_HOUSEHOLD_IDS` pour que la jauge de quota IA ne s'affiche pas.
-2. Simulateur **iPhone 17 Pro Max** (ou 16 Pro Max), qui fait 1320 × 2868 en natif.
-   Build de dev ou de preview pointant sur le serveur officiel, connectée avec le compte
-   de démonstration.
+2. Simulateurs **iPhone 17 Pro Max** (ou 16 Pro Max), qui fait 1320 × 2868 en natif,
+   et **iPad Pro 13" (M4 ou plus récent)**, qui fait 2064 × 2752. Build de dev ou de
+   preview pointant sur le serveur officiel, connectée avec le compte de démonstration.
 3. Barre d'état propre :
 
    ```bash
@@ -33,6 +36,8 @@ Mode clair pour toutes les captures, pour qu'elles restent cohérentes. Pas de d
 personnelles réelles : uniquement le foyer de démonstration.
 
 ## Les 6 écrans
+
+Les mêmes 6 écrans sur iPhone et sur iPad.
 
 | # | Écran | Route | Ce qu'on doit voir | Accroche (optionnelle, en surimpression) |
 |---|---|---|---|---|

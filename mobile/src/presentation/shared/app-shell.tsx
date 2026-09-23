@@ -146,12 +146,16 @@ function goToTab(tab: SidebarSection) {
 }
 
 /**
- * iOS gets the real `NativeTabs` bar (see `(tabs)/_layout.tsx`) — Liquid
+ * iPhone gets the real `NativeTabs` bar (see `(tabs)/_layout.tsx`) — Liquid
  * Glass on iOS 26+, standard native chrome below that — so `AppShell` must
  * not also draw its own custom pill there. Android/web keep the BlurView
  * pill built in this file.
+ *
+ * iPad takes the Android/web path: the Sidebar when wide, this file's pill
+ * when a split view makes it narrow. With NativeTabs mounted too, a wide
+ * iPad showed the Sidebar and the native bar at once.
  */
-const IS_NATIVE_TAB_PLATFORM = Platform.OS === 'ios'
+export const USES_NATIVE_TABS = Platform.OS === 'ios' && !Platform.isPad
 
 /** The fixed desktop sidebar, and the `$4` of `layoutSurface` around the content pane. */
 export const SIDEBAR_WIDTH = 220
@@ -169,14 +173,14 @@ export function useAppShellLayout(nav: AppShellNav, contentMaxWidth = 640) {
    * should read as "wide" there. Android/web have no such navigator outside
    * this component's control, so width alone still decides for them.
    */
-  const isWide = width >= TABLET_BREAKPOINT && (Platform.OS !== 'ios' || Platform.isPad)
+  const isWide = width >= TABLET_BREAKPOINT && !USES_NATIVE_TABS
   const hasMobileNav = nav.kind === 'tab' && !isWide
   // True whenever the real iOS tab bar is the one on screen — either this
   // is a tab root, or a stack screen nested under it (see `insideTabs` on
   // `AppShellNav`). Both need the same bottom clearance; neither draws
   // AppShell's own pill (`hasMobileNav` alone still gates that, below).
   const isNativeTabBar =
-    !isWide && IS_NATIVE_TAB_PLATFORM && (nav.kind === 'tab' || (nav.kind === 'stack' && nav.insideTabs === true))
+    !isWide && USES_NATIVE_TABS && (nav.kind === 'tab' || (nav.kind === 'stack' && nav.insideTabs === true))
   /**
    * The measure a screen may actually draw into, padding excluded.
    *

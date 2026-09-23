@@ -1,4 +1,3 @@
-import { Platform } from 'react-native'
 import { Redirect, Tabs } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useSessionQuery } from '../../application/identity/session.query.js'
@@ -8,9 +7,10 @@ import { JobHost } from '../../presentation/job/job-host.js'
 import { ActiveJobPill } from '../../presentation/job/active-job-pill.js'
 import { PushHost } from '../../presentation/push/push-host.js'
 import { BootSplash } from '../../presentation/shared/boot-splash.js'
+import { USES_NATIVE_TABS } from '../../presentation/shared/app-shell.js'
 
 /**
- * iOS: real `NativeTabs` — Liquid Glass on iOS 26+, standard native bar
+ * iPhone: real `NativeTabs` — Liquid Glass on iOS 26+, standard native bar
  * below that. The `scan` trigger uses `role="search"`, which iOS renders
  * as a separate, floating pill on the trailing edge of the bar — see
  * `(tabs)/scan.tsx` for why it's a route rather than a plain button.
@@ -42,7 +42,7 @@ function IosTabs() {
   )
 }
 
-/** Android/web: unchanged — hidden native bar, AppShell draws its own BlurView pill instead. */
+/** Android, web and iPad: hidden native bar, AppShell draws its own Sidebar or BlurView pill instead. */
 function DefaultTabs() {
   return (
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
@@ -97,7 +97,7 @@ export default function TabsLayout() {
 
   return (
     <>
-      {Platform.OS === 'ios' ? <IosTabs /> : <DefaultTabs />}
+      {USES_NATIVE_TABS ? <IosTabs /> : <DefaultTabs />}
       <JobHost />
       <PushHost />
       <ActiveJobPill />

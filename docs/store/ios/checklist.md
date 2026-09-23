@@ -1,7 +1,7 @@
 # Checklist — première publication iOS
 
 Tout ce qui ne dépend pas d'un compte Apple est déjà fait sur la branche
-`chore/ios-release-prep` : version 1.0.0, ATS, textes de permission, pas d'iPad, pas
+`chore/ios-release-prep` : version 1.0.0, ATS, textes de permission, iPad, pas
 de facturation ni de Google sur iOS, profil EAS et workflow, compte de démonstration.
 Reste la liste ci-dessous, dans l'ordre.
 
@@ -25,9 +25,10 @@ Reste la liste ci-dessous, dans l'ordre.
       `react` 19.2.3 et 19.3.0, à cause de `landing`). Lancer
       `npx expo install --check` dans `mobile/` et aligner `react` entre `landing` et
       `mobile`, puis refaire une build Android pour vérifier.
-- [ ] **Orientation.** `app.json` ne fixe pas `orientation` : l'iPhone accepte le
-      paysage. Mettre `"orientation": "portrait"` si les écrans ne sont pas prévus pour
-      le paysage (cela touche aussi Android).
+- [ ] **Passage sur iPad.** L'app n'a jamais tourné sur un iPad. Parcourir chaque écran
+      sur le simulateur iPad, en portrait, en paysage et en Split View étroite (où la
+      barre du bas remplace la barre latérale). Apple teste l'app sur iPad dès que
+      `supportsTablet` est actif.
 
 ## 2. Compte Apple Developer
 
@@ -70,7 +71,7 @@ Reste la liste ci-dessous, dans l'ordre.
 ## 5. Fiche App Store Connect
 
 - [ ] Textes : `listing.fr.md`.
-- [ ] Captures 6,9" : `screenshots.md`.
+- [ ] Captures iPhone 6,9" et iPad 13" : `screenshots.md`.
 - [ ] Questionnaire *App Privacy* : `app-privacy.md`.
 - [ ] URL de confidentialité : `https://gardemanger.floriaaan.fr/privacy`.
 - [ ] URL d'assistance : une page accessible avec un moyen de contact
