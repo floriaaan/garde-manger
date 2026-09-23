@@ -18,8 +18,10 @@ const TRIPLE_TAP_MS = 600
 export function AuthWordmark({ tone }: { tone: 'ink' | 'on-dark' }) {
   const palette = useSoftPalette()
   const taps = useRef<number[]>([])
-  // Triple tap opens the debug modal — a hidden door, so no a11y role/label.
+  // Triple tap opens the debug modal in dev builds only — a hidden feature in
+  // a release build is an App Store rejection (2.3.1). No a11y role/label.
   function onTap() {
+    if (!__DEV__) return
     const now = Date.now()
     taps.current = [...taps.current.filter((t) => now - t < TRIPLE_TAP_MS), now]
     if (taps.current.length >= 3) {
