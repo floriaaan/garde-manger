@@ -23,6 +23,11 @@ Reste la liste ci-dessous, dans l'ordre.
       faire** : `pnpm install` pour régénérer le lockfile, puis `npx expo-doctor` pour
       confirmer que les 17 paquets sont désormais à jour, et une build Android pour
       vérifier l'absence de régression.
+- [x] **Règle 3.1.3(b).** Un foyer abonné (ou libre) sur iOS n'a ni paywall ni portail de
+      gestion in-app, mais un texte et un lien (non intrusif) vers
+      `gardemanger.floriaaan.fr` pour s'abonner ou gérer l'abonnement dans un navigateur
+      (`mobile/src/presentation/settings/ai-access-cards.tsx`,
+      `ExternalSubscriptionNotice`).
 - [x] **Passage sur iPad** : l'app est proposée sur iPad, avec la barre latérale au lieu
       des onglets natifs. Reste à parcourir chaque écran sur le simulateur iPad, en
       portrait, en paysage et en Split View étroite, avant la build de production —

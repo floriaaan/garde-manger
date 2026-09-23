@@ -19,6 +19,28 @@ import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
+const WEB_APP_URL = 'https://gardemanger.floriaaan.fr'
+
+/**
+ * iOS cannot sell the subscription in-app (ADR 0019), but a household that
+ * subscribed on the web keeps using it there and must still be told where —
+ * App Store rule 3.1.3(b) allows pointing to an outside way to manage a
+ * multi-platform subscription, as long as it is not a purchase button.
+ */
+export function ExternalSubscriptionNotice({ palette }: { palette: SoftPalette }) {
+  return (
+    <YStack gap="$1.5" padding="$3" borderRadius="$4" backgroundColor={palette.cream}>
+      <Text fontSize={13} color={palette.inkSecondary}>
+        L’abonnement se gère depuis un navigateur, sur le site du serveur.
+      </Text>
+      <Pressable onPress={() => Linking.openURL(WEB_APP_URL)} testID="subscription-web-link">
+        <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
+          Ouvrir gardemanger.floriaaan.fr
+        </Text>
+      </Pressable>
+    </YStack>
+  )
+}
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   return (

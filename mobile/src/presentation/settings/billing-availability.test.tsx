@@ -68,21 +68,22 @@ describe('without billing (iOS)', () => {
     mockCapabilities.billing = false
   })
 
-  test('a spent free quota shows no paywall and no price on the Abonnement route', async () => {
+  test('a spent free quota shows no paywall and no price, only the web link (App Store 3.1.3(b))', async () => {
     await renderWith(<SubscriptionScreen />, spentFree)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
     expect(screen.queryByTestId('subscription-paywall')).toBeNull()
     expect(screen.queryByText(/€/)).toBeNull()
-    expect(screen.queryByText(/abonn/i)).toBeNull()
+    expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
-  test('a subscriber from another platform gets no Customer Portal button', async () => {
+  test('a subscriber from another platform gets no Customer Portal button, only the web link', async () => {
     await renderWith(<SubscriptionScreen />, subscriber)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
     expect(screen.queryByTestId('subscription-active')).toBeNull()
     expect(screen.queryByTestId('subscription-manage')).toBeNull()
+    expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
   test('Réglages has no Abonnement entry', async () => {

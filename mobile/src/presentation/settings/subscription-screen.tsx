@@ -2,8 +2,9 @@
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
- * Without billing (iOS, ADR 0019) only the quota shows: no paywall, no
- * portal. Réglages hides the entry; this guards a stray deep link.
+ * Without billing (iOS, ADR 0019) there is no in-app paywall or portal, only
+ * the quota and a link to manage the subscription on the web (App Store rule
+ * 3.1.3(b)). Réglages hides the entry; this guards a stray deep link.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -14,7 +15,7 @@ import { ScreenHeader } from '../shared/screen-header.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { BadgeCheckIcon } from '../dashboard/dashboard-icons.js'
 import { SkeletonCard, SkeletonGroup } from '../shared/skeleton.js'
-import { AiQuotaHint, SubscriptionActiveCard, SubscriptionPaywall } from './ai-access-cards.js'
+import { AiQuotaHint, ExternalSubscriptionNotice, SubscriptionActiveCard, SubscriptionPaywall } from './ai-access-cards.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 
@@ -69,6 +70,8 @@ export function SubscriptionScreen() {
           />
         ) : null}
 
+        {access?.plan === 'free' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
+
         {access?.plan === 'subscriber' && subscription.billing ? (
           <SubscriptionActiveCard
             palette={palette}
@@ -79,6 +82,8 @@ export function SubscriptionScreen() {
             error={subscription.error}
           />
         ) : null}
+
+        {access?.plan === 'subscriber' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
 
         {access && access.plan !== 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 
