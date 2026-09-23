@@ -1,4 +1,4 @@
-# ADR-0020 — Connexion Google masquée sur iOS, Sign in with Apple planifié
+# ADR-0020 — Connexion Google masquée sur iOS, Sign in with Apple en préparation
 
 ## Contexte
 
@@ -32,32 +32,38 @@ ID, clé `.p8`), que le projet n'a pas encore.
   compte créé avec Google ailleurs n'a, sur iPhone, que les autres méthodes déjà liées à
   ce compte.
 
-## Plan pour Sign in with Apple (non implémenté)
+## Plan pour Sign in with Apple
 
-À faire quand le compte Apple Developer est actif, puis remettre `googleSignIn` à `true`
-sur iOS.
+Le backend est câblé et attend seulement les identifiants Apple Developer (étape 1) pour
+s'activer ; la partie mobile reste à faire. Remettre `googleSignIn` à `true` sur iOS une
+fois Sign in with Apple utilisable en pratique (étapes 1 et 3 terminées).
 
-1. **Apple Developer**
+1. **Apple Developer** (bloquant, pas encore fait — pas de compte)
    - App ID `com.floriaaan.gardemanger` : cocher la capacité *Sign in with Apple*.
    - Créer un *Services ID* (ex. `com.floriaaan.gardemanger.signin`) pour le web et
      Android, avec le domaine de l'API et l'URL de retour
      `https://<API_URL>/api/auth/callback/apple`.
    - Créer une clé *Sign in with Apple* (`.p8`) : noter le Key ID et le Team ID.
-2. **Backend** (`backend/src/infrastructure/auth/better-auth/instance.ts`)
-   - Ajouter le provider `apple` dans `socialProviders`, activé seulement s'il est
-     configuré, comme Google.
-   - `clientId` : le Services ID. `appBundleIdentifier` : le bundle id iOS, pour accepter
-     les ID tokens émis par l'app native.
-   - `clientSecret` : un JWT ES256 signé avec la clé `.p8` (Team ID en `iss`, Key ID en
-     `kid`, durée max 6 mois). Le générer au démarrage à partir de la clé plutôt que le
-     stocker, sinon il expire en silence.
-   - Ajouter `https://appleid.apple.com` à `trustedOrigins`.
-   - Variables (dans `start/env.ts` et `.env.example`) : `APPLE_CLIENT_ID` (Services ID),
+2. **Backend — fait** (`backend/src/infrastructure/auth/better-auth/instance.ts`,
+   `apple-client-secret.ts`)
+   - Le provider `apple` est ajouté à `socialProviders`, activé seulement si les quatre
+     variables ci-dessous sont renseignées, comme Google.
+   - `clientId` : le Services ID (`APPLE_CLIENT_ID`). `appBundleIdentifier`
+     (`APPLE_APP_BUNDLE_IDENTIFIER`) : le bundle id iOS, pour accepter les ID tokens émis
+     par l'app native.
+   - `clientSecret` : un JWT ES256 signé avec la clé `.p8`, généré au démarrage par
+     `buildAppleClientSecret` (Team ID en `iss`, Key ID en `kid`, durée 6 mois) plutôt que
+     stocké, pour ne pas expirer en silence. Testé par
+     `tests/infrastructure/auth/apple-client-secret.spec.ts`.
+   - `https://appleid.apple.com` est dans `trustedOrigins` (inconditionnellement : ne
+     coûte rien tant que le provider n'est pas actif).
+   - Variables (`start/env.ts` et `.env.example`) : `APPLE_CLIENT_ID`,
      `APPLE_APP_BUNDLE_IDENTIFIER`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`
      (contenu de la `.p8`).
-   - Annoncer `{ id: 'apple', label: 'Apple' }` dans `EnvAuthMethodsProvider`, et
-     l'ajouter à `auth-method.vo.ts`.
-3. **Mobile**
+   - `EnvAuthMethodsProvider` annonce `{ id: 'apple', label: 'Apple' }` dès que les quatre
+     variables sont présentes ; `apple` fait partie de `AuthMethodId`
+     (`auth-method.vo.ts`).
+3. **Mobile — pas commencé**
    - Installer `expo-apple-authentication` et l'ajouter aux `plugins`. Mettre
      `ios.usesAppleSignIn: true` dans `app.json`, ce qui ajoute l'entitlement.
    - Sur iOS, flux natif : `AppleAuthentication.signInAsync({ requestedScopes: [FULL_NAME,

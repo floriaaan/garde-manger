@@ -96,4 +96,6 @@ Reste la liste ci-dessous, dans l'ordre.
       `mobile/src/application/shared/server-config.ts`. C'est l'URL proposée quand
       l'instance est plus récente que l'app. Elle est commune à toutes les plateformes :
       utiliser `Platform.select` si Android a une fiche Play Store.
-- [ ] Sign in with Apple, puis réactiver Google sur iOS : plan dans ADR-0020.
+- [ ] Sign in with Apple, puis réactiver Google sur iOS : plan dans ADR-0020. Le backend
+      est déjà câblé (provider `apple`, secret JWT généré au démarrage) ; reste l'étape 1
+      (compte Apple Developer) et l'étape 3 (paquet mobile, bouton, capacité).
