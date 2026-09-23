@@ -58,5 +58,5 @@ export function Aside({ title, children }: { title: string; children: ReactNode 
   )
 }
 
-export const LEGAL_UPDATED = '19 septembre 2026'
+export const LEGAL_UPDATED = '23 septembre 2026'
 export const REPOSITORY_URL = 'https://github.com/floriaaan/garde-manger'
