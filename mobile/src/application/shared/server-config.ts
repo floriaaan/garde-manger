@@ -19,9 +19,11 @@ export const OFFICIAL_SERVER_URL = 'https://api-gardemanger.floriaaan.fr'
 /** `expo.version` from app.json — what a self-hosted instance's reported version gets compared against. */
 export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
 
-// ponytail: no store listing exists yet (app.json has no bundleIdentifier/package),
-// so there's nowhere real to send someone for an update. Empty for now —
-// set to the real App Store / Play Store URL once the app is published.
+// Where the "Mettre à jour l'app" button sends someone whose app is older than
+// their instance. Empty until the App Store listing exists: set it to
+// https://apps.apple.com/app/id<ascAppId> (the ascAppId in eas.json) once the app
+// is published. It is a single URL for every platform, so a Play Store listing
+// would need a Platform.select here.
 export const APP_UPDATE_URL = ''
 
 let currentUrl = DEFAULT_URL

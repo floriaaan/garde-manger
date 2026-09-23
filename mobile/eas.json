@@ -22,6 +22,8 @@
       }
     },
     "production": {
+      "node": "24.18.0",
+      "pnpm": "11.17.0",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_CONNECTOR": "http",
@@ -33,6 +35,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "REMPLACER_PAR_L_APPLE_ID_DE_L_APP"
+      }
+    }
   }
 }
