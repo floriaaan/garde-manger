@@ -65,6 +65,7 @@ import {
   LeafIcon,
   PackageIcon,
   PencilIcon,
+  SearchIcon,
   UsersIcon,
   UtensilsIcon,
   XIcon,
@@ -92,7 +93,7 @@ import {
   type RecipeWish,
 } from './recipe-prompt.js'
 
-/** How many products the card offers before it stops. Chips wrap, rows did not. */
+/** How many products the card offers with an empty search. Typing shows every match instead. */
 const PANTRY_SUGGESTION_COUNT = 8
 
 /**
@@ -153,7 +154,8 @@ export function RecipeGenerateScreen() {
   // behind it, so a selection is never hidden without saying so.
   const [refining, setRefining] = useState(false)
 
-  const pantry = sortByExpiry(productsQuery.data ?? []).slice(0, PANTRY_SUGGESTION_COUNT)
+  // Sorted, uncapped: the search list needs every product to filter through, not just the nearest few.
+  const pantry = sortByExpiry(productsQuery.data ?? [])
   const empty = isWishEmpty(wish)
   const chosen = countSelections(wish)
   // The foyer already knows how many people it feeds. Asking a household of
@@ -537,6 +539,12 @@ function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () =
  * is the idiom for a checklist to complete, which is the exact opposite of
  * what this card is. Only the products with little time left carry their count
  * ("Yaourt · 2 j"); for the rest the ordering already says it.
+ *
+ * The eight nearest-to-expire were the whole offer at first — a garde-manger
+ * of thirty had no way to pin the other twenty-two. A search field, the same
+ * `FormField` the fridge list already filters with, turns the card into a
+ * proper list: empty, it still shows the eight most urgent; typed, it shows
+ * every match regardless of how far off its date is.
  */
 function PantrySuggestions({
   products,
@@ -546,6 +554,7 @@ function PantrySuggestions({
   isPinned,
   onTogglePin,
 }: {
+  /** Sorted by expiry, uncapped — the search below decides how much of it is shown. */
   products: readonly Product[]
   loading: boolean
   palette: SoftPalette
@@ -553,6 +562,11 @@ function PantrySuggestions({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
+  const [search, setSearch] = useState('')
+  const needle = search.trim().toLowerCase()
+  const matching = needle.length > 0 ? products.filter((product) => product.name.toLowerCase().includes(needle)) : products
+  const shown = needle.length > 0 ? matching : matching.slice(0, PANTRY_SUGGESTION_COUNT)
+
   return (
     <YStack
       marginTop="$5"
@@ -605,23 +619,41 @@ function PantrySuggestions({
           />
         </YStack>
       ) : (
-        // gap $3, per `Chip`'s own rule: two chips closer than the sum of their
-        // facing slops have overlapping press areas.
-        <XStack gap="$3" flexWrap="wrap" marginTop="$1">
-          {products.map((product) => (
-            <Chip
-              key={product.id}
-              testID={`recipes-pin-${product.id}`}
-              label={pantryChipLabel(product)}
-              // Drawn "Yaourt · 2 j"; announced with the full sentence the rest
-              // of the app uses for a date.
-              accessibilityLabel={`${product.name} — ${expiryLabel(daysUntilExpiry(product))}`}
-              selected={isPinned(product.name)}
-              onPress={() => onTogglePin(product.name)}
-              palette={palette}
-            />
-          ))}
-        </XStack>
+        <>
+          <FormField
+            testID="recipes-pantry-search"
+            label="Chercher un produit"
+            value={search}
+            onChangeText={setSearch}
+            palette={palette}
+            placeholder="Un nom de produit"
+            autoCapitalize="none"
+            icon={(color) => <SearchIcon size={13} color={color} />}
+          />
+          {shown.length === 0 ? (
+            <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
+              Aucun produit ne correspond à « {search.trim()} ».
+            </Text>
+          ) : (
+            // gap $3, per `Chip`'s own rule: two chips closer than the sum of their
+            // facing slops have overlapping press areas.
+            <XStack gap="$3" flexWrap="wrap" marginTop="$1">
+              {shown.map((product) => (
+                <Chip
+                  key={product.id}
+                  testID={`recipes-pin-${product.id}`}
+                  label={pantryChipLabel(product)}
+                  // Drawn "Yaourt · 2 j"; announced with the full sentence the rest
+                  // of the app uses for a date.
+                  accessibilityLabel={`${product.name} — ${expiryLabel(daysUntilExpiry(product))}`}
+                  selected={isPinned(product.name)}
+                  onPress={() => onTogglePin(product.name)}
+                  palette={palette}
+                />
+              ))}
+            </XStack>
+          )}
+        </>
       )}
     </YStack>
   )

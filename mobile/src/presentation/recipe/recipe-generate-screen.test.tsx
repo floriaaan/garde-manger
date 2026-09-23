@@ -259,6 +259,29 @@ test('a pantry chip is a control, not a caption — tapping it builds the recipe
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
 })
 
+test('the pantry search narrows the chips to the typed name, not just the nearest few', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
+  expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+
+  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'basmati')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+    expect(screen.queryByTestId('recipes-pin-fake-product-1')).toBeNull()
+  })
+})
+
+test('a pantry search with no match says so instead of showing an empty card', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-search')).toBeTruthy())
+  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'saucisson')
+
+  await waitFor(() => expect(screen.getByText('Aucun produit ne correspond à « saucisson ».')).toBeTruthy())
+})
+
 test('the portions chip that matches the foyer says so, instead of making them count', async () => {
   renderComposer()
 
