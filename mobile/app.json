@@ -29,8 +29,7 @@
       "predictiveBackGestureEnabled": true,
       "package": "com.floriaaan.gardemanger",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -57,13 +56,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Garde-manger a besoin de la caméra pour scanner le code-barres d'un produit."
+          "cameraPermission": "Garde-manger utilise la caméra pour scanner le code-barres d'un produit, photographier un ticket de caisse ou le contenu de ton frigo, et lire le QR code d'invitation d'un foyer.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Garde-manger a besoin d'accéder à tes photos pour importer un ticket de caisse."
+          "photosPermission": "Garde-manger ouvre tes photos quand tu choisis d'importer la photo d'un ticket de caisse ou de ton frigo, pour en extraire les produits.",
+          "microphonePermission": false
         }
       ]
     ],
