@@ -2,6 +2,8 @@
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
+ * Without billing (iOS, ADR 0019) only the quota shows: no paywall, no
+ * portal. Réglages hides the entry; this guards a stray deep link.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -31,7 +33,7 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title="Abonnement"
+          title={subscription.billing ? 'Abonnement' : 'Quota IA'}
           onBack={() => router.back()}
         />
       }
@@ -58,7 +60,7 @@ export function SubscriptionScreen() {
         {/* Free plan: the usage comes first — the paywall answers it, it does not open the screen. */}
         {access?.plan === 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 
-        {access?.plan === 'free' ? (
+        {access?.plan === 'free' && subscription.billing ? (
           <SubscriptionPaywall
             palette={palette}
             onSubscribe={subscription.subscribe}
@@ -67,7 +69,7 @@ export function SubscriptionScreen() {
           />
         ) : null}
 
-        {access?.plan === 'subscriber' ? (
+        {access?.plan === 'subscriber' && subscription.billing ? (
           <SubscriptionActiveCard
             palette={palette}
             until={access.expiresAt}

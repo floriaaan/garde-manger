@@ -1,3 +1,5 @@
+> **Complété par [ADR-0019](0019-pas-de-facturation-sur-ios.md)** : la build iOS ne propose pas cet abonnement (règle App Store 3.1.1). Android et le web ne changent pas.
+
 # ADR-0015 — Paiement de l'abonnement IA via Stripe, sans achat in-app
 
 ## Contexte

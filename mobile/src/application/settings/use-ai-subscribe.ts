@@ -6,13 +6,15 @@ import { celebrate } from '../shared/confetti.js'
 import { useAiSettingsQuery } from './ai-settings.query.js'
 import type { AiSettings } from '../../domain/settings/ai-settings.js'
 import { useConnector } from '../shared/connector-context.js'
+import { platformCapabilities } from '../shared/platform-capabilities.js'
 import type { Result } from '../../domain/shared/result.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 
 /**
  * The subscribe/manage flow every paywall shares (ADR 0015): the backend hands
  * back a Stripe-hosted page, opened in the system browser. `canSubscribe` is
- * true only on the official instance, on the free plan.
+ * true only on the official instance, on the free plan, where the platform
+ * allows billing at all (never on iOS, ADR 0019).
  */
 export function useAiSubscribe() {
   const settings = useAiSettingsQuery()
@@ -21,7 +23,8 @@ export function useAiSubscribe() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canSubscribe = settings.data?.access.plan === 'free'
+  const { billing } = platformCapabilities
+  const canSubscribe = billing && settings.data?.access.plan === 'free'
 
   async function openStripePage(start: () => Promise<Result<{ url: string }, ApiError>>) {
     setError(null)
@@ -61,6 +64,7 @@ export function useAiSubscribe() {
   }
 
   return {
+    billing,
     canSubscribe,
     subscribe: () => openStripePage(() => connector.startSubscriptionCheckout()),
     manage: () => openStripePage(() => connector.openBillingPortal()),

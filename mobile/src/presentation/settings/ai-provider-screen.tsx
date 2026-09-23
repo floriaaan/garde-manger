@@ -24,6 +24,7 @@ import { OllamaIcon } from './ollama-icon.js'
 import { AiQuotaHint, AiSetupGuideCard } from './ai-access-cards.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useSetActiveAiProviderMutation } from '../../application/settings/set-active-ai-provider.mutation.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import type { AiProvider } from '../../domain/settings/ai-settings.js'
 
 const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 'OpenAI', ollama: 'Ollama' }
@@ -117,7 +118,9 @@ export function AiProviderScreen() {
             <SparklesIcon size={14} color={palette.lavenderText} />
             <Text flex={1} fontSize={12} fontWeight="600" color={palette.inkSecondary}>
               {settings.data && !canChooseProvider
-                ? 'Chaque scan ou recette compte dans ton offre : le détail est dans Abonnement.'
+                ? platformCapabilities.billing
+                  ? 'Chaque scan ou recette compte dans ton offre : le détail est dans Abonnement.'
+                  : 'Chaque scan ou recette compte dans le quota mensuel du foyer.'
                 : 'L’IA n’intervient que quand tu lances un scan ou une recette.'}
             </Text>
           </XStack>

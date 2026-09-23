@@ -1,4 +1,5 @@
 import type { Job, JobKind } from '../../domain/job/job.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 
 export const JOB_TITLES: Record<JobKind, string> = {
   receipt_scan: 'Analyse du ticket',
@@ -51,7 +52,9 @@ export function isBehindAnother(job: Job, jobs: Job[]): boolean {
 export function failureMessage(job: Job): string {
   switch (job.error?.type) {
     case 'ai_quota_exceeded':
-      return 'Quota gratuit atteint. Passe à l’offre IA pour continuer.'
+      return platformCapabilities.billing
+        ? 'Quota gratuit atteint. Passe à l’offre IA pour continuer.'
+        : 'Quota du mois atteint. Il se renouvelle le 1er du mois.'
     case 'provider_not_configured':
       return 'L’IA n’est pas configurée sur ce serveur. Demande à l’administrateur.'
     default:

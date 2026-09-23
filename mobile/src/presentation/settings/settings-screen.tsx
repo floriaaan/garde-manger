@@ -30,6 +30,7 @@ import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { useInstanceInfoQuery } from '../../application/instance/instance-info.query.js'
 import type { AiProvider } from '../../domain/settings/ai-settings.js'
 
@@ -198,7 +199,7 @@ export function SettingsScreen() {
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
         />
-        {plan === 'self-hosted' ? null : (
+        {plan === 'self-hosted' || !platformCapabilities.billing ? null : (
           <IdentityCard
             testID="settings-subscription"
             bg={palette.butter}

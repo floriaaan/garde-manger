@@ -12,6 +12,7 @@ import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { BadgeCheckIcon, CircleCheckIcon, SparklesIcon } from '../dashboard/dashboard-icons.js'
 import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { hexToRgba } from '../shared/hex-to-rgba.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
@@ -294,7 +295,8 @@ export const NUDGE_RATIO = 0.6
 export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAccess; palette: SoftPalette; showCta?: boolean }) {
   if (access.limit === null) return null
   const ratio = Math.min(access.used / access.limit, 1)
-  const label = access.plan === 'free' ? 'Offre gratuite' : 'Abonnement'
+  // Without billing (iOS) the plan is never named: a free tier implies a paid one.
+  const label = !platformCapabilities.billing ? 'IA du foyer' : access.plan === 'free' ? 'Offre gratuite' : 'Abonnement'
   const spent = ratio >= 1
   return (
     <YStack testID="ai-quota-hint" gap="$1.5" marginTop="$2">
@@ -325,7 +327,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
           backgroundColor={spent ? palette.expiredText : palette.mintPaleText}
         />
       </YStack>
-      {showCta && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
+      {showCta && platformCapabilities.billing && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
         <Pressable
           testID="ai-quota-subscribe"
           onPress={() => router.push('/subscription')}
