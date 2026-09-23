@@ -12,7 +12,11 @@
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "Garde-manger se connecte à ton serveur auto-hébergé sur le réseau local (par exemple http://192.168.1.20:3333) pour synchroniser ton frigo et ta liste de courses."
       }
     },
     "android": {
