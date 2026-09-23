@@ -23,6 +23,9 @@ Reste la liste ci-dessous, dans l'ordre.
       faire** : `pnpm install` pour régénérer le lockfile, puis `npx expo-doctor` pour
       confirmer que les 17 paquets sont désormais à jour, et une build Android pour
       vérifier l'absence de régression.
+- [x] **Auto-hébergement en HTTP public documenté.** ATS bloque le HTTP simple hors
+      réseau local sur iOS ; `README.fr.md` (section HTTPS) explique la limite et
+      renvoie au reverse proxy déjà documenté juste au-dessus.
 - [x] **Règle 3.1.3(b).** Un foyer abonné (ou libre) sur iOS n'a ni paywall ni portail de
       gestion in-app, mais un texte et un lien (non intrusif) vers
       `gardemanger.floriaaan.fr` pour s'abonner ou gérer l'abonnement dans un navigateur
