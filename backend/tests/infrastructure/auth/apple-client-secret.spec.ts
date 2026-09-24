@@ -29,7 +29,10 @@ test.group('buildAppleClientSecret', () => {
 
     const verified = createVerify('SHA256')
       .update(`${headerPart}.${payloadPart}`)
-      .verify({ key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signaturePart, 'base64url'))
+      .verify(
+        { key: publicKey, dsaEncoding: 'ieee-p1363' },
+        Buffer.from(signaturePart, 'base64url'),
+      )
     assert.isTrue(verified)
   })
 })

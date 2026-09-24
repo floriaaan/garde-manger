@@ -167,7 +167,9 @@ export const auth = betterAuth({
   ...(googleConfigured || appleConfigured
     ? {
         socialProviders: {
-          ...(googleConfigured ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } } : {}),
+          ...(googleConfigured
+            ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
+            : {}),
           ...(appleConfigured
             ? {
                 apple: {

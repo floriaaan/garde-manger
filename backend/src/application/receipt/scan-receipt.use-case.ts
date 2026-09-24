@@ -1,5 +1,8 @@
 import type { UseCase } from '#application/shared/use-case'
-import type { ReceiptExtractionPort, ReceiptFile } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
+import type {
+  ReceiptExtractionPort,
+  ReceiptFile,
+} from '#domain/receipt/interfaces/receipt-extraction-port.interface'
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import {
   ReceiptExtractionUnavailableError,
@@ -9,7 +12,8 @@ import {
 import { Result } from '#domain/shared/result'
 import type { Result as ResultType } from '#domain/shared/result'
 
-export type ScanReceiptError = 'provider_not_configured' | 'extraction_failed' | 'unsupported_format'
+export type ScanReceiptError =
+  'provider_not_configured' | 'extraction_failed' | 'unsupported_format'
 
 export class ScanReceipt implements UseCase<
   { image: ReceiptFile },
@@ -17,7 +21,9 @@ export class ScanReceipt implements UseCase<
 > {
   constructor(private readonly extraction: ReceiptExtractionPort) {}
 
-  async execute(input: { image: ReceiptFile }): Promise<ResultType<ReceiptDraft, ScanReceiptError>> {
+  async execute(input: {
+    image: ReceiptFile
+  }): Promise<ResultType<ReceiptDraft, ScanReceiptError>> {
     try {
       const draft = await this.extraction.extract(input.image)
       return Result.ok(draft)

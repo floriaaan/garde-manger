@@ -66,7 +66,8 @@ const STRING_ERROR_MESSAGES: Record<string, string> = {
   job_not_retryable: 'Cette tâche ne peut pas être relancée.',
   draft_not_found: 'Brouillon introuvable ou expiré.',
   extraction_failed: "L'extraction du ticket a échoué — réessayez avec une photo plus nette.",
-  unsupported_format: "Ce fournisseur IA ne lit pas les fichiers PDF — essayez une photo, ou un autre fournisseur.",
+  unsupported_format:
+    'Ce fournisseur IA ne lit pas les fichiers PDF — essayez une photo, ou un autre fournisseur.',
   shopping_item_not_found: 'Article introuvable.',
   recipe_not_found: 'Recette introuvable.',
   generation_failed: 'La génération de recette a échoué — réessayez, ou reformulez votre demande.',
