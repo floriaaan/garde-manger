@@ -215,6 +215,15 @@ garde-manger.example.com {
 
 Ajoute `caddy_data:` au bloc `volumes:`, puis mets `APP_URL` et `NETWORK_URL` à `https://garde-manger.example.com` dans le `.env`, et `EXPO_PUBLIC_API_URL` dans l’app.
 
+Sur iOS, le HTTPS n’est pas optionnel dès que le serveur sort du réseau local : App
+Transport Security (ATS) bloque toute requête HTTP simple, sauf vers une adresse du
+réseau local (`NSAllowsLocalNetworking` dans `mobile/app.json`). Un serveur auto-hébergé
+joint uniquement en HTTP sur le réseau domestique (`http://192.168.1.42:3333`) fonctionne
+donc tel quel depuis l’app iOS ; le même serveur exposé publiquement en HTTP simple
+(par exemple via une redirection de port sans reverse proxy) ne fonctionnera pas sur iOS
+tant qu’il n’est pas derrière du HTTPS, comme au-dessus. Android et le web n’ont pas cette
+contrainte.
+
 ## Au quotidien
 
 ```bash

@@ -12,12 +12,35 @@ import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { BadgeCheckIcon, CircleCheckIcon, SparklesIcon } from '../dashboard/dashboard-icons.js'
 import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { hexToRgba } from '../shared/hex-to-rgba.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
+const WEB_APP_URL = 'https://gardemanger.floriaaan.fr'
+
+/**
+ * iOS cannot sell the subscription in-app (ADR 0019), but a household that
+ * subscribed on the web keeps using it there and must still be told where —
+ * App Store rule 3.1.3(b) allows pointing to an outside way to manage a
+ * multi-platform subscription, as long as it is not a purchase button.
+ */
+export function ExternalSubscriptionNotice({ palette }: { palette: SoftPalette }) {
+  return (
+    <YStack gap="$1.5" padding="$3" borderRadius="$4" backgroundColor={palette.cream}>
+      <Text fontSize={13} color={palette.inkSecondary}>
+        L’abonnement se gère depuis un navigateur, sur le site du serveur.
+      </Text>
+      <Pressable onPress={() => Linking.openURL(WEB_APP_URL)} testID="subscription-web-link">
+        <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
+          Ouvrir gardemanger.floriaaan.fr
+        </Text>
+      </Pressable>
+    </YStack>
+  )
+}
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   return (
@@ -294,7 +317,8 @@ export const NUDGE_RATIO = 0.6
 export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAccess; palette: SoftPalette; showCta?: boolean }) {
   if (access.limit === null) return null
   const ratio = Math.min(access.used / access.limit, 1)
-  const label = access.plan === 'free' ? 'Offre gratuite' : 'Abonnement'
+  // Without billing (iOS) the plan is never named: a free tier implies a paid one.
+  const label = !platformCapabilities.billing ? 'IA du foyer' : access.plan === 'free' ? 'Offre gratuite' : 'Abonnement'
   const spent = ratio >= 1
   return (
     <YStack testID="ai-quota-hint" gap="$1.5" marginTop="$2">
@@ -325,7 +349,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
           backgroundColor={spent ? palette.expiredText : palette.mintPaleText}
         />
       </YStack>
-      {showCta && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
+      {showCta && platformCapabilities.billing && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
         <Pressable
           testID="ai-quota-subscribe"
           onPress={() => router.push('/subscription')}

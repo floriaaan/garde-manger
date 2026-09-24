@@ -40,6 +40,15 @@ export default await Env.create(new URL('../', import.meta.url), {
   GOOGLE_CLIENT_ID: Env.schema.string.optional(),
   GOOGLE_CLIENT_SECRET: Env.schema.string.optional(),
 
+  // Sign in with Apple (docs/adr/0020) — off until the four are set. The
+  // "client secret" Apple wants isn't a static value: it's a short-lived JWT
+  // signed with APPLE_PRIVATE_KEY, built at startup (cf. instance.ts).
+  APPLE_CLIENT_ID: Env.schema.string.optional(),
+  APPLE_APP_BUNDLE_IDENTIFIER: Env.schema.string.optional(),
+  APPLE_TEAM_ID: Env.schema.string.optional(),
+  APPLE_KEY_ID: Env.schema.string.optional(),
+  APPLE_PRIVATE_KEY: Env.schema.string.optional(),
+
   DISABLE_PASSWORD_LOGIN: Env.schema.boolean.optional(),
 
   // Frontend/app origin(s) the client actually calls the API from — used by
@@ -63,6 +72,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   // self-hosted instances, which are never capped.
   AI_QUOTA_FREE: Env.schema.number.optional(),
   AI_QUOTA_SUBSCRIBED: Env.schema.number.optional(),
+  // Comma-separated household ids never capped on the hosted instance — the
+  // App Store review account (`node ace seed:review-account` prints its id).
+  AI_QUOTA_EXEMPT_HOUSEHOLD_IDS: Env.schema.string.optional(),
+
+  // App Store review account, created by `node ace seed:review-account`.
+  REVIEW_ACCOUNT_EMAIL: Env.schema.string.optional(),
+  REVIEW_ACCOUNT_PASSWORD: Env.schema.string.optional(),
 
   // Stripe billing for the hosted subscription (docs/adr/0015). The webhook
   // secret (`whsec_…`) verifies `POST /api/webhooks/stripe`; unset on a hosted

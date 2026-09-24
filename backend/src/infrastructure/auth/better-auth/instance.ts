@@ -5,6 +5,7 @@ import { passkey } from '@better-auth/passkey'
 import { Kysely, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 import env from '#start/env'
+import { buildAppleClientSecret } from './apple-client-secret.js'
 
 const pool = new Pool({
   host: env.get('DB_HOST'),
@@ -25,6 +26,21 @@ const googleClientId = env.get('GOOGLE_CLIENT_ID', '')
 const googleClientSecret = env.get('GOOGLE_CLIENT_SECRET', '')
 const googleConfigured = Boolean(googleClientId && googleClientSecret)
 
+const appleClientId = env.get('APPLE_CLIENT_ID', '')
+const appleAppBundleIdentifier = env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')
+const appleTeamId = env.get('APPLE_TEAM_ID', '')
+const appleKeyId = env.get('APPLE_KEY_ID', '')
+const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')
+const appleConfigured = Boolean(appleClientId && appleTeamId && appleKeyId && applePrivateKey)
+const appleClientSecret = appleConfigured
+  ? buildAppleClientSecret({
+      clientId: appleClientId,
+      teamId: appleTeamId,
+      keyId: appleKeyId,
+      privateKey: applePrivateKey,
+    })
+  : ''
+
 // WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
 // lifetime — NETWORK_URL is that same "however this backend is actually
 // reached" address already used as the PocketID redirect_uri, so passkeys
@@ -42,11 +58,17 @@ export const auth = betterAuth({
   database: { db, type: 'postgres' },
   secret: env.get('BETTER_AUTH_SECRET').release(),
   baseURL: env.get('NETWORK_URL'),
-  trustedOrigins: env
-    .get('CORS_ORIGIN', '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  trustedOrigins: [
+    ...env
+      .get('CORS_ORIGIN', '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    // Sign in with Apple redirects back through appleid.apple.com before
+    // better-auth's own callback; only needed once APPLE_* is configured,
+    // but listing it unconditionally costs nothing (docs/adr/0020).
+    'https://appleid.apple.com',
+  ],
   emailAndPassword: { enabled: !env.get('DISABLE_PASSWORD_LOGIN', false) },
   /**
    * The migration (`create_identity_tables_table.ts`) uses snake_case
@@ -142,9 +164,20 @@ export const auth = betterAuth({
       enabled: true,
     },
   },
-  ...(googleConfigured
+  ...(googleConfigured || appleConfigured
     ? {
-        socialProviders: { google: { clientId: googleClientId, clientSecret: googleClientSecret } },
+        socialProviders: {
+          ...(googleConfigured ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } } : {}),
+          ...(appleConfigured
+            ? {
+                apple: {
+                  clientId: appleClientId,
+                  clientSecret: appleClientSecret,
+                  appBundleIdentifier: appleAppBundleIdentifier || undefined,
+                },
+              }
+            : {}),
+        },
       }
     : {}),
   verification: {

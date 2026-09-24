@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
+import { Linking } from 'react-native'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
@@ -68,6 +69,19 @@ test('shows the app version in the À propos line', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByText(/Garde-manger · v/)).toBeTruthy())
+})
+
+test('links to the privacy policy and the terms of use (App Store 5.1.1(i))', async () => {
+  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true)
+  await renderAuthenticated()
+
+  await waitFor(() => expect(screen.getByTestId('settings-privacy-policy')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('settings-privacy-policy'))
+  fireEvent.press(screen.getByTestId('settings-terms'))
+
+  expect(openURL).toHaveBeenCalledWith('https://gardemanger.floriaaan.fr/privacy')
+  expect(openURL).toHaveBeenCalledWith('https://gardemanger.floriaaan.fr/cgu')
+  openURL.mockRestore()
 })
 
 test('tapping the AI card opens the provider page', async () => {

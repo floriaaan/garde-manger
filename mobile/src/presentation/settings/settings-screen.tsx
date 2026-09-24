@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { Linking } from 'react-native'
 import { router } from 'expo-router'
 import Constants from 'expo-constants'
-import { Text, YStack } from '../shared/tamagui-typed.js'
+import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
 import { ActionSheet } from '../shared/action-sheet.js'
@@ -30,8 +31,12 @@ import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { useInstanceInfoQuery } from '../../application/instance/instance-info.query.js'
 import type { AiProvider } from '../../domain/settings/ai-settings.js'
+
+const PRIVACY_POLICY_URL = 'https://gardemanger.floriaaan.fr/privacy'
+const TERMS_OF_USE_URL = 'https://gardemanger.floriaaan.fr/cgu'
 
 const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 'OpenAI', ollama: 'Ollama' }
 
@@ -198,7 +203,7 @@ export function SettingsScreen() {
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
         />
-        {plan === 'self-hosted' ? null : (
+        {plan === 'self-hosted' || !platformCapabilities.billing ? null : (
           <IdentityCard
             testID="settings-subscription"
             bg={palette.butter}
@@ -308,7 +313,32 @@ export function SettingsScreen() {
         ) : null}
       </YStack>
 
-      <YStack marginTop="$8" alignItems="center">
+      <YStack marginTop="$8" alignItems="center" gap="$2">
+        {/* The App Store wants the privacy policy reachable in the app, not only on the listing (5.1.1(i)). */}
+        <XStack gap="$4">
+          <Text
+            testID="settings-privacy-policy"
+            fontSize={12}
+            fontWeight="700"
+            color={palette.inkSecondary}
+            textDecorationLine="underline"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          >
+            Confidentialité
+          </Text>
+          <Text
+            testID="settings-terms"
+            fontSize={12}
+            fontWeight="700"
+            color={palette.inkSecondary}
+            textDecorationLine="underline"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(TERMS_OF_USE_URL)}
+          >
+            Conditions d’utilisation
+          </Text>
+        </XStack>
         <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
           Garde-manger · v{Constants.expoConfig?.version ?? '—'}
         </Text>

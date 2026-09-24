@@ -2,7 +2,7 @@
   "expo": {
     "name": "Garde-manger",
     "slug": "garde-manger",
-    "version": "1.0.0-rc.1",
+    "version": "1.0.0",
     "icon": "./assets/images/icon.png",
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
@@ -11,7 +11,11 @@
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "Garde-manger se connecte à ton serveur auto-hébergé sur le réseau local (par exemple http://192.168.1.20:3333) pour synchroniser ton frigo et ta liste de courses."
       }
     },
     "android": {
@@ -24,8 +28,7 @@
       "predictiveBackGestureEnabled": true,
       "package": "com.floriaaan.gardemanger",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -34,7 +37,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -52,13 +60,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Garde-manger a besoin de la caméra pour scanner le code-barres d'un produit."
+          "cameraPermission": "Garde-manger utilise la caméra pour scanner le code-barres d'un produit, photographier un ticket de caisse ou le contenu de ton frigo, et lire le QR code d'invitation d'un foyer.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Garde-manger a besoin d'accéder à tes photos pour importer un ticket de caisse."
+          "photosPermission": "Garde-manger ouvre tes photos quand tu choisis d'importer la photo d'un ticket de caisse ou de ton frigo, pour en extraire les produits.",
+          "microphonePermission": false
         }
       ],
       "@react-native-community/datetimepicker",

@@ -1,0 +1,74 @@
+name: EAS release (iOS)
+
+# Builds the iOS app on EAS and submits it to App Store Connect (TestFlight) on
+# every release tag — the same `[0-9]*` tags that publish the Docker images in
+# ci.yml. Does nothing until the EXPO_TOKEN secret exists.
+#
+# Secrets: EXPO_TOKEN only (expo.dev > Account settings > Access tokens). Apple
+# credentials never live in GitHub: the distribution certificate, provisioning
+# profile and App Store Connect API key are stored on EAS by a first
+# interactive `eas build -p ios` / `eas credentials` run. See
+# docs/store/ios/checklist.md.
+
+on:
+  push:
+    tags: ['[0-9]*']
+  workflow_dispatch:
+
+concurrency:
+  group: eas-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # `secrets` can't be read in a job-level `if`, so a tiny job turns "is the
+  # token set?" into an output the build job can gate on.
+  enabled:
+    runs-on: ubuntu-latest
+    outputs:
+      expo-token: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::EXPO_TOKEN is not set — skipping the EAS iOS release."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  ios:
+    name: iOS — EAS build + App Store Connect submit
+    needs: enabled
+    if: needs.enabled.outputs.expo-token == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # eas-cli resolves the app config (config plugins included), so the
+      # workspace has to be installed even though the build itself runs on EAS.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build and submit
+        run: eas build --platform ios --profile production --auto-submit --non-interactive

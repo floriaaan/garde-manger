@@ -28,6 +28,16 @@ export class EnvAuthMethodsProvider implements AuthMethodsProvider {
       methods.push(AuthMethod.create({ id: 'google', enabled: true, label: 'Google' }))
     }
 
+    const appleConfigured =
+      Boolean(env.get('APPLE_CLIENT_ID', '')) &&
+      Boolean(env.get('APPLE_TEAM_ID', '')) &&
+      Boolean(env.get('APPLE_KEY_ID', '')) &&
+      Boolean(env.get('APPLE_PRIVATE_KEY', ''))
+
+    if (appleConfigured) {
+      methods.push(AuthMethod.create({ id: 'apple', enabled: true, label: 'Apple' }))
+    }
+
     // Passkeys are a WebAuthn/device capability, not a server credential to
     // configure — always offered, same as the passkey plugin itself always
     // being registered in instance.ts.

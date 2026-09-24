@@ -73,7 +73,11 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
     const now = this.clock.now()
     const subscribed = await this.subscriptions.hasActiveSubscription(householdId)
     const plan = subscribed ? 'subscriber' : 'free'
-    const limit = subscribed ? env.get('AI_QUOTA_SUBSCRIBED', 150) : env.get('AI_QUOTA_FREE', 5)
+    const limit = this.isQuotaExempt(householdId)
+      ? null
+      : subscribed
+        ? env.get('AI_QUOTA_SUBSCRIBED', 150)
+        : env.get('AI_QUOTA_FREE', 5)
 
     const [{ used, resetsAt }, subscription] = await Promise.all([
       householdId
@@ -90,6 +94,21 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
       expiresAt: subscription?.expiresAt ?? null,
       cancelsAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
     }
+  }
+
+  /**
+   * `AI_QUOTA_EXEMPT_HOUSEHOLD_IDS` (comma-separated) lifts the cap for chosen
+   * households on the hosted instance — the App Store review account, whose
+   * reviewer must be able to try every AI feature more than 5 times. Usage is
+   * still counted.
+   */
+  private isQuotaExempt(householdId: string | null): boolean {
+    if (!householdId) return false
+    return env
+      .get('AI_QUOTA_EXEMPT_HOUSEHOLD_IDS', '')
+      .split(',')
+      .map((id) => id.trim())
+      .includes(householdId)
   }
 
   private modelsFor(provider: AiProvider): { vision: string; text: string } {

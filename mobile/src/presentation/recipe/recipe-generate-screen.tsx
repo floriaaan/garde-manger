@@ -57,6 +57,8 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 import {
   BanIcon,
   ChefHatIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   CircleXIcon,
   ClockIcon,
   FlameIcon,
@@ -562,6 +564,10 @@ function PantrySuggestions({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
+  // Open by default — it's the one thing on this screen no competitor can
+  // offer, so it earns first look. Collapsible so a cook who already knows
+  // what's in the fridge can fold it away without scrolling past it.
+  const [expanded, setExpanded] = useState(true)
   const [search, setSearch] = useState('')
   const needle = search.trim().toLowerCase()
   const matching = needle.length > 0 ? products.filter((product) => product.name.toLowerCase().includes(needle)) : products
@@ -585,20 +591,35 @@ function PantrySuggestions({
         elevation: 1,
       }}
     >
-      <XStack alignItems="center" gap="$2">
-        {/* The garde-manger's own tab glyph, not a warning triangle: this card
-            lists products, it does not raise an alarm about them. */}
-        <PackageIcon size={14} color={palette.inkSecondary} />
-        <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
-          Sous la main
-        </Text>
-      </XStack>
-      {products.length > 0 ? (
+      <Pressable
+        testID="recipes-cooking-from-toggle"
+        onPress={() => setExpanded((current) => !current)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={expanded ? 'Replier Sous la main' : 'Déplier Sous la main'}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={pointerCursor}
+      >
+        <XStack alignItems="center" gap="$2" minHeight={28}>
+          {/* The garde-manger's own tab glyph, not a warning triangle: this card
+              lists products, it does not raise an alarm about them. */}
+          <PackageIcon size={14} color={palette.inkSecondary} />
+          <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
+            Sous la main{!expanded && products.length > 0 ? ` · ${products.length}` : ''}
+          </Text>
+          {expanded ? (
+            <ChevronDownIcon size={15} color={palette.inkSecondary} />
+          ) : (
+            <ChevronRightIcon size={15} color={palette.inkSecondary} />
+          )}
+        </XStack>
+      </Pressable>
+      {expanded && products.length > 0 ? (
         <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
           Rien n’est imposé : touche un produit pour que la recette tourne autour. Sinon on pioche librement, les plus pressés d’abord.
         </Text>
       ) : null}
-      {loading ? (
+      {!expanded ? null : loading ? (
         <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
           Chargement…
         </Text>

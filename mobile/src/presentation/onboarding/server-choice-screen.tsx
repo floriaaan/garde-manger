@@ -15,7 +15,7 @@ export function ServerChoiceScreen({ onDone }: { onDone: () => void }) {
   return (
     <AuthShell
       title="Choisis ton serveur"
-      subtitle="Garde-manger peut être auto-hébergé, ou, bientôt, hébergé par nous."
+      subtitle="Utilise le serveur officiel, prêt à l'emploi, ou ton propre serveur Garde-manger."
     >
       <ServerChoiceForm
         palette={palette}

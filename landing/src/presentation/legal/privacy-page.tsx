@@ -34,9 +34,17 @@ const sections: LegalSection[] = [
           <li>produits du garde-manger (noms, quantités, dates de péremption, prix), listes de courses et recettes ;</li>
           <li>tickets de caisse scannés : magasin, date, montant, nombre d’articles et, le cas échéant, l’image du ticket ;</li>
           <li>photos du frigo ou des tickets envoyées pour analyse par l’IA ;</li>
+          <li>codes-barres scannés pour identifier un produit ;</li>
           <li>consommation de l’IA du foyer (nombre d’utilisations) ;</li>
           <li>
-            données techniques de connexion (adresse IP, journaux).
+            si vous liez un serveur Home Assistant : son adresse et le jeton d’accès que vous fournissez ;
+          </li>
+          <li>
+            jeton de notification de votre appareil, si vous activez les rappels de péremption ;
+          </li>
+          <li>
+            données techniques de connexion et de diagnostic (adresse IP, journaux, version de l’app et du système,
+            performances et erreurs de l’application mobile, identifiant de session).
           </li>
         </Ul>
         <H3>Liées à la facturation</H3>
@@ -78,6 +86,7 @@ const sections: LegalSection[] = [
             ['Images de tickets', 'Jusqu’à leur suppression ou celle du compte'],
             ['Données de facturation', '10 ans (obligation comptable)'],
             ['Journaux techniques', '12 mois au plus'],
+            ['Diagnostics de l’application mobile (performances, erreurs)', '30 jours au plus'],
           ]}
         />
       </>
@@ -104,12 +113,28 @@ const sections: LegalSection[] = [
         </P>
         <H3>Fournisseur d’IA</H3>
         <P>
-          Les fonctions d’IA s’appuient sur un modèle Ollama exécuté sur l’infrastructure de l’éditeur : les photos et
-          textes soumis ne sont envoyés à aucun fournisseur d’IA tiers.
+          Les fonctions d’IA (lecture des tickets de caisse et des photos du frigo, génération de recettes) s’appuient
+          aujourd’hui sur l’API Gemini de Google. Les photos et textes soumis à l’IA lui sont transmis pour être
+          traités ; ce fournisseur peut être situé hors de l’Union européenne. Ce choix peut évoluer (modèle local
+          Ollama sur l’infrastructure de l’éditeur, ou un autre fournisseur) : la version en vigueur est celle
+          indiquée ici.
         </P>
-        <H3>Connexion sociale</H3>
+        <H3>Notifications</H3>
         <P>
-          La connexion sociale passe par Google et PocketID, qui reçoivent les informations nécessaires à l’authentification.
+          Les rappels de péremption passent par le service de notification d’Expo (exp.host), qui les relaie ensuite
+          à Apple (APNs) ou Google (FCM) selon votre appareil. Le jeton de notification et le contenu du rappel (par
+          exemple le nom d’un produit) transitent par ce service.
+        </P>
+        <H3>Open Food Facts</H3>
+        <P>
+          Quand vous scannez un code-barres, celui-ci est transmis à la base collaborative Open Food Facts pour
+          identifier le produit.
+        </P>
+        <H3>Connexion</H3>
+        <P>
+          La connexion sociale passe par Google et PocketID, qui reçoivent les informations nécessaires à
+          l’authentification. Vous pouvez aussi vous connecter avec une clé d’accès (passkey), qui ne transmet aucune
+          donnée biométrique au service.
         </P>
       </>
     ),
@@ -119,7 +144,10 @@ const sections: LegalSection[] = [
     title: 'Transferts hors Union européenne',
     body: (
       <P>
-        L’éditeur n’effectue pas lui-même de transfert de données hors de l’Union européenne. Les prestataires de connexion et de paiement relèvent de leurs propres politiques de confidentialité.
+        L’éditeur n’effectue pas lui-même de transfert de données hors de l’Union européenne. Le fournisseur d’IA
+        actuellement configuré (Gemini, Google) et le service de notification (Expo) peuvent en effectuer un dans le
+        cadre de leur propre traitement. Les prestataires de connexion et de paiement relèvent également de leurs
+        propres politiques de confidentialité.
       </P>
     ),
   },
@@ -175,7 +203,9 @@ const sections: LegalSection[] = [
           l’API publique de GitHub : ces services reçoivent votre adresse IP comme pour toute requête web.
         </P>
         <P>
-         Aucun cookie ni traceur n’est utilisé par le service.
+          Aucun cookie ni traceur publicitaire ou de mesure d’audience n’est utilisé par le service. La connexion
+          dépose un cookie de session (site web) ou un jeton équivalent, conservé dans le trousseau de l’appareil
+          (application mobile) : strictement nécessaire pour rester connecté, il n’est pas utilisé à d’autres fins.
         </P>
       </>
     ),
