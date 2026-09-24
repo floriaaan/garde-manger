@@ -15,6 +15,7 @@ import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
+import { CloseButton } from '../shared/close-button.js'
 import { router } from 'expo-router'
 import { goToProductScan, goToReceiptScan } from '../shared/scan-sheet.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
@@ -26,7 +27,8 @@ function goToFridgeScan() {
   router.navigate('/fridge-scan/scan')
 }
 
-export function ScanScreen() {
+/** `onClose` when presented as a sheet (`app/scanner.tsx`); the iPhone tab has none. */
+export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
   const palette = useSoftPalette()
 
   return (
@@ -38,6 +40,7 @@ export function ScanScreen() {
           icon={(color) => <ScanLineIcon size={19} color={color} />}
           title="Scanner"
           subtitle="Remplis le garde-manger sans rien taper."
+          trailing={onClose ? <CloseButton testID="scan-screen-close" palette={palette} onPress={onClose} /> : null}
         />
       }
     >

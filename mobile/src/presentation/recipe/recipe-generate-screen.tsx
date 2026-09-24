@@ -48,6 +48,7 @@ import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
 import { ProgressBar } from '../shared/progress-bar.js'
 import { ScreenHeader } from '../shared/screen-header.js'
+import { CloseButton } from '../shared/close-button.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { Chip } from '../shared/chip.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -72,7 +73,6 @@ import {
   SearchIcon,
   UsersIcon,
   UtensilsIcon,
-  XIcon,
 } from '../dashboard/dashboard-icons.js'
 import { sortByExpiry } from '../dashboard/product-status.js'
 import { PantryProductCard } from './pantry-product-card.js'
@@ -275,7 +275,7 @@ export function RecipeGenerateScreen() {
           // blocking overlay used to enforce with a scrim. The call cannot be
           // cancelled, so an exit here would leave a recipe arriving into a
           // screen that is gone.
-          trailing={waiting ? null : <CloseButton palette={palette} onPress={handleClose} />}
+          trailing={waiting ? null : <CloseButton testID="recipes-generate-close" palette={palette} onPress={handleClose} />}
         />
       }
     >
@@ -527,31 +527,6 @@ function summarize(freeText: string, avoid: string, chosen: number): string {
   if (freeText.trim()) parts.push('une envie')
   if (avoid.trim()) parts.push('une exclusion')
   return parts.join(' · ')
-}
-
-function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () => void }) {
-  const hover = useHoverPress()
-  return (
-    <Pressable
-      testID="recipes-generate-close"
-      onPress={onPress}
-      onHoverIn={hover.onHoverIn}
-      onHoverOut={hover.onHoverOut}
-      onPressIn={hover.onPressIn}
-      onPressOut={hover.onPressOut}
-      accessibilityRole="button"
-      accessibilityLabel="Fermer"
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      android_ripple={ripple(palette.creamPillEdge, { borderless: true })}
-      style={pointerCursor}
-    >
-      <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
-        <YStack width={38} height={38} borderRadius={999} backgroundColor={palette.cream} alignItems="center" justifyContent="center">
-          <XIcon size={18} color={palette.ink} />
-        </YStack>
-      </Animated.View>
-    </Pressable>
-  )
 }
 
 /**
