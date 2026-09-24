@@ -23,7 +23,9 @@ export function buildRecipeGenerationPrompt(context: RecipeGenerationContext): s
   ]
 
   if (context.prioritizeExpiringSoon) {
-    parts.push('À qualité de recette égale, préfère celles qui utilisent les produits proches de la péremption.')
+    parts.push(
+      'À qualité de recette égale, préfère celles qui utilisent les produits proches de la péremption.',
+    )
   }
   if (context.prompt) {
     parts.push(`Demande spécifique de l'utilisateur : ${context.prompt}`)

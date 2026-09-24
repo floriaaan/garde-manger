@@ -5,6 +5,7 @@ volumes:
   pgdata:
   storage:
   openobserve-data:
+  landing-waitlist:
 
 services:
   db:
@@ -104,15 +105,21 @@ services:
     networks:
       - internal
 
-  # Marketing site (landing/). Nothing depends on it and it depends on
-  # nothing: its API/GitHub reads happen in the visitor's browser, so the
-  # URLs below are baked in at build time and must be publicly reachable.
+  # Marketing site (landing/). Nothing depends on it and it depends on no
+  # other service: its API/GitHub reads happen in the visitor's browser, so
+  # the URLs below are baked in at build time and must be publicly
+  # reachable. The waitlist signup is the one write it owns — a local
+  # sqlite file on its own volume, not the app's Postgres.
   # Behind a profile: self-hosting the app doesn't need it
   # (`docker compose --profile landing up -d landing`).
   landing:
     profiles: [landing]
     image: ${LANDING_IMAGE:-ghcr.io/floriaaan/garde-manger-landing:main}
     restart: unless-stopped
+    environment:
+      WAITLIST_DB_PATH: /app/landing/data/waitlist.sqlite3
+    volumes:
+      - landing-waitlist:/app/landing/data
     ports:
       - '${LANDING_PORT:-3000}:3000'
     networks:

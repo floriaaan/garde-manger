@@ -1,4 +1,7 @@
-import type { ReceiptExtractionPort, ReceiptFile } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
+import type {
+  ReceiptExtractionPort,
+  ReceiptFile,
+} from '#domain/receipt/interfaces/receipt-extraction-port.interface'
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import { parseReceiptDraftJson } from '#domain/receipt/receipt-draft-parser'
 import {
@@ -21,7 +24,8 @@ export class OllamaReceiptExtractionAdapter implements ReceiptExtractionPort {
     // local vision model reads pixels, not a PDF's page/text structure, and
     // sending it one produces a confident wrong answer rather than a clean
     // failure. Only Gemini and OpenAI's hosted APIs actually parse a PDF.
-    if (contentType === 'application/pdf') throw new ReceiptExtractionUnsupportedFormatError('ollama')
+    if (contentType === 'application/pdf')
+      throw new ReceiptExtractionUnsupportedFormatError('ollama')
 
     let response: Response
     try {

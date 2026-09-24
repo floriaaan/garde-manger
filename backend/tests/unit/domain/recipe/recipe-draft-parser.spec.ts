@@ -61,7 +61,14 @@ test.group('parseRecipeDraftsJson', () => {
     assert,
   }) => {
     const blank = JSON.stringify([
-      { title: '  ', description: null, instructions: '', preparationTime: null, tags: [], ingredients: [] },
+      {
+        title: '  ',
+        description: null,
+        instructions: '',
+        preparationTime: null,
+        tags: [],
+        ingredients: [],
+      },
     ])
     assert.throws(() => parseRecipeDraftsJson(blank), RecipeGenerationParseError)
   })

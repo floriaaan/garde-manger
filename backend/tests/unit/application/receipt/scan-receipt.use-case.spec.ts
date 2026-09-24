@@ -16,7 +16,12 @@ function fakeExtraction(behavior: () => Promise<ReceiptDraft>): ReceiptExtractio
 
 test.group('ScanReceipt', () => {
   test('returns the draft on success', async ({ assert }) => {
-    const draft: ReceiptDraft = { storeName: 'Monoprix', scannedAt: '2026-09-01', totalAmount: 10, items: [] }
+    const draft: ReceiptDraft = {
+      storeName: 'Monoprix',
+      scannedAt: new Date('2026-09-01'),
+      totalAmount: 10,
+      items: [],
+    }
     const useCase = new ScanReceipt(fakeExtraction(async () => draft))
     const result = await useCase.execute({ image: FILE })
     assert.isTrue(result.ok)
@@ -52,7 +57,9 @@ test.group('ScanReceipt', () => {
         throw new ReceiptExtractionUnsupportedFormatError('ollama')
       }),
     )
-    const result = await useCase.execute({ image: { buffer: Buffer.from(''), contentType: 'application/pdf' } })
+    const result = await useCase.execute({
+      image: { buffer: Buffer.from(''), contentType: 'application/pdf' },
+    })
     assert.deepEqual(result, { ok: false, error: 'unsupported_format' })
   })
 

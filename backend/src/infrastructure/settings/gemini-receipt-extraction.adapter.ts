@@ -1,5 +1,8 @@
 import { GoogleGenAI } from '@google/genai'
-import type { ReceiptExtractionPort, ReceiptFile } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
+import type {
+  ReceiptExtractionPort,
+  ReceiptFile,
+} from '#domain/receipt/interfaces/receipt-extraction-port.interface'
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import { parseReceiptDraftJson } from '#domain/receipt/receipt-draft-parser'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'

@@ -17,7 +17,7 @@ test.group('buildAppleClientSecret', () => {
       privateKey,
     })
 
-    const [headerPart, payloadPart, signaturePart] = jwt.split('.')
+    const [headerPart, payloadPart, signaturePart] = jwt.split('.') as [string, string, string]
     const header = JSON.parse(Buffer.from(headerPart, 'base64url').toString())
     const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString())
 
@@ -29,7 +29,10 @@ test.group('buildAppleClientSecret', () => {
 
     const verified = createVerify('SHA256')
       .update(`${headerPart}.${payloadPart}`)
-      .verify({ key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signaturePart, 'base64url'))
+      .verify(
+        { key: publicKey, dsaEncoding: 'ieee-p1363' },
+        Buffer.from(signaturePart, 'base64url'),
+      )
     assert.isTrue(verified)
   })
 })
