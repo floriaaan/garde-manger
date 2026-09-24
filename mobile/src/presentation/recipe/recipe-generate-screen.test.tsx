@@ -240,16 +240,16 @@ test('every chip announces the group it belongs to, not just its own word', asyn
   expect(screen.getByText('15 min')).toBeTruthy()
 })
 
-test('a pantry chip is a control, not a caption — tapping it builds the recipe around that product', async () => {
+test('a pantry product card is a control, not a caption — tapping it builds the recipe around that product', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
-  const chips = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
-  const firstChip = chips[0]!
-  expect(firstChip.props.accessibilityState).toMatchObject({ selected: false })
+  const cards = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
+  const firstCard = cards[0]!
+  expect(firstCard.props.accessibilityState).toMatchObject({ selected: false })
 
-  fireEvent.press(firstChip)
+  fireEvent.press(firstCard)
   await waitFor(() =>
     expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ selected: true }),
   )
@@ -259,7 +259,7 @@ test('a pantry chip is a control, not a caption — tapping it builds the recipe
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
 })
 
-test('the pantry search narrows the chips to the typed name, not just the nearest few', async () => {
+test('the pantry search narrows the product cards to the typed name, not just the nearest few', async () => {
   renderComposer()
 
   await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())

@@ -72,7 +72,8 @@ import {
   UtensilsIcon,
   XIcon,
 } from '../dashboard/dashboard-icons.js'
-import { daysUntilExpiry, expiryLabel, sortByExpiry } from '../dashboard/product-status.js'
+import { sortByExpiry } from '../dashboard/product-status.js'
+import { PantryProductCard } from './pantry-product-card.js'
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import type { Product } from '../../domain/fridge/product.js'
@@ -151,10 +152,6 @@ export function RecipeGenerateScreen() {
   const [wish, setWish] = useState<RecipeWish>(EMPTY_WISH)
   const [enqueueError, setEnqueueError] = useState<GenerationError | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState<'reset' | 'close' | null>(null)
-  // The sheet always opens on `EMPTY_WISH`, so this starts closed. Once open
-  // it stays open for the visit; the collapsed row still counts the choices
-  // behind it, so a selection is never hidden without saying so.
-  const [refining, setRefining] = useState(false)
 
   // Sorted, uncapped: the search list needs every product to filter through, not just the nearest few.
   const pantry = sortByExpiry(productsQuery.data ?? [])
@@ -285,16 +282,9 @@ export function RecipeGenerateScreen() {
             </YStack>
           ) : null}
 
-          <PantrySuggestions
-            products={pantry}
-            loading={productsQuery.isPending}
-            palette={palette}
-            onAddProduct={goAddProduct}
-            isPinned={(name) => isPinned(wish, name)}
-            onTogglePin={(name) => setWish((current) => togglePinned(current, name))}
-          />
-
           <YStack marginTop="$5" gap="$4">
+            {/* First in the column: a sentence is the fastest way to say what
+                you want, and it is the one field that needs no browsing. */}
             <FormField
               testID="recipes-wish"
               label="Une envie ?"
@@ -309,35 +299,32 @@ export function RecipeGenerateScreen() {
               icon={(color) => <PencilIcon size={13} color={color} />}
             />
 
+            <PantrySuggestions
+              products={pantry}
+              loading={productsQuery.isPending}
+              palette={palette}
+              onAddProduct={goAddProduct}
+              isPinned={(name) => isPinned(wish, name)}
+              onTogglePin={(name) => setWish((current) => togglePinned(current, name))}
+            />
+
             {/* Folded by default. The composer's thesis is "tout est
                 facultatif" and its one-tap path is well defended — but its
                 *visual* argument was 24 generic chips across six groups, four
                 of whose headings sat below the fold on a phone. So the screen
-                read as a form to fill rather than a shortcut to skip, and the
-                one control no competitor can offer (the pantry above) was the
-                small thing at the top. It opens on its own if the cook already
-                chose something, so a returning selection is never hidden. */}
-            <Pressable
+                read as a form to fill rather than a shortcut to skip. The same
+                card as "Sous la main" above it; folded, its summary still
+                counts the choices behind it, so a selection is never hidden
+                without saying so. */}
+            <CollapsibleCard
               testID="recipes-refine"
-              onPress={() => setRefining((current) => !current)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: refining }}
-              accessibilityLabel={refining ? 'Replier les options' : 'Affiner la recette'}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={[pointerCursor, { alignSelf: 'flex-start' }]}
+              title="Affiner"
+              summary={chosen > 0 ? `${chosen} choix` : 'repas, temps, régime…'}
+              icon={(color) => <LayoutGridIcon size={14} color={color} />}
+              defaultExpanded={false}
+              palette={palette}
             >
-              <XStack alignItems="center" gap="$2" minHeight={44}>
-                <LayoutGridIcon size={15} color={palette.inkSecondary} />
-                <Text fontSize={14} fontWeight="800" color={palette.ink}>
-                  Affiner
-                </Text>
-                <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-                  {chosen > 0 ? `${chosen} choix` : 'repas, temps, régime…'}
-                </Text>
-              </XStack>
-            </Pressable>
-
-            {refining ? RECIPE_OPTION_GROUPS.map((group) => (
+            {RECIPE_OPTION_GROUPS.map((group) => (
               // The heading role on the label plus the group-prefixed chip
               // labels below are what stop a screen reader reading 24
               // anonymous buttons in one undifferentiated run. A role on this
@@ -375,9 +362,8 @@ export function RecipeGenerateScreen() {
                   ))}
                 </XStack>
               </YStack>
-            )) : null}
+            ))}
 
-            {refining ? (
             <FormField
               testID="recipes-avoid"
               label="À éviter"
@@ -389,7 +375,7 @@ export function RecipeGenerateScreen() {
               autoCapitalize="none"
               icon={(color) => <BanIcon size={13} color={color} />}
             />
-            ) : null}
+            </CollapsibleCard>
 
             {!empty ? (
               <Pressable
@@ -527,26 +513,89 @@ function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () =
 }
 
 /**
+ * The shell "Sous la main" and "Affiner" share: a card with a header row that
+ * folds its body away. One component so the two stay the same control — a
+ * cook who learned to fold one already knows how to open the other. Folded,
+ * the title carries a short summary so what's behind it is never hidden
+ * without saying so.
+ */
+function CollapsibleCard({
+  testID,
+  title,
+  summary,
+  icon,
+  defaultExpanded,
+  palette,
+  children,
+}: {
+  testID: string
+  title: string
+  /** Shown after the title only while folded — "8", "3 choix". */
+  summary?: string
+  icon: (color: string) => React.ReactNode
+  defaultExpanded: boolean
+  palette: SoftPalette
+  children: React.ReactNode
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  return (
+    <YStack
+      backgroundColor={palette.gradientBottom}
+      padding="$3"
+      gap="$3"
+      style={{
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 24,
+        borderBottomRightRadius: 14,
+        borderBottomLeftRadius: 24,
+        shadowColor: palette.shadowCool,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 14,
+        elevation: 1,
+      }}
+    >
+      <Pressable
+        testID={testID}
+        onPress={() => setExpanded((current) => !current)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${expanded ? 'Replier' : 'Déplier'} ${title}`}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={pointerCursor}
+      >
+        <XStack alignItems="center" gap="$2" minHeight={28}>
+          {icon(palette.inkSecondary)}
+          <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
+            {title}
+            {!expanded && summary ? (
+              <Text fontWeight="500" color={palette.inkSecondary}>{` · ${summary}`}</Text>
+            ) : null}
+          </Text>
+          {expanded ? (
+            <ChevronDownIcon size={15} color={palette.inkSecondary} />
+          ) : (
+            <ChevronRightIcon size={15} color={palette.inkSecondary} />
+          )}
+        </XStack>
+      </Pressable>
+      {expanded ? children : null}
+    </YStack>
+  )
+}
+
+/**
  * What the garde-manger can offer this recipe — a proposal, never a list the
  * cook has to accept. Nothing here starts chosen: the backend already receives
  * the whole garde-manger and is told to pick what goes together, so an
  * untouched card generates exactly as it did before, and a touched one only
- * *adds* an instruction ("en utilisant …"). The card used to be headed "On
- * part de" over four inert-looking rows, which announced four products as
- * already decided when they were neither chosen nor, on their own, what the
- * model cooked from.
+ * *adds* an instruction ("en utilisant …").
  *
- * The selection control is the screen's own `Chip` — the same one the 24
- * refine options use — rather than the tick-box rows it replaces: a tick box
- * is the idiom for a checklist to complete, which is the exact opposite of
- * what this card is. Only the products with little time left carry their count
- * ("Yaourt · 2 j"); for the rest the ordering already says it.
+ * Each product is a `PantryProductCard` — name, quantity and date, the facts a
+ * cook decides on — rather than a chip that only had room for a clipped name.
  *
- * The eight nearest-to-expire were the whole offer at first — a garde-manger
- * of thirty had no way to pin the other twenty-two. A search field, the same
- * `FormField` the fridge list already filters with, turns the card into a
- * proper list: empty, it still shows the eight most urgent; typed, it shows
- * every match regardless of how far off its date is.
+ * Empty search: the eight nearest-to-expire. Typed: every match regardless of
+ * how far off its date is, so a garde-manger of thirty stays fully pinnable.
  */
 function PantrySuggestions({
   products,
@@ -564,69 +613,31 @@ function PantrySuggestions({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
-  // Open by default — it's the one thing on this screen no competitor can
-  // offer, so it earns first look. Collapsible so a cook who already knows
-  // what's in the fridge can fold it away without scrolling past it.
-  const [expanded, setExpanded] = useState(true)
   const [search, setSearch] = useState('')
   const needle = search.trim().toLowerCase()
   const matching = needle.length > 0 ? products.filter((product) => product.name.toLowerCase().includes(needle)) : products
   const shown = needle.length > 0 ? matching : matching.slice(0, PANTRY_SUGGESTION_COUNT)
 
   return (
-    <YStack
-      marginTop="$5"
-      backgroundColor={palette.gradientBottom}
-      padding="$3"
-      gap="$2"
-      style={{
-        borderTopLeftRadius: 14,
-        borderTopRightRadius: 24,
-        borderBottomRightRadius: 14,
-        borderBottomLeftRadius: 24,
-        shadowColor: palette.shadowCool,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.06,
-        shadowRadius: 14,
-        elevation: 1,
-      }}
+    // Open by default — it's the one thing on this screen no competitor can
+    // offer, so it earns first look.
+    <CollapsibleCard
+      testID="recipes-cooking-from-toggle"
+      title="Sous la main"
+      summary={products.length > 0 ? String(products.length) : undefined}
+      // The garde-manger's own tab glyph, not a warning triangle: this card
+      // lists products, it does not raise an alarm about them.
+      icon={(color) => <PackageIcon size={14} color={color} />}
+      defaultExpanded
+      palette={palette}
     >
-      <Pressable
-        testID="recipes-cooking-from-toggle"
-        onPress={() => setExpanded((current) => !current)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={expanded ? 'Replier Sous la main' : 'Déplier Sous la main'}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        style={pointerCursor}
-      >
-        <XStack alignItems="center" gap="$2" minHeight={28}>
-          {/* The garde-manger's own tab glyph, not a warning triangle: this card
-              lists products, it does not raise an alarm about them. */}
-          <PackageIcon size={14} color={palette.inkSecondary} />
-          <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
-            Sous la main{!expanded && products.length > 0 ? ` · ${products.length}` : ''}
-          </Text>
-          {expanded ? (
-            <ChevronDownIcon size={15} color={palette.inkSecondary} />
-          ) : (
-            <ChevronRightIcon size={15} color={palette.inkSecondary} />
-          )}
-        </XStack>
-      </Pressable>
-      {expanded && products.length > 0 ? (
-        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          Rien n’est imposé : touche un produit pour que la recette tourne autour. Sinon on pioche librement, les plus pressés d’abord.
-        </Text>
-      ) : null}
-      {!expanded ? null : loading ? (
+      {loading ? (
         <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
           Chargement…
         </Text>
       ) : products.length === 0 ? (
         // The next action lives inside the empty state, not six seconds and one
-        // failed request later: this is the screen that knows the garde-manger
-        // is empty, and it is the only one that can say so before the wait.
+        // failed request later.
         <YStack gap="$3">
           <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
             Rien dans le garde-manger pour l’instant — la recette partira de tes envies seules.
@@ -641,6 +652,9 @@ function PantrySuggestions({
         </YStack>
       ) : (
         <>
+          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
+            Rien n’est imposé : touche un produit pour que la recette tourne autour. Sinon on pioche librement, les plus pressés d’abord.
+          </Text>
           <FormField
             testID="recipes-pantry-search"
             label="Chercher un produit"
@@ -656,37 +670,22 @@ function PantrySuggestions({
               Aucun produit ne correspond à « {search.trim()} ».
             </Text>
           ) : (
-            // gap $3, per `Chip`'s own rule: two chips closer than the sum of their
-            // facing slops have overlapping press areas.
-            <XStack gap="$3" flexWrap="wrap" marginTop="$1">
+            <YStack gap="$2">
               {shown.map((product) => (
-                <Chip
+                <PantryProductCard
                   key={product.id}
-                  testID={`recipes-pin-${product.id}`}
-                  label={pantryChipLabel(product)}
-                  // Drawn "Yaourt · 2 j"; announced with the full sentence the rest
-                  // of the app uses for a date.
-                  accessibilityLabel={`${product.name} — ${expiryLabel(daysUntilExpiry(product))}`}
+                  product={product}
                   selected={isPinned(product.name)}
                   onPress={() => onTogglePin(product.name)}
                   palette={palette}
                 />
               ))}
-            </XStack>
+            </YStack>
           )}
         </>
       )}
-    </YStack>
+    </CollapsibleCard>
   )
-}
-
-/** "Yaourt · 2 j" for the ones that are running out, the bare name for the rest. */
-function pantryChipLabel(product: Product): string {
-  const days = daysUntilExpiry(product)
-  if (days === null || days > 3) return product.name
-  if (days < 0) return `${product.name} · dépassé`
-  if (days === 0) return `${product.name} · aujourd’hui`
-  return `${product.name} · ${days} j`
 }
 
 /**
