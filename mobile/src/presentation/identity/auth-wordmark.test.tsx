@@ -11,7 +11,7 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }))
 
 const dev = __DEV__
 afterEach(() => {
-  ;(globalThis as { __DEV__: boolean }).__DEV__ = dev
+  ;(globalThis as unknown as { __DEV__: boolean }).__DEV__ = dev
   jest.clearAllMocks()
 })
 
@@ -31,7 +31,7 @@ test('a dev build opens the debug screen', async () => {
 })
 
 test('a release build ignores the triple tap', async () => {
-  ;(globalThis as { __DEV__: boolean }).__DEV__ = false
+  ;(globalThis as unknown as { __DEV__: boolean }).__DEV__ = false
   await tripleTap()
   expect(router.push).not.toHaveBeenCalled()
 })

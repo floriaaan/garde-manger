@@ -336,7 +336,7 @@ export function SettingsScreen() {
             accessibilityRole="link"
             onPress={() => Linking.openURL(TERMS_OF_USE_URL)}
           >
-            Conditions d'utilisation
+            Conditions d’utilisation
           </Text>
         </XStack>
         <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
