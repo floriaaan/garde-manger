@@ -156,7 +156,11 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
   const status = statusOf(daysLeft)
   const statusBg = status === 'expired' ? palette.expiredBg : status === 'soon' ? palette.soonBg : palette.freshBg
   const statusColor = status === 'expired' ? palette.expiredText : status === 'soon' ? palette.soonText : palette.freshText
-  const lastUnit = p.quantity.amount <= 1
+  // "Consommer un" only means something for a countable unit (pièce) —
+  // a weight/volume unit (g/mL/kg/L) has no discrete "one" to decrement,
+  // so the whole product leaves in one go.
+  const isPieceUnit = p.quantity.unit.startsWith('pièce')
+  const lastUnit = !isPieceUnit || p.quantity.amount <= 1
 
   return (
     <>
@@ -191,7 +195,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
             pendingLabel="Mise à jour..."
             pending={recordOutcome.isPending}
             icon={<CircleCheckIcon size={16} color={palette.accentLimeText} />}
-            onPress={() => record({ kind: 'consumed', amount: 1 })}
+            onPress={() => (isPieceUnit ? record({ kind: 'consumed', amount: 1 }) : record({ kind: 'consumed' }))}
           />
 
           <AuthButton

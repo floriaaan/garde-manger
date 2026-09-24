@@ -62,7 +62,7 @@ export function AuthShell({
     <YStack flex={1} minHeight={0} backgroundColor={palette.brandDeep}>
       <KeyboardAvoidingView
         style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
       >
         <YStack flex={1} minHeight={0} style={{ position: 'relative' }}>

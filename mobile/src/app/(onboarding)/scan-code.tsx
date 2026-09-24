@@ -9,8 +9,12 @@ export default function ScanInviteCodeScreen() {
         // Back onto the threshold that pushed us, with the code set as a
         // parameter — not `replace` into a fresh copy, which would discard the
         // foyer name someone may already have typed on the card above.
-        router.back()
-        router.setParams({ code })
+        //
+        // `dismissTo`, not `back()` + `setParams()`: the pop is async, so the
+        // `setParams` that followed it landed on whichever route was still
+        // focused — the scanner being torn down — and the threshold underneath
+        // never saw the code. One call pops *and* carries the parameter.
+        router.dismissTo({ pathname: '/(onboarding)', params: { code } })
       }}
       onClose={() => goBack('/(onboarding)')}
     />

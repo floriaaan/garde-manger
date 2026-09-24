@@ -455,7 +455,7 @@ export function FridgeScanReviewScreen({
 
   return (
     <AppShell nav={nav} scrollable={false} header={header}>
-      <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <FlatList
           data={items}
           keyExtractor={(_, index) => String(index)}

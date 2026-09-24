@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import * as Haptics from 'expo-haptics'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
-import { ripple } from './material.js'
+import { ripple, rippleClip } from './material.js'
 import { haptic } from './haptics.js'
 import { CircleCheckIcon } from '../dashboard/dashboard-icons.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -51,6 +52,9 @@ export function RadioCard({
     <Pressable
       testID={testID}
       onPress={handlePress}
+      // Fires its own selection tick from `handlePress`, and only when the
+      // selection really changes — not the default confirmation tick.
+      haptics={false}
       disabled={disabled}
       onHoverIn={hover.onHoverIn}
       onHoverOut={hover.onHoverOut}
@@ -60,7 +64,7 @@ export function RadioCard({
       accessibilityState={{ selected, disabled }}
       accessibilityLabel={label}
       android_ripple={ripple(palette.ink)}
-      style={[pointerCursor, disabled ? { opacity: 0.5 } : null]}
+      style={[pointerCursor, disabled ? { opacity: 0.5 } : null, rippleClip(16)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack

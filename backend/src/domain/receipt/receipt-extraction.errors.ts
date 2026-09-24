@@ -11,3 +11,10 @@ export class ReceiptExtractionUnavailableError extends Error {
 }
 
 export class ReceiptExtractionParseError extends Error {}
+
+/** A self-hosted vision model that only reads raster images was handed a PDF. */
+export class ReceiptExtractionUnsupportedFormatError extends Error {
+  constructor(public readonly provider: string) {
+    super(`Receipt extraction provider "${provider}" cannot read a PDF file.`)
+  }
+}

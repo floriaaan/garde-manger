@@ -39,7 +39,8 @@
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useEffect, useRef, useState } from 'react'
-import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native'
+import { Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -64,6 +65,7 @@ import {
   LeafIcon,
   PackageIcon,
   PencilIcon,
+  SearchIcon,
   UsersIcon,
   UtensilsIcon,
   XIcon,
@@ -91,8 +93,8 @@ import {
   type RecipeWish,
 } from './recipe-prompt.js'
 
-/** How many products the "on part de" list names before it stops. */
-const COOKING_FROM_COUNT = 4
+/** How many products the card offers with an empty search. Typing shows every match instead. */
+const PANTRY_SUGGESTION_COUNT = 8
 
 /**
  * An error is a state to act on, not a sentence to read. The backend's
@@ -152,7 +154,8 @@ export function RecipeGenerateScreen() {
   // behind it, so a selection is never hidden without saying so.
   const [refining, setRefining] = useState(false)
 
-  const cookingFrom = sortByExpiry(productsQuery.data ?? []).slice(0, COOKING_FROM_COUNT)
+  // Sorted, uncapped: the search list needs every product to filter through, not just the nearest few.
+  const pantry = sortByExpiry(productsQuery.data ?? [])
   const empty = isWishEmpty(wish)
   const chosen = countSelections(wish)
   // The foyer already knows how many people it feeds. Asking a household of
@@ -242,7 +245,7 @@ export function RecipeGenerateScreen() {
         />
       }
     >
-      {waiting ? <GeneratingState palette={palette} products={cookingFrom} onLater={() => router.dismiss()} /> : null}
+      {waiting ? <GeneratingState palette={palette} pinned={wish.pinned} onLater={() => router.dismiss()} /> : null}
 
       {/* Same recipe as the receipt review's form: without it the pinned
           "Générer" bar sits under the keyboard the moment a cook taps
@@ -250,7 +253,7 @@ export function RecipeGenerateScreen() {
       {waiting ? null : (
       <KeyboardAvoidingView
         style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           style={{ flex: 1, minHeight: 0 }}
@@ -280,8 +283,8 @@ export function RecipeGenerateScreen() {
             </YStack>
           ) : null}
 
-          <CookingFrom
-            products={cookingFrom}
+          <PantrySuggestions
+            products={pantry}
             loading={productsQuery.isPending}
             palette={palette}
             onAddProduct={goAddProduct}
@@ -522,14 +525,28 @@ function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () =
 }
 
 /**
- * The products the generation will reach for first, by name and by how long
- * they have left. The old caption promised "à partir de ce qui périme
- * bientôt" — a register the product retired (see the copy note in the
- * direction contract above) — and never showed the products either; naming
- * them is what makes the promise checkable, and this is the only place on
- * this screen carrying real household data.
+ * What the garde-manger can offer this recipe — a proposal, never a list the
+ * cook has to accept. Nothing here starts chosen: the backend already receives
+ * the whole garde-manger and is told to pick what goes together, so an
+ * untouched card generates exactly as it did before, and a touched one only
+ * *adds* an instruction ("en utilisant …"). The card used to be headed "On
+ * part de" over four inert-looking rows, which announced four products as
+ * already decided when they were neither chosen nor, on their own, what the
+ * model cooked from.
+ *
+ * The selection control is the screen's own `Chip` — the same one the 24
+ * refine options use — rather than the tick-box rows it replaces: a tick box
+ * is the idiom for a checklist to complete, which is the exact opposite of
+ * what this card is. Only the products with little time left carry their count
+ * ("Yaourt · 2 j"); for the rest the ordering already says it.
+ *
+ * The eight nearest-to-expire were the whole offer at first — a garde-manger
+ * of thirty had no way to pin the other twenty-two. A search field, the same
+ * `FormField` the fridge list already filters with, turns the card into a
+ * proper list: empty, it still shows the eight most urgent; typed, it shows
+ * every match regardless of how far off its date is.
  */
-function CookingFrom({
+function PantrySuggestions({
   products,
   loading,
   palette,
@@ -537,6 +554,7 @@ function CookingFrom({
   isPinned,
   onTogglePin,
 }: {
+  /** Sorted by expiry, uncapped — the search below decides how much of it is shown. */
   products: readonly Product[]
   loading: boolean
   palette: SoftPalette
@@ -544,6 +562,11 @@ function CookingFrom({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
+  const [search, setSearch] = useState('')
+  const needle = search.trim().toLowerCase()
+  const matching = needle.length > 0 ? products.filter((product) => product.name.toLowerCase().includes(needle)) : products
+  const shown = needle.length > 0 ? matching : matching.slice(0, PANTRY_SUGGESTION_COUNT)
+
   return (
     <YStack
       marginTop="$5"
@@ -564,15 +587,15 @@ function CookingFrom({
     >
       <XStack alignItems="center" gap="$2">
         {/* The garde-manger's own tab glyph, not a warning triangle: this card
-            lists four products, it does not raise an alarm about them. */}
+            lists products, it does not raise an alarm about them. */}
         <PackageIcon size={14} color={palette.inkSecondary} />
         <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
-          On part de
+          Sous la main
         </Text>
       </XStack>
       {products.length > 0 ? (
         <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          Touche un produit pour que la recette tourne autour de lui.
+          Rien n’est imposé : touche un produit pour que la recette tourne autour. Sinon on pioche librement, les plus pressés d’abord.
         </Text>
       ) : null}
       {loading ? (
@@ -596,18 +619,53 @@ function CookingFrom({
           />
         </YStack>
       ) : (
-        products.map((product) => (
-          <PantryRow
-            key={product.id}
-            product={product}
-            pinned={isPinned(product.name)}
-            onPress={() => onTogglePin(product.name)}
+        <>
+          <FormField
+            testID="recipes-pantry-search"
+            label="Chercher un produit"
+            value={search}
+            onChangeText={setSearch}
             palette={palette}
+            placeholder="Un nom de produit"
+            autoCapitalize="none"
+            icon={(color) => <SearchIcon size={13} color={color} />}
           />
-        ))
+          {shown.length === 0 ? (
+            <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
+              Aucun produit ne correspond à « {search.trim()} ».
+            </Text>
+          ) : (
+            // gap $3, per `Chip`'s own rule: two chips closer than the sum of their
+            // facing slops have overlapping press areas.
+            <XStack gap="$3" flexWrap="wrap" marginTop="$1">
+              {shown.map((product) => (
+                <Chip
+                  key={product.id}
+                  testID={`recipes-pin-${product.id}`}
+                  label={pantryChipLabel(product)}
+                  // Drawn "Yaourt · 2 j"; announced with the full sentence the rest
+                  // of the app uses for a date.
+                  accessibilityLabel={`${product.name} — ${expiryLabel(daysUntilExpiry(product))}`}
+                  selected={isPinned(product.name)}
+                  onPress={() => onTogglePin(product.name)}
+                  palette={palette}
+                />
+              ))}
+            </XStack>
+          )}
+        </>
       )}
     </YStack>
   )
+}
+
+/** "Yaourt · 2 j" for the ones that are running out, the bare name for the rest. */
+function pantryChipLabel(product: Product): string {
+  const days = daysUntilExpiry(product)
+  if (days === null || days > 3) return product.name
+  if (days < 0) return `${product.name} · dépassé`
+  if (days === 0) return `${product.name} · aujourd’hui`
+  return `${product.name} · ${days} j`
 }
 
 /**
@@ -696,14 +754,15 @@ function GenerateButton({
  */
 function GeneratingState({
   palette,
-  products,
+  pinned,
   onLater,
 }: {
   palette: SoftPalette
-  products: readonly Product[]
+  /** What the cook pinned, if anything — never products the screen chose for them. */
+  pinned: readonly string[]
   onLater: () => void
 }) {
-  const names = products.map((product) => product.name).slice(0, 3)
+  const names = pinned.slice(0, 3)
   return (
     <YStack
       testID="recipes-generating"
@@ -723,7 +782,7 @@ function GeneratingState({
       </Text>
       <Text fontSize={14} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
         {names.length > 0
-          ? `On part de ${names.join(', ')}. Quelques secondes.`
+          ? `On part de ${joinFr(names)}. Quelques secondes.`
           : 'Quelques secondes, le temps que l’IA réponde.'}
       </Text>
       <PillButton testID="recipes-generating-later" label="Je reviens plus tard" tone="quiet" palette={palette} onPress={onLater} />
@@ -776,82 +835,6 @@ function RecoveryPill({
           <Text fontSize={12} fontWeight="800" color={tone === 'error' ? palette.gradientBottom : palette.accentLimeText}>
             {label}
           </Text>
-        </XStack>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
-/**
- * A product the generation will reach for — and, on a tap, one it must build
- * around. This is the composer's one genuinely product-specific control: every
- * other group on the screen (meal, time, diet, cuisine) ships in every recipe
- * app, and none of them can name what is on your shelves tonight. The card
- * already listed exactly the right four rows and left them inert.
- */
-function PantryRow({
-  product,
-  pinned,
-  onPress,
-  palette,
-}: {
-  product: Product
-  pinned: boolean
-  onPress: () => void
-  palette: SoftPalette
-}) {
-  const hover = useHoverPress()
-  return (
-    <Pressable
-      testID={`recipes-pin-${product.id}`}
-      onPress={onPress}
-      onHoverIn={hover.onHoverIn}
-      onHoverOut={hover.onHoverOut}
-      onPressIn={hover.onPressIn}
-      onPressOut={hover.onPressOut}
-      accessibilityRole="button"
-      accessibilityState={{ selected: pinned }}
-      accessibilityLabel={`${pinned ? 'Ne plus insister sur' : 'Insister sur'} ${product.name}`}
-      hitSlop={{ top: 4, bottom: 4, left: 0, right: 0 }}
-      style={pointerCursor}
-    >
-      <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
-        <XStack
-          alignItems="center"
-          gap="$2"
-          minHeight={36}
-          paddingHorizontal="$2"
-          borderRadius={12}
-          backgroundColor={pinned ? palette.accentLime : 'transparent'}
-        >
-          <Text
-            fontSize={13}
-            fontWeight="600"
-            color={pinned ? palette.accentLimeText : palette.ink}
-            flex={1}
-            numberOfLines={1}
-          >
-            {product.name}
-          </Text>
-          <Text fontSize={12} fontWeight="500" color={pinned ? palette.accentLimeText : palette.inkSecondary}>
-            {expiryLabel(daysUntilExpiry(product))}
-          </Text>
-          {/* A real, permanently visible affordance. The row used to be
-              transparent until pressed, and the only thing announcing that it
-              could be pressed at all was an 11px grey caption in the card
-              header — for the one control on this screen no other recipe app
-              can offer. */}
-          <XStack
-            alignItems="center"
-            paddingVertical="$1"
-            paddingHorizontal="$2"
-            borderRadius={999}
-            backgroundColor={pinned ? palette.gradientBottom : palette.cream}
-          >
-            <Text fontSize={11} fontWeight="800" color={pinned ? palette.accentLimeText : palette.creamText}>
-              {pinned ? 'Insisté' : 'Insister'}
-            </Text>
-          </XStack>
         </XStack>
       </Animated.View>
     </Pressable>

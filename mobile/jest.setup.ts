@@ -28,4 +28,18 @@ import './tamagui.config'
 // notifyManager.setNotifyFunction((fn) => fn())
 // notifyManager.setBatchNotifyFunction((fn) => fn())
 
+// `@react-native-community/datetimepicker` is a native view (`DateField`, used
+// by every expiry field) — under Jest it renders nothing testable and its real
+// `onChange` only arrives from native code. This stand-in keeps the props on a
+// host `View`, so a test picks a date the way a member does:
+// `fireEvent(getByTestId('…-expires-at-picker'), 'change', { type: 'set' }, new Date(…))`.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => React.createElement(View, props),
+  }
+})
+
 export {}

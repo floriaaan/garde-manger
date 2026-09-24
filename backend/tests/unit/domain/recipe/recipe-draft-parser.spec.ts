@@ -57,6 +57,43 @@ test.group('parseRecipeDraftsJson', () => {
     assert.throws(() => parseRecipeDraftsJson('[]'), RecipeGenerationParseError)
   })
 
+  test('rejects a recipe whose fields are present but empty — a failed generation, not a recipe', ({
+    assert,
+  }) => {
+    const blank = JSON.stringify([
+      { title: '  ', description: null, instructions: '', preparationTime: null, tags: [], ingredients: [] },
+    ])
+    assert.throws(() => parseRecipeDraftsJson(blank), RecipeGenerationParseError)
+  })
+
+  test('rejects a recipe with no ingredients', ({ assert }) => {
+    const noIngredients = JSON.stringify([
+      {
+        title: 'Soupe',
+        description: null,
+        instructions: 'Mixer.',
+        preparationTime: null,
+        tags: [],
+        ingredients: [],
+      },
+    ])
+    assert.throws(() => parseRecipeDraftsJson(noIngredients), RecipeGenerationParseError)
+  })
+
+  test('rejects an ingredient whose label is blank', ({ assert }) => {
+    const blankLabel = JSON.stringify([
+      {
+        title: 'Soupe',
+        description: null,
+        instructions: 'Mixer.',
+        preparationTime: null,
+        tags: [],
+        ingredients: [{ label: '   ', quantity: 1, unit: null }],
+      },
+    ])
+    assert.throws(() => parseRecipeDraftsJson(blankLabel), RecipeGenerationParseError)
+  })
+
   test('throws RecipeGenerationParseError when a recipe is missing required fields', ({
     assert,
   }) => {

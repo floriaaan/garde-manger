@@ -1,4 +1,5 @@
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import { pointerCursor, useHoverPress } from './hover.js'
 import { ArrowLeftIcon } from '../dashboard/dashboard-icons.js'
 import { ripple } from './material.js'

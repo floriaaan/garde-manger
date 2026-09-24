@@ -12,8 +12,15 @@ import { useJobsQuery } from '../../application/job/jobs.query.js'
 import { isJobActive } from '../../domain/job/job.js'
 import { JOB_TITLES, activeLabel, isBehindAnother } from './job-labels.js'
 
-/** Tab bar height above the home-indicator inset, plus a gap. The pill is a shortcut, not part of the layout. */
-const TAB_BAR_CLEARANCE = 62
+/**
+ * Tab bar height above the home-indicator inset, plus a gap. The pill is a
+ * shortcut, not part of the layout, so it has to guess the real bar's
+ * height rather than sit inside it. iOS/web's `MobileTabNav` is a slim
+ * floating pill (~62 total); Android's `MaterialTabNav` (app-shell.tsx) is
+ * a full-width M3 bar with `minHeight={80}` — reusing the iOS clearance
+ * there left the job pill sitting 18px into the top of the tab bar.
+ */
+const TAB_BAR_CLEARANCE = Platform.OS === 'android' ? 96 : 62
 const WIDE_MARGIN = 16
 
 /** iOS 26+ only: earlier iOS and Android keep the flat pastel card. */

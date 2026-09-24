@@ -103,7 +103,7 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
       const quota = fakeQuota()
       const adapter = await resolveReceiptExtractionAdapter(settings, quota, fixedClock, 'h_1')
       assert.deepEqual(quota.recordedFor, [])
-      await adapter.extract(Buffer.from(''))
+      await adapter.extract({ buffer: Buffer.from(''), contentType: 'image/jpeg' })
       assert.deepEqual(quota.recordedFor, ['h_1'])
     } finally {
       GeminiReceiptExtractionAdapter.prototype.extract = original
@@ -118,7 +118,7 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
       const settings = fakeSettings('gemini')
       const quota = fakeQuota()
       const adapter = await resolveReceiptExtractionAdapter(settings, quota, fixedClock, 'h_1')
-      await adapter.extract(Buffer.from(''))
+      await adapter.extract({ buffer: Buffer.from(''), contentType: 'image/jpeg' })
       assert.deepEqual(quota.recordedFor, [])
     } finally {
       GeminiReceiptExtractionAdapter.prototype.extract = original

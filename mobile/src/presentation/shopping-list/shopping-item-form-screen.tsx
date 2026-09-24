@@ -121,7 +121,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
     >
       {/* The one form screen that was missing it: three fields and a submit
           pill, with the keyboard free to cover the pill. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <YStack marginTop="$2">
         {editUnavailable ? (
           <FormCard palette={palette} gap="$3">

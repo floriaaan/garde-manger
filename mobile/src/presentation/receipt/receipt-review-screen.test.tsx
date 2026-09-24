@@ -11,7 +11,7 @@ import { ReceiptReviewScreen } from './receipt-review-screen.js'
 configure({ asyncUtilTimeout: 5000 })
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
+  router: { replace: jest.fn(), back: jest.fn(), canGoBack: () => true, setParams: jest.fn() },
   useFocusEffect: jest.fn(),
 }))
 
@@ -50,11 +50,11 @@ test('pre-fills an item’s expiry from the AI’s estimate, counted from the re
 
   // Fixture: scannedAt 2026-08-28, "Lait demi-écrémé" carries expiresInDays: 10.
   await fireEvent.press(screen.getByTestId('receipt-item-0-toggle'))
-  expect(screen.getByTestId('receipt-item-0-expires-at').props.value).toBe('2026-09-07')
+  expect(screen.getByTestId('receipt-item-0-expires-at')).toHaveTextContent('7 septembre 2026')
 
   // "Pain de mie" carries no estimate (expiresInDays: null) — nothing guessed.
   await fireEvent.press(screen.getByTestId('receipt-item-1-toggle'))
-  expect(screen.getByTestId('receipt-item-1-expires-at').props.value).toBe('')
+  expect(screen.getByTestId('receipt-item-1-expires-at')).toHaveTextContent('Aucune date')
 })
 
 test('importing confirms what landed in the fridge instead of dropping the user on the dashboard', async () => {

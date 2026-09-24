@@ -58,18 +58,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
-import {
-  Animated,
-  Easing,
-  Image,
-  PixelRatio,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native'
+import { Animated, Easing, Image, PixelRatio, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'

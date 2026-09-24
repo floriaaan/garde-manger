@@ -1,11 +1,12 @@
-import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable } from 'react-native'
+import { Animated, KeyboardAvoidingView, Modal, Platform } from 'react-native'
+import { Pressable } from './pressable.js'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { ChevronRightIcon } from '../dashboard/dashboard-icons.js'
-import { ripple } from './material.js'
+import { ripple, rippleClip } from './material.js'
 
 export interface ActionSheetOption {
   testID: string
@@ -40,7 +41,7 @@ function ActionSheetRow({ option, palette }: { option: ActionSheetOption; palett
       accessibilityRole="button"
       accessibilityLabel={option.label}
       android_ripple={ripple(option.destructive ? palette.expiredText : palette.ink)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(16)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
@@ -124,7 +125,7 @@ export function ActionSheet({
             here (not on the card itself) is what lifts the sheet off every screen edge;
             the card's own radius is uniform on all four corners — floating, not
             edge-to-edge, so a top-only radius would look clipped at the bottom. */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <SafeAreaView edges={['bottom']} style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
             <YStack backgroundColor={palette.layoutSurface} borderRadius={32} style={{ paddingHorizontal: 20, paddingVertical: 20 }} gap="$2.5">
               {title ? (

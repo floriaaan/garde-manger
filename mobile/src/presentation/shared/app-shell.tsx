@@ -233,13 +233,17 @@ export function Fab({ onScan }: { onScan: () => void }) {
     // FAB is unchanged by it.
     <TourAnchor id="fab">
     <Pressable
-      onPress={onScan}
+      onPress={() => {
+        // Same reasoning as the shared `Pressable` wrapper (see its own
+        // comment): `onPressIn` fires at touch-down, before RN knows the
+        // gesture is a tap at all — a drag-off or a stolen scroll used to
+        // still buzz. Only `onPress` means the tap actually registered.
+        haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))
+        onScan()
+      }}
       onHoverIn={() => spring(1.06, 6, 200)}
       onHoverOut={() => spring(1, 5, 160)}
-      onPressIn={() => {
-        haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))
-        spring(0.86, 5, 200)
-      }}
+      onPressIn={() => spring(0.86, 5, 200)}
       onPressOut={() => spring(1, 4, 160)}
       testID="scan-fab"
       accessibilityRole="button"
@@ -317,7 +321,13 @@ function TabBarItem({ section, active }: { section: SidebarSection; active: bool
 function MaterialNavItem({ section, active }: { section: SidebarSection; active: boolean }) {
   const palette = useSoftPalette()
   const roles = materialRoles(palette)
-  const color = active ? roles.onSecondaryContainer : roles.onSurfaceVariant
+  // The icon sits inside the indicator pill when active, so it takes the
+  // pill's own "on" color. The label sits on the bar's plain background
+  // (`surfaceContainer`) whether active or not, so it must read against
+  // *that* — `onSecondaryContainer` here was tuned for text on the lime
+  // pill and went near-invisible against a dark `surfaceContainer`.
+  const iconColor = active ? roles.onSecondaryContainer : roles.onSurfaceVariant
+  const labelColor = active ? roles.onSurface : roles.onSurfaceVariant
   return (
     <Pressable
       onPress={() => {
@@ -340,9 +350,9 @@ function MaterialNavItem({ section, active }: { section: SidebarSection; active:
           justifyContent="center"
           backgroundColor={active ? roles.secondaryContainer : 'transparent'}
         >
-          {TAB_ICONS[section](color)}
+          {TAB_ICONS[section](iconColor)}
         </YStack>
-        <Text fontSize={12} fontWeight={active ? '700' : '500'} color={color}>
+        <Text fontSize={12} fontWeight={active ? '700' : '500'} color={labelColor}>
           {TAB_LABELS[section]}
         </Text>
       </YStack>

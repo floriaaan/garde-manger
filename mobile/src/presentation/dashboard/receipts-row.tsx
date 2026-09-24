@@ -12,7 +12,8 @@
  * their pair and claim receipts are a fifth section. This is a doorway under
  * them, not a peer.
  */
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { ChevronRightIcon, ReceiptIcon } from './dashboard-icons.js'

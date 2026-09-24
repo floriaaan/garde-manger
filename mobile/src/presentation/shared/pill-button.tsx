@@ -20,7 +20,8 @@
  * submit of the auth screens, a different control with a different job.
  */
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'

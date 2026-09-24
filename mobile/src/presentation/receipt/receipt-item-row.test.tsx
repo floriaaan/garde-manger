@@ -89,7 +89,13 @@ test('an estimated date is flagged for review, and editing it by hand clears the
 
   expect(screen.getByText('Estimée par l’IA à partir du produit — vérifie si besoin.')).toBeTruthy()
 
-  await fireEvent.changeText(screen.getByTestId('receipt-item-0-expires-at'), '2026-10-01')
+  await fireEvent.press(screen.getByTestId('receipt-item-0-expires-at'))
+  await fireEvent(
+    screen.getByTestId('receipt-item-0-expires-at-picker'),
+    'change',
+    { type: 'set' },
+    new Date('2026-10-01T00:00:00'),
+  )
 
   expect(onChange).toHaveBeenCalledWith({
     ...baseItem,
