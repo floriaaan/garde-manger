@@ -17,7 +17,7 @@ test.group('buildAppleClientSecret', () => {
       privateKey,
     })
 
-    const [headerPart, payloadPart, signaturePart] = jwt.split('.')
+    const [headerPart, payloadPart, signaturePart] = jwt.split('.') as [string, string, string]
     const header = JSON.parse(Buffer.from(headerPart, 'base64url').toString())
     const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString())
 
