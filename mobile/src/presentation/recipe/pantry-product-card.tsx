@@ -2,6 +2,7 @@ import { Animated } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { CheckIcon } from '../dashboard/dashboard-icons.js'
 import { StatusChip } from '../dashboard/status-chip.js'
 import { daysUntilExpiry, expiryLabel, statusOf } from '../dashboard/product-status.js'
@@ -33,7 +34,7 @@ export function PantryProductCard({
   const days = daysUntilExpiry(product)
   const status = statusOf(days)
   const ink = selected ? palette.accentLimeText : palette.ink
-  const inkSecondary = selected ? palette.accentLimeText : palette.inkSecondary
+  const inkSecondary = selected ? palette.accentLimeText : palette.creamText
   return (
     <Pressable
       testID={`recipes-pin-${product.id}`}
@@ -45,23 +46,22 @@ export function PantryProductCard({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={`${product.name}, ${product.quantity.amount} ${product.quantity.unit}, ${expiryLabel(days)}`}
-      style={pointerCursor}
+      android_ripple={ripple(selected ? palette.accentLimeText : palette.creamPillEdge)}
+      style={[pointerCursor, rippleClip(14)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
-          backgroundColor={selected ? palette.accentLime : palette.cabinetRowSurface}
+          // `creamPill` + its hairline: this card sits on the `cream` pantry
+          // card, and a near-white fill alone is 1.08:1 against it. No shadow —
+          // a lifted card inside a lifted card is two surfaces fighting.
+          backgroundColor={selected ? palette.accentLime : palette.creamPill}
+          borderWidth={1}
+          borderColor={selected ? palette.accentLime : palette.creamPillEdge}
           borderRadius={14}
           padding="$3"
           minHeight={44}
           alignItems="center"
           gap="$3"
-          style={{
-            shadowColor: palette.shadowCool,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 1,
-          }}
         >
           <YStack flex={1} minWidth={0}>
             <Text fontSize={14} fontWeight="700" color={ink} numberOfLines={1}>

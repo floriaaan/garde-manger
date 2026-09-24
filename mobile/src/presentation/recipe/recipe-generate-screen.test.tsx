@@ -259,12 +259,15 @@ test('a pantry product card is a control, not a caption — tapping it builds th
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
 })
 
-test('the pantry search narrows the product cards to the typed name, not just the nearest few', async () => {
+test('the pantry offers the three nearest products first, and "Voir tout" opens the rest with a search', async () => {
   renderComposer()
 
   await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
-  expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+  expect(screen.getAllByTestId(/^recipes-pin-/)).toHaveLength(3)
+  expect(screen.queryByTestId('recipes-pin-fake-product-3')).toBeNull()
+  expect(screen.queryByTestId('recipes-pantry-search')).toBeNull()
 
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
   fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'basmati')
 
   await waitFor(() => {
@@ -276,10 +279,30 @@ test('the pantry search narrows the product cards to the typed name, not just th
 test('a pantry search with no match says so instead of showing an empty card', async () => {
   renderComposer()
 
-  await waitFor(() => expect(screen.getByTestId('recipes-pantry-search')).toBeTruthy())
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
   fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'saucisson')
 
   await waitFor(() => expect(screen.getByText('Aucun produit ne correspond à « saucisson ».')).toBeTruthy())
+})
+
+test('a product picked from "Voir tout" stays in the short list, and the fold counts it', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
+  fireEvent.press(screen.getByTestId('recipes-pin-fake-product-3'))
+  fireEvent.press(screen.getByTestId('recipes-pantry-less'))
+
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-pin-fake-product-3').props.accessibilityState).toMatchObject({ selected: true }),
+  )
+
+  // Folded, the header says how many are picked instead of how many exist.
+  fireEvent.press(screen.getByTestId('recipes-cooking-from-toggle'))
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-cooking-from-toggle').props.accessibilityLabel).toBe('Sous la main, 1 choisi'),
+  )
 })
 
 test('the portions chip that matches the foyer says so, instead of making them count', async () => {
