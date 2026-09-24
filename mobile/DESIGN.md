@@ -62,7 +62,7 @@ typography:
     fontFamily: "System sans-serif"
     fontSize: "44px"
     fontWeight: 900
-    lineHeight: "46px"
+    lineHeight: "52px"
     letterSpacing: "-1px"
   title:
     fontFamily: "System sans-serif"
