@@ -56,6 +56,9 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 import {
   BanIcon,
   ChefHatIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CircleCheckIcon,
   CircleXIcon,
   ClockIcon,
   FlameIcon,
@@ -544,6 +547,10 @@ function CookingFrom({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
+  // Open by default — it's the one thing on this screen no competitor can
+  // offer, so it earns first look. Collapsible so a cook who already knows
+  // what's in the fridge can fold it away without scrolling past it.
+  const [expanded, setExpanded] = useState(true)
   return (
     <YStack
       marginTop="$5"
@@ -562,20 +569,35 @@ function CookingFrom({
         elevation: 1,
       }}
     >
-      <XStack alignItems="center" gap="$2">
-        {/* The garde-manger's own tab glyph, not a warning triangle: this card
-            lists four products, it does not raise an alarm about them. */}
-        <PackageIcon size={14} color={palette.inkSecondary} />
-        <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
-          On part de
-        </Text>
-      </XStack>
-      {products.length > 0 ? (
+      <Pressable
+        testID="recipes-cooking-from-toggle"
+        onPress={() => setExpanded((current) => !current)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={expanded ? 'Replier On part de' : 'Déplier On part de'}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={pointerCursor}
+      >
+        <XStack alignItems="center" gap="$2" minHeight={28}>
+          {/* The garde-manger's own tab glyph, not a warning triangle: this card
+              lists four products, it does not raise an alarm about them. */}
+          <PackageIcon size={14} color={palette.inkSecondary} />
+          <Text fontSize={12} fontWeight="700" color={palette.ink} flex={1}>
+            On part de{!expanded && products.length > 0 ? ` · ${products.length}` : ''}
+          </Text>
+          {expanded ? (
+            <ChevronDownIcon size={15} color={palette.inkSecondary} />
+          ) : (
+            <ChevronRightIcon size={15} color={palette.inkSecondary} />
+          )}
+        </XStack>
+      </Pressable>
+      {expanded && products.length > 0 ? (
         <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
           Touche un produit pour que la recette tourne autour de lui.
         </Text>
       ) : null}
-      {loading ? (
+      {!expanded ? null : loading ? (
         <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
           Chargement…
         </Text>
@@ -596,15 +618,17 @@ function CookingFrom({
           />
         </YStack>
       ) : (
-        products.map((product) => (
-          <PantryRow
-            key={product.id}
-            product={product}
-            pinned={isPinned(product.name)}
-            onPress={() => onTogglePin(product.name)}
-            palette={palette}
-          />
-        ))
+        <YStack gap="$1">
+          {products.map((product) => (
+            <PantryRow
+              key={product.id}
+              product={product}
+              pinned={isPinned(product.name)}
+              onPress={() => onTogglePin(product.name)}
+              palette={palette}
+            />
+          ))}
+        </YStack>
       )}
     </YStack>
   )
@@ -788,6 +812,11 @@ function RecoveryPill({
  * other group on the screen (meal, time, diet, cuisine) ships in every recipe
  * app, and none of them can name what is on your shelves tonight. The card
  * already listed exactly the right four rows and left them inert.
+ *
+ * One capsule, not two: the row used to carry its own rounded fill *and* a
+ * nested "Insister" pill on top of it — a chip drawn inside a chip, which is
+ * exactly what read as cramped across four stacked rows. A single check glyph
+ * carries the same state (pinned or not) without the second shape.
  */
 function PantryRow({
   product,
@@ -819,39 +848,18 @@ function PantryRow({
         <XStack
           alignItems="center"
           gap="$2"
-          minHeight={36}
+          minHeight={40}
           paddingHorizontal="$2"
           borderRadius={12}
-          backgroundColor={pinned ? palette.accentLime : 'transparent'}
+          backgroundColor={pinned ? palette.mintPale : 'transparent'}
         >
-          <Text
-            fontSize={13}
-            fontWeight="600"
-            color={pinned ? palette.accentLimeText : palette.ink}
-            flex={1}
-            numberOfLines={1}
-          >
+          <CircleCheckIcon size={16} color={pinned ? palette.accentLime : palette.inkSecondary} />
+          <Text fontSize={13} fontWeight="600" color={palette.ink} flex={1} numberOfLines={1}>
             {product.name}
           </Text>
-          <Text fontSize={12} fontWeight="500" color={pinned ? palette.accentLimeText : palette.inkSecondary}>
+          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
             {expiryLabel(daysUntilExpiry(product))}
           </Text>
-          {/* A real, permanently visible affordance. The row used to be
-              transparent until pressed, and the only thing announcing that it
-              could be pressed at all was an 11px grey caption in the card
-              header — for the one control on this screen no other recipe app
-              can offer. */}
-          <XStack
-            alignItems="center"
-            paddingVertical="$1"
-            paddingHorizontal="$2"
-            borderRadius={999}
-            backgroundColor={pinned ? palette.gradientBottom : palette.cream}
-          >
-            <Text fontSize={11} fontWeight="800" color={pinned ? palette.accentLimeText : palette.creamText}>
-              {pinned ? 'Insisté' : 'Insister'}
-            </Text>
-          </XStack>
         </XStack>
       </Animated.View>
     </Pressable>

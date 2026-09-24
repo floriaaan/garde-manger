@@ -334,7 +334,21 @@ test('the six chip groups are folded away — the composer opens as a shortcut, 
 test('a pantry product carries a visible affordance, not a grey caption', async () => {
   renderComposer()
 
+  const row = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
+
+  expect(row.props.accessibilityLabel).toMatch(/^Insister sur /)
+})
+
+test('the "On part de" pantry card is retractable', async () => {
+  renderComposer()
+
   await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
 
-  expect(screen.getAllByText('Insister').length).toBeGreaterThan(0)
+  const toggle = screen.getByTestId('recipes-cooking-from-toggle')
+  expect(toggle.props.accessibilityState.expanded).toBe(true)
+
+  fireEvent.press(toggle)
+
+  expect(screen.queryByTestId('recipes-pin-fake-product-1')).toBeNull()
+  expect(toggle.props.accessibilityState.expanded).toBe(false)
 })
