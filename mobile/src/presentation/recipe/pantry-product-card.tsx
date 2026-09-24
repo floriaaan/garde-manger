@@ -64,7 +64,9 @@ export function PantryProductCard({
           gap="$3"
         >
           <YStack flex={1} minWidth={0}>
-            <Text fontSize={14} fontWeight="700" color={ink} numberOfLines={1}>
+            {/* Two lines: at large text sizes the status pill beside it left
+                one line room for "Petits…". */}
+            <Text fontSize={14} fontWeight="700" color={ink} numberOfLines={2}>
               {product.name}
             </Text>
             <Text fontSize={12} fontWeight="500" color={inkSecondary} numberOfLines={1}>

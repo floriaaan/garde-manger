@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
@@ -8,9 +8,20 @@ import { ThemeProvider } from '../shared/theme-provider.js'
 import { RecipeGenerateScreen } from './recipe-generate-screen.js'
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), back: jest.fn(), dismiss: jest.fn() },
+  router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), back: jest.fn(), dismiss: jest.fn(), canDismiss: () => true },
   useFocusEffect: jest.fn(),
 }))
+
+const mockPreventRemove = jest.fn()
+jest.mock('expo-router/react-navigation', () => ({
+  usePreventRemove: (prevent: boolean, callback: () => void) => mockPreventRemove(prevent, callback),
+}))
+
+/** What the latest render told navigation: guard the sheet, and what to do when a leave is caught. */
+function lastPreventRemove(): { prevent: boolean; onLeave: () => void } {
+  const [prevent, onLeave] = mockPreventRemove.mock.calls.at(-1)!
+  return { prevent, onLeave }
+}
 
 // `aiLatencyMs: 0` throughout: this suite tests the composer's wiring, not
 // the fake's simulated thinking time — which is long enough to outlast
@@ -303,6 +314,32 @@ test('a product picked from "Voir tout" stays in the short list, and the fold co
   await waitFor(() =>
     expect(screen.getByTestId('recipes-cooking-from-toggle').props.accessibilityLabel).toBe('Sous la main, 1 choisi'),
   )
+})
+
+test('an empty sheet lets the system back and swipe leave freely', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
+
+  expect(lastPreventRemove().prevent).toBe(false)
+})
+
+test('a leave through back or swipe with an unsaved wish asks first, like "Fermer"', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
+  fireEvent.changeText(screen.getByTestId('recipes-wish'), 'un gratin')
+
+  expect(lastPreventRemove().prevent).toBe(true)
+  const { onLeave } = lastPreventRemove()
+  await act(async () => onLeave())
+
+  await waitFor(() => expect(screen.getByTestId('recipes-discard-confirm')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-discard-confirm'))
+
+  // Released before dismissing, or the guard would catch its own exit.
+  await waitFor(() => expect(router.dismiss).toHaveBeenCalled())
+  expect(lastPreventRemove().prevent).toBe(false)
 })
 
 test('the portions chip that matches the foyer says so, instead of making them count', async () => {

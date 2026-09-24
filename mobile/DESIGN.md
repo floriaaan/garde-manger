@@ -5,7 +5,7 @@ colors:
   ground-mint: "#E9F6D8"
   ground-white: "#FFFFFF"
   ink: "#16211A"
-  ink-secondary: "#6B7280"
+  ink-secondary: "#636A78"
   hero-mocha: "#6B5642"
   hero-mocha-text: "#FFFFFF"
   on-dark: "#FFFFFF"
@@ -154,7 +154,7 @@ Warm and near-white by design; color is spent deliberately (lime for action, one
 - **Ground Mint → White** (`#E9F6D8` → `#FFFFFF`): the mobile background, a soft off-center radial blob (`BlobBackground`), never a flat top-to-bottom bar.
 - **Layout Surface** (`#EEE6DC`): the tablet/desktop layout surround and sidebar — near-white with a warm-brown tint, always a visible step darker than the content card so the "mat around a print" effect reads.
 - **`cream-pill` is the pill that sits *on* a `cream` card** (`#FFFFFF` light, `#3A3324` dark). Not `cream` itself, which would be invisible on the card, and never `gradientBottom`: that token is the page and content-card ground, so in dark mode a `gradientBottom` pill (`#120D08`) on a `cream` card (`#241F17`) reads as a hole punched through the row rather than a chip drawn on it. The relationship, not the hex, is the rule — lighter than the card it sits on, in both modes. In light mode that separation is only 1.08:1, because every darker fill drops the pill's own label under 4.5:1 — so `cream-pill-edge` (`#C9BEA8` light, `#6A5F47` dark) carries a 1px hairline of the label's ink instead, ~1.7:1 light and ~2.0:1 dark. That hairline is a control-sized mark, not an outlined surface: the border ban below is about containers.
-- **Ink** (`#16211A`) / **Ink Secondary** (`#6B7280`): primary and secondary text on near-white grounds. Secondary text sitting on a *colored* card (cream/lavender/mint-pale) is never this flat gray — it's tinted from that card's own hue instead (`#7A6B47` on cream, `#635B85` on lavender, `#3D7A57` on mint-pale).
+- **Ink** (`#16211A`) / **Ink Secondary** (`#636A78`; was `#6B7280`, 4.29:1 on the mint `gradientTop`, under AA): primary and secondary text on near-white grounds. Secondary text sitting on a *colored* card (cream/lavender/mint-pale) is never this flat gray — it's tinted from that card's own hue instead (`#7A6B47` on cream, `#635B85` on lavender, `#3D7A57` on mint-pale).
 - **Cream** (`#FDF6E8`) / **Lavender** (`#EFEAFB`) / **Mint Pale** (`#E1F3E6`): the three pastel stat-card backgrounds, always used together as a set of three, never alone.
 
 ### Status

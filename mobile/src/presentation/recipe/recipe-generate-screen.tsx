@@ -39,9 +39,10 @@
 import { ConnectedPaywall } from '../settings/ai-access-cards.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { useEffect, useRef, useState } from 'react'
-import { Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { AccessibilityInfo, Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
+import { usePreventRemove } from 'expo-router/react-navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
@@ -101,6 +102,13 @@ import {
 const PANTRY_SUGGESTION_COUNT = 3
 
 /**
+ * How many cards "Voir tout" draws at once. Every card carries its own spring
+ * and re-renders on each keystroke in "Une envie ?", so a 150-product foyer
+ * used to mount 150 of them; past this, the search is the way through.
+ */
+const PANTRY_BROWSE_LIMIT = 30
+
+/**
  * An error is a state to act on, not a sentence to read. The backend's
  * `ApiError.type` already says which action would fix it, and the canonical
  * one — `no_products` — used to tell the cook to go somewhere this modal has
@@ -153,6 +161,9 @@ export function RecipeGenerateScreen() {
   const [wish, setWish] = useState<RecipeWish>(EMPTY_WISH)
   const [enqueueError, setEnqueueError] = useState<GenerationError | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState<'reset' | 'close' | null>(null)
+  // Set once the sheet is allowed to go — `usePreventRemove` reads state, so
+  // a leave has to render before it can dismiss (see the effect below).
+  const [exit, setExit] = useState<{ then?: () => void } | null>(null)
 
   // Sorted, uncapped: the search list needs every product to filter through, not just the nearest few.
   const pantry = sortByExpiry(productsQuery.data ?? [])
@@ -170,12 +181,27 @@ export function RecipeGenerateScreen() {
    */
   function askDiscard(intent: 'reset' | 'close') {
     if (isWishEmpty(wish)) {
-      if (intent === 'close') router.dismiss()
+      if (intent === 'close') setExit({})
       else setWish(EMPTY_WISH)
       return
     }
     setConfirmDiscard(intent)
   }
+
+  // Android's back button and gesture, and iOS's swipe-down, all leave through
+  // navigation rather than through "Fermer". Guarded here, the one confirm
+  // covers every way out. Not while waiting: the form is gone by then, and
+  // leaving is what "Je reviens plus tard" already offers.
+  usePreventRemove(!empty && !waiting && exit === null, () => setConfirmDiscard('close'))
+
+  useEffect(() => {
+    if (!exit) return
+    // Opened from a deep link there is no stack to dismiss into; fall back to
+    // the recipes tab rather than leave the sheet stuck with its guard off.
+    if (router.canDismiss()) router.dismiss()
+    else router.replace('/(tabs)/recipes')
+    exit.then?.()
+  }, [exit])
 
   function handleClose() {
     askDiscard('close')
@@ -184,8 +210,7 @@ export function RecipeGenerateScreen() {
   function goAddProduct() {
     // Leave the sheet first: this modal draws no nav at any width, so the
     // route out has to be spent, not offered.
-    router.dismiss()
-    router.push('/(tabs)/fridge/new')
+    setExit({ then: () => router.push('/(tabs)/fridge/new') })
   }
 
   function toError(type: string, message: string): GenerationError {
@@ -223,9 +248,18 @@ export function RecipeGenerateScreen() {
     handledRef.current = job.id
     queryClient.invalidateQueries({ queryKey: ['recipes'] })
     // `dismiss()` before pushing — replacing the modal route would present the recipe itself as a modal.
-    router.dismiss()
-    router.push({ pathname: '/(tabs)/recipes/[id]', params: { id: firstRecipeId } })
+    setExit({ then: () => router.push({ pathname: '/(tabs)/recipes/[id]', params: { id: firstRecipeId } }) })
   }, [job, firstRecipeId, queryClient])
+
+  // `accessibilityLiveRegion` is Android-only: on iOS the form unmounted under
+  // VoiceOver's focus and nothing said why, and an error arrived in silence.
+  useEffect(() => {
+    if (Platform.OS === 'ios' && waiting) AccessibilityInfo.announceForAccessibility('On écrit ta recette. Quelques secondes.')
+  }, [waiting])
+  const errorMessage = error?.message
+  useEffect(() => {
+    if (Platform.OS === 'ios' && errorMessage) AccessibilityInfo.announceForAccessibility(errorMessage)
+  }, [errorMessage])
 
   return (
     <AppShell
@@ -245,7 +279,7 @@ export function RecipeGenerateScreen() {
         />
       }
     >
-      {waiting ? <GeneratingState palette={palette} pinned={wish.pinned} onLater={() => router.dismiss()} /> : null}
+      {waiting ? <GeneratingState palette={palette} pinned={wish.pinned} onLater={() => setExit({})} /> : null}
 
       {/* Same recipe as the receipt review's form: without it the pinned
           "Générer" bar sits under the keyboard the moment a cook taps
@@ -328,16 +362,17 @@ export function RecipeGenerateScreen() {
               palette={palette}
             >
               {RECIPE_OPTION_GROUPS.map((group) => (
-                // The heading role on the label plus the group-prefixed chip
+                // The heading role on the label's own Text (a role on a
+                // non-accessible row is dropped by VoiceOver) plus the group-prefixed chip
                 // labels below are what stop a screen reader reading 24
                 // anonymous buttons in one undifferentiated run. A role on this
                 // container would not help: making it `accessible` would hide the
                 // chips inside it, and a bare label on a non-accessible view is
                 // never announced.
                 <YStack key={group.id} gap="$2">
-                  <XStack alignItems="center" gap="$1.5" role="heading">
+                  <XStack alignItems="center" gap="$1.5">
                     {GROUP_ICONS[group.icon](palette.creamText)}
-                    <Text fontSize={12} fontWeight="700" color={palette.ink}>
+                    <Text fontSize={12} fontWeight="700" color={palette.ink} role="heading">
                       {group.label}
                     </Text>
                   </XStack>
@@ -387,7 +422,9 @@ export function RecipeGenerateScreen() {
                 onPress={() => askDiscard('reset')}
                 accessibilityRole="button"
                 accessibilityLabel="Tout effacer"
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                // 16pt of text + 14 above and below: the 44pt floor.
+                hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}
+                android_ripple={ripple(palette.creamPillEdge, { borderless: true })}
                 style={[pointerCursor, { alignSelf: 'flex-start' }]}
               >
                 <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
@@ -435,7 +472,7 @@ export function RecipeGenerateScreen() {
             </XStack>
           ) : null}
           {!empty ? (
-            <Text testID="recipes-prompt-preview" fontSize={11} fontWeight="500" color={palette.inkSecondary} numberOfLines={2}>
+            <Text testID="recipes-prompt-preview" fontSize={12} fontWeight="500" color={palette.inkSecondary} numberOfLines={2}>
               {/* The composed sentence, verbatim. Counting the choices told the
                   cook how many boxes they ticked; this tells them what the
                   machine will actually be asked. */}
@@ -473,7 +510,7 @@ export function RecipeGenerateScreen() {
               const intent = confirmDiscard
               setConfirmDiscard(null)
               setWish(EMPTY_WISH)
-              if (intent === 'close') router.dismiss()
+              if (intent === 'close') setExit({})
             },
           },
         ]}
@@ -505,6 +542,7 @@ function CloseButton({ palette, onPress }: { palette: SoftPalette; onPress: () =
       accessibilityRole="button"
       accessibilityLabel="Fermer"
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      android_ripple={ripple(palette.creamPillEdge, { borderless: true })}
       style={pointerCursor}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
@@ -552,6 +590,10 @@ function CollapsibleCard({
   return (
     <YStack
       backgroundColor={palette.cream}
+      // Dark mode: `cream` is 1.18:1 on the ground and the glow barely reads,
+      // so the card takes the `creamPillEdge` hairline to keep its edge.
+      borderWidth={palette.blurTint === 'dark' ? 1 : 0}
+      borderColor={palette.creamPillEdge}
       padding="$3"
       gap="$3"
       style={{
@@ -574,7 +616,8 @@ function CollapsibleCard({
         // The state is `expanded`'s job; the label says what the row is.
         accessibilityLabel={folded ? `${title}, ${folded}` : title}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        style={pointerCursor}
+        android_ripple={ripple(palette.creamPillEdge)}
+        style={[pointerCursor, rippleClip(10)]}
       >
         <XStack alignItems="center" gap="$2" minHeight={32}>
           {icon(palette.creamText)}
@@ -633,10 +676,10 @@ function PantrySuggestions({
   const needle = search.trim().toLowerCase()
   const pinned = products.filter((product) => isPinned(product.name))
   const rest = products.filter((product) => !isPinned(product.name))
-  const shown = browsing
-    ? [...pinned, ...rest].filter((product) => product.name.toLowerCase().includes(needle))
-    : [...pinned, ...rest.slice(0, PANTRY_SUGGESTION_COUNT)]
+  const matches = browsing ? [...pinned, ...rest].filter((product) => product.name.toLowerCase().includes(needle)) : []
+  const shown = browsing ? matches.slice(0, PANTRY_BROWSE_LIMIT) : [...pinned, ...rest.slice(0, PANTRY_SUGGESTION_COUNT)]
   const hidden = products.length - shown.length
+  const overflow = matches.length - shown.length
 
   const summary =
     pinnedCount > 0
@@ -717,6 +760,11 @@ function PantrySuggestions({
               ))}
             </YStack>
           )}
+          {overflow > 0 ? (
+            <Text testID="recipes-pantry-overflow" fontSize={12} fontWeight="500" color={palette.creamText} textAlign="center">
+              Et {overflow} autre{overflow > 1 ? 's' : ''} — tape un nom pour les trouver.
+            </Text>
+          ) : null}
           {browsing ? (
             <PantryListToggle testID="recipes-pantry-less" label="Réduire" palette={palette} onPress={closeBrowsing} />
           ) : hidden > 0 ? (
@@ -792,8 +840,14 @@ function GenerateButton({
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      style={pointerCursor}
+      // The caption is what the button will send ("Autour de Jambon blanc");
+      // the label alone replaced it for a screen reader.
+      accessibilityLabel={caption ? `${label}, ${caption}` : label}
+      android_ripple={ripple(palette.accentLimeText)}
+      style={[
+        pointerCursor,
+        rippleClip({ borderTopLeftRadius: 24, borderTopRightRadius: 14, borderBottomRightRadius: 24, borderBottomLeftRadius: 14 }),
+      ]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
@@ -912,8 +966,9 @@ function RecoveryPill({
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      android_ripple={ripple(tone === 'error' ? palette.gradientBottom : palette.accentLimeText)}
       // A pill sizes to its label; a Pressable in a YStack stretches by default.
-      style={[pointerCursor, { alignSelf: 'flex-start' }]}
+      style={[pointerCursor, { alignSelf: 'flex-start' }, rippleClip(999)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
