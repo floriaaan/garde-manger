@@ -75,7 +75,8 @@
  *   when that exists.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, Image, type ImageSourcePropType, Pressable, type ScrollView } from 'react-native'
+import { Animated, Image, type ImageSourcePropType, type ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import {
   ChefHatIcon,
   ChevronRightIcon,

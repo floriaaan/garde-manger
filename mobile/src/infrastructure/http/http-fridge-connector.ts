@@ -549,7 +549,11 @@ export class HttpFridgeConnector implements FridgeConnector {
 
   async enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>> {
     const formData = new FormData()
-    await appendImagePart(formData, imageUri, 'receipt.jpg')
+    // A hardcoded ".jpg" here used to route every PDF import through the
+    // backend's extname-based content-type sniff as a JPEG — a receipt
+    // scanned as a PDF has to keep its extension to be read as one.
+    const filename = imageUri.toLowerCase().endsWith('.pdf') ? 'receipt.pdf' : 'receipt.jpg'
+    await appendImagePart(formData, imageUri, filename)
     const result = await apiFetchMultipart<{ job: Job }>('/api/jobs/receipt-scan', formData, {
       action: 'job.enqueue_receipt_scan',
     })

@@ -7,7 +7,6 @@
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
@@ -71,6 +70,16 @@
         {
           "photosPermission": "Garde-manger ouvre tes photos quand tu choisis d'importer la photo d'un ticket de caisse ou de ton frigo, pour en extraire les produits.",
           "microphonePermission": false
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["application/pdf"],
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsFileWithMaxCount": 1
+          }
         }
       ]
     ],

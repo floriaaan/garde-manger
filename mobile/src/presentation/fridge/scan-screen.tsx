@@ -10,7 +10,8 @@
  * selected. Four commits tried to patch that indirection. A tab that owns
  * a screen needs none of it: the two choices are the screen.
  */
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'

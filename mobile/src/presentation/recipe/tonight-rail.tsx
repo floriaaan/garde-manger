@@ -13,15 +13,23 @@
  * exists for — one answer, then the other two.
  */
 import { useEffect, useState } from 'react'
-import { Animated, PixelRatio, Pressable, ScrollView } from 'react-native'
+import { Animated, PixelRatio, ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress, useReduceMotion } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
 import { ClockIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { expiryLabel } from '../dashboard/product-status.js'
 import { MetaChip } from './meta-chip.js'
 import { CORNERS, CORNER_ROTATION } from './recipe-card.js'
+
+const HERO_CORNERS = {
+  borderTopLeftRadius: 36,
+  borderTopRightRadius: 20,
+  borderBottomRightRadius: 36,
+  borderBottomLeftRadius: 20,
+}
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { pantrySentence } from './pantry-match.js'
 import type { TonightCandidate } from './pantry-match.js'
@@ -129,7 +137,7 @@ function TonightHero({
       accessibilityRole="button"
       accessibilityLabel={spokenLabel(candidate)}
       android_ripple={ripple(palette.onDark)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(HERO_CORNERS)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], width, flex: 1 }}>
         {/* Two boxes: the outer one carries the fill, radius and shadow and
@@ -138,10 +146,7 @@ function TonightHero({
           backgroundColor={palette.brandDeep}
           overflow="hidden"
           style={{
-            borderTopLeftRadius: 36,
-            borderTopRightRadius: 20,
-            borderBottomRightRadius: 36,
-            borderBottomLeftRadius: 20,
+            ...HERO_CORNERS,
             position: 'relative',
             shadowColor: palette.shadowCool,
             shadowOffset: { width: 0, height: 16 },
@@ -264,7 +269,7 @@ function TonightAlternate({
       accessibilityRole="button"
       accessibilityLabel={spokenLabel(candidate)}
       android_ripple={ripple(palette.ink)}
-      style={pointerCursor}
+      style={[pointerCursor, rippleClip(CORNERS[CORNER_ROTATION[(index + 1) % CORNER_ROTATION.length]])]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], width: alternateWidth(), flex: 1 }}>
         <YStack

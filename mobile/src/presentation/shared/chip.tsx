@@ -31,10 +31,11 @@
  * (the recipe composer) prefixes each chip with its group.
  */
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useHoverPress } from './hover.js'
-import { ripple } from './material.js'
+import { ripple, rippleClip } from './material.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
 /** Height of the drawn pill. The tappable area is padded back to ≥44 by `hitSlop`. */
@@ -83,7 +84,7 @@ export function Chip({
       android_ripple={ripple(selected ? palette.accentLimeText : palette.mintPaleText)}
       // `hitSlop` on native, the same slop as margin/padding on web, which
       // ignores the prop — without it the chip is its drawn 32pt in a browser.
-      style={[pointerCursor, pressAreaSlop(slop, 4)]}
+      style={[pointerCursor, pressAreaSlop(slop, 4), rippleClip(999)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack

@@ -1,4 +1,5 @@
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import type { SoftPalette } from './soft-palette.js'

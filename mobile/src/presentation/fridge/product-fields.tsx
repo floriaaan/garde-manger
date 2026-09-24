@@ -10,9 +10,10 @@
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { ArchiveIcon, CalendarIcon, PencilIcon, RefrigeratorIcon, ScaleIcon, SnowflakeIcon } from '../dashboard/dashboard-icons.js'
+import { ArchiveIcon, PencilIcon, RefrigeratorIcon, ScaleIcon, SnowflakeIcon } from '../dashboard/dashboard-icons.js'
 import { daysUntilExpiry, expiryLabel } from '../dashboard/product-status.js'
 import { FormField } from './form-field.js'
+import { DateField, toIsoDay } from './date-field.js'
 import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 
@@ -35,13 +36,10 @@ const DATE_SHORTCUTS: { label: string; days: number | null }[] = [
   { label: 'Sans date', days: null },
 ]
 
-/** Local calendar date, `YYYY-MM-DD` — the format the field and the backend both read. */
 export function isoDay(offsetDays: number): string {
   const date = new Date()
   date.setDate(date.getDate() + offsetDays)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
+  return toIsoDay(date)
 }
 
 export interface ProductFieldValues {
@@ -128,17 +126,14 @@ export function ProductFields({
       </XStack>
 
       <YStack gap="$2">
-        <FormField
+        <DateField
           testID={`${testIDPrefix}-expires-at`}
           label="Date de péremption"
           value={values.expiresAt}
-          onChangeText={(expiresAt) => onChange({ expiresAt })}
+          onChange={(expiresAt) => onChange({ expiresAt })}
           palette={palette}
-          keyboardType="numbers-and-punctuation"
-          placeholder="AAAA-MM-JJ"
           hint={expiryHint}
           error={errors?.expiresAt}
-          icon={(color) => <CalendarIcon size={13} color={color} />}
         />
         <XStack gap="$2.5" flexWrap="wrap">
           {DATE_SHORTCUTS.map((shortcut) => (

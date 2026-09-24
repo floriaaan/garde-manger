@@ -240,23 +240,46 @@ test('every chip announces the group it belongs to, not just its own word', asyn
   expect(screen.getByText('15 min')).toBeTruthy()
 })
 
-test('a pantry row is a control, not a caption — tapping it builds the recipe around that product', async () => {
+test('a pantry chip is a control, not a caption — tapping it builds the recipe around that product', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
-  const rows = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
-  const firstRow = rows[0]!
-  expect(firstRow.props.accessibilityState).toEqual({ selected: false })
+  const chips = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
+  const firstChip = chips[0]!
+  expect(firstChip.props.accessibilityState).toMatchObject({ selected: false })
 
-  fireEvent.press(firstRow)
+  fireEvent.press(firstChip)
   await waitFor(() =>
-    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toEqual({ selected: true }),
+    expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ selected: true }),
   )
 
   fireEvent.press(screen.getByTestId('recipes-generate-submit'))
 
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
+})
+
+test('the pantry search narrows the chips to the typed name, not just the nearest few', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
+  expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+
+  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'basmati')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+    expect(screen.queryByTestId('recipes-pin-fake-product-1')).toBeNull()
+  })
+})
+
+test('a pantry search with no match says so instead of showing an empty card', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-search')).toBeTruthy())
+  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'saucisson')
+
+  await waitFor(() => expect(screen.getByText('Aucun produit ne correspond à « saucisson ».')).toBeTruthy())
 })
 
 test('the portions chip that matches the foyer says so, instead of making them count', async () => {
@@ -331,15 +354,23 @@ test('the six chip groups are folded away — the composer opens as a shortcut, 
   await waitFor(() => expect(screen.getByTestId('recipes-option-temps-express')).toBeTruthy())
 })
 
-test('a pantry product carries a visible affordance, not a grey caption', async () => {
+test('no pantry product is chosen for the cook — the card proposes, the tap decides', async () => {
   renderComposer()
 
-  const row = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
+  const chip = await waitFor(() => screen.getByTestId('recipes-pin-fake-product-1'))
 
-  expect(row.props.accessibilityLabel).toMatch(/^Insister sur /)
+  // Nothing starts selected: the backend already gets the whole garde-manger,
+  // so a pin only ever *adds* an instruction to the prompt.
+  expect(chip.props.accessibilityState).toMatchObject({ selected: false })
+
+  await fireEvent.press(chip)
+
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-pin-fake-product-1').props.accessibilityState).toMatchObject({ selected: true }),
+  )
 })
 
-test('the "On part de" pantry card is retractable', async () => {
+test('the "Sous la main" pantry card is retractable', async () => {
   renderComposer()
 
   await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())

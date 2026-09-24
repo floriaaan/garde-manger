@@ -20,7 +20,17 @@ export type EnablePushResult = 'enabled' | 'denied' | 'unavailable'
 
 let lastHandled: string | null = null
 
-const isSupported = Platform.OS === 'ios' || Platform.OS === 'android'
+/**
+ * Expo Go on Android dropped the whole push surface in SDK 53 — the module
+ * still loads, but `setNotificationHandler`, `addNotificationResponseReceivedListener`
+ * and friends are simply missing, so calling them throws "undefined is not a
+ * function" rather than failing politely. There is no capability flag to read;
+ * the execution environment is the only thing that tells Expo Go apart from a
+ * development or store build, where the very same code works.
+ */
+const isExpoGoAndroid = Platform.OS === 'android' && Constants.executionEnvironment === 'storeClient'
+
+const isSupported = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoAndroid
 
 async function currentToken(): Promise<string | null> {
   const Notifications = await import('expo-notifications')

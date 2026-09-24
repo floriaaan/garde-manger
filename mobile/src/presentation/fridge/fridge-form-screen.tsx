@@ -10,7 +10,8 @@
  * guard before an accidental back throws the typing away.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native'
+import { Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -188,7 +189,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
   return (
     <>
     <AppShell nav={{ kind: 'stack' }} scrollable={false}>
-      <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           style={{ flex: 1, minHeight: 0 }}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 60 }}

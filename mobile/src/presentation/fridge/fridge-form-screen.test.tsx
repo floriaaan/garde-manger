@@ -7,6 +7,12 @@ import { fakeProducts } from '../../infrastructure/fake/fixtures/product.fixture
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { FridgeFormScreen } from './fridge-form-screen.js'
 
+/** Drives `DateField`'s picker the way a member does: open it, pick a day. */
+async function pickDate(testID: string, isoDay: string) {
+  await fireEvent.press(screen.getByTestId(testID))
+  await fireEvent(screen.getByTestId(`${testID}-picker`), 'change', { type: 'set' }, new Date(`${isoDay}T00:00:00`))
+}
+
 // `AppShell` registers its scan action through expo-router's `useFocusEffect`,
 // which needs a real navigation container. These screen tests render the shell
 // without one, so the hook — and only the hook — is stubbed out.
@@ -60,9 +66,10 @@ test('edit mode pre-fills the form from the existing product', async () => {
   expect(screen.getByTestId('fridge-form-amount').props.value).toBe('1')
   expect(screen.getByTestId('fridge-form-unit').props.value).toBe('L')
   // The fixture dates are relative to today, so the expectation is too: the
-  // milk is due tomorrow, prefilled as a plain date.
-  const tomorrow = fakeProducts.find((product) => product.id === 'fake-product-1')?.expiresAt?.slice(0, 10)
-  expect(screen.getByTestId('fridge-form-expires-at').props.value).toBe(tomorrow)
+  // milk is due tomorrow, shown as a readable date rather than `YYYY-MM-DD`.
+  const tomorrow = fakeProducts.find((product) => product.id === 'fake-product-1')?.expiresAt?.slice(0, 10) ?? ''
+  const readable = new Date(`${tomorrow}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  expect(screen.getByTestId('fridge-form-expires-at')).toHaveTextContent(readable)
 })
 
 test('submitting with an expiresAt value round-trips it into the create payload as an ISO string', async () => {
@@ -82,7 +89,7 @@ test('submitting with an expiresAt value round-trips it into the create payload 
   await fireEvent.changeText(screen.getByTestId('fridge-form-name'), 'Yaourt nature')
   await fireEvent.changeText(screen.getByTestId('fridge-form-amount'), '4')
   await fireEvent.changeText(screen.getByTestId('fridge-form-unit'), 'pots')
-  await fireEvent.changeText(screen.getByTestId('fridge-form-expires-at'), '2026-09-10')
+  await pickDate('fridge-form-expires-at', '2026-09-10')
   await fireEvent.press(screen.getByTestId('fridge-form-submit'))
 
   await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
@@ -104,7 +111,7 @@ test('submitting an edit form with an updated expiresAt round-trips it into the 
   )
 
   await waitFor(() => expect(screen.getByTestId('fridge-form-name').props.value).toBe('Lait demi-écrémé'))
-  await fireEvent.changeText(screen.getByTestId('fridge-form-expires-at'), '2026-09-20')
+  await pickDate('fridge-form-expires-at', '2026-09-20')
   await fireEvent.press(screen.getByTestId('fridge-form-submit'))
 
   await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(1))

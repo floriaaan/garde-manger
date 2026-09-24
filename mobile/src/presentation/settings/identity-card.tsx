@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'

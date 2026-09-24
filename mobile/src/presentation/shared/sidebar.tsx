@@ -5,7 +5,8 @@
  * Frigo screen and vanishing everywhere else, which would have been a
  * worse regression than the extra file.
  */
-import { Animated, Image, Pressable } from 'react-native'
+import { Animated, Image } from 'react-native'
+import { Pressable } from './pressable.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'

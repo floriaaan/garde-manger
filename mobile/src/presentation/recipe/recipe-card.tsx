@@ -8,10 +8,11 @@
  * the one thing that *does* differ per row and that no generic recipe app can
  * print — how much of the dish is already in the foyer's garde-manger.
  */
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
-import { ripple } from '../shared/material.js'
+import { ripple, rippleClip } from '../shared/material.js'
 import { EllipsisIcon } from '../dashboard/dashboard-icons.js'
 import { MetaChip } from './meta-chip.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -117,7 +118,7 @@ export function RecipeCard({
             .filter(Boolean)
             .join(', ')}
           android_ripple={ripple(palette.ink)}
-          style={pointerCursor}
+          style={[pointerCursor, rippleClip(CORNERS[corner])]}
         >
           <YStack gap="$2" padding="$4" paddingRight={52}>
             <Text fontSize={15} fontWeight="800" color={palette.ink}>

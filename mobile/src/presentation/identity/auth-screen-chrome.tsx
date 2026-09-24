@@ -38,7 +38,7 @@ export function AuthScreenChrome({
       <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={{ flex: 1, minHeight: 0 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         >
           <ScrollView

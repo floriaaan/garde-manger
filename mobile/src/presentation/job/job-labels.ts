@@ -57,14 +57,24 @@ export function failureMessage(job: Job): string {
         : 'Quota du mois atteint. Il se renouvelle le 1er du mois.'
     case 'provider_not_configured':
       return 'L’IA n’est pas configurée sur ce serveur. Demande à l’administrateur.'
+    case 'unsupported_format':
+      return 'Ce fournisseur IA ne lit pas les PDF. Réessaie avec une photo, ou change de fournisseur dans les réglages.'
     default:
-      return `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
+      // A recipe generation has no photo to blame — it failed on the ask.
+      return job.kind === 'recipe_generation'
+        ? `${outcomeMessage(job)}. Réessaie, ou demande quelque chose de plus simple.`
+        : `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
   }
 }
 
 /** Errors a second attempt cannot fix. */
 export function isRetryable(job: Job): boolean {
-  return job.status === 'failed' && job.error?.type !== 'ai_quota_exceeded' && job.error?.type !== 'provider_not_configured'
+  return (
+    job.status === 'failed' &&
+    job.error?.type !== 'ai_quota_exceeded' &&
+    job.error?.type !== 'provider_not_configured' &&
+    job.error?.type !== 'unsupported_format'
+  )
 }
 
 /** "à l’instant" / "il y a 5 min" / "il y a 3 h" / "hier" — the age of a task, which the task center is otherwise silent about. */

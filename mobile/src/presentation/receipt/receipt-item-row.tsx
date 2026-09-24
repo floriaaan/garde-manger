@@ -1,9 +1,11 @@
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { CalendarIcon, ChevronRightIcon, PencilIcon, ScaleIcon, TagIcon, WalletIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ChevronRightIcon, PencilIcon, ScaleIcon, TagIcon, WalletIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
+import { DateField } from '../fridge/date-field.js'
 import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 import { daysUntilExpiry, expiryLabel } from '../dashboard/product-status.js'
@@ -211,21 +213,18 @@ export function ReceiptItemRow({
               </YStack>
             ) : null}
           </XStack>
-          <FormField
+          <DateField
             testID={`receipt-item-${index}-expires-at`}
             label="Date de péremption"
             value={item.expiresAt}
-            onChangeText={(v) => set('expiresAt', v)}
+            onChange={(v) => set('expiresAt', v)}
             palette={palette}
-            keyboardType="numbers-and-punctuation"
-            placeholder="AAAA-MM-JJ"
             hint={
               item.expiresAtEstimated
                 ? 'Estimée par l’IA à partir du produit — vérifie si besoin.'
                 : 'Laisse vide si le produit se garde longtemps.'
             }
             error={errors?.expiresAt}
-            icon={(color) => <CalendarIcon size={13} color={color} />}
           />
 
           <YStack gap="$1">

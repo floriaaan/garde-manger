@@ -14,7 +14,8 @@
  * missing, then push the missing half onto the shopping list in one tap.
  */
 import { useState } from 'react'
-import { Animated, Pressable } from 'react-native'
+import { Animated } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'

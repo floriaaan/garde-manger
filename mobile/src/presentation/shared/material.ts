@@ -138,3 +138,18 @@ export function entranceMotion() {
     ? { duration: MATERIAL_MOTION.medium, easing: MATERIAL_MOTION.decelerate }
     : { duration: 320, easing: Easing.out(Easing.cubic) }
 }
+
+/**
+ * Clips a bounded `android_ripple` to the rounded shape its control actually
+ * draws. Every control here puts its `borderRadius` on a child (the animated
+ * scale wrapper's content), leaving the `Pressable` itself a square box — and
+ * Android paints a bounded ripple against *that* box, so the ripple squared
+ * off the corners of every pill, chip and card. Spread into the `Pressable`'s
+ * own style with the same radius the child uses; a no-op off Android, and not
+ * needed for `borderless` ripples, which are meant to escape their bounds.
+ */
+export function rippleClip(radius: number | Record<string, number>) {
+  if (!IS_ANDROID) return undefined
+  const corners = typeof radius === 'number' ? { borderRadius: radius } : radius
+  return { ...corners, overflow: 'hidden' as const }
+}

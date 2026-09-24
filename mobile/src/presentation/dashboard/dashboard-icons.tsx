@@ -49,6 +49,7 @@ function icon(paths: IconSegment[]) {
 
 export const XIcon = icon([{ d: 'M18 6 6 18' }, { d: 'm6 6 12 12' }])
 export const CircleCheckIcon = icon([{ cx: '12', cy: '12', r: '10' }, { d: 'm9 12 2 2 4-4' }])
+export const CheckIcon = icon([{ d: 'M20 6 9 17l-5-5' }])
 export const BadgeCheckIcon = icon([
   { d: 'M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z' },
   { d: 'm9 12 2 2 4-4' },
@@ -134,6 +135,15 @@ export const ImageIcon = icon([
   { rect: { x: '3', y: '3', width: '18', height: '18', rx: '2' } },
   { cx: '9', cy: '9', r: '2' },
   { d: 'm21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21' },
+])
+
+// Camera overlays: import a PDF receipt instead of a photo.
+export const FileTextIcon = icon([
+  { d: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z' },
+  { d: 'M14 2v4a2 2 0 0 0 2 2h4' },
+  { d: 'M10 9H8' },
+  { d: 'M16 13H8' },
+  { d: 'M16 17H8' },
 ])
 
 // Settings screen: sign-out button.

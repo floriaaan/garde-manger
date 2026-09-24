@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, SectionList } from 'react-native'
+import { ScrollView, SectionList } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
