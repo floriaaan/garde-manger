@@ -255,7 +255,7 @@ function WaitlistForm({ ui }: { ui: LandingContent['ui']['waitlist'] }) {
     return (
       <p role="status" className="inline-flex h-14 items-center gap-3 rounded-full bg-black/22 px-7 font-semibold text-white">
         <CheckIcon aria-hidden className="size-5 text-soon-on-dark" strokeWidth={3} />
-        {ui.success}
+        {mutation.data.alreadySubscribed ? ui.alreadySubscribed : ui.success}
       </p>
     )
   }

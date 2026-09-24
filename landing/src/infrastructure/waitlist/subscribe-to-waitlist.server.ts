@@ -8,6 +8,4 @@ export const subscribeToWaitlistServerFn = createServerFn({ method: 'POST' })
     if (typeof email !== 'string' || !EMAIL_RE.test(email)) throw new Error('Invalid email')
     return email
   })
-  .handler(async ({ data: email }) => {
-    insertWaitlistEmail(email)
-  })
+  .handler(async ({ data: email }) => insertWaitlistEmail(email))

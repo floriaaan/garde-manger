@@ -20,9 +20,10 @@ function getDb(): DatabaseSync {
   return db
 }
 
-/** Idempotent: re-submitting the same email is a no-op, not an error. */
-export function insertWaitlistEmail(email: string): void {
-  getDb()
+/** Idempotent: re-submitting the same email is a no-op, not an error — the caller learns which happened. */
+export function insertWaitlistEmail(email: string): { alreadySubscribed: boolean } {
+  const result = getDb()
     .prepare('INSERT OR IGNORE INTO waitlist_email (email) VALUES (?)')
     .run(email.trim().toLowerCase())
+  return { alreadySubscribed: result.changes === 0 }
 }

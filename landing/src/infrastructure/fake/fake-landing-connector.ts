@@ -36,6 +36,9 @@ export class FakeLandingConnector implements LandingConnector {
   }
 
   async subscribeToWaitlist(email: string) {
-    this.subscribed.add(email.trim().toLowerCase())
+    const normalized = email.trim().toLowerCase()
+    const alreadySubscribed = this.subscribed.has(normalized)
+    this.subscribed.add(normalized)
+    return { alreadySubscribed }
   }
 }

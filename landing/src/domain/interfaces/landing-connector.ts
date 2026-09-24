@@ -8,6 +8,6 @@ export interface LandingConnector {
   /** `null` when the instance has not opted in to public stats (backend 404). */
   getInstanceStats(): Promise<InstanceStats | null>
   getProjectInfo(): Promise<ProjectInfo>
-  /** Throws on an invalid email; re-submitting the same one is a silent no-op. */
-  subscribeToWaitlist(email: string): Promise<void>
+  /** Throws on an invalid email. `alreadySubscribed` lets the UI hint at a repeat signup without treating it as an error. */
+  subscribeToWaitlist(email: string): Promise<{ alreadySubscribed: boolean }>
 }

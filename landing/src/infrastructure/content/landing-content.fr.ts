@@ -142,6 +142,7 @@ export const landingContentFr: LandingContent = {
       sending: 'Envoi…',
       success: 'C’est noté ! On te prévient à la sortie des apps.',
       error: 'Ça n’a pas marché — réessaie dans un instant.',
+      alreadySubscribed: 'Déjà noté, cet email est sur la liste.',
     },
     stats: {
       heading: 'Déjà dans les cuisines',

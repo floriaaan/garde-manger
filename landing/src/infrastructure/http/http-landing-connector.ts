@@ -61,7 +61,7 @@ export class HttpLandingConnector implements LandingConnector {
     }
   }
 
-  async subscribeToWaitlist(email: string): Promise<void> {
-    await subscribeToWaitlistServerFn({ data: email })
+  async subscribeToWaitlist(email: string) {
+    return subscribeToWaitlistServerFn({ data: email })
   }
 }

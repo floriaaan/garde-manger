@@ -142,6 +142,7 @@ export const landingContentEn: LandingContent = {
       sending: 'Sending…',
       success: 'Got it! We’ll let you know when the apps are out.',
       error: 'Something went wrong — try again in a moment.',
+      alreadySubscribed: 'Already on the list with that email.',
     },
     stats: {
       heading: 'Already in kitchens',
