@@ -98,7 +98,7 @@ export function PulseDots({
       // parent that sized itself to the dots at rest.
       paddingVertical={RISE}
       accessible
-      accessibilityRole="progressbar"
+      role="progressbar"
       accessibilityLabel={label}
     >
       {colors.map((color, index) => (

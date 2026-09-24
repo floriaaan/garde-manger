@@ -338,7 +338,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
         height={8}
         borderRadius={4}
         overflow="hidden"
-        accessibilityRole="progressbar"
+        role="progressbar"
         accessibilityValue={{ min: 0, max: access.limit, now: access.used }}
         backgroundColor={hexToRgba(palette.ink, 0.22)}>
         <YStack

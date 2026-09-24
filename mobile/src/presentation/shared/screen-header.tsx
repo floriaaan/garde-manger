@@ -63,7 +63,7 @@ export function ScreenHeader({
         <YStack flex={1}>
           {/* The screen's name is a heading, and a screen reader's rotor is
               how a non-visual user finds their place on a long list. */}
-          <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={1} accessibilityRole="header">
+          <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={1} role="heading">
             {title}
           </Text>
           {subtitle ? (

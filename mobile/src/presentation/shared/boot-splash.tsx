@@ -123,7 +123,7 @@ export function BootSplash() {
             <Image source={mascotIllustration} style={{ width: 220, height: 220 }} resizeMode="contain" accessibilityLabel="" />
           </Animated.View>
         </YStack>
-        <Text fontFamily={brandFont} fontSize={34} fontWeight="800" letterSpacing={3} color={palette.ink} accessibilityRole="header">
+        <Text fontFamily={brandFont} fontSize={34} fontWeight="800" letterSpacing={3} color={palette.ink} role="heading">
           GARDE-MANGER
         </Text>
         {/* Loading is over once the wait is declared stalled: only a retry in flight brings the dots back. */}
