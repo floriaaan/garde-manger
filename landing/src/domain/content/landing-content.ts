@@ -59,7 +59,7 @@ export interface LandingUi {
   featuresHeading: string
   /** sr-only suffix after the GitHub star count in the hero eyebrow. */
   starsSuffix: string
-  waitlist: { label: string; submit: string; sending: string; success: string }
+  waitlist: { label: string; submit: string; sending: string; success: string; error: string }
   stats: {
     heading: string
     subtitle: string

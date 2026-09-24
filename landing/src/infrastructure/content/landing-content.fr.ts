@@ -141,6 +141,7 @@ export const landingContentFr: LandingContent = {
       submit: 'Me prévenir',
       sending: 'Envoi…',
       success: 'C’est noté ! On te prévient à la sortie des apps.',
+      error: 'Ça n’a pas marché — réessaie dans un instant.',
     },
     stats: {
       heading: 'Déjà dans les cuisines',

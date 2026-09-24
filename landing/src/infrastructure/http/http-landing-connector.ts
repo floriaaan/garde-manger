@@ -3,6 +3,7 @@ import type { InstanceStats } from '../../domain/instance/instance-stats.js'
 import type { ProjectInfo } from '../../domain/project/project-info.js'
 import type { Locale } from '../../domain/content/landing-content.js'
 import { LANDING_CONTENT } from '../content/landing-content.js'
+import { subscribeToWaitlistServerFn } from '../waitlist/subscribe-to-waitlist.server.js'
 
 export interface HttpLandingConnectorConfig {
   /** Backend base URL, without trailing slash. */
@@ -58,5 +59,9 @@ export class HttpLandingConnector implements LandingConnector {
       license: repo.license?.spdx_id ?? null,
       latestVersion: release?.tag_name ?? null,
     }
+  }
+
+  async subscribeToWaitlist(email: string): Promise<void> {
+    await subscribeToWaitlistServerFn({ data: email })
   }
 }

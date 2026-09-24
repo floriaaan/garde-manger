@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowUpRightIcon, CheckIcon, PlusIcon, SmartphoneIcon, SparklesIcon } from 'lucide-react'
 import type { LandingContent, Offer } from '../../domain/content/landing-content.js'
+import { useSubscribeToWaitlistMutation } from '../../application/waitlist/subscribe-to-waitlist.mutation.js'
 import { Button } from '../ui/button.js'
 import { cn } from '../ui/cn.js'
 import { illustrationSrc } from './illustration.js'
@@ -241,18 +242,16 @@ function OfferCta({
   )
 }
 
-/** Fake waitlist: nothing is sent yet, the submit only simulates it. */
 function WaitlistForm({ ui }: { ui: LandingContent['ui']['waitlist'] }) {
-  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
+  const [email, setEmail] = useState('')
+  const mutation = useSubscribeToWaitlistMutation()
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setStatus('sending')
-    // ponytail: fake submit, wire to a real endpoint when the hosted offer opens
-    setTimeout(() => setStatus('done'), 900)
+    mutation.mutate(email)
   }
 
-  if (status === 'done') {
+  if (mutation.isSuccess) {
     return (
       <p role="status" className="inline-flex h-14 items-center gap-3 rounded-full bg-black/22 px-7 font-semibold text-white">
         <CheckIcon aria-hidden className="size-5 text-soon-on-dark" strokeWidth={3} />
@@ -261,22 +260,31 @@ function WaitlistForm({ ui }: { ui: LandingContent['ui']['waitlist'] }) {
     )
   }
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
-      <label className="sr-only" htmlFor="waitlist-email">
-        {ui.label}
-      </label>
-      <input
-        id="waitlist-email"
-        type="email"
-        required
-        autoComplete="email"
-        placeholder={ui.label}
-        disabled={status === 'sending'}
-        className="h-14 w-64 rounded-full bg-white/15 px-6 text-white placeholder:text-white/60 focus-visible:outline-2 focus-visible:outline-white"
-      />
-      <Button type="submit" size="lg" disabled={status === 'sending'}>
-        {status === 'sending' ? ui.sending : ui.submit}
-      </Button>
+    <form onSubmit={onSubmit} className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="sr-only" htmlFor="waitlist-email">
+          {ui.label}
+        </label>
+        <input
+          id="waitlist-email"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder={ui.label}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={mutation.isPending}
+          className="h-14 w-64 rounded-full bg-white/15 px-6 text-white placeholder:text-white/60 focus-visible:outline-2 focus-visible:outline-white"
+        />
+        <Button type="submit" size="lg" disabled={mutation.isPending}>
+          {mutation.isPending ? ui.sending : ui.submit}
+        </Button>
+      </div>
+      {mutation.isError && (
+        <p role="alert" className="text-sm font-semibold text-white/85">
+          {ui.error}
+        </p>
+      )}
     </form>
   )
 }
