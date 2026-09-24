@@ -77,7 +77,7 @@ function SectionLabel({ palette, marginTop, children }: { palette: SoftPalette; 
       textTransform="uppercase"
       color={palette.inkSecondary}
       marginTop={marginTop}
-      accessibilityRole="header"
+      role="heading"
     >
       {children}
     </Text>

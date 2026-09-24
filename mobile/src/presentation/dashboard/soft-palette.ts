@@ -164,7 +164,8 @@ const light: SoftPalette = {
   gradientTop: '#E9F6D8',
   gradientBottom: '#FFFFFF',
   ink: '#16211A',
-  inkSecondary: '#6B7280',
+  // #6B7280 read 4.29:1 on `gradientTop`, under AA for the 13px header subtitles sitting there.
+  inkSecondary: '#636A78',
   // Kept dark on purpose — this is the hero card's "sole high-contrast
   // block" (and the auth screens', and status text). Only the *layout
   // surround* (below) got the "too dark, want near-white" softening; the

@@ -583,7 +583,7 @@ function LibraryControls({
           which turned a place into a readout the eye had to re-parse; the count
           lives in the pinned filter bar now, where it can be acted on. */}
       <YStack gap="$1" marginBottom="$3">
-        <Text fontSize={20} fontWeight="800" color={palette.ink} accessibilityRole="header">
+        <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
           Toutes les recettes
         </Text>
         {/* Only when the band above is absent. Printed in both places the two

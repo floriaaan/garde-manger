@@ -8,11 +8,10 @@ export default function RecipesLayout() {
           composer rather than to a recipe with the id "generate". Modal
           presentation, same as the receipt scanner: it is a self-contained
           sub-task with one way out. */}
-      {/* `gestureEnabled: false` — the composer confirms before discarding an
-          unsaved wish (DESIGN.md requires it for any unsaved form), and the
-          swipe-down dismiss is the one way out that skipped the confirmation.
-          "Fermer" and the Android back button both route through it. */}
-      <Stack.Screen name="generate" options={{ presentation: 'modal', gestureEnabled: false }} />
+      {/* Swipe-down stays on: the composer guards an unsaved wish with
+          `usePreventRemove`, which catches the swipe, the Android back button
+          and "Fermer" alike — an empty sheet just closes, as iOS expects. */}
+      <Stack.Screen name="generate" options={{ presentation: 'modal' }} />
       <Stack.Screen name="[id]" />
     </Stack>
   )

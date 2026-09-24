@@ -76,7 +76,7 @@ export function ProgressBar({
       overflow="hidden"
       onLayout={(event: { nativeEvent: { layout: { width: number } } }) => setWidth(event.nativeEvent.layout.width)}
       accessible
-      accessibilityRole="progressbar"
+      role="progressbar"
       accessibilityLabel={determinate ? `${label} : ${value} sur ${total}` : label}
       accessibilityValue={determinate ? { min: 0, max: total, now: value } : undefined}
     >

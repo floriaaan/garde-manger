@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
@@ -8,9 +8,20 @@ import { ThemeProvider } from '../shared/theme-provider.js'
 import { RecipeGenerateScreen } from './recipe-generate-screen.js'
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), back: jest.fn(), dismiss: jest.fn() },
+  router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), back: jest.fn(), dismiss: jest.fn(), canDismiss: () => true },
   useFocusEffect: jest.fn(),
 }))
+
+const mockPreventRemove = jest.fn()
+jest.mock('expo-router/react-navigation', () => ({
+  usePreventRemove: (prevent: boolean, callback: () => void) => mockPreventRemove(prevent, callback),
+}))
+
+/** What the latest render told navigation: guard the sheet, and what to do when a leave is caught. */
+function lastPreventRemove(): { prevent: boolean; onLeave: () => void } {
+  const [prevent, onLeave] = mockPreventRemove.mock.calls.at(-1)!
+  return { prevent, onLeave }
+}
 
 // `aiLatencyMs: 0` throughout: this suite tests the composer's wiring, not
 // the fake's simulated thinking time — which is long enough to outlast
@@ -240,16 +251,16 @@ test('every chip announces the group it belongs to, not just its own word', asyn
   expect(screen.getByText('15 min')).toBeTruthy()
 })
 
-test('a pantry chip is a control, not a caption — tapping it builds the recipe around that product', async () => {
+test('a pantry product card is a control, not a caption — tapping it builds the recipe around that product', async () => {
   const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
   const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
   renderComposer(connector)
 
-  const chips = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
-  const firstChip = chips[0]!
-  expect(firstChip.props.accessibilityState).toMatchObject({ selected: false })
+  const cards = await waitFor(() => screen.getAllByTestId(/^recipes-pin-/))
+  const firstCard = cards[0]!
+  expect(firstCard.props.accessibilityState).toMatchObject({ selected: false })
 
-  fireEvent.press(firstChip)
+  fireEvent.press(firstCard)
   await waitFor(() =>
     expect(screen.getAllByTestId(/^recipes-pin-/)[0]!.props.accessibilityState).toMatchObject({ selected: true }),
   )
@@ -259,12 +270,15 @@ test('a pantry chip is a control, not a caption — tapping it builds the recipe
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
 })
 
-test('the pantry search narrows the chips to the typed name, not just the nearest few', async () => {
+test('the pantry offers the three nearest products first, and "Voir tout" opens the rest with a search', async () => {
   renderComposer()
 
   await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
-  expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
+  expect(screen.getAllByTestId(/^recipes-pin-/)).toHaveLength(3)
+  expect(screen.queryByTestId('recipes-pin-fake-product-3')).toBeNull()
+  expect(screen.queryByTestId('recipes-pantry-search')).toBeNull()
 
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
   fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'basmati')
 
   await waitFor(() => {
@@ -276,10 +290,56 @@ test('the pantry search narrows the chips to the typed name, not just the neares
 test('a pantry search with no match says so instead of showing an empty card', async () => {
   renderComposer()
 
-  await waitFor(() => expect(screen.getByTestId('recipes-pantry-search')).toBeTruthy())
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
   fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'saucisson')
 
   await waitFor(() => expect(screen.getByText('Aucun produit ne correspond à « saucisson ».')).toBeTruthy())
+})
+
+test('a product picked from "Voir tout" stays in the short list, and the fold counts it', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
+  fireEvent.press(screen.getByTestId('recipes-pin-fake-product-3'))
+  fireEvent.press(screen.getByTestId('recipes-pantry-less'))
+
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-pin-fake-product-3').props.accessibilityState).toMatchObject({ selected: true }),
+  )
+
+  // Folded, the header says how many are picked instead of how many exist.
+  fireEvent.press(screen.getByTestId('recipes-cooking-from-toggle'))
+  await waitFor(() =>
+    expect(screen.getByTestId('recipes-cooking-from-toggle').props.accessibilityLabel).toBe('Sous la main, 1 choisi'),
+  )
+})
+
+test('an empty sheet lets the system back and swipe leave freely', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
+
+  expect(lastPreventRemove().prevent).toBe(false)
+})
+
+test('a leave through back or swipe with an unsaved wish asks first, like "Fermer"', async () => {
+  renderComposer()
+
+  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
+  fireEvent.changeText(screen.getByTestId('recipes-wish'), 'un gratin')
+
+  expect(lastPreventRemove().prevent).toBe(true)
+  const { onLeave } = lastPreventRemove()
+  await act(async () => onLeave())
+
+  await waitFor(() => expect(screen.getByTestId('recipes-discard-confirm')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipes-discard-confirm'))
+
+  // Released before dismissing, or the guard would catch its own exit.
+  await waitFor(() => expect(router.dismiss).toHaveBeenCalled())
+  expect(lastPreventRemove().prevent).toBe(false)
 })
 
 test('the portions chip that matches the foyer says so, instead of making them count', async () => {

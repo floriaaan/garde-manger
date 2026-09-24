@@ -296,10 +296,10 @@ export function WelcomeScreen({ onDone }: { onDone: () => void }) {
                 fight the height tween the same way. */}
             <Animated.View style={hasMeasuredText ? { height: textHeight, overflow: 'hidden' } : undefined}>
               <Animated.View onLayout={onMeasureText} style={{ opacity: contentOpacity, gap: 8 }}>
-                <Text fontSize={44} fontWeight="900" lineHeight={46 * fontScale} letterSpacing={-1} color={palette.onDark}>
+                <Text fontSize={44} fontWeight="900" lineHeight={52 * fontScale} maxFontSizeMultiplier={MAX_FONT_SCALE} letterSpacing={-1} color={palette.onDark}>
                   {page.title}
                 </Text>
-                <Text fontSize={14} fontWeight="500" lineHeight={20 * fontScale} color={palette.onDarkSecondary}>
+                <Text fontSize={14} fontWeight="500" lineHeight={20 * fontScale} maxFontSizeMultiplier={MAX_FONT_SCALE} color={palette.onDarkSecondary}>
                   {page.subtitle}
                 </Text>
               </Animated.View>

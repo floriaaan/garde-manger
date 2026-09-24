@@ -178,11 +178,11 @@ export function HouseholdScreen() {
           other screen) — the custom household name still needs to be shown
           somewhere, to every member, not just the owner viewing the invite
           card below. */}
-      {/* `accessibilityRole="header"`: VoiceOver/TalkBack's heading rotor
+      {/* `role="heading"`: VoiceOver/TalkBack's heading rotor
           picks this up alongside the screen's own title instead of reading
           it as an anonymous text block unrelated to "Foyer" above it
           (2026-09-10 audit). */}
-      <Text testID="household-name" fontSize={13} fontWeight="600" color={palette.inkSecondary} accessibilityRole="header">
+      <Text testID="household-name" fontSize={13} fontWeight="600" color={palette.inkSecondary} role="heading">
         {data.name}
       </Text>
 

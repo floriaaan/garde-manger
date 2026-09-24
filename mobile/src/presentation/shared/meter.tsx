@@ -43,7 +43,7 @@ export function Meter({
         borderRadius={999}
         backgroundColor={palette.freshBg}
         overflow="hidden"
-        accessibilityRole="progressbar"
+        role="progressbar"
         accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped) }}
         accessibilityLabel={`${label} : ${Math.round(clamped)}%`}
       >

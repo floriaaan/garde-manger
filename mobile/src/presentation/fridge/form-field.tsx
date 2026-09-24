@@ -38,6 +38,7 @@ export function FormField({
   hint,
   error,
   icon,
+  surface = 'ground',
 }: {
   testID: string
   label: string
@@ -52,9 +53,16 @@ export function FormField({
   error?: string | null
   /** Small glyph beside the label — `(color) => <TagIcon size={13} color={color} />`. */
   icon?: (color: string) => ReactNode
+  /**
+   * What the field sits on. `ground` (default) fills `cream`; `card` is a field
+   * *on* a `cream` card, which a `cream` fill would erase — it takes the
+   * `creamPill` fill and its hairline instead.
+   */
+  surface?: 'ground' | 'card'
 }) {
   const [focused, setFocused] = useState(false)
-  const borderColor = error ? palette.expired : focused ? palette.accentLime : 'transparent'
+  const idleBorder = surface === 'card' ? palette.creamPillEdge : 'transparent'
+  const borderColor = error ? palette.expired : focused ? palette.accentLime : idleBorder
 
   return (
     <YStack gap="$2">
@@ -83,7 +91,7 @@ export function FormField({
           paddingVertical: 10,
           fontSize: 15,
           color: palette.ink,
-          backgroundColor: palette.cream,
+          backgroundColor: surface === 'card' ? palette.creamPill : palette.cream,
           borderWidth: 2,
           borderColor,
         }}

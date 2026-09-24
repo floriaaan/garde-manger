@@ -5,6 +5,7 @@ import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { KeyboardAvoidingView, Platform } from 'react-native'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
+import { CloseButton } from '../shared/close-button.js'
 import { FormCard } from '../shared/form-card.js'
 import { Chip } from '../shared/chip.js'
 import { AuthButton } from '../identity/auth-button.js'
@@ -115,7 +116,14 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
           palette={palette}
           icon={(color) => <ShoppingCartIcon size={19} color={color} />}
           title={props.mode === 'create' ? 'Ajouter un article' : "Modifier l'article"}
-          onBack={() => router.back()}
+          // Adding is a sheet (`shopping-list/_layout.tsx`), so it closes;
+          // editing is still pushed, so it goes back.
+          onBack={props.mode === 'create' ? undefined : () => router.back()}
+          trailing={
+            props.mode === 'create' ? (
+              <CloseButton testID="shopping-item-close" palette={palette} onPress={() => router.back()} />
+            ) : null
+          }
         />
       }
     >

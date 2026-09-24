@@ -40,7 +40,7 @@ test('an empty history offers the scanner instead of ending the walk', async () 
 
   fireEvent.press(screen.getByTestId('receipts-empty-scan'))
 
-  expect(router.navigate).toHaveBeenCalledWith('/(tabs)/scan')
+  expect(router.push).toHaveBeenCalledWith('/scanner')
 })
 
 test('an unreadable history says so instead of reporting zero tickets', async () => {

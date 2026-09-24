@@ -373,7 +373,7 @@ export function TonightRail({
             draws it, tracking included (there is none). At 15 it was the same
             size and weight as a library row's title, so the screen's two halves
             had no break between them. */}
-        <Text fontSize={20} fontWeight="800" color={palette.ink} accessibilityRole="header">
+        <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
           Ce soir
         </Text>
         {/* The disclosure sits here, once, rather than on every card: the

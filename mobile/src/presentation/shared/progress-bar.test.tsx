@@ -20,12 +20,12 @@ test('determinate: announces its progress to assistive tech', async () => {
   await renderBar({ value: 3, total: 5 })
 
   const bar = screen.getByTestId('bar')
-  expect(bar.props.accessibilityRole).toBe('progressbar')
+  expect(bar.props.role).toBe('progressbar')
   expect(bar.props.accessibilityValue).toMatchObject({ min: 0, max: 5, now: 3 })
 })
 
 test('indeterminate: still a progressbar, without a value', async () => {
   await renderBar({})
 
-  expect(screen.getByTestId('bar').props.accessibilityRole).toBe('progressbar')
+  expect(screen.getByTestId('bar').props.role).toBe('progressbar')
 })

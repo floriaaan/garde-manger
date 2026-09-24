@@ -220,6 +220,7 @@ export function ShoppingListScreen() {
           <PillButton
             testID="shopping-list-empty-add"
             label="Ajouter un article"
+            icon={(color) => <PlusIcon size={14} color={color} />}
             onPress={() => router.push('/(tabs)/shopping-list/new')}
             palette={palette}
             centered

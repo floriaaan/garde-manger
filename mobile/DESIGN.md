@@ -5,7 +5,7 @@ colors:
   ground-mint: "#E9F6D8"
   ground-white: "#FFFFFF"
   ink: "#16211A"
-  ink-secondary: "#6B7280"
+  ink-secondary: "#636A78"
   hero-mocha: "#6B5642"
   hero-mocha-text: "#FFFFFF"
   on-dark: "#FFFFFF"
@@ -62,7 +62,7 @@ typography:
     fontFamily: "System sans-serif"
     fontSize: "44px"
     fontWeight: 900
-    lineHeight: "46px"
+    lineHeight: "52px"
     letterSpacing: "-1px"
   title:
     fontFamily: "System sans-serif"
@@ -154,7 +154,7 @@ Warm and near-white by design; color is spent deliberately (lime for action, one
 - **Ground Mint → White** (`#E9F6D8` → `#FFFFFF`): the mobile background, a soft off-center radial blob (`BlobBackground`), never a flat top-to-bottom bar.
 - **Layout Surface** (`#EEE6DC`): the tablet/desktop layout surround and sidebar — near-white with a warm-brown tint, always a visible step darker than the content card so the "mat around a print" effect reads.
 - **`cream-pill` is the pill that sits *on* a `cream` card** (`#FFFFFF` light, `#3A3324` dark). Not `cream` itself, which would be invisible on the card, and never `gradientBottom`: that token is the page and content-card ground, so in dark mode a `gradientBottom` pill (`#120D08`) on a `cream` card (`#241F17`) reads as a hole punched through the row rather than a chip drawn on it. The relationship, not the hex, is the rule — lighter than the card it sits on, in both modes. In light mode that separation is only 1.08:1, because every darker fill drops the pill's own label under 4.5:1 — so `cream-pill-edge` (`#C9BEA8` light, `#6A5F47` dark) carries a 1px hairline of the label's ink instead, ~1.7:1 light and ~2.0:1 dark. That hairline is a control-sized mark, not an outlined surface: the border ban below is about containers.
-- **Ink** (`#16211A`) / **Ink Secondary** (`#6B7280`): primary and secondary text on near-white grounds. Secondary text sitting on a *colored* card (cream/lavender/mint-pale) is never this flat gray — it's tinted from that card's own hue instead (`#7A6B47` on cream, `#635B85` on lavender, `#3D7A57` on mint-pale).
+- **Ink** (`#16211A`) / **Ink Secondary** (`#636A78`; was `#6B7280`, 4.29:1 on the mint `gradientTop`, under AA): primary and secondary text on near-white grounds. Secondary text sitting on a *colored* card (cream/lavender/mint-pale) is never this flat gray — it's tinted from that card's own hue instead (`#7A6B47` on cream, `#635B85` on lavender, `#3D7A57` on mint-pale).
 - **Cream** (`#FDF6E8`) / **Lavender** (`#EFEAFB`) / **Mint Pale** (`#E1F3E6`): the three pastel stat-card backgrounds, always used together as a set of three, never alone.
 
 ### Status
@@ -193,7 +193,7 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 **Character:** Hierarchy is built on size and weight only — never color. A label is always small/regular/secondary-toned above; a value is always larger/bold/ink-toned below.
 
 ### Hierarchy
-- **Onboarding Display** (900, 44px, 46px line-height, -1px tracking): the pre-auth welcome screen's headline only — the one screen in the app that is a single decisive moment rather than a dense in-app view, so it earns a size above the in-app `display` ceiling rather than reusing it undersized. Sits inside the welcome screen's own hero panel, never loose over the photo.
+- **Onboarding Display** (900, 44px, 52px line-height, -1px tracking): the pre-auth welcome screen's headline only — the one screen in the app that is a single decisive moment rather than a dense in-app view, so it earns a size above the in-app `display` ceiling rather than reusing it undersized. Sits inside the welcome screen's own hero panel, never loose over the photo.
 - **Display** (800, 24px, 30px line-height): the hero headline ("3 produits à surveiller").
 - **Title** (800, 20px): screen/card titles ("Content de te revoir", household name).
 - **Value** (800, 22px): stat-card numbers (StatCard's `value`).
@@ -256,7 +256,7 @@ Hybrid: flat color fields for status/pastel surfaces, wide/soft/low-opacity shad
 
 ### Shadow Vocabulary
 - **Card-float** (`shadowColor:'#0F2B1D', offset:{0,10}, opacity:0.1, radius:18-20`): stat cards, the identity cards.
-- **List-container** (`shadowColor:'#0F2B1D', offset:{0,8}, opacity:0.06, radius:14`): the lightest of the set — a white panel that holds rows rather than a card that floats. The dashboard's "À consommer en premier" preview and its `ReceiptsRow`, the composer's "On part de" card.
+- **List-container** (`shadowColor:'#0F2B1D', offset:{0,8}, opacity:0.06, radius:14`): the lightest of the set — a white panel that holds rows rather than a card that floats. The dashboard's "À consommer en premier" preview and its `ReceiptsRow`, the composer's `CollapsibleCard`s ("Sous la main", "Affiner") — filled `cream`, never `gradientBottom` (the ground itself, invisible in dark mode). Anything sitting on one of those cards (`PantryProductCard`, `FormField surface="card"`) takes `creamPill` + a 1px `creamPillEdge` hairline and no shadow of its own.
 - **Hero-lift** (`shadowColor:'#0F2B1D', offset:{0,16}, opacity:0.22, radius:28`): the hero card, NavCards — heavier than card-float because these carry more visual weight.
 - **Frame-lift** (`shadowColor:'#3A2E20', offset:{0,10}, opacity:0.16, radius:22`): the desktop content-card-inside-frame shadow — warmer shadow color than the others (`#3A2E20` vs `#0F2B1D`) because it sits against the warm `layoutSurface`, not the mint ground.
 - **FAB-lift** (`shadowColor:'#0F2B1D', offset:{0,10}, opacity:0.28, radius:16`): the floating action button, the most elevated single element on the mobile screen.
@@ -370,7 +370,7 @@ Owned entirely by `AppShell` (see Layout) — no screen wires its own nav chrome
 - **Do** give a *group label* its own glyph when a screen stacks several groups that ask different questions (the recipe composer's six: repas / temps / régime / cuisine / en cuisine / portions). This is the same argument that put a glyph on `FormField`'s label and on `ScreenHeader` — and it is the exact complement of the ban below: the labels distinguish, the chips inside one group would not.
 - **Do** disclose a placeholder honestly (an unbuilt illustration, an unsent route) — `IllustrationSlot`'s "3D · bientôt" tag exists specifically so an unfinished feature never ships as a silently dead control. The bar rose in 2026-09: a hint is for a genuinely unbuilt feature, never for a control that *could* be wired. "Bientôt disponible" was sitting on the recipe cards, the Recettes FAB and the Courses FAB while every endpoint behind them was already shipped.
 - **Do** give every screen its real loading, empty and error states, and put the next action inside the empty one. `return null` while a query settles is a blank white screen with no chrome and nothing to announce; an empty state that only names the void makes the user find their own way out.
-- **Do** let a screen ask for something only the user knows, and answer the rest itself. The recipe composer marks the Portions chip that matches `household.members.length` with "· ton foyer" instead of asking a household of three to tap "Pour 4" forever, and its "On part de" rows are pressable so a cook can build the recipe around one of their own products — the one control in that form no generic recipe app can offer. A group of chips that re-asks a standing fact is friction the product created by not consulting itself.
+- **Do** let a screen ask for something only the user knows, and answer the rest itself. The recipe composer marks the Portions chip that matches `household.members.length` with "· ton foyer" instead of asking a household of three to tap "Pour 4" forever, and its "Sous la main" product cards are pressable so a cook can build the recipe around one of their own products — the one control in that form no generic recipe app can offer. A group of chips that re-asks a standing fact is friction the product created by not consulting itself.
 - **Do** show the machine's actual input when the user composed it. The composer prints the sentence it will send ("On demandera : « … »") rather than counting the boxes ticked.
 - **Do** confirm anything irreversible through an `ActionSheet` that names the consequence — never by swapping a button in place, which turns an impatient double-tap into a deletion on shared state.
 - **Do** give every screen that reads shared household state a pull-to-refresh, and wire *all* of its queries into it — the foyer is the unit of truth, so any screen can be made stale by someone else's phone.

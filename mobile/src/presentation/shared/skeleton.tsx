@@ -87,7 +87,7 @@ export function Skeleton({
  */
 export function SkeletonGroup({ label = 'Chargement', children }: { label?: string; children: React.ReactNode }) {
   return (
-    <YStack gap="$3" accessible accessibilityLabel={label} accessibilityRole="progressbar">
+    <YStack gap="$3" accessible accessibilityLabel={label} role="progressbar">
       {children}
     </YStack>
   )
