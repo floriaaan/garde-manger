@@ -33,6 +33,6 @@ export default function JoinDeepLink() {
   }, [session.isPending, signedIn, parsed])
 
   if (session.isPending) return null
-  if (!signedIn) return <Redirect href="/(auth)/sign-up" />
+  if (!signedIn) return <Redirect href={{ pathname: '/(auth)/sign-in', params: { mode: 'sign-up' } }} />
   return <Redirect href={parsed ? { pathname: '/(onboarding)', params: { code: parsed } } : '/(onboarding)'} />
 }

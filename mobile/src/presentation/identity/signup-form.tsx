@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { YStack } from '../shared/tamagui-typed.js'
+import zxcvbn from 'zxcvbn'
+import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useSignUpMutation } from '../../application/identity/sign-up.mutation.js'
 import { authErrorMessage } from './auth-error-message.js'
@@ -18,6 +19,9 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const trimmedEmail = email.trim()
   // Not password.trim() — see login-form.tsx's own note.
   const canSubmit = trimmedName.length > 0 && trimmedEmail.length > 0 && password.length > 0
+  const strength = password ? zxcvbn(password, [trimmedName, trimmedEmail]).score : 0
+  const strengthLabels = ['Très faible', 'Faible', 'Moyen', 'Bon', 'Très bon']
+  const strengthColors = [palette.expired, palette.expired, palette.soon, palette.fresh, palette.fresh]
 
   async function handleSubmit() {
     if (!canSubmit) return
@@ -54,8 +58,22 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
         testID="signup-password"
       />
+      {password ? (
+        <YStack gap="$1" accessibilityLabel={`Force du mot de passe : ${strengthLabels[strength]}`}>
+          <XStack gap="$1">
+            {[0, 1, 2, 3, 4].map((segment) => (
+              <YStack key={segment} flex={1} height={5} borderRadius={999} backgroundColor={segment <= strength ? strengthColors[strength] : palette.heroPillFill} />
+            ))}
+          </XStack>
+          <Text fontSize={12} fontWeight="700" color={palette.onDarkSecondary}>
+            {`Force du mot de passe : ${strengthLabels[strength]}`}
+          </Text>
+        </YStack>
+      ) : null}
       {error ? <AuthError message={error} /> : null}
       <AuthButton
         label="S'inscrire"

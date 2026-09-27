@@ -1,5 +1,5 @@
 /**
- * Between `/welcome` and `/(auth)/sign-up` on a first launch — see
+ * Between `/welcome` and the creation tab on a first launch — see
  * `app/welcome.tsx` and `app/server-choice.tsx`. The radio-card + verify/save
  * form itself lives in `ServerChoiceForm` (`../shared/server-choice-form.js`),
  * shared with Réglages' "Changer de serveur" page.

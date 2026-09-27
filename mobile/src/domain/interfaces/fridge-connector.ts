@@ -42,8 +42,12 @@ export interface FridgeConnector {
   signInEmail(email: string, password: string): Promise<Result<Session, ApiError>>
   signUpEmail(email: string, password: string, name: string): Promise<Result<Session, ApiError>>
   signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session, ApiError>>
+  signInApple(identityToken: string): Promise<Result<Session, ApiError>>
+  signInPasskey(): Promise<Result<Session, ApiError>>
+  addPasskey(): Promise<Result<void, ApiError>>
   /** Explicit linking from an authenticated session — the only path the backend allows, cf. account-linking security notes in `instance.ts`. */
   linkSocial(provider: 'pocketid' | 'google'): Promise<Result<void, ApiError>>
+  linkApple(identityToken: string): Promise<Result<void, ApiError>>
   signOut(): Promise<void>
   getHousehold(): Promise<Household | null>
   /**

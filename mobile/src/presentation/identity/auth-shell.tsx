@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
-import { Animated, Easing, KeyboardAvoidingView, PixelRatio, Platform, ScrollView, useWindowDimensions } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Easing, Keyboard, KeyboardAvoidingView, PixelRatio, Platform, ScrollView, useWindowDimensions } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useReduceMotion } from '../shared/hover.js'
 import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
 import { AuthPhotoBackground } from './auth-photo-background.js'
 import { AuthWordmark } from './auth-wordmark.js'
+import { AuthModePager, type AuthMode, type AuthPage } from './auth-mode-pager.js'
 
 // Plain padding here, not `SafeAreaView`'s edges — see the note this used to
 // carry about a suspected native-measurement collapse. That theory did not
@@ -40,18 +41,33 @@ const MAX_FONT_SCALE = 1.6
 export function AuthShell({
   title,
   subtitle,
+  mode,
+  onModeChange,
+  pages,
   children,
 }: {
-  title: string
-  subtitle: string
-  children: ReactNode
+  title?: string
+  subtitle?: string
+  mode?: AuthMode
+  onModeChange?: (mode: AuthMode) => void
+  pages?: { signIn: AuthPage; signUp: AuthPage }
+  children?: ReactNode
 }) {
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
-  const { height: windowHeight } = useWindowDimensions()
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions()
+  const panelWidth = windowWidth >= 768 ? windowWidth / 2 : windowWidth
   const panelMaxHeight = Math.round(windowHeight * 0.78)
   const fontScale = Math.min(PixelRatio.getFontScale(), MAX_FONT_SCALE)
   const [entrance] = useState(() => new Animated.Value(reduceMotion ? 1 : 0))
+  const scrollRef = useRef<ScrollView>(null)
+
+  function changeMode(nextMode: AuthMode) {
+    if (!mode || !onModeChange || nextMode === mode) return
+    Keyboard.dismiss()
+    scrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion })
+    onModeChange(nextMode)
+  }
 
   useEffect(() => {
     if (reduceMotion) return
@@ -75,10 +91,10 @@ export function AuthShell({
         <YStack
           backgroundColor={palette.brandDeep}
           overflow="hidden"
-          style={{ position: 'relative', borderTopLeftRadius: 36, borderTopRightRadius: 20 }}
+          style={{ position: 'relative', borderTopLeftRadius: 36, borderTopRightRadius: 20, width: panelWidth, alignSelf: 'center' }}
         >
           <HeroWarmGlow warm={palette.accentWarm} ground={palette.brandDeep} />
-          <ScrollView keyboardShouldPersistTaps="handled" bounces={false} style={{ maxHeight: panelMaxHeight }}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" bounces={false} style={{ maxHeight: panelMaxHeight }}>
             <Animated.View
               style={{
                 opacity: entrance,
@@ -89,18 +105,29 @@ export function AuthShell({
                 gap: 20,
               }}
             >
-              <YStack gap="$1">
-                <Text fontSize={24} fontWeight="800" lineHeight={30 * fontScale} color={palette.onDark}>
-                  {title}
-                </Text>
-                {/* `body`'s own 14px (DESIGN.md), not a bespoke 13px — this
-                    and the welcome screen's subtitle used to disagree with
-                    each other and with the token both were meant to be. */}
-                <Text fontSize={14} fontWeight="500" lineHeight={20 * fontScale} color={palette.onDarkSecondary}>
-                  {subtitle}
-                </Text>
-              </YStack>
-              {children}
+              {mode && onModeChange && pages ? (
+                <AuthModePager
+                  mode={mode}
+                  onModeChange={changeMode}
+                  pages={pages}
+                  width={panelWidth - 56}
+                  fontScale={fontScale}
+                  reduceMotion={reduceMotion}
+                  palette={palette}
+                />
+              ) : (
+                <>
+                  <YStack gap="$1">
+                    <Text fontSize={24} fontWeight="800" lineHeight={30 * fontScale} color={palette.onDark}>
+                      {title}
+                    </Text>
+                    <Text fontSize={14} fontWeight="500" lineHeight={20 * fontScale} color={palette.onDarkSecondary}>
+                      {subtitle}
+                    </Text>
+                  </YStack>
+                  {children}
+                </>
+              )}
             </Animated.View>
           </ScrollView>
         </YStack>

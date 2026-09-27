@@ -7,7 +7,7 @@ import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 
 /**
- * Full-width pill, lime (primary) or outlined warm-mocha (secondary) — spring
+ * Full-width pill, lime (primary) or a soft filled surface (secondary) — spring
  * hover/press on iOS and web, a bounded Material ripple on Android.
  *
  * While `pending`, the leading slot swaps the button's icon for a spinner and
@@ -40,14 +40,8 @@ export function AuthButton({
   onPress: () => void
   variant?: 'primary' | 'secondary'
   /**
-   * `secondary`'s outline/label defaults to `ink` — correct on the light
-   * card every other caller sits on (settings, receipts, the fridge detail
-   * sheet…), and deliberately theme-stable there (see the comment below).
-   * `on-dark` is for the one caller that doesn't sit on that card at all:
-   * `AuthMethodFooter`'s PocketID button, permanently on the auth shell's
-   * `brandDeep` panel regardless of light/dark mode — `ink` there is
-   * near-black text on a near-black-ish mocha ground. No effect on `primary`,
-   * whose lime fill already reads on either ground.
+   * Secondary buttons use a warm surface on ordinary cards and cream on the
+   * auth shell's dark panel. The primary lime fill remains the clear CTA.
    */
   tone?: 'default' | 'on-dark'
   icon?: ReactNode
@@ -56,7 +50,8 @@ export function AuthButton({
   const palette = useSoftPalette()
   const hover = useHoverPress()
   const isPrimary = variant === 'primary'
-  const secondaryColor = tone === 'on-dark' ? palette.onDark : palette.ink
+  const secondaryColor = tone === 'on-dark' ? palette.accentLimeText : palette.ink
+  const secondaryFill = tone === 'on-dark' ? palette.authMethodSurface : palette.buttonSecondary
   const inert = Boolean(pending || disabled)
   return (
     <Pressable
@@ -87,18 +82,7 @@ export function AuthButton({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          backgroundColor: isPrimary ? palette.accentLime : 'transparent',
-          borderWidth: isPrimary ? 0 : 2,
-          // `ink`, not `brandDeep` — brandDeep (#6B5642) reads fine on the
-          // light card in light mode (~6:1) but drops to ~2.8:1 against
-          // the near-black card in dark mode, since brandDeep is
-          // deliberately identical across themes while the card isn't.
-          // `ink` is already guaranteed high-contrast against the card
-          // (gradientBottom) in both themes — a real bug caught by
-          // actually rendering dark mode, not just computing light-mode
-          // contrast and assuming it carried over. `tone="on-dark"` swaps
-          // this for `onDark` instead, for the one caller not on that card.
-          borderColor: isPrimary ? undefined : secondaryColor,
+          backgroundColor: isPrimary ? palette.accentLime : secondaryFill,
         }}
       >
         {pending ? (

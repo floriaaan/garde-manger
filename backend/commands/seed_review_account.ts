@@ -2,6 +2,7 @@ import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import db from '@adonisjs/lucid/services/db'
 import env from '#start/env'
+import { LucidSubscriptionAdapter } from '#infrastructure/settings/lucid-subscription.adapter'
 import { Email } from '#domain/identity/email.vo'
 import type { Clock } from '#domain/shared/clock.interface'
 import { CreateHousehold } from '#application/identity/create-household.use-case'
@@ -126,17 +127,17 @@ export default class SeedReviewAccount extends BaseCommand {
     const userId = await this.upsertUser(email.value, password)
     const householdId = await this.ensureHousehold(userId)
     await this.resetContent(householdId, userId)
+    await new LucidSubscriptionAdapter().upsert({
+      householdId,
+      payerUserId: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      cancelAtPeriodEnd: false,
+      expiresAt: new Date('2099-12-31T23:59:59Z'),
+    })
 
     this.logger.success(`Review account ready: ${email.value.value} (household ${householdId})`)
-    const exempt = env
-      .get('AI_QUOTA_EXEMPT_HOUSEHOLD_IDS', '')
-      .split(',')
-      .map((id) => id.trim())
-    if (!exempt.includes(householdId)) {
-      this.logger.warning(
-        `Add it to the AI quota exemptions, then restart the API: AI_QUOTA_EXEMPT_HOUSEHOLD_IDS=${householdId}`,
-      )
-    }
+    this.logger.info('Review AI subscription active until 2099-12-31.')
   }
 
   private async upsertUser(email: Email, password: string): Promise<string> {

@@ -20,12 +20,11 @@ function announce(job: Job): void {
   const label = job.kind === 'recipe_generation' ? 'Voir' : 'Relire'
   const suffix = hasPartialFailure(job) ? ' (certaines photos manquent)' : ''
   showToast(outcomeMessage(job) + suffix, 'success', { label, onPress: open })
-  if (job.kind === 'recipe_generation') celebrate()
 }
 
 /**
- * Renderless: the one place that turns a finished job into a toast. A job a
- * screen is watching is skipped — that screen already shows the outcome.
+ * Renderless: celebrates each successful transition once. A watched job
+ * skips the toast because its screen already shows the outcome.
  */
 export function JobHost() {
   const jobs = useJobsQuery().data
@@ -36,6 +35,7 @@ export function JobHost() {
   useEffect(() => {
     if (!jobs) return
     for (const job of findFinishedTransitions(previous.current, jobs)) {
+      if (job.status === 'succeeded') celebrate()
       if (!isJobWatched(job.id)) announce(job)
     }
     previous.current = new Map(jobs.map((job) => [job.id, job]))

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Platform } from 'react-native'
+import * as AppleAuthentication from 'expo-apple-authentication'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -22,11 +24,14 @@ import { useLinkedAccountsQuery } from '../../application/identity/linked-accoun
 import { useAuthMethodsQuery } from '../../application/identity/auth-methods.query.js'
 import { useLinkSocialMutation } from '../../application/identity/link-social.mutation.js'
 import { useDeleteAccountMutation } from '../../application/identity/delete-account.mutation.js'
+import { useConnector } from '../../application/shared/connector-context.js'
+import { isFakeConnector } from '../../application/shared/connector-mode.js'
 
 const PROVIDER_LABELS: Record<string, string> = {
   password: 'Email et mot de passe',
   pocketid: 'PocketID',
   google: 'Google',
+  apple: 'Apple',
   passkey: 'Clé d’accès (passkey)',
 }
 
@@ -42,6 +47,7 @@ function ProviderIcon({ provider, color }: { provider: string; color: string }) 
 }
 
 export function AccountScreen() {
+  const connector = useConnector()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const session = useSessionQuery()
@@ -59,6 +65,12 @@ export function AccountScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
   const [deleteBlockedOpen, setDeleteBlockedOpen] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
+  const [appleAvailable, setAppleAvailable] = useState(false)
+  const [nativePending, setNativePending] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') void AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false))
+  }, [])
 
   const canChangePassword = linkedAccounts.data?.some((a) => a.provider === 'password') ?? false
   const isOwnerOfSharedHousehold = household.data?.role === 'owner' && (household.data?.members.length ?? 0) > 1
@@ -75,6 +87,47 @@ export function AccountScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
+  }
+
+  async function handleLinkApple() {
+    setNativePending(true)
+    try {
+      let identityToken = 'fake'
+      if (!isFakeConnector) {
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+        })
+        if (!credential.identityToken) throw new Error('Apple n’a pas renvoyé de jeton d’identité.')
+        identityToken = credential.identityToken
+      }
+      const result = await connector.linkApple(identityToken)
+      if (!result.ok) showHint(result.error.message, 'error')
+      else {
+        void queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
+        showHint('Compte Apple associé', 'success')
+      }
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes('ERR_REQUEST_CANCELED'))) {
+        showHint(error instanceof Error ? error.message : 'Association Apple impossible.', 'error')
+      }
+    } finally {
+      setNativePending(false)
+    }
+  }
+
+  async function handleAddPasskey() {
+    setNativePending(true)
+    try {
+      const result = await connector.addPasskey()
+      if (!result.ok) {
+        if (result.error.type !== 'ERROR_CEREMONY_ABORTED') showHint(result.error.message, 'error')
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
+        showHint('Clé d’accès ajoutée', 'success')
+      }
+    } finally {
+      setNativePending(false)
+    }
   }
 
   async function handleSaveName(trimmed: string) {
@@ -218,6 +271,12 @@ export function AccountScreen() {
               onPress={() => handleLinkSocial(method.id)}
             />
           ))}
+          {(appleAvailable || isFakeConnector) && authMethods.data?.some((method) => method.id === 'apple' && method.enabled) && !linkedProviders.has('apple') ? (
+            <AuthButton testID="account-link-apple" label="Connecter Apple" variant="secondary" pending={nativePending} onPress={handleLinkApple} />
+          ) : null}
+          {authMethods.data?.some((method) => method.id === 'passkey' && method.enabled) ? (
+            <AuthButton testID="account-add-passkey" label="Ajouter une clé d’accès" variant="secondary" pending={nativePending} onPress={handleAddPasskey} />
+          ) : null}
         </YStack>
 
         <YStack marginTop="$8" gap="$2">

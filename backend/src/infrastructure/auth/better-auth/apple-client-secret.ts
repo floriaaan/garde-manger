@@ -3,8 +3,8 @@ import { createSign } from 'node:crypto'
 /**
  * Sign in with Apple has no static client secret: better-auth wants a JWT,
  * signed ES256 with the `.p8` private key, that Apple accepts for up to six
- * months (docs/adr/0020). Generating it at startup from the key avoids
- * storing a secret that silently expires.
+ * months (docs/adr/0020). Generating it for each Apple auth request avoids
+ * storing a secret that silently expires in a long-running server.
  */
 export interface AppleClientSecretOptions {
   clientId: string

@@ -31,9 +31,10 @@
  * there is no jump the moment animation control takes over.
  */
 import type { ReactNode } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { LayoutChangeEvent } from 'react-native'
-import { Animated, Easing, Pressable, View } from 'react-native'
+import { Animated, Easing, Image, Platform, Pressable, View } from 'react-native'
+import * as AppleAuthentication from 'expo-apple-authentication'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useReduceMotion } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -48,6 +49,10 @@ import { PillButton } from '../shared/pill-button.js'
 import { ArrowLeftIcon } from '../dashboard/dashboard-icons.js'
 import { PocketIdIcon } from './pocket-id-icon.js'
 import { GoogleIcon } from './google-icon.js'
+import { AuthProviderButton } from './auth-provider-button.js'
+import { LockIcon } from '../dashboard/dashboard-icons.js'
+import { useConnector } from '../../application/shared/connector-context.js'
+import { isFakeConnector } from '../../application/shared/connector-mode.js'
 
 type Mode = 'choice' | 'email'
 
@@ -55,13 +60,16 @@ export function AuthMethodFooter({
   emailLabel,
   emailForm,
   onSuccess,
+  allowPasskey = true,
 }: {
   /** The chooser's own e-mail button label — "Continuer avec e-mail" (sign-in), "Créer un compte avec e-mail" (sign-up). */
   emailLabel: string
   /** `<LoginForm .../>` or `<SignupForm .../>` — mounted only once "e-mail" is chosen. */
   emailForm: ReactNode
   onSuccess: () => void
+  allowPasskey?: boolean
 }) {
+  const connector = useConnector()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   const authMethods = useAuthMethodsQuery()
@@ -70,10 +78,23 @@ export function AuthMethodFooter({
   const [everEnteredEmail, setEverEnteredEmail] = useState(false)
   const [height] = useState(() => new Animated.Value(0))
   const [hasMeasured, setHasMeasured] = useState(false)
+  const [appleAvailable, setAppleAvailable] = useState(false)
+  const [pendingNativeProvider, setPendingNativeProvider] = useState<'apple' | 'passkey' | null>(null)
+  const [nativeError, setNativeError] = useState<string | null>(null)
+  const [pendingProvider, setPendingProvider] = useState<'pocketid' | 'google' | null>(null)
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') void AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false))
+  }, [])
 
   const pocketId = authMethods.data?.find((m) => m.id === 'pocketid' && m.enabled)
   const google = authMethods.data?.find((m) => m.id === 'google' && m.enabled)
-  const hasSocial = Boolean(pocketId || google)
+  const apple = authMethods.data?.find((m) => m.id === 'apple' && m.enabled && (appleAvailable || isFakeConnector))
+  const passkey = authMethods.data?.find((m) => m.id === 'passkey' && m.enabled && allowPasskey)
+  const hasSocial = Boolean(pocketId || google || apple || passkey)
+  const compactSocial = [pocketId, google, apple, passkey].filter(Boolean).length > 1
+  const nativePending = pendingNativeProvider !== null
+  const socialBusy = nativePending || signInSocial.isPending
   const socialError = authErrorMessage(signInSocial.error, signInSocial.data, 'Une erreur est survenue lors de la connexion.')
 
   const onMeasure = useCallback(
@@ -97,13 +118,65 @@ export function AuthMethodFooter({
   )
 
   async function handlePocketId() {
-    const result = await signInSocial.mutateAsync({ provider: 'pocketid' })
-    if (result.ok) onSuccess()
+    setPendingProvider('pocketid')
+    try {
+      const result = await signInSocial.mutateAsync({ provider: 'pocketid' })
+      if (result.ok) onSuccess()
+    } finally {
+      setPendingProvider(null)
+    }
   }
 
   async function handleGoogle() {
-    const result = await signInSocial.mutateAsync({ provider: 'google' })
-    if (result.ok) onSuccess()
+    setPendingProvider('google')
+    try {
+      const result = await signInSocial.mutateAsync({ provider: 'google' })
+      if (result.ok) onSuccess()
+    } finally {
+      setPendingProvider(null)
+    }
+  }
+
+  async function handleApple() {
+    if (nativePending) return
+    setNativeError(null)
+    setPendingNativeProvider('apple')
+    try {
+      if (isFakeConnector) {
+        const result = await connector.signInApple('fake')
+        if (result.ok) onSuccess()
+        else setNativeError(result.error.message)
+        return
+      }
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      })
+      if (!credential.identityToken) throw new Error('Apple n’a pas renvoyé de jeton d’identité.')
+      const result = await connector.signInApple(credential.identityToken)
+      if (result.ok) onSuccess()
+      else setNativeError(result.error.message)
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes('ERR_REQUEST_CANCELED'))) {
+        setNativeError(error instanceof Error ? error.message : 'Connexion Apple impossible.')
+      }
+    } finally {
+      setPendingNativeProvider(null)
+    }
+  }
+
+  async function handlePasskey() {
+    if (nativePending) return
+    setNativeError(null)
+    setPendingNativeProvider('passkey')
+    try {
+      const result = await connector.signInPasskey()
+      if (result.ok) onSuccess()
+      else if (result.error.type !== 'ERROR_CEREMONY_ABORTED') setNativeError(result.error.message)
+    } catch (error) {
+      setNativeError(error instanceof Error ? error.message : 'Connexion par clé d’accès impossible.')
+    } finally {
+      setPendingNativeProvider(null)
+    }
   }
 
   function chooseEmail() {
@@ -120,7 +193,80 @@ export function AuthMethodFooter({
             <>
               <AuthDivider label="ou" />
               {socialError ? <AuthError message={socialError} /> : null}
-              {pocketId ? (
+              {nativeError ? <AuthError message={nativeError} /> : null}
+              {compactSocial ? (
+                <View style={{ flexDirection: 'row', width: '100%', gap: 10 }}>
+                  {apple ? (
+                    <AuthProviderButton
+                      label="Continuer avec Apple"
+                      testID="auth-method-apple"
+                      icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 44, height: 44 }} />}
+                      onPress={handleApple}
+                      pending={pendingNativeProvider === 'apple'}
+                      disabled={socialBusy}
+                      surface="white"
+                    />
+                  ) : null}
+                  {google ? (
+                    <AuthProviderButton
+                      label="Continuer avec Google"
+                      testID="auth-method-google"
+                      icon={<GoogleIcon size={24} />}
+                      onPress={handleGoogle}
+                      pending={pendingProvider === 'google'}
+                      disabled={socialBusy}
+                    />
+                  ) : null}
+                  {pocketId ? (
+                    <AuthProviderButton
+                      label="Continuer avec PocketID"
+                      testID="auth-method-pocketid"
+                      icon={<PocketIdIcon size={24} color={palette.accentLimeText} />}
+                      onPress={handlePocketId}
+                      pending={pendingProvider === 'pocketid'}
+                      disabled={socialBusy}
+                    />
+                  ) : null}
+                  {passkey ? (
+                    <AuthProviderButton
+                      label="Utiliser une clé d’accès"
+                      testID="auth-method-passkey"
+                      icon={<LockIcon size={24} color={palette.accentLimeText} />}
+                      onPress={handlePasskey}
+                      pending={pendingNativeProvider === 'passkey'}
+                      disabled={socialBusy}
+                    />
+                  ) : null}
+                </View>
+              ) : apple && isFakeConnector ? (
+                <AuthButton
+                  testID="auth-method-apple"
+                  label="Continuer avec Apple"
+                  pending={nativePending}
+                  onPress={handleApple}
+                  variant="secondary"
+                  tone="on-dark"
+                />
+              ) : apple ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={allowPasskey ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN : AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                  cornerRadius={25}
+                  style={{ height: 50, width: '100%', opacity: nativePending ? 0.6 : 1 }}
+                  onPress={handleApple}
+                />
+              ) : null}
+              {!compactSocial && passkey ? (
+                <AuthButton
+                  testID="auth-method-passkey"
+                  label="Continuer avec une clé d’accès"
+                  pending={nativePending}
+                  onPress={handlePasskey}
+                  variant="secondary"
+                  tone="on-dark"
+                />
+              ) : null}
+              {!compactSocial && pocketId ? (
                 <AuthButton
                   testID="auth-method-pocketid"
                   label={pocketId.label}
@@ -129,10 +275,10 @@ export function AuthMethodFooter({
                   onPress={handlePocketId}
                   variant="secondary"
                   tone="on-dark"
-                  icon={<PocketIdIcon size={18} />}
+                  icon={<PocketIdIcon size={18} color={palette.accentLimeText} />}
                 />
               ) : null}
-              {google ? (
+              {!compactSocial && google ? (
                 <AuthButton
                   testID="auth-method-google"
                   label={google.label}

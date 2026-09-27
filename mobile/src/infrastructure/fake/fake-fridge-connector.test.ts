@@ -19,11 +19,19 @@ test('signInEmail() rejects an empty password', async () => {
   expect(result.ok).toBe(false)
 })
 
-test('getAuthMethods() returns both methods enabled', async () => {
+test('getAuthMethods() offers every supported sign-in method', async () => {
   const connector = new FakeFridgeConnector()
   const methods = await connector.getAuthMethods()
-  expect(methods).toHaveLength(2)
+  expect(methods.map((method) => method.id)).toEqual(['password', 'pocketid', 'google', 'apple', 'passkey'])
   expect(methods.every((m) => m.enabled)).toBe(true)
+})
+
+test('fake account linking records Apple and passkey for the account screen', async () => {
+  const connector = new FakeFridgeConnector()
+  await connector.linkApple('fake')
+  await connector.addPasskey()
+  const providers = (await connector.getLinkedAccounts()).map((account) => account.provider)
+  expect(providers).toEqual(['password', 'pocketid', 'apple', 'passkey'])
 })
 
 test('getShoppingItems() returns the fixture list', async () => {

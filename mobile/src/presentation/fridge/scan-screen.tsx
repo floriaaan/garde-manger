@@ -33,7 +33,7 @@ export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
 
   return (
     <AppShell
-      nav={{ kind: 'stack' }}
+      nav={{ kind: onClose ? 'modal' : 'stack' }}
       header={
         <ScreenHeader
           palette={palette}

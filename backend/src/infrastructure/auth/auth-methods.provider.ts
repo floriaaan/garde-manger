@@ -30,6 +30,7 @@ export class EnvAuthMethodsProvider implements AuthMethodsProvider {
 
     const appleConfigured =
       Boolean(env.get('APPLE_CLIENT_ID', '')) &&
+      Boolean(env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')) &&
       Boolean(env.get('APPLE_TEAM_ID', '')) &&
       Boolean(env.get('APPLE_KEY_ID', '')) &&
       Boolean(env.get('APPLE_PRIVATE_KEY', ''))

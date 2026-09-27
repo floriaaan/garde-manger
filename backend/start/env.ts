@@ -40,14 +40,16 @@ export default await Env.create(new URL('../', import.meta.url), {
   GOOGLE_CLIENT_ID: Env.schema.string.optional(),
   GOOGLE_CLIENT_SECRET: Env.schema.string.optional(),
 
-  // Sign in with Apple (docs/adr/0020) — off until the four are set. The
+  // Sign in with Apple (docs/adr/0020) — off until all five are set. The
   // "client secret" Apple wants isn't a static value: it's a short-lived JWT
-  // signed with APPLE_PRIVATE_KEY, built at startup (cf. instance.ts).
+  // signed with APPLE_PRIVATE_KEY on demand (cf. instance.ts).
   APPLE_CLIENT_ID: Env.schema.string.optional(),
   APPLE_APP_BUNDLE_IDENTIFIER: Env.schema.string.optional(),
   APPLE_TEAM_ID: Env.schema.string.optional(),
   APPLE_KEY_ID: Env.schema.string.optional(),
   APPLE_PRIVATE_KEY: Env.schema.string.optional(),
+  // Play App Signing SHA-256 fingerprint (colon-separated hex) for Android passkeys.
+  ANDROID_APP_SIGNING_SHA256: Env.schema.string.optional(),
 
   DISABLE_PASSWORD_LOGIN: Env.schema.boolean.optional(),
 

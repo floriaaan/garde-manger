@@ -8,6 +8,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
+      "associatedDomains": ["webcredentials:api-gardemanger.floriaaan.fr"],
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
       "infoPlist": {
@@ -56,6 +58,7 @@
         }
       ],
       "expo-web-browser",
+      "expo-apple-authentication",
       "expo-notifications",
       [
         "expo-camera",

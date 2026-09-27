@@ -15,7 +15,7 @@ dans les résultats de recherche : ce sont elles qui comptent.
 1. Sur le serveur officiel, lancer `node ace seed:review-account` le jour même (voir
    `review-notes.md`). Le foyer « Maison Martin » a alors des produits qui périment dans
    1 à 3 jours, un historique et une liste de courses. Le foyer doit être dans
-   `AI_QUOTA_EXEMPT_HOUSEHOLD_IDS` pour que la jauge de quota IA ne s'affiche pas.
+   La commande active elle-même l'abonnement IA du foyer de revue.
 2. Simulateurs **iPhone 17 Pro Max** (ou 16 Pro Max), qui fait 1320 × 2868 en natif,
    et **iPad Pro 13" (M4 ou plus récent)**, qui fait 2064 × 2752. Build de dev ou de
    preview pointant sur le serveur officiel, connectée avec le compte de démonstration.

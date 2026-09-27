@@ -204,6 +204,42 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
   }
 
+  async signInApple(identityToken: string): Promise<Result<Session, ApiError>> {
+    try {
+      const { error } = await authClient.signIn.social({ provider: 'apple', idToken: { token: identityToken } })
+      if (error) return Result.err({ type: error.code ?? 'apple_sign_in_failed', message: error.message ?? 'Connexion Apple impossible.' })
+      const session = await this.getSession()
+      return session ? Result.ok(session) : Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
+    } catch (error) {
+      reportFailure('identity.sign_in_apple', error)
+      return Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
+    }
+  }
+
+  async signInPasskey(): Promise<Result<Session, ApiError>> {
+    try {
+      const { error } = await authClient.signIn.passkey()
+      if (error) return Result.err({ type: error.code ?? 'passkey_sign_in_failed', message: error.message ?? 'Connexion par clé d’accès impossible.' })
+      const session = await this.getSession()
+      return session ? Result.ok(session) : Result.err({ type: 'passkey_sign_in_failed', message: 'Connexion par clé d’accès impossible.' })
+    } catch (error) {
+      reportFailure('identity.sign_in_passkey', error)
+      return Result.err({ type: 'passkey_sign_in_failed', message: 'Connexion par clé d’accès impossible.' })
+    }
+  }
+
+  async addPasskey(): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.passkey.addPasskey()
+      return error
+        ? Result.err({ type: error.code ?? 'passkey_registration_failed', message: error.message ?? 'Création de la clé d’accès impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.add_passkey', error)
+      return Result.err({ type: 'passkey_registration_failed', message: 'Création de la clé d’accès impossible.' })
+    }
+  }
+
   async linkSocial(provider: 'pocketid' | 'google'): Promise<Result<void, ApiError>> {
     try {
       const { error } = await authClient.linkSocial({ provider, callbackURL: '/' })
@@ -214,6 +250,18 @@ export class HttpFridgeConnector implements FridgeConnector {
     } catch (error) {
       reportFailure('identity.link_social', error)
       return Result.err({ type: 'link_failed', message: 'Connexion impossible.' })
+    }
+  }
+
+  async linkApple(identityToken: string): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.linkSocial({ provider: 'apple', idToken: { token: identityToken } })
+      return error
+        ? Result.err({ type: error.code ?? 'apple_link_failed', message: error.message ?? 'Association Apple impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.link_apple', error)
+      return Result.err({ type: 'apple_link_failed', message: 'Association Apple impossible.' })
     }
   }
 
@@ -353,7 +401,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       ])
       if (error || !data) return []
       const accounts: LinkedAccount[] = data.map((account) => ({
-        provider: account.providerId === 'pocketid' || account.providerId === 'google' ? account.providerId : 'password',
+        provider: account.providerId === 'pocketid' || account.providerId === 'google' || account.providerId === 'apple' ? account.providerId : 'password',
         createdAt: new Date(account.createdAt).toISOString(),
       }))
       if ((passkeys.data ?? []).length > 0) {

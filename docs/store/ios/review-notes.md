@@ -29,9 +29,8 @@ La commande (`backend/commands/seed_review_account.ts`) :
 - remplace son contenu par un jeu de données daté par rapport au jour même : 21 produits
   (dont plusieurs qui périment dans 1 à 3 jours et un déjà périmé), 8 produits
   consommés ou jetés dans l'historique, 5 articles sur la liste de courses ;
-- affiche l'id du foyer, à ajouter une fois à `AI_QUOTA_EXEMPT_HOUSEHOLD_IDS`, puis
-  redémarrer le backend. Le foyer n'a alors plus de plafond d'appels IA : le reviewer
-  peut scanner et générer des recettes sans tomber sur le quota gratuit.
+- crée ou renouvelle directement l'abonnement IA du foyer jusqu'au 31 décembre 2099.
+  Le reviewer dispose du quota mensuel abonné pour scanner et générer des recettes.
 
 Relancer la commande juste avant chaque soumission pour que les dates restent
 pertinentes. Elle est idempotente. Elle refuse de tourner si `DISABLE_PASSWORD_LOGIN`

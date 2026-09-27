@@ -31,15 +31,7 @@ const appleAppBundleIdentifier = env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')
 const appleTeamId = env.get('APPLE_TEAM_ID', '')
 const appleKeyId = env.get('APPLE_KEY_ID', '')
 const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')
-const appleConfigured = Boolean(appleClientId && appleTeamId && appleKeyId && applePrivateKey)
-const appleClientSecret = appleConfigured
-  ? buildAppleClientSecret({
-      clientId: appleClientId,
-      teamId: appleTeamId,
-      keyId: appleKeyId,
-      privateKey: applePrivateKey,
-    })
-  : ''
+const appleConfigured = Boolean(appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey)
 
 // WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
 // lifetime — NETWORK_URL is that same "however this backend is actually
@@ -47,6 +39,10 @@ const appleClientSecret = appleConfigured
 // keep working across the LAN-IP-in-dev / real-domain-in-prod split without
 // their own env var.
 const networkUrl = new URL(env.get('NETWORK_URL'))
+const androidFingerprint = env.get('ANDROID_APP_SIGNING_SHA256', '').replaceAll(':', '')
+const androidOrigin = /^[0-9a-fA-F]{64}$/.test(androidFingerprint)
+  ? `android:apk-key-hash:${Buffer.from(androidFingerprint, 'hex').toString('base64')}`
+  : null
 
 /**
  * Unlike arr's OIDC config (hot-reloaded from a settings table), PocketID
@@ -59,6 +55,7 @@ export const auth = betterAuth({
   secret: env.get('BETTER_AUTH_SECRET').release(),
   baseURL: env.get('NETWORK_URL'),
   trustedOrigins: [
+    'gardemanger://',
     ...env
       .get('CORS_ORIGIN', '')
       .split(',')
@@ -172,11 +169,16 @@ export const auth = betterAuth({
             : {}),
           ...(appleConfigured
             ? {
-                apple: {
+                apple: async () => ({
                   clientId: appleClientId,
-                  clientSecret: appleClientSecret,
+                  clientSecret: buildAppleClientSecret({
+                    clientId: appleClientId,
+                    teamId: appleTeamId,
+                    keyId: appleKeyId,
+                    privateKey: applePrivateKey,
+                  }),
                   appBundleIdentifier: appleAppBundleIdentifier || undefined,
-                },
+                }),
               }
             : {}),
         },
@@ -194,7 +196,7 @@ export const auth = betterAuth({
     passkey({
       rpID: networkUrl.hostname,
       rpName: env.get('INSTANCE_NAME', 'Garde-manger'),
-      origin: env.get('NETWORK_URL'),
+      origin: androidOrigin ? [env.get('NETWORK_URL'), androidOrigin] : env.get('NETWORK_URL'),
       schema: {
         passkey: {
           fields: {
