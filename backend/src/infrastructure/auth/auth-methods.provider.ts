@@ -9,7 +9,12 @@ export class EnvAuthMethodsProvider implements AuthMethodsProvider {
 
     if (!env.get('DISABLE_PASSWORD_LOGIN', false)) {
       methods.push(
-        AuthMethod.create({ id: 'password', enabled: true, label: 'Email et mot de passe', resetAvailable: passwordResetAvailable }),
+        AuthMethod.create({
+          id: 'password',
+          enabled: true,
+          label: 'Email et mot de passe',
+          resetAvailable: passwordResetAvailable,
+        }),
       )
     }
 

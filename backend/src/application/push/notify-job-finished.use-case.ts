@@ -3,18 +3,36 @@ import type { PushTokenRepository } from '#domain/push/interfaces/push-token-rep
 import type { PushSender } from '#domain/push/interfaces/push-sender.interface'
 import type { Job } from '#domain/job/job.aggregate'
 
-const MESSAGES: Record<Job['kind'], { success: { title: string; body: string }; failure: { title: string; body: string } }> = {
+const MESSAGES: Record<
+  Job['kind'],
+  { success: { title: string; body: string }; failure: { title: string; body: string } }
+> = {
   receipt_scan: {
-    success: { title: 'Ticket déchiffré 🧾', body: 'Les produits sont prêts. Un coup d’œil avant de les ajouter ?' },
-    failure: { title: 'Le ticket fait de la résistance 🧾', body: 'Je n’ai pas réussi à le lire. Tu peux réessayer depuis les tâches.' },
+    success: {
+      title: 'Ticket déchiffré 🧾',
+      body: 'Les produits sont prêts. Un coup d’œil avant de les ajouter ?',
+    },
+    failure: {
+      title: 'Le ticket fait de la résistance 🧾',
+      body: 'Je n’ai pas réussi à le lire. Tu peux réessayer depuis les tâches.',
+    },
   },
   fridge_scan: {
-    success: { title: 'Frigo exploré 📸', body: 'J’ai repéré des produits. Vérifie ma récolte avant de les ranger.' },
-    failure: { title: 'Le frigo m’a échappé 📸', body: 'Je n’ai pas terminé le scan. Retente depuis les tâches.' },
+    success: {
+      title: 'Frigo exploré 📸',
+      body: 'J’ai repéré des produits. Vérifie ma récolte avant de les ranger.',
+    },
+    failure: {
+      title: 'Le frigo m’a échappé 📸',
+      body: 'Je n’ai pas terminé le scan. Retente depuis les tâches.',
+    },
   },
   recipe_generation: {
     success: { title: 'À table ! 🍽️', body: 'Tes nouvelles idées de recettes t’attendent.' },
-    failure: { title: 'La cuisine prend une pause 🍳', body: 'Je n’ai pas pu créer tes recettes. Réessaie depuis les tâches.' },
+    failure: {
+      title: 'La cuisine prend une pause 🍳',
+      body: 'Je n’ai pas pu créer tes recettes. Réessaie depuis les tâches.',
+    },
   },
 }
 

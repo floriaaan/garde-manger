@@ -247,7 +247,7 @@ export class HttpFridgeConnector implements FridgeConnector {
   async signInPasskey(): Promise<Result<Session, ApiError>> {
     try {
       const { error } = await authClient.signIn.passkey()
-      if (error) return Result.err({ type: error.code ?? 'passkey_sign_in_failed', message: error.message ?? 'Connexion par clé d’accès impossible.' })
+      if (error) return Result.err({ type: 'code' in error ? error.code : 'passkey_sign_in_failed', message: error.message ?? 'Connexion par clé d’accès impossible.' })
       const session = await this.getSession()
       return session ? Result.ok(session) : Result.err({ type: 'passkey_sign_in_failed', message: 'Connexion par clé d’accès impossible.' })
     } catch (error) {
@@ -260,7 +260,7 @@ export class HttpFridgeConnector implements FridgeConnector {
     try {
       const { error } = await authClient.passkey.addPasskey()
       return error
-        ? Result.err({ type: error.code ?? 'passkey_registration_failed', message: error.message ?? 'Création de la clé d’accès impossible.' })
+        ? Result.err({ type: 'code' in error ? error.code : 'passkey_registration_failed', message: error.message ?? 'Création de la clé d’accès impossible.' })
         : Result.ok(undefined)
     } catch (error) {
       reportFailure('identity.add_passkey', error)

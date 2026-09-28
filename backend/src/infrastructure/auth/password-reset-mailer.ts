@@ -24,14 +24,17 @@ export async function sendPasswordResetEmail(to: string, url: string): Promise<v
   if (!transporter) return
   // Better Auth gives the same response for known and unknown addresses.
   // Do not make SMTP latency or delivery failures reveal which.
-  void transporter.sendMail({
-    from,
-    to,
-    subject: 'Réinitialiser ton mot de passe Garde-manger',
-    text: 'Pour choisir un nouveau mot de passe, ouvre ce lien (valable une heure) :\n'
-      + url
-      + "\n\nSi tu n'as rien demandé, ignore ce message.",
-  }).catch((error: unknown) => {
-    logger.error({ err: error }, 'auth.password_reset_email_failed')
-  })
+  void transporter
+    .sendMail({
+      from,
+      to,
+      subject: 'Réinitialiser ton mot de passe Garde-manger',
+      text:
+        'Pour choisir un nouveau mot de passe, ouvre ce lien (valable une heure) :\n' +
+        url +
+        "\n\nSi tu n'as rien demandé, ignore ce message.",
+    })
+    .catch((error: unknown) => {
+      logger.error({ err: error }, 'auth.password_reset_email_failed')
+    })
 }

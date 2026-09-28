@@ -32,7 +32,9 @@ const appleAppBundleIdentifier = env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')
 const appleTeamId = env.get('APPLE_TEAM_ID', '')
 const appleKeyId = env.get('APPLE_KEY_ID', '')
 const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')?.replace(/\\n/g, '\n')
-const appleConfigured = Boolean(appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey)
+const appleConfigured = Boolean(
+  appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey,
+)
 
 // WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
 // lifetime — NETWORK_URL is that same "however this backend is actually
@@ -71,7 +73,10 @@ export const auth = betterAuth({
     enabled: !env.get('DISABLE_PASSWORD_LOGIN', false),
     revokeSessionsOnPasswordReset: true,
     ...(passwordResetAvailable
-      ? { sendResetPassword: ({ user, url }: { user: { email: string }; url: string }) => sendPasswordResetEmail(user.email, url) }
+      ? {
+          sendResetPassword: ({ user, url }: { user: { email: string }; url: string }) =>
+            sendPasswordResetEmail(user.email, url),
+        }
       : {}),
   },
   /**

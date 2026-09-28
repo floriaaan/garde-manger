@@ -41,8 +41,12 @@ export class SendExpiryDigest implements UseCase<{ today: string }, { sent: numb
             expiring.length === 1
               ? 'Un produit à sauver 🥕'
               : `${expiring.length} produits à sauver 🥕`,
-          body: names.join(', ') + (rest > 0 ? ` et ${rest} autre${rest > 1 ? 's' : ''}` : '') +
-            (expiring.length === 1 ? ' approche de sa date. Une idée de repas ?' : ' approchent de leur date. À cuisiner bientôt !'),
+          body:
+            names.join(', ') +
+            (rest > 0 ? ` et ${rest} autre${rest > 1 ? 's' : ''}` : '') +
+            (expiring.length === 1
+              ? ' approche de sa date. Une idée de repas ?'
+              : ' approchent de leur date. À cuisiner bientôt !'),
           data: { route: '/fridge' },
         }))
         const result = await this.sender.send(messages)

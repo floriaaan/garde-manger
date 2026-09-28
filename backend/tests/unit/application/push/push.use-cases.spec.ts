@@ -76,7 +76,10 @@ test.group('NotifyJobFinished', () => {
     )
     assert.equal(sender.sent[0]!.data?.route, '/tasks')
     assert.equal(sender.sent[0]!.title, 'Frigo exploré 📸')
-    assert.equal(sender.sent[0]!.body, 'J’ai repéré des produits. Vérifie ma récolte avant de les ranger.')
+    assert.equal(
+      sender.sent[0]!.body,
+      'J’ai repéré des produits. Vérifie ma récolte avant de les ranger.',
+    )
   })
 
   test('drops tokens the provider reports as dead', async ({ assert }) => {
@@ -117,7 +120,10 @@ test.group('SendExpiryDigest', () => {
     assert.equal(result.sent, 1)
     assert.equal(sender.sent[0]!.to, 't1')
     assert.equal(sender.sent[0]!.title, '4 produits à sauver 🥕')
-    assert.equal(sender.sent[0]!.body, 'Lait, Yaourt, Beurre et 1 autre approchent de leur date. À cuisiner bientôt !')
+    assert.equal(
+      sender.sent[0]!.body,
+      'Lait, Yaourt, Beurre et 1 autre approchent de leur date. À cuisiner bientôt !',
+    )
     assert.sameMembers(tokens.digested, ['t1', 't2'])
   })
 

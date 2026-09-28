@@ -8,7 +8,12 @@ export default class AuthMethodsController {
       const provider = await ctx.containerResolver.make('identity.authMethodsProvider')
       const methods = await new GetAuthMethods(provider).execute()
       ctx.response.json({
-        methods: methods.map((m) => ({ id: m.id, enabled: m.enabled, label: m.label, resetAvailable: m.resetAvailable })),
+        methods: methods.map((m) => ({
+          id: m.id,
+          enabled: m.enabled,
+          label: m.label,
+          resetAvailable: m.resetAvailable,
+        })),
       })
     })
   }

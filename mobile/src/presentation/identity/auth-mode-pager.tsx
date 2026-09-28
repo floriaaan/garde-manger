@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Animated, Easing, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Reanimated, { Easing as MotionEasing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
@@ -39,21 +39,22 @@ export function AuthModePager({
   const start = useSharedValue(0)
   const [heights, setHeights] = useState<[number, number]>([0, 0])
   const [viewportHeight] = useState(() => new Animated.Value(0))
-  const [measured, setMeasured] = useState(false)
+  const initializedHeight = useRef(false)
+  const measured = heights[selected] > 0
 
   useEffect(() => {
-    offset.value = withTiming(-selected * width, {
+    offset.set(withTiming(-selected * width, {
       duration: reduceMotion ? 0 : 280,
       easing: MotionEasing.out(MotionEasing.cubic),
-    })
+    }))
   }, [offset, selected, width, reduceMotion])
 
   useEffect(() => {
     const target = heights[selected]
     if (!target) return
-    if (!measured) {
+    if (!initializedHeight.current) {
       viewportHeight.setValue(target)
-      setMeasured(true)
+      initializedHeight.current = true
       return
     }
     Animated.timing(viewportHeight, {
@@ -62,35 +63,35 @@ export function AuthModePager({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start()
-  }, [heights, selected, viewportHeight, measured, reduceMotion])
+  }, [heights, selected, viewportHeight, reduceMotion])
 
   const pan = Gesture.Pan()
     .activeOffsetX([-18, 18])
     .failOffsetY([-14, 14])
     .onStart(() => {
-      start.value = offset.value
+      start.set(offset.get())
     })
     .onUpdate((event) => {
-      const raw = start.value + event.translationX
-      offset.value = raw > 0 ? raw * 0.18 : raw < -width ? -width + (raw + width) * 0.18 : raw
+      const raw = start.get() + event.translationX
+      offset.set(raw > 0 ? raw * 0.18 : raw < -width ? -width + (raw + width) * 0.18 : raw)
     })
     .onEnd((event) => {
       const projected = event.translationX + event.velocityX * 0.12
       const next = selected === 0 && projected < -width * 0.2
         ? 1
         : selected === 1 && projected > width * 0.2 ? 0 : selected
-      offset.value = withTiming(-next * width, {
+      offset.set(withTiming(-next * width, {
         duration: reduceMotion ? 0 : 280,
         easing: MotionEasing.out(MotionEasing.cubic),
-      })
+      }))
       if (next !== selected) runOnJS(onModeChange)(next === 1 ? 'sign-up' : 'sign-in')
     })
     .onFinalize((_event, success) => {
-      if (!success) offset.value = withTiming(-selected * width, { duration: reduceMotion ? 0 : 220 })
+      if (!success) offset.set(withTiming(-selected * width, { duration: reduceMotion ? 0 : 220 }))
     })
 
-  const trackStyle = useAnimatedStyle(() => ({ transform: [{ translateX: offset.value }] }))
-  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -offset.value / 2 }] }))
+  const trackStyle = useAnimatedStyle(() => ({ transform: [{ translateX: offset.get() }] }))
+  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -offset.get() / 2 }] }))
 
   function measure(index: 0 | 1, height: number) {
     setHeights((current) => {
