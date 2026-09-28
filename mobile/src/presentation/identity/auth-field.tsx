@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { TextInput, type TextInputProps } from 'react-native'
+import type { ReactNode } from 'react'
+import { TextInput, View, type TextInputProps } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { Pressable } from '../shared/pressable.js'
+import { pointerCursor } from '../shared/hover.js'
 
 /** Label above, rounded field below, lime focus ring — replaces the raw Tamagui `Input`. */
 export function AuthField({
   label,
   labelColor,
   testID,
+  trailingAction,
   ...inputProps
 }: TextInputProps & {
   label: string
@@ -19,6 +23,7 @@ export function AuthField({
    */
   labelColor?: string
   testID?: string
+  trailingAction?: { label: string; icon: ReactNode; onPress: () => void; testID?: string }
 }) {
   const palette = useSoftPalette()
   const [focused, setFocused] = useState(false)
@@ -27,35 +32,45 @@ export function AuthField({
       <Text fontSize={12} fontWeight="600" color={labelColor ?? palette.inkSecondary}>
         {label}
       </Text>
-      <TextInput
-        {...inputProps}
-        testID={testID}
-        accessibilityLabel={label}
-        onFocus={(e) => {
-          setFocused(true)
-          inputProps.onFocus?.(e)
-        }}
-        onBlur={(e) => {
-          setFocused(false)
-          inputProps.onBlur?.(e)
-        }}
-        placeholderTextColor={palette.inkSecondary}
-        style={{
-          // minHeight, not height: at large Dynamic Type / font-scale
-          // settings the text needs room to grow taller than 48 — a
-          // fixed height would clip it instead of letting the field grow
-          // (an audit finding: every fixed-height control was a risk).
-          minHeight: 48,
-          borderRadius: 14,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          fontSize: 14,
-          color: palette.ink,
-          backgroundColor: palette.cream,
-          borderWidth: 2,
-          borderColor: focused ? palette.accentLime : 'transparent',
-        }}
-      />
+      <View>
+        <TextInput
+          {...inputProps}
+          testID={testID}
+          accessibilityLabel={label}
+          onFocus={(e) => {
+            setFocused(true)
+            inputProps.onFocus?.(e)
+          }}
+          onBlur={(e) => {
+            setFocused(false)
+            inputProps.onBlur?.(e)
+          }}
+          placeholderTextColor={palette.inkSecondary}
+          style={{
+            minHeight: 48,
+            borderRadius: 14,
+            paddingLeft: 16,
+            paddingRight: trailingAction ? 56 : 16,
+            paddingVertical: 12,
+            fontSize: 14,
+            color: palette.ink,
+            backgroundColor: palette.cream,
+            borderWidth: 2,
+            borderColor: focused ? palette.accentLime : 'transparent',
+          }}
+        />
+        {trailingAction ? (
+          <Pressable
+            testID={trailingAction.testID}
+            onPress={trailingAction.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={trailingAction.label}
+            style={[pointerCursor, { position: 'absolute', right: 4, top: 2, bottom: 2, width: 44, alignItems: 'center', justifyContent: 'center' }]}
+          >
+            {trailingAction.icon}
+          </Pressable>
+        ) : null}
+      </View>
     </YStack>
   )
 }

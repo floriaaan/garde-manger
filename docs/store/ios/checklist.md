@@ -48,8 +48,11 @@ Reste la liste ci-dessous, dans l'ordre.
 
 ## 3. Configuration du dépôt
 
-- [ ] `mobile/eas.json` : remplacer `REMPLACER_PAR_L_APPLE_ID_DE_L_APP` par l'Apple ID de
-      l'app (`submit.production.ios.ascAppId`).
+Configurer aussi Sign in with Apple et les domaines associés selon
+[le guide d'authentification](../authentication.md) avant de produire le binaire.
+
+- [x] `mobile/eas.json` : Apple ID `6816469647` renseigné dans
+      `submit.production.ios.ascAppId`.
 - [ ] Première build **interactive** depuis un poste, qui crée et stocke sur EAS le
       certificat de distribution, le profil de provisionnement et la clé API App Store
       Connect :
@@ -68,8 +71,7 @@ Reste la liste ci-dessous, dans l'ordre.
 ## 4. Serveur officiel
 
 - [ ] Définir `REVIEW_ACCOUNT_EMAIL` et `REVIEW_ACCOUNT_PASSWORD` dans le `.env`.
-- [ ] Lancer `node ace seed:review-account`, reporter l'id du foyer affiché dans
-      `AI_QUOTA_EXEMPT_HOUSEHOLD_IDS`, redémarrer le backend.
+- [ ] Lancer `node ace seed:review-account` sur le backend déployé : le compte et son abonnement IA de revue sont créés par la commande.
 - [ ] Vérifier que `DISABLE_PASSWORD_LOGIN` n'est pas actif (le reviewer se connecte par
       e-mail et mot de passe).
 - [ ] Vérifier que l'API répond en HTTPS avec un certificat valide (ATS).

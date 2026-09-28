@@ -13,13 +13,18 @@
 import { Image, StyleSheet } from 'react-native'
 import { YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { KITCHEN_PHOTO_URI } from '../shared/kitchen-photo.js'
+import { KITCHEN_PHOTO } from '../shared/kitchen-photo.js'
 
 export function AuthPhotoBackground() {
   const palette = useSoftPalette()
   return (
     <>
-      <Image source={{ uri: KITCHEN_PHOTO_URI }} resizeMode="cover" accessibilityLabel="" style={StyleSheet.absoluteFill} />
+      <Image
+        source={KITCHEN_PHOTO}
+        resizeMode="cover"
+        accessibilityLabel=""
+        style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+      />
       <YStack pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim }]} />
     </>
   )

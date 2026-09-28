@@ -7,7 +7,14 @@
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "icon": {
+        "light": "./assets/images/icon.png",
+        "dark": "./assets/images/icon-dark.png",
+        "tinted": "./assets/images/icon-clear-light.png"
+      },
       "supportsTablet": true,
+      "usesAppleSignIn": true,
+      "associatedDomains": ["webcredentials:api-gardemanger.floriaaan.fr"],
       "requireFullScreen": false,
       "bundleIdentifier": "com.floriaaan.gardemanger",
       "infoPlist": {
@@ -19,12 +26,7 @@
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E9F6D8",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+      "icon": "./assets/images/icon.png",
       "predictiveBackGestureEnabled": true,
       "package": "com.floriaaan.gardemanger",
       "permissions": [
@@ -32,7 +34,7 @@
       ]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -56,6 +58,7 @@
         }
       ],
       "expo-web-browser",
+      "expo-apple-authentication",
       "expo-notifications",
       [
         "expo-camera",

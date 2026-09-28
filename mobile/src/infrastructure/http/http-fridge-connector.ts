@@ -147,10 +147,11 @@ export class HttpFridgeConnector implements FridgeConnector {
       const result = await apiFetch<{ methods: AuthMethod[] }>('/api/auth/methods', undefined, {
         action: 'identity.get_auth_methods',
       })
-      return result.ok ? result.value.methods : []
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.methods
     } catch (error) {
       reportFailure('identity.get_auth_methods', error)
-      return []
+      throw error
     }
   }
 
@@ -184,14 +185,38 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
   }
 
+  async requestPasswordReset(email: string): Promise<Result<void, ApiError>> {
+    try {
+      const redirectTo = Platform.OS === 'web'
+        ? `${window.location.origin}/reset-password`
+        : 'gardemanger://reset-password'
+      const { error } = await authClient.requestPasswordReset({ email, redirectTo })
+      return error
+        ? Result.err({ type: error.code ?? 'reset_request_failed', message: error.message ?? 'Envoi du lien impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.request_password_reset', error)
+      return Result.err({ type: 'reset_request_failed', message: 'Envoi du lien impossible. Réessaie.' })
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.resetPassword({ token, newPassword })
+      return error
+        ? Result.err({ type: error.code ?? 'reset_failed', message: error.message ?? 'Ce lien ne fonctionne plus.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.reset_password', error)
+      return Result.err({ type: 'reset_failed', message: 'Réinitialisation impossible. Réessaie.' })
+    }
+  }
+
   async signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {
     try {
-      // better-auth validates callbackURL as a plain path — Expo Router's
-      // `(tabs)` route-group syntax isn't one (the parens fail its check
-      // server-side with 403 INVALID_CALLBACK_URL, before PocketID is ever
-      // reached). `onSuccess()` below does the actual in-app navigation, so
-      // this only needs to be *a* valid path.
-      const { error } = await authClient.signIn.social({ provider, callbackURL: '/' })
+      // Expo turns the native path into a deep link. On web a relative path
+      // would redirect to the API host, so return to the frontend origin.
+      const { error } = await authClient.signIn.social({ provider, callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : '/' })
       if (error) {
         return Result.err({ type: error.code ?? 'sign_in_failed', message: error.message ?? 'Connexion impossible.' })
       }
@@ -204,9 +229,45 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
   }
 
+  async signInApple(identityToken: string): Promise<Result<Session, ApiError>> {
+    try {
+      const { error } = await authClient.signIn.social({ provider: 'apple', idToken: { token: identityToken } })
+      if (error) return Result.err({ type: error.code ?? 'apple_sign_in_failed', message: error.message ?? 'Connexion Apple impossible.' })
+      const session = await this.getSession()
+      return session ? Result.ok(session) : Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
+    } catch (error) {
+      reportFailure('identity.sign_in_apple', error)
+      return Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
+    }
+  }
+
+  async signInPasskey(): Promise<Result<Session, ApiError>> {
+    try {
+      const { error } = await authClient.signIn.passkey()
+      if (error) return Result.err({ type: 'code' in error ? error.code : 'passkey_sign_in_failed', message: error.message ?? 'Connexion par clé d’accès impossible.' })
+      const session = await this.getSession()
+      return session ? Result.ok(session) : Result.err({ type: 'passkey_sign_in_failed', message: 'Connexion par clé d’accès impossible.' })
+    } catch (error) {
+      reportFailure('identity.sign_in_passkey', error)
+      return Result.err({ type: 'passkey_sign_in_failed', message: 'Connexion par clé d’accès impossible.' })
+    }
+  }
+
+  async addPasskey(): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.passkey.addPasskey()
+      return error
+        ? Result.err({ type: 'code' in error ? error.code : 'passkey_registration_failed', message: error.message ?? 'Création de la clé d’accès impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.add_passkey', error)
+      return Result.err({ type: 'passkey_registration_failed', message: 'Création de la clé d’accès impossible.' })
+    }
+  }
+
   async linkSocial(provider: 'pocketid' | 'google'): Promise<Result<void, ApiError>> {
     try {
-      const { error } = await authClient.linkSocial({ provider, callbackURL: '/' })
+      const { error } = await authClient.linkSocial({ provider, callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : '/' })
       if (error) {
         return Result.err({ type: error.code ?? 'link_failed', message: error.message ?? 'Connexion impossible.' })
       }
@@ -214,6 +275,18 @@ export class HttpFridgeConnector implements FridgeConnector {
     } catch (error) {
       reportFailure('identity.link_social', error)
       return Result.err({ type: 'link_failed', message: 'Connexion impossible.' })
+    }
+  }
+
+  async linkApple(identityToken: string): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.linkSocial({ provider: 'apple', idToken: { token: identityToken } })
+      return error
+        ? Result.err({ type: error.code ?? 'apple_link_failed', message: error.message ?? 'Association Apple impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.link_apple', error)
+      return Result.err({ type: 'apple_link_failed', message: 'Association Apple impossible.' })
     }
   }
 
@@ -353,7 +426,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       ])
       if (error || !data) return []
       const accounts: LinkedAccount[] = data.map((account) => ({
-        provider: account.providerId === 'pocketid' || account.providerId === 'google' ? account.providerId : 'password',
+        provider: account.providerId === 'pocketid' || account.providerId === 'google' || account.providerId === 'apple' ? account.providerId : 'password',
         createdAt: new Date(account.createdAt).toISOString(),
       }))
       if ((passkeys.data ?? []).length > 0) {

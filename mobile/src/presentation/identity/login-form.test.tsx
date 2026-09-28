@@ -52,3 +52,15 @@ test('an empty password disables submit — no request, no onSuccess', async () 
   await fireEvent.press(submit)
   expect(onSuccess).not.toHaveBeenCalled()
 })
+
+
+test('the eye toggles visibility without changing the entered password', async () => {
+  await renderWithProviders(<LoginForm onSuccess={jest.fn()} />)
+  await fireEvent.changeText(screen.getByTestId('login-password'), ' secret-password ')
+  expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(true)
+  await fireEvent.press(screen.getByTestId('login-password-visibility'))
+  expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(false)
+  expect(screen.getByTestId('login-password').props.value).toBe(' secret-password ')
+  await fireEvent.press(screen.getByTestId('login-password-visibility'))
+  expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(true)
+})

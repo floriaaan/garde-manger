@@ -91,6 +91,7 @@ function bucketOutcomes(
 /** In-memory only, resets on every reload — UI iteration without a running backend. */
 export class FakeFridgeConnector implements FridgeConnector {
   private session: Session | null = null
+  private linkedProviders = new Set<LinkedAccount['provider']>(['password', 'pocketid'])
   /**
    * Nullable, because "signed in with no foyer yet" is a real state the app
    * now has a whole route group for. The fake used to hand every session the
@@ -187,8 +188,11 @@ export class FakeFridgeConnector implements FridgeConnector {
 
   async getAuthMethods(): Promise<AuthMethod[]> {
     return [
-      { id: 'password', enabled: true, label: 'Email et mot de passe' },
+      { id: 'password', enabled: true, label: 'Email et mot de passe', resetAvailable: true },
       { id: 'pocketid', enabled: true, label: 'PocketID' },
+      { id: 'google', enabled: true, label: 'Google' },
+      { id: 'apple', enabled: true, label: 'Apple' },
+      { id: 'passkey', enabled: true, label: 'Clé d’accès' },
     ]
   }
 
@@ -208,18 +212,53 @@ export class FakeFridgeConnector implements FridgeConnector {
 
   async signUpEmail(email: string, _password: string, name: string): Promise<Result<Session, ApiError>> {
     this.session = { user: { ...fakeSession.user, email, name } }
+    this.linkedProviders = new Set<LinkedAccount['provider']>(['password'])
     // A new account has no foyer. This is what makes `(onboarding)` reachable.
     this.household = null
     return Result.ok(this.session)
   }
 
-  async signInSocial(): Promise<Result<Session, ApiError>> {
+  async requestPasswordReset(_email: string): Promise<Result<void, ApiError>> {
+    return Result.ok(undefined)
+  }
+
+  async resetPassword(token: string, _newPassword: string): Promise<Result<void, ApiError>> {
+    return token
+      ? Result.ok(undefined)
+      : Result.err({ type: 'invalid_token', message: 'Ce lien ne fonctionne plus.' })
+  }
+
+  async signInSocial(provider?: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {
     this.session = fakeSession
+    if (provider) this.linkedProviders.add(provider)
     this.restoreFixtureHousehold()
     return Result.ok(this.session)
   }
 
-  async linkSocial(): Promise<Result<void, ApiError>> {
+  async signInApple(_identityToken: string): Promise<Result<Session, ApiError>> {
+    const result = await this.signInSocial()
+    this.linkedProviders.add('apple')
+    return result
+  }
+
+  async signInPasskey(): Promise<Result<Session, ApiError>> {
+    const result = await this.signInSocial()
+    this.linkedProviders.add('passkey')
+    return result
+  }
+
+  async addPasskey(): Promise<Result<void, ApiError>> {
+    this.linkedProviders.add('passkey')
+    return Result.ok(undefined)
+  }
+
+  async linkSocial(provider?: 'pocketid' | 'google'): Promise<Result<void, ApiError>> {
+    if (provider) this.linkedProviders.add(provider)
+    return Result.ok(undefined)
+  }
+
+  async linkApple(_identityToken: string): Promise<Result<void, ApiError>> {
+    this.linkedProviders.add('apple')
     return Result.ok(undefined)
   }
 
@@ -361,10 +400,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getLinkedAccounts(): Promise<LinkedAccount[]> {
-    return [
-      { provider: 'password', createdAt: new Date().toISOString() },
-      { provider: 'pocketid', createdAt: new Date().toISOString() },
-    ]
+    return [...this.linkedProviders].map((provider) => ({ provider, createdAt: new Date().toISOString() }))
   }
 
   async deleteAccount(_password?: string): Promise<Result<void, ApiError>> {

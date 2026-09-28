@@ -1,6 +1,7 @@
 import env from '#start/env'
 import { AuthMethod } from '#domain/identity/auth-method.vo'
 import type { AuthMethodsProvider } from '#domain/identity/interfaces/auth-methods-provider.interface'
+import { passwordResetAvailable } from './password-reset-mailer.js'
 
 export class EnvAuthMethodsProvider implements AuthMethodsProvider {
   async resolve(): Promise<AuthMethod[]> {
@@ -8,7 +9,12 @@ export class EnvAuthMethodsProvider implements AuthMethodsProvider {
 
     if (!env.get('DISABLE_PASSWORD_LOGIN', false)) {
       methods.push(
-        AuthMethod.create({ id: 'password', enabled: true, label: 'Email et mot de passe' }),
+        AuthMethod.create({
+          id: 'password',
+          enabled: true,
+          label: 'Email et mot de passe',
+          resetAvailable: passwordResetAvailable,
+        }),
       )
     }
 
@@ -30,6 +36,7 @@ export class EnvAuthMethodsProvider implements AuthMethodsProvider {
 
     const appleConfigured =
       Boolean(env.get('APPLE_CLIENT_ID', '')) &&
+      Boolean(env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')) &&
       Boolean(env.get('APPLE_TEAM_ID', '')) &&
       Boolean(env.get('APPLE_KEY_ID', '')) &&
       Boolean(env.get('APPLE_PRIVATE_KEY', ''))

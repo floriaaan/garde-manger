@@ -5,7 +5,9 @@ import { passkey } from '@better-auth/passkey'
 import { Kysely, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 import env from '#start/env'
+import { buildPasskeyOptions } from './passkey-options.js'
 import { buildAppleClientSecret } from './apple-client-secret.js'
+import { passwordResetAvailable, sendPasswordResetEmail } from '../password-reset-mailer.js'
 
 const pool = new Pool({
   host: env.get('DB_HOST'),
@@ -30,23 +32,17 @@ const appleClientId = env.get('APPLE_CLIENT_ID', '')
 const appleAppBundleIdentifier = env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')
 const appleTeamId = env.get('APPLE_TEAM_ID', '')
 const appleKeyId = env.get('APPLE_KEY_ID', '')
-const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')
-const appleConfigured = Boolean(appleClientId && appleTeamId && appleKeyId && applePrivateKey)
-const appleClientSecret = appleConfigured
-  ? buildAppleClientSecret({
-      clientId: appleClientId,
-      teamId: appleTeamId,
-      keyId: appleKeyId,
-      privateKey: applePrivateKey,
-    })
-  : ''
+const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')?.replace(/\\n/g, '\n')
+const appleConfigured = Boolean(
+  appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey,
+)
 
-// WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
-// lifetime — NETWORK_URL is that same "however this backend is actually
-// reached" address already used as the PocketID redirect_uri, so passkeys
-// keep working across the LAN-IP-in-dev / real-domain-in-prod split without
-// their own env var.
-const networkUrl = new URL(env.get('NETWORK_URL'))
+const passkeyOptions = buildPasskeyOptions({
+  networkUrl: env.get('NETWORK_URL'),
+  rpID: env.get('PASSKEY_RP_ID', ''),
+  webOrigins: env.get('PASSKEY_WEB_ORIGINS', ''),
+  androidFingerprint: env.get('ANDROID_APP_SIGNING_SHA256', ''),
+})
 
 /**
  * Unlike arr's OIDC config (hot-reloaded from a settings table), PocketID
@@ -59,6 +55,7 @@ export const auth = betterAuth({
   secret: env.get('BETTER_AUTH_SECRET').release(),
   baseURL: env.get('NETWORK_URL'),
   trustedOrigins: [
+    'gardemanger://',
     ...env
       .get('CORS_ORIGIN', '')
       .split(',')
@@ -69,7 +66,16 @@ export const auth = betterAuth({
     // but listing it unconditionally costs nothing (docs/adr/0020).
     'https://appleid.apple.com',
   ],
-  emailAndPassword: { enabled: !env.get('DISABLE_PASSWORD_LOGIN', false) },
+  emailAndPassword: {
+    enabled: !env.get('DISABLE_PASSWORD_LOGIN', false),
+    revokeSessionsOnPasswordReset: true,
+    ...(passwordResetAvailable
+      ? {
+          sendResetPassword: ({ user, url }: { user: { email: string }; url: string }) =>
+            sendPasswordResetEmail(user.email, url),
+        }
+      : {}),
+  },
   /**
    * The migration (`create_identity_tables_table.ts`) uses snake_case
    * columns, matching every other table in this codebase — better-auth's
@@ -162,6 +168,11 @@ export const auth = betterAuth({
      */
     accountLinking: {
       enabled: true,
+      // Explicit linking requires a session and a verified provider identity.
+      // Apple relay addresses may differ from the account's original email.
+      allowDifferentEmails: true,
+      trustedProviders: [],
+      requireLocalEmailVerified: true,
     },
   },
   ...(googleConfigured || appleConfigured
@@ -172,11 +183,16 @@ export const auth = betterAuth({
             : {}),
           ...(appleConfigured
             ? {
-                apple: {
+                apple: async () => ({
                   clientId: appleClientId,
-                  clientSecret: appleClientSecret,
+                  clientSecret: buildAppleClientSecret({
+                    clientId: appleClientId,
+                    teamId: appleTeamId,
+                    keyId: appleKeyId,
+                    privateKey: applePrivateKey,
+                  }),
                   appBundleIdentifier: appleAppBundleIdentifier || undefined,
-                },
+                }),
               }
             : {}),
         },
@@ -192,9 +208,8 @@ export const auth = betterAuth({
   plugins: [
     expo(),
     passkey({
-      rpID: networkUrl.hostname,
+      ...passkeyOptions,
       rpName: env.get('INSTANCE_NAME', 'Garde-manger'),
-      origin: env.get('NETWORK_URL'),
       schema: {
         passkey: {
           fields: {

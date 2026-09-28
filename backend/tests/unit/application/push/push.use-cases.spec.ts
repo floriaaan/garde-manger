@@ -75,6 +75,11 @@ test.group('NotifyJobFinished', () => {
       ['t1', 't2'],
     )
     assert.equal(sender.sent[0]!.data?.route, '/tasks')
+    assert.equal(sender.sent[0]!.title, 'Frigo exploré 📸')
+    assert.equal(
+      sender.sent[0]!.body,
+      'J’ai repéré des produits. Vérifie ma récolte avant de les ranger.',
+    )
   })
 
   test('drops tokens the provider reports as dead', async ({ assert }) => {
@@ -83,6 +88,15 @@ test.group('NotifyJobFinished', () => {
     const tokens = new FakeTokens(['t1'])
     await new NotifyJobFinished(tokens, new FakeSender(['t1'])).execute(job)
     assert.deepEqual(tokens.deleted, ['t1'])
+  })
+
+  test('keeps a retry path clear when a task fails', async ({ assert }) => {
+    const job = newJob()
+    job.fail('provider_not_configured', now)
+    const sender = new FakeSender()
+    await new NotifyJobFinished(new FakeTokens(['t1']), sender).execute(job)
+    assert.equal(sender.sent[0]!.title, 'Le frigo m’a échappé 📸')
+    assert.equal(sender.sent[0]!.body, 'Je n’ai pas terminé le scan. Retente depuis les tâches.')
   })
 })
 
@@ -105,8 +119,11 @@ test.group('SendExpiryDigest', () => {
 
     assert.equal(result.sent, 1)
     assert.equal(sender.sent[0]!.to, 't1')
-    assert.equal(sender.sent[0]!.title, '4 produits expirent bientôt')
-    assert.equal(sender.sent[0]!.body, 'Lait, Yaourt, Beurre et 1 autre')
+    assert.equal(sender.sent[0]!.title, '4 produits à sauver 🥕')
+    assert.equal(
+      sender.sent[0]!.body,
+      'Lait, Yaourt, Beurre et 1 autre approchent de leur date. À cuisiner bientôt !',
+    )
     assert.sameMembers(tokens.digested, ['t1', 't2'])
   })
 
@@ -117,5 +134,16 @@ test.group('SendExpiryDigest', () => {
     )
     assert.equal(result.sent, 0)
     assert.lengthOf(sender.sent, 0)
+  })
+
+  test('uses singular copy for one product', async ({ assert }) => {
+    const sender = new FakeSender()
+    await new SendExpiryDigest(
+      new FakeTokens([], [due[0]!]),
+      products({ h1: ['Lait'] }),
+      sender,
+    ).execute({ today: '2026-09-20' })
+    assert.equal(sender.sent[0]!.title, 'Un produit à sauver 🥕')
+    assert.equal(sender.sent[0]!.body, 'Lait approche de sa date. Une idée de repas ?')
   })
 })

@@ -1,7 +1,7 @@
 # Built with the monorepo root as build context (needs pnpm-workspace.yaml
 # and the lockfile) — see compose.yml: build.context: . / dockerfile: backend/Dockerfile
 
-FROM node:26-alpine AS base
+FROM node:24-alpine AS base
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@11.17.0 --activate
 WORKDIR /app
 

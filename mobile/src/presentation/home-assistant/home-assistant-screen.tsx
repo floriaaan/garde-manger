@@ -255,7 +255,7 @@ export function HomeAssistantScreen() {
 
   return (
     <AppShell
-      nav={{ kind: 'stack' }}
+      nav={{ kind: 'modal' }}
       header={
         <ScreenHeader
           palette={palette}

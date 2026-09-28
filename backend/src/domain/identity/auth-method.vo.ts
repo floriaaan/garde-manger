@@ -6,6 +6,7 @@ interface AuthMethodProps {
   id: AuthMethodId
   enabled: boolean
   label: string
+  resetAvailable?: boolean
 }
 
 export class AuthMethod extends ValueObject<AuthMethodProps> {
@@ -27,5 +28,9 @@ export class AuthMethod extends ValueObject<AuthMethodProps> {
 
   get label(): string {
     return this.props.label
+  }
+
+  get resetAvailable(): boolean {
+    return this.props.resetAvailable ?? false
   }
 }

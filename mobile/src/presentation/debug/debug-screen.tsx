@@ -78,7 +78,7 @@ export function DebugScreen() {
 
   return (
     <AppShell
-      nav={{ kind: 'stack' }}
+      nav={{ kind: 'modal' }}
       header={<ScreenHeader palette={palette} icon={(color) => <SettingsIcon size={19} color={color} />} title="Debug" onBack={() => router.back()} />}
     >
       <YStack testID="debug-info" gap="$2" marginTop="$5">

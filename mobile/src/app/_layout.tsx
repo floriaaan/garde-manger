@@ -80,6 +80,7 @@ export default function RootLayout() {
                   at all. */}
                 <Stack.Screen name="welcome" />
                 <Stack.Screen name="server-choice" />
+                <Stack.Screen name="reset-password" />
                 <Stack.Screen name="(auth)" />
                 {/* Between `(auth)` and `(tabs)`, and a sibling of both: an
                   account with no foyer is signed in but has no screen inside

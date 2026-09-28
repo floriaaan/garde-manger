@@ -112,6 +112,9 @@ export interface SoftPalette {
   navCardRose: string
   chipRose: string
   cream: string
+  /** Auth panel stays dark in both themes, so its provider buttons keep one warm light surface. */
+  authMethodSurface: string
+  buttonSecondary: string
   /**
    * A pill sitting *on* a `cream` card. Not `gradientBottom`: that token is the
    * page/content ground, so in dark mode a `gradientBottom` pill on a `cream`
@@ -230,6 +233,8 @@ const light: SoftPalette = {
   navCardRose: '#A8375A',
   chipRose: '#D9628A',
   cream: '#FDF6E8',
+  authMethodSurface: '#FFF8EC',
+  buttonSecondary: '#EDE2D0',
   creamPill: '#FFFFFF',
   creamPillEdge: '#C9BEA8',
   creamText: '#7A6B47',
@@ -325,6 +330,8 @@ const dark: SoftPalette = {
   navCardRose: '#9E3A5C',
   chipRose: '#E88AAC',
   cream: '#241F17',
+  authMethodSurface: '#FFF8EC',
+  buttonSecondary: '#3A3324',
   // Lighter than the card, the way white is lighter than cream in daylight —
   // ≈7.5:1 with creamText, ≈5.2:1 with inkSecondary.
   creamPill: '#3A3324',

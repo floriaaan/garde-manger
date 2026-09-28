@@ -10,8 +10,8 @@
  *
  * The photo zone pages natively (real horizontal translation, not a
  * simulated one); each photo fades in on its own `onLoad`, independent of
- * the page transition, so a slow connection shows the `brandDeep` ground
- * rather than a hard pop once the bytes arrive. The panel's title/subtitle
+ * the page transition, so decoding a bundled photo shows the `brandDeep`
+ * ground rather than a hard pop. The panel's title/subtitle
  * fade on every index change — swipe-driven or button-driven — the same
  * entrance timing the single-photo version played once on mount, just
  * retriggered per page. Opacity only, no vertical motion: a `translateY`
@@ -66,7 +66,7 @@ import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { AuthWordmark } from '../identity/auth-wordmark.js'
 import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
-import { KITCHEN_PHOTO_URIS } from '../shared/kitchen-photo.js'
+import { KITCHEN_PHOTOS } from '../shared/kitchen-photo.js'
 import { pointerCursor, pressAreaSlop, useHoverPress, useReduceMotion } from '../shared/hover.js'
 import { ripple } from '../shared/material.js'
 import { hexToRgba } from '../shared/hex-to-rgba.js'
@@ -83,24 +83,24 @@ const BOTTOM_INSET_FALLBACK = Platform.select({ ios: 24, default: 12 })
 const MAX_FONT_SCALE = 1.6
 
 interface Page {
-  photo: string
+  photo: number
   title: string
   subtitle: string
 }
 
 const PAGES: Page[] = [
   {
-    photo: KITCHEN_PHOTO_URIS[1],
+    photo: KITCHEN_PHOTOS[1],
     title: 'Ton frigo, d’un coup d’œil',
     subtitle: 'Ce qui est à consommer en premier, sans ouvrir la porte.',
   },
   {
-    photo: KITCHEN_PHOTO_URIS[0],
+    photo: KITCHEN_PHOTOS[0],
     title: 'Scanne, c’est rangé',
     subtitle: 'Un ticket de caisse, et les produits arrivent sur l’étagère.',
   },
   {
-    photo: KITCHEN_PHOTO_URIS[2],
+    photo: KITCHEN_PHOTOS[2],
     title: 'Le foyer partage la même étagère',
     subtitle: 'Chacun voit ce qu’il reste et ce qu’il faut racheter.',
   },
@@ -154,18 +154,6 @@ export function WelcomeScreen({ onDone }: { onDone: () => void }) {
     },
     [hasMeasuredText, textHeight, reduceMotion],
   )
-
-  // A head start on the network fetch for every page's photo, not just the
-  // current one — swiping ahead on a slow connection otherwise shows the
-  // `brandDeep` ground through an unloaded image for a beat.
-  useEffect(() => {
-    PAGES.forEach((page) => {
-      // Optional chaining, not a bare `.catch()` — RN's own jest mock for
-      // `Image` has no `prefetch` at all, so this crashed every render of
-      // this screen under test until now (nothing had ever exercised it).
-      Image.prefetch(page.photo)?.catch(() => {})
-    })
-  }, [])
 
   const goTo = useCallback(
     (next: number) => {
@@ -223,14 +211,11 @@ export function WelcomeScreen({ onDone }: { onDone: () => void }) {
         >
           {PAGES.map((p, i) => (
             <View key={i} style={{ width: windowWidth }}>
-              {/* `brandDeep` behind the photo, not white — a slow network
-                  shows the system's own warm surface for a beat instead of
-                  a flash of the near-white ground. Fades in on its own
-                  `onLoad`, independent of the page-change fade above, so a
-                  slow connection shows the ground for a beat rather than a
-                  hard pop once the image finally arrives. */}
+              {/* `brandDeep` behind the photo avoids a white flash while the
+                  bundled image decodes. Its own `onLoad` fade stays separate
+                  from the page-change fade above. */}
               <Animated.Image
-                source={{ uri: p.photo }}
+                source={p.photo}
                 onLoad={() => {
                   Animated.timing(photoFades[i], {
                     toValue: 1,
@@ -241,7 +226,7 @@ export function WelcomeScreen({ onDone }: { onDone: () => void }) {
                 }}
                 resizeMode="cover"
                 accessibilityLabel=""
-                style={[StyleSheet.absoluteFill, { opacity: photoFades[i] }]}
+                style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: photoFades[i] }]}
               />
             </View>
           ))}

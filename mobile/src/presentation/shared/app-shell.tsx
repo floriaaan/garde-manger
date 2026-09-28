@@ -376,9 +376,11 @@ function MaterialTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => vo
   const roles = materialRoles(palette)
   return (
     <YStack position="absolute" left={0} right={0} bottom={0}>
-      <YStack position="absolute" right={16} bottom={96}>
+      {/* SafeAreaView adds the device's bottom inset to the FAB's clearance.
+          The bar below is 80dp plus that same inset, so the gap stays 16dp. */}
+      <SafeAreaView edges={['bottom']} style={{ position: 'absolute', right: 16, bottom: 96 }}>
         <Fab onScan={onScan} />
-      </YStack>
+      </SafeAreaView>
       <SafeAreaView edges={['bottom']} style={{ backgroundColor: roles.surfaceContainer }}>
         <XStack
           alignItems="center"

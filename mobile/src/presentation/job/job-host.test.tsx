@@ -38,12 +38,13 @@ test('a job that finishes while nobody watches it raises one toast that leads to
   expect(message).toContain('Ticket analysé')
   expect(variant).toBe('success')
   expect(action.label).toBe('Relire')
+  expect(celebrate).toHaveBeenCalledTimes(1)
 
   action.onPress()
   expect(router.push).toHaveBeenCalledWith({ pathname: '/receipts/review', params: { draftId: 'd-1' } })
 })
 
-test('a job a screen is watching gets no toast', async () => {
+test('a job a screen is watching gets confetti without a duplicate toast', async () => {
   const running = makeJob()
   const { queryClient } = await renderWithJobs(
     <>
@@ -60,6 +61,7 @@ test('a job a screen is watching gets no toast', async () => {
   })
 
   expect(showToast).not.toHaveBeenCalled()
+  expect(celebrate).toHaveBeenCalledTimes(1)
 })
 
 test('a job already finished when the app opens is not announced', async () => {
@@ -68,9 +70,10 @@ test('a job already finished when the app opens is not announced', async () => {
   await act(async () => {})
 
   expect(showToast).not.toHaveBeenCalled()
+  expect(celebrate).not.toHaveBeenCalled()
 })
 
-test('a failure toast leads to the task center; recipes celebrate', async () => {
+test('a failure toast leads to the task center; only successful tasks celebrate', async () => {
   const { queryClient } = await renderWithJobs(<JobHost />, [
     makeJob({ id: 'a' }),
     makeJob({ id: 'b', kind: 'recipe_generation' }),

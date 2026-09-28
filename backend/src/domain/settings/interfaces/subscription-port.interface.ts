@@ -11,8 +11,8 @@ export interface HouseholdSubscription {
 export interface SubscriptionUpsert {
   householdId: string
   payerUserId: string | null
-  stripeCustomerId: string
-  stripeSubscriptionId: string
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
   expiresAt: Date
   cancelAtPeriodEnd: boolean
 }

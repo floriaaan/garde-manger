@@ -1,8 +1,20 @@
 import { createAuthClient } from 'better-auth/react'
 import { expoClient } from '@better-auth/expo/client'
 import { passkeyClient } from '@better-auth/passkey/client'
+import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { getServerUrl, onServerUrlChange } from '../../application/shared/server-config.js'
+import { nativePasskeysAvailable } from '../../application/shared/native-passkeys.js'
+
+function availablePasskeyClient(): ReturnType<typeof passkeyClient> {
+  if (Platform.OS !== 'web' && nativePasskeysAvailable()) {
+    // Expo Go and older builds lack this native module. Requiring the bridge
+    // only after checking avoids crashing the root layout on app startup.
+    const { expoPasskeyClient } = require('expo-better-auth-passkey') as typeof import('expo-better-auth-passkey')
+    return expoPasskeyClient() as ReturnType<typeof passkeyClient>
+  }
+  return passkeyClient()
+}
 
 function buildClient() {
   return createAuthClient({
@@ -13,14 +25,7 @@ function buildClient() {
         storage: SecureStore,
         storagePrefix: 'gardemanger',
       }),
-      // Only `listUserPasskeys` is called from the app today (account
-      // screen's linked-methods list) — `signIn.passkey`/`addPasskey` call
-      // into `@simplewebauthn/browser`'s `navigator.credentials`, which
-      // doesn't exist in React Native. Registering/authenticating with an
-      // actual passkey needs a native WebAuthn bridge (e.g.
-      // react-native-passkeys) plus HTTPS-hosted domain association files,
-      // not wired up here — cf. conversation notes.
-      passkeyClient(),
+      availablePasskeyClient(),
     ],
   })
 }

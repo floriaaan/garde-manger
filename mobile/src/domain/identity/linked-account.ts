@@ -1,4 +1,4 @@
 export interface LinkedAccount {
-  provider: 'password' | 'pocketid' | 'google' | 'passkey'
+  provider: 'password' | 'pocketid' | 'google' | 'apple' | 'passkey'
   createdAt: string
 }

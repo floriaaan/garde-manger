@@ -7,7 +7,13 @@ jest.mock('../auth/auth-client.js', () => ({
   authClient: {
     signIn: {
       email: jest.fn(),
+      social: jest.fn(),
+      passkey: jest.fn(),
     },
+    linkSocial: jest.fn(),
+    requestPasswordReset: jest.fn(),
+    resetPassword: jest.fn(),
+    passkey: { addPasskey: jest.fn() },
     signOut: jest.fn().mockResolvedValue(undefined),
     // Read by every apiFetch call (http-client.ts) to attach the session
     // cookie — unrelated to what most tests in this file exercise, but
@@ -406,4 +412,65 @@ test('setActiveAiProvider() PATCHes the provider and returns Result.ok with the 
   expect(JSON.parse(init.body)).toEqual({ provider: 'openai' })
 
   globalThis.fetch = originalFetch
+})
+
+
+describe('authentication integrations', () => {
+  const originalOS = Platform.OS
+  const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalOS })
+    if (originalLocation) Object.defineProperty(window, 'location', originalLocation)
+    else Reflect.deleteProperty(window, 'location')
+    jest.restoreAllMocks()
+    jest.clearAllMocks()
+  })
+
+  test.each(['web', 'ios'] as const)('OAuth uses the frontend origin on web and the native callback on %s', async (os) => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: os })
+    Object.defineProperty(window, 'location', { configurable: true, value: { origin: 'https://app.example.com' } })
+    const connector = new HttpFridgeConnector()
+    jest.spyOn(connector, 'getSession').mockResolvedValue({ user: { id: 'u1', name: 'Alice', email: 'alice@example.com', image: null } })
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({})
+    ;(authClient.linkSocial as jest.Mock).mockResolvedValue({})
+    const callbackURL = os === 'web' ? 'https://app.example.com/' : '/'
+    await connector.signInSocial('google')
+    await connector.linkSocial('pocketid')
+    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider: 'google', callbackURL })
+    expect(authClient.linkSocial).toHaveBeenCalledWith({ provider: 'pocketid', callbackURL })
+  })
+
+  test.each(['web', 'ios'] as const)('password recovery routes back to the requesting platform: %s', async (os) => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: os })
+    Object.defineProperty(window, 'location', { configurable: true, value: { origin: 'https://app.example.com' } })
+    ;(authClient.requestPasswordReset as jest.Mock).mockResolvedValue({})
+    const result = await new HttpFridgeConnector().requestPasswordReset('alice@example.com')
+    expect(result.ok).toBe(true)
+    expect(authClient.requestPasswordReset).toHaveBeenCalledWith({
+      email: 'alice@example.com',
+      redirectTo: os === 'web' ? 'https://app.example.com/reset-password' : 'gardemanger://reset-password',
+    })
+  })
+
+  test('an invalid reset token is surfaced as a failure, not success', async () => {
+    ;(authClient.resetPassword as unknown as jest.Mock).mockResolvedValue({ error: { code: 'INVALID_TOKEN', message: 'Expired' } })
+    expect(await new HttpFridgeConnector().resetPassword('expired', 'new-password')).toEqual({
+      ok: false, error: { type: 'INVALID_TOKEN', message: 'Expired' },
+    })
+  })
+
+  test('a successful Apple ceremony without a session is not treated as a login', async () => {
+    const connector = new HttpFridgeConnector()
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({})
+    jest.spyOn(connector, 'getSession').mockResolvedValue(null)
+    expect((await connector.signInApple('identity-token')).ok).toBe(false)
+  })
+
+  test('passkey cancellation preserves its code for the UI', async () => {
+    ;(authClient.signIn.passkey as jest.Mock).mockResolvedValue({ error: { code: 'ERROR_CEREMONY_ABORTED', message: 'Cancelled' } })
+    expect(await new HttpFridgeConnector().signInPasskey()).toEqual({
+      ok: false, error: { type: 'ERROR_CEREMONY_ABORTED', message: 'Cancelled' },
+    })
+  })
 })
