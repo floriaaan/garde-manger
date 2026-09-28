@@ -50,6 +50,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   APPLE_PRIVATE_KEY: Env.schema.string.optional(),
   // Play App Signing SHA-256 fingerprint (colon-separated hex) for Android passkeys.
   ANDROID_APP_SIGNING_SHA256: Env.schema.string.optional(),
+  PASSKEY_RP_ID: Env.schema.string.optional(),
+  PASSKEY_WEB_ORIGINS: Env.schema.string.optional(),
 
   DISABLE_PASSWORD_LOGIN: Env.schema.boolean.optional(),
 

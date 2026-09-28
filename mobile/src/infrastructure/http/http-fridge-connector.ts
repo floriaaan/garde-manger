@@ -214,12 +214,9 @@ export class HttpFridgeConnector implements FridgeConnector {
 
   async signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {
     try {
-      // better-auth validates callbackURL as a plain path — Expo Router's
-      // `(tabs)` route-group syntax isn't one (the parens fail its check
-      // server-side with 403 INVALID_CALLBACK_URL, before PocketID is ever
-      // reached). `onSuccess()` below does the actual in-app navigation, so
-      // this only needs to be *a* valid path.
-      const { error } = await authClient.signIn.social({ provider, callbackURL: '/' })
+      // Expo turns the native path into a deep link. On web a relative path
+      // would redirect to the API host, so return to the frontend origin.
+      const { error } = await authClient.signIn.social({ provider, callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : '/' })
       if (error) {
         return Result.err({ type: error.code ?? 'sign_in_failed', message: error.message ?? 'Connexion impossible.' })
       }
@@ -270,7 +267,7 @@ export class HttpFridgeConnector implements FridgeConnector {
 
   async linkSocial(provider: 'pocketid' | 'google'): Promise<Result<void, ApiError>> {
     try {
-      const { error } = await authClient.linkSocial({ provider, callbackURL: '/' })
+      const { error } = await authClient.linkSocial({ provider, callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : '/' })
       if (error) {
         return Result.err({ type: error.code ?? 'link_failed', message: error.message ?? 'Connexion impossible.' })
       }

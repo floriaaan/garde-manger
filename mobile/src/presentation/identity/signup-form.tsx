@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import zxcvbn from 'zxcvbn'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -20,7 +20,10 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const trimmedEmail = email.trim()
   // Not password.trim() — see login-form.tsx's own note.
   const canSubmit = trimmedName.length > 0 && trimmedEmail.length > 0 && password.length >= 8 && password.length <= 128
-  const strength = password ? zxcvbn(password, [trimmedName, trimmedEmail]).score : 0
+  const strength = useMemo(
+    () => password ? zxcvbn(password.slice(0, 100), [trimmedName, trimmedEmail]).score : 0,
+    [password, trimmedName, trimmedEmail],
+  )
   const strengthLabels = ['Très faible', 'Faible', 'Moyen', 'Bon', 'Très bon']
   const strengthColors = [palette.expired, palette.expired, palette.soon, palette.fresh, palette.fresh]
 

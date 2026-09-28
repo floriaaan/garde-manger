@@ -51,3 +51,55 @@ de développement ou de distribution pour l’utiliser.
 Une empreinte Android absente désactive le fichier `assetlinks.json`. Les clés
 d’accès existantes restent liées au domaine qui les a créées ; changer de domaine
 API demande de les réenregistrer.
+
+
+## Expo web et redirections OAuth
+
+Le frontend renvoie désormais Google/PocketID vers son origine web après connexion
+ou liaison de compte. Ajouter cette origine HTTPS à `CORS_ORIGIN` côté backend.
+L’URL du callback enregistrée chez Google/PocketID reste celle de l’API.
+
+Pour les passkeys, configurer **également** `PASSKEY_WEB_ORIGINS` (origines exactes,
+séparées par des virgules, sans chemin ni slash final). CORS seul ne suffit pas.
+`PASSKEY_RP_ID` reste par défaut le hostname de `NETWORK_URL` : aucune clé native
+existante n’est déplacée automatiquement.
+
+Exemple conservant les clés officielles existantes :
+
+```dotenv
+NETWORK_URL=https://api-gardemanger.floriaaan.fr
+PASSKEY_RP_ID=api-gardemanger.floriaaan.fr
+PASSKEY_WEB_ORIGINS=https://web.api-gardemanger.floriaaan.fr
+CORS_ORIGIN=gardemanger://,https://web.api-gardemanger.floriaaan.fr
+```
+
+Servir le frontend sur cette origine avec HTTPS. Le navigateur impose que son
+hostname soit égal au RP ID ou à un sous-domaine de celui-ci. Une origine sœur
+comme `app.example.com` avec une API `api.example.com` demande un RP ID commun
+`example.com` sur un domaine que l’on contrôle entièrement. **Changer le RP ID
+rend les clés existantes inutilisables** : prévoir leur réenregistrement et un
+autre moyen de connexion, adapter les domaines associés iOS et servir les fichiers
+d’association sur le nouveau domaine avant de reconstruire les apps natives.
+Les sous-domaines de ce RP ID doivent rester sous votre contrôle.
+
+Le backend refuse au démarrage les origines web incompatibles et les empreintes
+Android mal formées, plutôt que de proposer une cérémonie vouée à échouer.
+
+## Récupération du mot de passe et Docker
+
+Le service backend de `compose.yml` transmet les variables `APPLE_*`,
+`ANDROID_APP_SIGNING_SHA256`, `PASSKEY_*` et `SMTP_*` depuis le `.env` de Compose.
+Configurer `SMTP_HOST`, `SMTP_FROM` et, si nécessaire, `SMTP_USER`/`SMTP_PASSWORD`.
+Le port 587 utilise STARTTLS (`SMTP_SECURE=false`) ; le port 465 utilise TLS direct
+(`SMTP_SECURE=true`). Recréer le conteneur backend après modification.
+
+Un lien de récupération est à usage unique ; le changement de mot de passe
+révoque les sessions existantes. La réponse reste identique pour une adresse
+connue ou inconnue. Tester la livraison SMTP réelle avant d’activer ce parcours
+auprès des utilisateurs.
+
+La liaison Apple depuis Mon compte accepte une adresse relais différente de
+l’adresse du compte connecté. Elle nécessite toujours une session authentifiée
+et une identité Apple vérifiée ; une identité déjà liée ne peut pas être
+réattribuée à un autre compte. La fusion implicite avec un compte local dont
+l’adresse n’est pas vérifiée reste interdite.

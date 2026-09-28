@@ -5,6 +5,7 @@ import { passkey } from '@better-auth/passkey'
 import { Kysely, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 import env from '#start/env'
+import { buildPasskeyOptions } from './passkey-options.js'
 import { buildAppleClientSecret } from './apple-client-secret.js'
 import { passwordResetAvailable, sendPasswordResetEmail } from '../password-reset-mailer.js'
 
@@ -36,16 +37,12 @@ const appleConfigured = Boolean(
   appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey,
 )
 
-// WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
-// lifetime — NETWORK_URL is that same "however this backend is actually
-// reached" address already used as the PocketID redirect_uri, so passkeys
-// keep working across the LAN-IP-in-dev / real-domain-in-prod split without
-// their own env var.
-const networkUrl = new URL(env.get('NETWORK_URL'))
-const androidFingerprint = env.get('ANDROID_APP_SIGNING_SHA256', '').replaceAll(':', '')
-const androidOrigin = /^[0-9a-fA-F]{64}$/.test(androidFingerprint)
-  ? `android:apk-key-hash:${Buffer.from(androidFingerprint, 'hex').toString('base64')}`
-  : null
+const passkeyOptions = buildPasskeyOptions({
+  networkUrl: env.get('NETWORK_URL'),
+  rpID: env.get('PASSKEY_RP_ID', ''),
+  webOrigins: env.get('PASSKEY_WEB_ORIGINS', ''),
+  androidFingerprint: env.get('ANDROID_APP_SIGNING_SHA256', ''),
+})
 
 /**
  * Unlike arr's OIDC config (hot-reloaded from a settings table), PocketID
@@ -171,6 +168,11 @@ export const auth = betterAuth({
      */
     accountLinking: {
       enabled: true,
+      // Explicit linking requires a session and a verified provider identity.
+      // Apple relay addresses may differ from the account's original email.
+      allowDifferentEmails: true,
+      trustedProviders: [],
+      requireLocalEmailVerified: true,
     },
   },
   ...(googleConfigured || appleConfigured
@@ -206,9 +208,8 @@ export const auth = betterAuth({
   plugins: [
     expo(),
     passkey({
-      rpID: networkUrl.hostname,
+      ...passkeyOptions,
       rpName: env.get('INSTANCE_NAME', 'Garde-manger'),
-      origin: androidOrigin ? [env.get('NETWORK_URL'), androidOrigin] : env.get('NETWORK_URL'),
       schema: {
         passkey: {
           fields: {

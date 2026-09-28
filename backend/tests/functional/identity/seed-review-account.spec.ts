@@ -49,6 +49,12 @@ test.group('seed:review-account', (group) => {
     assert.equal(await count('product_outcome', householdId), 8)
     assert.equal(await count('shopping_item', householdId), 5)
 
+    const subscriptions = await db.from('household_subscription').where('household_id', householdId)
+    assert.lengthOf(subscriptions, 1)
+    assert.equal(new Date(subscriptions[0].expires_at).toISOString(), '2099-12-31T23:59:59.000Z')
+    assert.isNull(subscriptions[0].stripe_customer_id)
+    assert.isNull(subscriptions[0].stripe_subscription_id)
+
     // The rerun reset the password to the current env value.
     const signIn = await client
       .post('/api/auth/sign-in/email')
