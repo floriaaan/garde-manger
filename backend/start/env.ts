@@ -53,6 +53,15 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   DISABLE_PASSWORD_LOGIN: Env.schema.boolean.optional(),
 
+  // Optional SMTP delivery for password recovery. Without HOST and FROM,
+  // the app tells users to contact their instance administrator.
+  SMTP_HOST: Env.schema.string.optional(),
+  SMTP_PORT: Env.schema.number.optional(),
+  SMTP_SECURE: Env.schema.boolean.optional(),
+  SMTP_USER: Env.schema.string.optional(),
+  SMTP_PASSWORD: Env.schema.string.optional(),
+  SMTP_FROM: Env.schema.string.optional(),
+
   // Frontend/app origin(s) the client actually calls the API from — used by
   // better-auth's trustedOrigins check (cf. instance.ts), comma-separated.
   CORS_ORIGIN: Env.schema.string.optional(),

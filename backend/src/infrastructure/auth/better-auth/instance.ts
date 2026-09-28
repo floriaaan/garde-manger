@@ -6,6 +6,7 @@ import { Kysely, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 import env from '#start/env'
 import { buildAppleClientSecret } from './apple-client-secret.js'
+import { passwordResetAvailable, sendPasswordResetEmail } from '../password-reset-mailer.js'
 
 const pool = new Pool({
   host: env.get('DB_HOST'),
@@ -30,7 +31,7 @@ const appleClientId = env.get('APPLE_CLIENT_ID', '')
 const appleAppBundleIdentifier = env.get('APPLE_APP_BUNDLE_IDENTIFIER', '')
 const appleTeamId = env.get('APPLE_TEAM_ID', '')
 const appleKeyId = env.get('APPLE_KEY_ID', '')
-const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')
+const applePrivateKey = env.get('APPLE_PRIVATE_KEY', '')?.replace(/\\n/g, '\n')
 const appleConfigured = Boolean(appleClientId && appleAppBundleIdentifier && appleTeamId && appleKeyId && applePrivateKey)
 
 // WebAuthn binds a passkey to a single origin/hostname (`rpID`) for its
@@ -66,7 +67,13 @@ export const auth = betterAuth({
     // but listing it unconditionally costs nothing (docs/adr/0020).
     'https://appleid.apple.com',
   ],
-  emailAndPassword: { enabled: !env.get('DISABLE_PASSWORD_LOGIN', false) },
+  emailAndPassword: {
+    enabled: !env.get('DISABLE_PASSWORD_LOGIN', false),
+    revokeSessionsOnPasswordReset: true,
+    ...(passwordResetAvailable
+      ? { sendResetPassword: ({ user, url }: { user: { email: string }; url: string }) => sendPasswordResetEmail(user.email, url) }
+      : {}),
+  },
   /**
    * The migration (`create_identity_tables_table.ts`) uses snake_case
    * columns, matching every other table in this codebase — better-auth's

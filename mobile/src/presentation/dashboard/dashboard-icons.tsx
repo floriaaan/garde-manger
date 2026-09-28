@@ -48,6 +48,8 @@ function icon(paths: IconSegment[]) {
 }
 
 export const XIcon = icon([{ d: 'M18 6 6 18' }, { d: 'm6 6 12 12' }])
+export const EyeIcon = icon([{ d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z' }, { cx: '12', cy: '12', r: '3' }])
+export const EyeOffIcon = icon([{ d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z' }, { cx: '12', cy: '12', r: '3' }, { d: 'M3 3 21 21' }])
 export const CircleCheckIcon = icon([{ cx: '12', cy: '12', r: '10' }, { d: 'm9 12 2 2 4-4' }])
 export const CheckIcon = icon([{ d: 'M20 6 9 17l-5-5' }])
 export const BadgeCheckIcon = icon([

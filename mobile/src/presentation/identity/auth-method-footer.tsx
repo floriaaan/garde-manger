@@ -31,9 +31,9 @@
  * there is no jump the moment animation control takes over.
  */
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { LayoutChangeEvent } from 'react-native'
-import { Animated, Easing, Image, Platform, Pressable, View } from 'react-native'
+import { Animated, Easing, Image, Pressable, View } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, pressAreaSlop, useReduceMotion } from '../shared/hover.js'
@@ -78,21 +78,18 @@ export function AuthMethodFooter({
   const [everEnteredEmail, setEverEnteredEmail] = useState(false)
   const [height] = useState(() => new Animated.Value(0))
   const [hasMeasured, setHasMeasured] = useState(false)
-  const [appleAvailable, setAppleAvailable] = useState(false)
   const [pendingNativeProvider, setPendingNativeProvider] = useState<'apple' | 'passkey' | null>(null)
   const [nativeError, setNativeError] = useState<string | null>(null)
   const [pendingProvider, setPendingProvider] = useState<'pocketid' | 'google' | null>(null)
-
-  useEffect(() => {
-    if (Platform.OS === 'ios') void AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false))
-  }, [])
+  const [methodHint, setMethodHint] = useState<string | null>(null)
 
   const pocketId = authMethods.data?.find((m) => m.id === 'pocketid' && m.enabled)
+  const password = authMethods.data?.find((m) => m.id === 'password' && m.enabled)
   const google = authMethods.data?.find((m) => m.id === 'google' && m.enabled)
-  const apple = authMethods.data?.find((m) => m.id === 'apple' && m.enabled && (appleAvailable || isFakeConnector))
+  const apple = authMethods.data?.find((m) => m.id === 'apple' && m.enabled)
   const passkey = authMethods.data?.find((m) => m.id === 'passkey' && m.enabled && allowPasskey)
   const hasSocial = Boolean(pocketId || google || apple || passkey)
-  const compactSocial = [pocketId, google, apple, passkey].filter(Boolean).length > 1
+  const compactSocial = [password, pocketId, google, apple, passkey].filter(Boolean).length > 2
   const nativePending = pendingNativeProvider !== null
   const socialBusy = nativePending || signInSocial.isPending
   const socialError = authErrorMessage(signInSocial.error, signInSocial.data, 'Une erreur est survenue lors de la connexion.')
@@ -188,10 +185,10 @@ export function AuthMethodFooter({
     <Animated.View style={hasMeasured ? { height, overflow: 'hidden' } : undefined}>
       <View onLayout={onMeasure} style={{ gap: 12 }}>
         <View style={{ display: mode === 'choice' ? 'flex' : 'none', gap: 12 }}>
-          <AuthButton testID="auth-method-email" label={emailLabel} onPress={chooseEmail} />
+          {password ? <AuthButton testID="auth-method-email" label={emailLabel} onPress={chooseEmail} /> : null}
           {hasSocial ? (
             <>
-              <AuthDivider label="ou" />
+              {password ? <AuthDivider label="ou" /> : null}
               {socialError ? <AuthError message={socialError} /> : null}
               {nativeError ? <AuthError message={nativeError} /> : null}
               {compactSocial ? (
@@ -205,6 +202,7 @@ export function AuthMethodFooter({
                       pending={pendingNativeProvider === 'apple'}
                       disabled={socialBusy}
                       surface="white"
+                      onHint={setMethodHint}
                     />
                   ) : null}
                   {google ? (
@@ -215,6 +213,7 @@ export function AuthMethodFooter({
                       onPress={handleGoogle}
                       pending={pendingProvider === 'google'}
                       disabled={socialBusy}
+                      onHint={setMethodHint}
                     />
                   ) : null}
                   {pocketId ? (
@@ -225,6 +224,7 @@ export function AuthMethodFooter({
                       onPress={handlePocketId}
                       pending={pendingProvider === 'pocketid'}
                       disabled={socialBusy}
+                      onHint={setMethodHint}
                     />
                   ) : null}
                   {passkey ? (
@@ -235,6 +235,7 @@ export function AuthMethodFooter({
                       onPress={handlePasskey}
                       pending={pendingNativeProvider === 'passkey'}
                       disabled={socialBusy}
+                      onHint={setMethodHint}
                     />
                   ) : null}
                 </View>
@@ -255,6 +256,11 @@ export function AuthMethodFooter({
                   style={{ height: 50, width: '100%', opacity: nativePending ? 0.6 : 1 }}
                   onPress={handleApple}
                 />
+              ) : null}
+              {compactSocial && methodHint ? (
+                <Text fontSize={12} fontWeight="700" color={palette.onDarkSecondary} textAlign="center" accessibilityLiveRegion="polite">
+                  {methodHint}
+                </Text>
               ) : null}
               {!compactSocial && passkey ? (
                 <AuthButton

@@ -12,6 +12,7 @@ import { goBack } from '../shared/navigation.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { LockIcon, LinkIcon, TrashIcon, UserIcon } from '../dashboard/dashboard-icons.js'
 import { AuthField } from './auth-field.js'
+import { AuthPasswordField } from './auth-password-field.js'
 import { AuthButton } from './auth-button.js'
 import { PocketIdIcon } from './pocket-id-icon.js'
 import { GoogleIcon } from './google-icon.js'
@@ -214,19 +215,19 @@ export function AccountScreen() {
             <Text fontSize={15} fontWeight="800" color={palette.ink}>
               Mot de passe
             </Text>
-            <AuthField
+            <AuthPasswordField
               testID="account-current-password"
               label="Mot de passe actuel"
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              secureTextEntry
+              autoComplete="current-password"
             />
-            <AuthField
+            <AuthPasswordField
               testID="account-new-password"
               label="Nouveau mot de passe"
               value={newPassword}
               onChangeText={setNewPassword}
-              secureTextEntry
+              autoComplete="new-password"
             />
             <AuthButton
               testID="account-save-password"
@@ -327,12 +328,12 @@ export function AccountScreen() {
         ]}
       >
         {canChangePassword ? (
-          <AuthField
+          <AuthPasswordField
             testID="account-delete-password"
             label="Confirme avec ton mot de passe"
             value={deletePassword}
             onChangeText={setDeletePassword}
-            secureTextEntry
+            autoComplete="current-password"
           />
         ) : null}
       </ActionSheet>

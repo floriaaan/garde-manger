@@ -188,7 +188,7 @@ export class FakeFridgeConnector implements FridgeConnector {
 
   async getAuthMethods(): Promise<AuthMethod[]> {
     return [
-      { id: 'password', enabled: true, label: 'Email et mot de passe' },
+      { id: 'password', enabled: true, label: 'Email et mot de passe', resetAvailable: true },
       { id: 'pocketid', enabled: true, label: 'PocketID' },
       { id: 'google', enabled: true, label: 'Google' },
       { id: 'apple', enabled: true, label: 'Apple' },
@@ -216,6 +216,16 @@ export class FakeFridgeConnector implements FridgeConnector {
     // A new account has no foyer. This is what makes `(onboarding)` reachable.
     this.household = null
     return Result.ok(this.session)
+  }
+
+  async requestPasswordReset(_email: string): Promise<Result<void, ApiError>> {
+    return Result.ok(undefined)
+  }
+
+  async resetPassword(token: string, _newPassword: string): Promise<Result<void, ApiError>> {
+    return token
+      ? Result.ok(undefined)
+      : Result.err({ type: 'invalid_token', message: 'Ce lien ne fonctionne plus.' })
   }
 
   async signInSocial(provider?: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {

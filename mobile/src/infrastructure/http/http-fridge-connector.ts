@@ -147,10 +147,11 @@ export class HttpFridgeConnector implements FridgeConnector {
       const result = await apiFetch<{ methods: AuthMethod[] }>('/api/auth/methods', undefined, {
         action: 'identity.get_auth_methods',
       })
-      return result.ok ? result.value.methods : []
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.methods
     } catch (error) {
       reportFailure('identity.get_auth_methods', error)
-      return []
+      throw error
     }
   }
 
@@ -181,6 +182,33 @@ export class HttpFridgeConnector implements FridgeConnector {
     } catch (error) {
       reportFailure('identity.sign_up_email', error)
       return Result.err({ type: 'sign_up_failed', message: 'Inscription impossible.' })
+    }
+  }
+
+  async requestPasswordReset(email: string): Promise<Result<void, ApiError>> {
+    try {
+      const redirectTo = Platform.OS === 'web'
+        ? `${window.location.origin}/reset-password`
+        : 'gardemanger://reset-password'
+      const { error } = await authClient.requestPasswordReset({ email, redirectTo })
+      return error
+        ? Result.err({ type: error.code ?? 'reset_request_failed', message: error.message ?? 'Envoi du lien impossible.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.request_password_reset', error)
+      return Result.err({ type: 'reset_request_failed', message: 'Envoi du lien impossible. Réessaie.' })
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<Result<void, ApiError>> {
+    try {
+      const { error } = await authClient.resetPassword({ token, newPassword })
+      return error
+        ? Result.err({ type: error.code ?? 'reset_failed', message: error.message ?? 'Ce lien ne fonctionne plus.' })
+        : Result.ok(undefined)
+    } catch (error) {
+      reportFailure('identity.reset_password', error)
+      return Result.err({ type: 'reset_failed', message: 'Réinitialisation impossible. Réessaie.' })
     }
   }
 

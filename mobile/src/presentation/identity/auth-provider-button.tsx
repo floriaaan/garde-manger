@@ -14,6 +14,7 @@ export function AuthProviderButton({
   pending,
   disabled,
   surface = 'cream',
+  onHint,
 }: {
   label: string
   testID: string
@@ -22,6 +23,7 @@ export function AuthProviderButton({
   pending: boolean
   disabled: boolean
   surface?: 'cream' | 'white'
+  onHint?: (label: string | null) => void
 }) {
   const palette = useSoftPalette()
   const hover = useHoverPress()
@@ -32,12 +34,16 @@ export function AuthProviderButton({
       testID={testID}
       onPress={onPress}
       disabled={disabled}
-      onHoverIn={hover.onHoverIn}
-      onHoverOut={hover.onHoverOut}
+      onHoverIn={() => { hover.onHoverIn(); onHint?.(label) }}
+      onHoverOut={() => { hover.onHoverOut(); onHint?.(null) }}
+      onFocus={() => onHint?.(label)}
+      onBlur={() => onHint?.(null)}
+      onLongPress={() => onHint?.(label)}
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint="Maintenir pour afficher le nom de cette méthode"
       accessibilityState={{ disabled, busy: pending }}
       android_ripple={ripple(palette.accentLimeText)}
       style={[pointerCursor, rippleClip(16), { flexGrow: 1, flexBasis: 0, minWidth: 0, height: 56 }]}
