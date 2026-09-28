@@ -454,7 +454,7 @@ describe('authentication integrations', () => {
   })
 
   test('an invalid reset token is surfaced as a failure, not success', async () => {
-    ;(authClient.resetPassword as jest.Mock).mockResolvedValue({ error: { code: 'INVALID_TOKEN', message: 'Expired' } })
+    ;(authClient.resetPassword as unknown as jest.Mock).mockResolvedValue({ error: { code: 'INVALID_TOKEN', message: 'Expired' } })
     expect(await new HttpFridgeConnector().resetPassword('expired', 'new-password')).toEqual({
       ok: false, error: { type: 'INVALID_TOKEN', message: 'Expired' },
     })
