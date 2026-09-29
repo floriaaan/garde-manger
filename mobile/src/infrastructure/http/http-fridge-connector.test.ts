@@ -441,6 +441,17 @@ describe('authentication integrations', () => {
     expect(authClient.linkSocial).toHaveBeenCalledWith({ provider: 'pocketid', callbackURL })
   })
 
+  test('web OAuth waits for the callback instead of checking for a session before redirect', async () => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    Object.defineProperty(window, 'location', { configurable: true, value: { origin: 'https://app.example.com' } })
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({})
+    const connector = new HttpFridgeConnector()
+    const getSession = jest.spyOn(connector, 'getSession')
+
+    expect(await connector.signInSocial('google')).toEqual({ ok: true, value: null })
+    expect(getSession).not.toHaveBeenCalled()
+  })
+
   test.each(['web', 'ios'] as const)('password recovery routes back to the requesting platform: %s', async (os) => {
     Object.defineProperty(Platform, 'OS', { configurable: true, value: os })
     Object.defineProperty(window, 'location', { configurable: true, value: { origin: 'https://app.example.com' } })

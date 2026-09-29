@@ -212,7 +212,7 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
   }
 
-  async signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {
+  async signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session | null, ApiError>> {
     try {
       // Expo turns the native path into a deep link. On web a relative path
       // would redirect to the API host, so return to the frontend origin.
@@ -220,6 +220,9 @@ export class HttpFridgeConnector implements FridgeConnector {
       if (error) {
         return Result.err({ type: error.code ?? 'sign_in_failed', message: error.message ?? 'Connexion impossible.' })
       }
+      // On web, better-auth starts a full-page OAuth redirect. The session
+      // only exists after the callback reloads the app.
+      if (Platform.OS === 'web') return Result.ok(null)
       const session = await this.getSession()
       if (!session) return Result.err({ type: 'sign_in_failed', message: 'Connexion impossible.' })
       return Result.ok(session)

@@ -6,11 +6,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
-import { ActionSheet } from '../shared/action-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { goBack } from '../shared/navigation.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { LockIcon, LinkIcon, TrashIcon, UserIcon } from '../dashboard/dashboard-icons.js'
+import { LinkIcon, TrashIcon, UserIcon } from '../dashboard/dashboard-icons.js'
 import { AuthField } from './auth-field.js'
 import { AuthPasswordField } from './auth-password-field.js'
 import { AuthButton } from './auth-button.js'
@@ -18,13 +17,11 @@ import { PocketIdIcon } from './pocket-id-icon.js'
 import { GoogleIcon } from './google-icon.js'
 import { initials } from '../shared/member-avatars.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
-import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useUpdateAccountNameMutation } from '../../application/identity/update-account-name.mutation.js'
 import { useChangeAccountPasswordMutation } from '../../application/identity/change-account-password.mutation.js'
 import { useLinkedAccountsQuery } from '../../application/identity/linked-accounts.query.js'
 import { useAuthMethodsQuery } from '../../application/identity/auth-methods.query.js'
 import { useLinkSocialMutation } from '../../application/identity/link-social.mutation.js'
-import { useDeleteAccountMutation } from '../../application/identity/delete-account.mutation.js'
 import { useConnector } from '../../application/shared/connector-context.js'
 import { isFakeConnector } from '../../application/shared/connector-mode.js'
 
@@ -52,20 +49,15 @@ export function AccountScreen() {
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const session = useSessionQuery()
-  const household = useHouseholdQuery()
   const linkedAccounts = useLinkedAccountsQuery()
   const authMethods = useAuthMethodsQuery()
   const updateName = useUpdateAccountNameMutation()
   const changePassword = useChangeAccountPasswordMutation()
   const linkSocial = useLinkSocialMutation()
-  const deleteAccount = useDeleteAccountMutation()
   const [hint, showHint] = useHint()
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
-  const [deleteBlockedOpen, setDeleteBlockedOpen] = useState(false)
-  const [deletePassword, setDeletePassword] = useState('')
   const [appleAvailable, setAppleAvailable] = useState(false)
   const [nativePending, setNativePending] = useState(false)
 
@@ -74,7 +66,6 @@ export function AccountScreen() {
   }, [])
 
   const canChangePassword = linkedAccounts.data?.some((a) => a.provider === 'password') ?? false
-  const isOwnerOfSharedHousehold = household.data?.role === 'owner' && (household.data?.members.length ?? 0) > 1
   const linkedProviders = new Set((linkedAccounts.data ?? []).map((a) => a.provider))
   const linkableMethods = (authMethods.data ?? []).filter(
     (m): m is typeof m & { id: 'pocketid' | 'google' } =>
@@ -154,26 +145,6 @@ export function AccountScreen() {
     setCurrentPassword('')
     setNewPassword('')
     showHint('Mot de passe mis à jour', 'success', { description: 'Utilise-le à ta prochaine connexion.' })
-  }
-
-  function handleRequestDelete() {
-    if (isOwnerOfSharedHousehold) {
-      setDeleteBlockedOpen(true)
-      return
-    }
-    setDeleteSheetOpen(true)
-  }
-
-  async function handleConfirmDelete() {
-    const result = await deleteAccount.mutateAsync(canChangePassword ? deletePassword : undefined)
-    if (!result.ok) {
-      setDeleteSheetOpen(false)
-      showHint(result.error.message, 'error')
-      return
-    }
-    setDeleteSheetOpen(false)
-    queryClient.clear()
-    router.replace('/(auth)/sign-in')
   }
 
   return (
@@ -286,57 +257,10 @@ export function AccountScreen() {
             label="Supprimer le compte"
             variant="secondary"
             icon={<TrashIcon size={16} color={palette.expiredText} />}
-            disabled={household.isLoading}
-            onPress={handleRequestDelete}
+            onPress={() => router.push('/delete-account')}
           />
         </YStack>
       </AppShell>
-
-      <ActionSheet
-        visible={deleteBlockedOpen}
-        onClose={() => setDeleteBlockedOpen(false)}
-        title="Transfère la propriété du foyer d'abord"
-        description="Tu es propriétaire d'un foyer avec d'autres membres. Transfère la propriété avant de supprimer ton compte."
-        options={[
-          {
-            testID: 'account-go-to-household',
-            label: 'Aller au foyer',
-            icon: (color) => <LockIcon size={18} color={color} />,
-            tint: palette.chipViolet,
-            onPress: () => {
-              setDeleteBlockedOpen(false)
-              router.push('/household')
-            },
-          },
-        ]}
-      />
-
-      <ActionSheet
-        visible={deleteSheetOpen}
-        onClose={() => setDeleteSheetOpen(false)}
-        title="Supprimer le compte ?"
-        description="Cette action est irréversible et supprime toutes tes données personnelles."
-        options={[
-          {
-            testID: 'account-delete-confirm',
-            label: 'Supprimer définitivement',
-            icon: (color) => <TrashIcon size={18} color={color} />,
-            tint: palette.expired,
-            destructive: true,
-            onPress: handleConfirmDelete,
-          },
-        ]}
-      >
-        {canChangePassword ? (
-          <AuthPasswordField
-            testID="account-delete-password"
-            label="Confirme avec ton mot de passe"
-            value={deletePassword}
-            onChangeText={setDeletePassword}
-            autoComplete="current-password"
-          />
-        ) : null}
-      </ActionSheet>
     </>
   )
 }

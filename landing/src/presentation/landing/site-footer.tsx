@@ -8,6 +8,7 @@ import { ScribbleUnderline } from './scribble-underline.js'
 const LEGAL_LINKS = [
   { href: '/legal', label: 'Mentions légales' },
   { href: '/privacy', label: 'Confidentialité' },
+  { href: '/delete-account', label: 'Supprimer son compte' },
   { href: '/cgu', label: 'CGU' },
   { href: '/cgv', label: 'CGV' },
   { href: '/privacy#cookies', label: 'Cookies' },
