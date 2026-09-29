@@ -118,7 +118,7 @@ export function AuthMethodFooter({
     setPendingProvider('pocketid')
     try {
       const result = await signInSocial.mutateAsync({ provider: 'pocketid' })
-      if (result.ok) onSuccess()
+      if (result.ok && result.value) onSuccess()
     } finally {
       setPendingProvider(null)
     }
@@ -128,7 +128,7 @@ export function AuthMethodFooter({
     setPendingProvider('google')
     try {
       const result = await signInSocial.mutateAsync({ provider: 'google' })
-      if (result.ok) onSuccess()
+      if (result.ok && result.value) onSuccess()
     } finally {
       setPendingProvider(null)
     }

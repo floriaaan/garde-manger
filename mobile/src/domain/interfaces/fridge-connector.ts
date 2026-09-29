@@ -43,7 +43,7 @@ export interface FridgeConnector {
   signUpEmail(email: string, password: string, name: string): Promise<Result<Session, ApiError>>
   requestPasswordReset(email: string): Promise<Result<void, ApiError>>
   resetPassword(token: string, newPassword: string): Promise<Result<void, ApiError>>
-  signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session, ApiError>>
+  signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session | null, ApiError>>
   signInApple(identityToken: string): Promise<Result<Session, ApiError>>
   signInPasskey(): Promise<Result<Session, ApiError>>
   addPasskey(): Promise<Result<void, ApiError>>

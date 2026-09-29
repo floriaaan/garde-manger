@@ -123,7 +123,7 @@ export function InviteCodeField({
   const activeIndex = Math.min(value.length, INVITE_CODE_LENGTH - 1)
 
   return (
-    <YStack gap="$2">
+    <YStack gap="$2" position="relative">
       <Pressable
         onPress={() => inputRef.current?.focus()}
         accessible={false}

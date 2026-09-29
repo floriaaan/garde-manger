@@ -6,17 +6,18 @@ import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-conne
 import { fakeHouseholdAsMember } from '../../infrastructure/fake/fixtures/household.fixture.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { AccountScreen } from './account-screen.js'
+import { DeleteAccountScreen } from './delete-account-screen.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
 
-async function renderAuthenticated(connector = new FakeFridgeConnector()) {
+async function renderAuthenticated(connector = new FakeFridgeConnector(), Page = AccountScreen) {
   await connector.signInSocial()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <ConnectorProvider connector={connector}>
-          <AccountScreen />
+          <Page />
         </ConnectorProvider>
       </QueryClientProvider>
     </ThemeProvider>,
@@ -47,11 +48,15 @@ test('saving a new name calls the connector and shows a success hint', async () 
   await waitFor(() => expect(screen.getByText('Nom mis à jour')).toBeTruthy())
 })
 
-test('an owner of a shared household is blocked from deleting and offered the foyer instead', async () => {
+test('account deletion opens its own page', async () => {
   await renderAuthenticated()
-
-  await waitFor(() => expect(screen.getByTestId('account-delete').props.accessibilityState.disabled).toBe(false))
   await fireEvent.press(screen.getByTestId('account-delete'))
+
+  expect(router.push).toHaveBeenCalledWith('/delete-account')
+})
+
+test('an owner of a shared household is blocked from deleting and offered the foyer instead', async () => {
+  await renderAuthenticated(new FakeFridgeConnector(), DeleteAccountScreen)
 
   await waitFor(() => expect(screen.getByTestId('account-go-to-household')).toBeTruthy())
   await fireEvent.press(screen.getByTestId('account-go-to-household'))
@@ -61,10 +66,7 @@ test('an owner of a shared household is blocked from deleting and offered the fo
 
 test('a plain member can delete their account after confirming with their password', async () => {
   const connector = new FakeFridgeConnector({ fixtureHousehold: fakeHouseholdAsMember })
-  await renderAuthenticated(connector)
-
-  await waitFor(() => expect(screen.getByTestId('account-delete').props.accessibilityState.disabled).toBe(false))
-  await fireEvent.press(screen.getByTestId('account-delete'))
+  await renderAuthenticated(connector, DeleteAccountScreen)
 
   await waitFor(() => expect(screen.getByTestId('account-delete-password')).toBeTruthy())
   await fireEvent.changeText(screen.getByTestId('account-delete-password'), 'correct-horse-battery-staple')

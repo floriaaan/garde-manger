@@ -180,6 +180,7 @@ const sections: LegalSection[] = [
           {' '}(aucun délégué à la protection des données n’est désigné). Une réponse vous est apportée dans le
           délai d’un mois prévu par le RGPD. Une pièce d’identité peut être demandée en cas de doute sur votre identité.
         </P>
+        <P>Pour supprimer votre compte, consultez aussi la <A href="/delete-account">page de suppression de compte</A>.</P>
       </>
     ),
   },

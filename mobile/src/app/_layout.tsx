@@ -92,6 +92,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="settings" />
                 <Stack.Screen name="account" />
+                <Stack.Screen name="delete-account" />
                 <Stack.Screen name="household" />
                 <Stack.Screen name="receipts" />
                 <Stack.Screen name="tasks" />
