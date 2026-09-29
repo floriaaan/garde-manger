@@ -4,6 +4,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+## [1.0.0-rc.3]
+
+### Added
+- Sign in with Apple and passkeys on supported clients, including account linking and the domain-association endpoints needed for Apple and Android.
+- Password recovery by email, configurable through SMTP.
+- A public account-deletion page for requests made without the app.
+- A self-hostable Expo web app, published as a Docker image by CI.
+- Configuration and setup documentation for Apple sign-in, passkeys and password recovery.
+
+### Changed
+- Sign-in and sign-up now share a redesigned screen, with available authentication methods shown from instance configuration.
+- Account deletion has a dedicated confirmation screen with household ownership checks.
+- Push notifications for scans, recipes and expiring products now use more specific messages.
+- Refreshed app icons, illustrations and authentication visuals.
+
 ## [1.0.0-rc.2]
 
 ### Added
@@ -45,6 +60,7 @@ First release candidate.
 - Install guide: minimal compose file, secrets in a `.env`, HTTPS with Caddy, versioned updates with a backup step.
 - Application id is now `com.floriaaan.gardemanger` on iOS and Android.
 
-[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.2...HEAD
+[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...HEAD
+[1.0.0-rc.3]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.2...1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.1...1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/floriaaan/garde-manger/releases/tag/1.0.0-rc.1
