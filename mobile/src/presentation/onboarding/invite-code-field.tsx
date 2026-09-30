@@ -93,6 +93,7 @@ export function InviteCodeField({
   onSubmit,
   autoFocus,
   invalid,
+  disabled = false,
   testID = 'invite-code-field',
 }: {
   value: string
@@ -101,6 +102,7 @@ export function InviteCodeField({
   autoFocus?: boolean
   /** Turns every cell's hairline coral — the field is the error's anchor, not a sentence below it. */
   invalid?: boolean
+  disabled?: boolean
   testID?: string
 }) {
   const palette = useSoftPalette()
@@ -126,6 +128,7 @@ export function InviteCodeField({
     <YStack gap="$2" position="relative">
       <Pressable
         onPress={() => inputRef.current?.focus()}
+        disabled={disabled}
         accessible={false}
         // The row is a hit target for the input beneath it, not a control of
         // its own: the real focusable element is the TextInput.
@@ -149,6 +152,8 @@ export function InviteCodeField({
         ref={inputRef}
         testID={testID}
         value={value}
+        editable={!disabled}
+        accessibilityState={{ disabled }}
         onChangeText={(next) => onChangeText(normalizeInviteCode(next))}
         onSubmitEditing={onSubmit}
         onFocus={() => setFocused(true)}

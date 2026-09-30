@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import type { TextInput } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
@@ -16,6 +17,7 @@ import { router } from 'expo-router'
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const palette = useSoftPalette()
+  const passwordRef = useRef<TextInput>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [recovery, setRecovery] = useState<'login' | 'request' | 'sent' | 'unavailable'>('login')
@@ -32,7 +34,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const canSubmit = trimmedEmail.length > 0 && password.length > 0
 
   async function handleSubmit() {
-    if (!canSubmit) return
+    if (!canSubmit || signIn.isPending) return
     const result = await signIn.mutateAsync({ email: trimmedEmail, password })
     if (result.ok) onSuccess()
   }
@@ -49,26 +51,26 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   if (recovery !== 'login') return (
     <YStack gap="$3">
       {recovery === 'unavailable' ? (
-        <Text fontSize={14} color={palette.onDarkSecondary}>
+        <Text fontSize={14} color={palette.inkSecondary}>
           La récupération par e-mail n’est pas encore disponible. Contacte l’administrateur de ton serveur pour retrouver ton accès.
         </Text>
       ) : recovery === 'sent' ? (
         <YStack gap="$3">
-          <Text fontSize={14} color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
+          <Text fontSize={14} color={palette.inkSecondary} accessibilityLiveRegion="polite">
             {isFakeConnector ? 'Mode démo : aucun e-mail n’est envoyé.' : 'Si un compte correspond à cette adresse, un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes spams.'}
           </Text>
-          {isFakeConnector ? <AuthButton label="Ouvrir le lien de démo" variant="secondary" tone="on-dark" onPress={() => router.push('/reset-password?token=demo')} testID="reset-demo-link" /> : null}
+          {isFakeConnector ? <AuthButton label="Ouvrir le lien de démo" variant="secondary" onPress={() => router.push('/reset-password?token=demo')} testID="reset-demo-link" /> : null}
         </YStack>
       ) : (
         <>
-          <Text fontSize={14} color={palette.onDarkSecondary}>Saisis ton e-mail pour recevoir un lien de réinitialisation.</Text>
-          <AuthField label="Email" labelColor={palette.onDarkSecondary} placeholder="toi@exemple.com" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" testID="reset-email" />
+          <Text fontSize={14} color={palette.inkSecondary}>Saisis ton e-mail pour recevoir un lien de réinitialisation.</Text>
+          <AuthField label="Email" labelColor={palette.inkSecondary} placeholder="toi@exemple.com" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" testID="reset-email" />
           {requestError ? <AuthError message={requestError} /> : null}
           <AuthButton label="Recevoir un lien" pendingLabel="Envoi..." pending={requestReset.isPending} disabled={!trimmedEmail} onPress={handleRequestReset} testID="reset-request-submit" />
         </>
       )}
-      <Pressable onPress={() => setRecovery('login')} accessibilityRole="button" accessibilityLabel="Retour à la connexion" style={[pointerCursor, { alignSelf: 'flex-start', paddingVertical: 8 }]}>
-        <Text fontSize={13} fontWeight="700" color={palette.onDark}>Retour à la connexion</Text>
+      <Pressable onPress={() => setRecovery('login')} accessibilityRole="button" accessibilityLabel="Retour à la connexion" style={[pointerCursor, { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>Retour à la connexion</Text>
       </Pressable>
     </YStack>
   )
@@ -77,31 +79,38 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     <YStack gap="$3">
       <AuthField
         label="Email"
-        labelColor={palette.onDarkSecondary}
+        labelColor={palette.inkSecondary}
         placeholder="toi@exemple.com"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
+        autoCorrect={false}
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => passwordRef.current?.focus()}
         testID="login-email"
       />
       <AuthPasswordField
+        ref={passwordRef}
         label="Mot de passe"
-        labelColor={palette.onDarkSecondary}
+        labelColor={palette.inkSecondary}
         placeholder="••••••••"
         value={password}
         onChangeText={setPassword}
         autoComplete="current-password"
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
         testID="login-password"
       />
       <Pressable
         onPress={() => setRecovery(resetAvailable ? 'request' : 'unavailable')}
         accessibilityRole="button"
         accessibilityLabel="Mot de passe oublié ?"
-        style={[pointerCursor, { alignSelf: 'flex-end', paddingVertical: 8 }]}
+        style={[pointerCursor, { alignSelf: 'flex-end', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}
       >
-        <Text fontSize={13} fontWeight="700" color={palette.onDark}>Mot de passe oublié ?</Text>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>Mot de passe oublié ?</Text>
       </Pressable>
       {error ? <AuthError message={error} /> : null}
       <AuthButton

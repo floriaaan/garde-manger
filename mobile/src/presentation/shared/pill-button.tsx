@@ -42,6 +42,7 @@ export function PillButton({
   tone = 'accent',
   size = 'default',
   centered = false,
+  disabled = false,
 }: {
   testID?: string
   label: string
@@ -56,6 +57,7 @@ export function PillButton({
   size?: keyof typeof PILL_HEIGHT
   /** For a centered empty state's own CTA — see the note above `flex-start`. */
   centered?: boolean
+  disabled?: boolean
 }) {
   const hover = useHoverPress()
   const height = PILL_HEIGHT[size]
@@ -64,6 +66,8 @@ export function PillButton({
     <Pressable
       testID={testID}
       onPress={onPress}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
       onHoverIn={hover.onHoverIn}
       onHoverOut={hover.onHoverOut}
       onPressIn={hover.onPressIn}
@@ -73,7 +77,7 @@ export function PillButton({
       accessibilityLabel={accessibilityLabel ?? label}
       style={[pointerCursor, { alignSelf: centered ? 'center' : 'flex-start' }]}
     >
-      <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
+      <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: disabled ? 0.6 : 1 }}>
         <XStack
           alignItems="center"
           gap="$1.5"

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { TextInput, View, type TextInputProps } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -15,12 +15,8 @@ export function AuthField({
   ...inputProps
 }: TextInputProps & {
   label: string
-  /**
-   * Overrides the label's ink for a field sitting on a *colored* card — the
-   * threshold's "Nom du foyer" lives on the mocha surface, where the system's
-   * flat `inkSecondary` is both unreadable and against the rule that
-   * secondary text on a colored card is tinted from that card's own hue.
-   */
+  ref?: Ref<TextInput>
+  /** Tinted label ink for callers placing the field on a colored surface. */
   labelColor?: string
   testID?: string
   trailingAction?: { label: string; icon: ReactNode; onPress: () => void; testID?: string }

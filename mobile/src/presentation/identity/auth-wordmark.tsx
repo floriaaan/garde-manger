@@ -1,10 +1,4 @@
-/**
- * The mascot+"GARDE-MANGER" lockup — shared by `AuthScreenChrome` (the
- * threshold's blob ground, `tone="ink"`) and `AuthShell` (sign-in/sign-up's
- * photo ground, `tone="on-dark"`). Pulled out once a second copy of it was
- * about to exist with the only difference being which palette token the
- * label used.
- */
+/** Shared mascot lockup for the entry flow; development triple-tap opens debug. */
 import { useRef } from 'react'
 import { Image, Pressable } from 'react-native'
 import { router } from 'expo-router'

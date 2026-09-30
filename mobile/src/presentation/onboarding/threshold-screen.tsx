@@ -1,25 +1,7 @@
-/*
- * The threshold.
- *
- * One decision, at full screen: this account starts a foyer, or joins one that
- * already exists. Not a five-step corridor with a progress rail, and not a
- * carousel of four illustrated slides — the four sections introduce themselves
- * on the real dashboard afterwards (`first-run-tour.tsx`), where they are
- * actual controls rather than pictures of controls.
- *
- * The two branches are deliberately unequal. Creating carries the screen's one
- * dark surface (the mocha card, DESIGN.md's "sole high-contrast block" role,
- * ember glow and all); joining is the cream card beneath it. The weight says
- * which branch most people take without spending a word on it, and joining
- * loses nothing for it: its eight cells are right there on the card, not
- * behind a button that opens a second screen.
- *
- * There is no back button — the account already exists, and going "back" to
- * sign-up would be a lie. There is a way out: "Changer de compte" signs out.
- * A mandatory step with no exit is a trap, and the exit is what makes it a
- * gate instead.
- */
 import { useEffect, useState } from 'react'
+import { Keyboard, Switch, View } from 'react-native'
+import { Pressable } from '../shared/pressable.js'
+import { pointerCursor } from '../shared/hover.js'
 import { useQueryClient } from '@tanstack/react-query'
 import * as Clipboard from 'expo-clipboard'
 import { getTelemetry } from '../../application/shared/telemetry.js'
@@ -30,7 +12,6 @@ import { AuthScreenChrome } from '../identity/auth-screen-chrome.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { AuthError } from '../identity/auth-error.js'
 import { AuthField } from '../identity/auth-field.js'
-import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
 import { ClipboardIcon, QrCodeIcon } from '../dashboard/dashboard-icons.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { InviteCodeField } from './invite-code-field.js'
@@ -67,6 +48,8 @@ export function ThresholdScreen({
   const queryClient = useQueryClient()
   const [hint, showHint] = useHint()
   const [householdName, setHouseholdName] = useState('')
+  const [intent, setIntent] = useState<'create' | 'join'>(prefillCode ? 'join' : 'create')
+  const [showTour, setShowTour] = useState(false)
   const [code, setCode] = useState(() => normalizeInviteCode(prefillCode ?? ''))
   const create = useCreateHouseholdMutation()
   const join = useJoinHouseholdMutation()
@@ -86,7 +69,7 @@ export function ThresholdScreen({
   const [seenPrefillCode, setSeenPrefillCode] = useState(prefillCode)
   if (prefillCode !== seenPrefillCode) {
     setSeenPrefillCode(prefillCode)
-    if (prefillCode) setCode(normalizeInviteCode(prefillCode))
+    if (prefillCode) { setCode(normalizeInviteCode(prefillCode)); setIntent('join') }
   }
 
   /**
@@ -99,15 +82,16 @@ export function ThresholdScreen({
     if (prefillCode) return
     let mounted = true
     takeInviteCode().then((stored) => {
-      if (mounted && stored) setCode(stored)
+      if (mounted && stored) { setCode(stored); setIntent('join') }
     })
     return () => {
       mounted = false
     }
   }, [prefillCode])
 
-  const canCreate = householdName.trim().length > 0
-  const canJoin = isCompleteInviteCode(code)
+  const busy = create.isPending || join.isPending || signOut.isPending
+  const canCreate = householdName.trim().length > 0 && !busy
+  const canJoin = isCompleteInviteCode(code) && !busy
 
   /**
    * Both mutations end the same way, and the ending is the same as the gate's
@@ -116,11 +100,11 @@ export function ThresholdScreen({
    * handed, with no second round trip between the success and the dashboard.
    */
   async function settle(household: Household) {
+    // Store the preference before publishing the household: the layout gate
+    // can redirect as soon as the cache changes, before onEnteredHousehold.
+    await armFirstRunTour(showTour)
     queryClient.setQueryData(['household'], household)
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    // Awaited, not fired and forgotten: the dashboard reads this flag the
-    // moment it mounts, and a write still in flight is a tour that never runs.
-    await armFirstRunTour()
     onEnteredHousehold()
   }
 
@@ -136,6 +120,7 @@ export function ThresholdScreen({
   }
 
   async function handleCreate() {
+    if (!canCreate) return
     const result = await create.mutateAsync(householdName.trim())
     if (result.ok) {
       await settle(result.value)
@@ -148,6 +133,7 @@ export function ThresholdScreen({
   }
 
   async function handleJoin() {
+    if (!canJoin) return
     const result = await join.mutateAsync(code)
     if (result.ok) {
       await settle(result.value)
@@ -160,6 +146,7 @@ export function ThresholdScreen({
   }
 
   async function handlePaste() {
+    if (busy) return
     // `parseInviteCode`, not `normalizeInviteCode`: what people copy is the
     // whole share message, and normalizing that returns its first eight
     // letters — `REJOINSN` for a message beginning "Rejoins-nous".
@@ -179,6 +166,7 @@ export function ThresholdScreen({
   }
 
   async function handleSignOut() {
+    if (busy) return
     await signOut.mutateAsync(undefined)
     queryClient.clear()
     onSignedOut()
@@ -191,143 +179,55 @@ export function ThresholdScreen({
   const codeRejected = join.data && !join.data.ok && join.data.error.type === 'invalid_invite_code'
 
   return (
-    <AuthScreenChrome maxWidth={440} overlay={<HintBubble hint={hint} palette={palette} />}>
-      <YStack gap="$2">
-        <Text fontSize={24} fontWeight="800" color={palette.ink} lineHeight={30}>
-          {userName ? `Bienvenue, ${userName}.` : 'Bienvenue.'}
+    <AuthScreenChrome maxWidth={480} overlay={<HintBubble hint={hint} palette={palette} />}>
+      <YStack gap={10}>
+        <Text accessibilityRole="header" fontSize={32} fontWeight="800" letterSpacing={-0.6} color={palette.ink}>
+          {userName ? `Bienvenue, ${userName}.` : 'Bienvenue chez toi.'}
         </Text>
-        <Text fontSize={14} fontWeight="500" color={palette.inkSecondary}>
-          Garde-manger tient un seul garde-manger, partagé par tout le monde qui vit ici. Commence par
-          dire lequel est le tien.
-        </Text>
+        <Text fontSize={15} color={palette.inkSecondary}>Un compte pour toi. Un garde-manger partagé avec ton foyer.</Text>
       </YStack>
 
-      {/* Branch one: the screen's sole dark surface. */}
-      <YStack
-        testID="threshold-create-card"
-        backgroundColor={palette.brandDeep}
-        overflow="hidden"
-        style={{
-          borderTopLeftRadius: 36,
-          borderTopRightRadius: 20,
-          borderBottomRightRadius: 36,
-          borderBottomLeftRadius: 20,
-          position: 'relative',
-          shadowColor: palette.shadowCool,
-          shadowOffset: { width: 0, height: 16 },
-          shadowOpacity: 0.22,
-          shadowRadius: 28,
-          elevation: 6,
-        }}
-      >
-        <HeroWarmGlow warm={palette.accentWarm} ground={palette.brandDeep} />
-        <YStack padding="$5" gap="$3">
-          <Text fontSize={20} fontWeight="800" color={palette.brandDeepText}>
-            Je démarre le foyer
-          </Text>
-          <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary}>
-            Tu repartiras avec un code à huit caractères à donner aux autres.
-          </Text>
-          <AuthField
-            label="Nom du foyer"
-            // Tinted from the card it sits on, never the system's flat
-            // gray — the same rule the pastel cards follow.
-            labelColor={palette.brandDeepTextSecondary}
-            placeholder="Maison Bellevue"
-            value={householdName}
-            onChangeText={setHouseholdName}
-            maxLength={80}
-            testID="threshold-household-name"
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              if (canCreate) handleCreate()
-            }}
-          />
-          {createError ? <AuthError message={createError} /> : null}
-          <AuthButton
-            testID="threshold-create-submit"
-            label="Créer le foyer"
-            pendingLabel="Création..."
-            pending={create.isPending}
-            disabled={!canCreate}
-            onPress={handleCreate}
-          />
+      <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 8, padding: 6, borderRadius: 28, backgroundColor: palette.cream }}>
+        {(['create', 'join'] as const).map((choice) => (
+          <Pressable key={choice} testID={`threshold-choose-${choice}`} accessibilityRole="tab" accessibilityState={{ selected: intent === choice, disabled: busy }} disabled={busy} onPress={() => { Keyboard.dismiss(); setIntent(choice) }} style={[pointerCursor, { flex: 1, minHeight: 50, padding: 12, borderRadius: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: intent === choice ? palette.mintPale : palette.cream }]}>
+            <Text fontSize={15} fontWeight="700" textAlign="center" color={intent === choice ? palette.mintPaleText : palette.creamText}>{choice === 'create' ? 'Créer mon foyer' : 'Rejoindre un foyer'}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View testID="threshold-create-card" style={{ display: intent === 'create' ? 'flex' : 'none', gap: 20 }} accessibilityElementsHidden={intent !== 'create'} importantForAccessibility={intent === 'create' ? 'auto' : 'no-hide-descendants'}>
+        <YStack backgroundColor={palette.mintPale} padding={24} gap={8} style={{ borderTopLeftRadius: 36, borderTopRightRadius: 20, borderBottomRightRadius: 36, borderBottomLeftRadius: 20 }}>
+          <Text fontSize={22} fontWeight="800" color={palette.ink}>Tout commence chez toi.</Text>
+          <Text fontSize={15} color={palette.mintPaleText}>Donne un nom à ton foyer. Tu pourras ensuite inviter les autres avec un code.</Text>
         </YStack>
-      </YStack>
+        <AuthField label="Nom du foyer" placeholder="Maison Bellevue" value={householdName} onChangeText={setHouseholdName} maxLength={80} editable={!busy} testID="threshold-household-name" returnKeyType="done" onSubmitEditing={handleCreate} />
+        {createError ? <AuthError message={createError} /> : null}
+        <AuthButton testID="threshold-create-submit" label="Créer le foyer" pendingLabel="Création…" pending={create.isPending} disabled={!canCreate} onPress={handleCreate} />
+      </View>
 
-      {/* Branch two: lighter surface, same weight of action. */}
-      <YStack
-        testID="threshold-join-card"
-        backgroundColor={palette.cream}
-        padding="$5"
-        gap="$3"
-        style={{
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 32,
-          borderBottomRightRadius: 20,
-          borderBottomLeftRadius: 32,
-          shadowColor: palette.shadowCool,
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.1,
-          shadowRadius: 18,
-          elevation: 2,
-        }}
-      >
-        <Text fontSize={20} fontWeight="800" color={palette.ink}>
-          On m’a donné un code
-        </Text>
-        <Text fontSize={13} fontWeight="500" color={palette.creamText}>
-          Huit lettres ou chiffres, depuis l’écran Foyer de la personne qui t’invite.
-        </Text>
-
-        <InviteCodeField
-          value={code}
-          onChangeText={setCode}
-          onSubmit={() => canJoin && handleJoin()}
-          invalid={Boolean(codeRejected)}
-          testID="threshold-invite-code"
-        />
-
-        <XStack gap="$3" flexWrap="wrap">
-          <PillButton
-            testID="threshold-paste"
-            label="Coller"
-            tone="quiet"
-            icon={(color) => <ClipboardIcon size={15} color={color} />}
-            onPress={handlePaste}
-            accessibilityLabel="Coller le code depuis le presse-papier"
-            palette={palette}
-          />
-          <PillButton
-            testID="threshold-scan"
-            label="Scanner un QR"
-            tone="quiet"
-            icon={(color) => <QrCodeIcon size={15} color={color} />}
-            onPress={onScanCode}
-            accessibilityLabel="Scanner le QR code d’invitation"
-            palette={palette}
-          />
+      <View testID="threshold-join-card" style={{ display: intent === 'join' ? 'flex' : 'none', gap: 20 }} accessibilityElementsHidden={intent !== 'join'} importantForAccessibility={intent === 'join' ? 'auto' : 'no-hide-descendants'}>
+        <YStack gap={8}>
+          <Text fontSize={22} fontWeight="800" color={palette.ink}>Une place t’attend.</Text>
+          <Text fontSize={15} color={palette.inkSecondary}>Saisis les huit caractères du code d’invitation, ou scanne le QR de ton foyer.</Text>
+        </YStack>
+        <InviteCodeField value={code} onChangeText={setCode} onSubmit={handleJoin} invalid={Boolean(codeRejected)} disabled={busy} testID="threshold-invite-code" />
+        <XStack gap={12} flexWrap="wrap">
+          <PillButton testID="threshold-paste" label="Coller le code" disabled={busy} tone="quiet" icon={(color) => <ClipboardIcon size={16} color={color} />} onPress={handlePaste} accessibilityLabel="Coller le code depuis le presse-papier" palette={palette} />
+          <PillButton testID="threshold-scan" label="Scanner un QR" disabled={busy} tone="quiet" icon={(color) => <QrCodeIcon size={16} color={color} />} onPress={() => { if (!busy) onScanCode() }} palette={palette} />
         </XStack>
-
         {joinError ? <AuthError message={joinError} /> : null}
-        <AuthButton
-          testID="threshold-join-submit"
-          label="Rejoindre le foyer"
-          pendingLabel="On te fait entrer..."
-          pending={join.isPending}
-          disabled={!canJoin}
-          onPress={handleJoin}
-        />
-      </YStack>
+        <AuthButton testID="threshold-join-submit" label="Rejoindre le foyer" pendingLabel="On te fait entrer…" pending={join.isPending} disabled={!canJoin} onPress={handleJoin} />
+      </View>
 
+      <XStack gap={16} alignItems="center" justifyContent="space-between">
+        <YStack flex={1} gap={4}>
+          <Text fontSize={14} fontWeight="700" color={palette.ink}>Me faire visiter l’app</Text>
+          <Text fontSize={13} color={palette.inkSecondary}>Une courte visite, que tu peux passer.</Text>
+        </YStack>
+        <Switch testID="threshold-tour" accessibilityLabel="Me faire visiter l’application" value={showTour} onValueChange={setShowTour} disabled={busy} trackColor={{ false: palette.creamPillEdge, true: palette.mintPaleText }} />
+      </XStack>
       <YStack alignItems="center">
-        <PillButton
-          testID="threshold-sign-out"
-          label="Changer de compte"
-          tone="quiet"
-          onPress={handleSignOut}
-          palette={palette}
-        />
+        <AuthButton testID="threshold-sign-out" label="Changer de compte" variant="secondary" disabled={busy} pending={signOut.isPending} onPress={handleSignOut} />
       </YStack>
     </AuthScreenChrome>
   )

@@ -1,61 +1,69 @@
 import type { ReactNode } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Image, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { YStack } from '../shared/tamagui-typed.js'
+import Svg, { Path } from 'react-native-svg'
+import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { AuthBlobBackground } from './auth-blob-background.js'
 import { AuthWordmark } from './auth-wordmark.js'
 
-/**
- * The chrome the threshold screen uses: blob ground, safe area,
- * keyboard-avoiding scroll, and the carrot+wordmark lockup above the content.
- * Sign-in/sign-up moved off this (see `AuthShell`, now a bottom hero panel
- * over a photo rather than a centered card) once their own interaction
- * outgrew "one static card, vertically centered" — this remains exactly
- * that for the one screen still shaped like it.
- */
-export function AuthScreenChrome({
-  maxWidth,
-  overlay,
-  children,
-}: {
-  /** The lockup+content column's cap — narrower for a single card, wider for two. */
+/** Garden's organic composition, using the app's existing mint and illustration. */
+export function AuthGardenHero() {
+  const palette = useSoftPalette()
+  return (
+    <View style={{ position: 'relative', padding: 28, paddingBottom: 20, minHeight: 248 }}>
+      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+        <Svg width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="none">
+          <Path d="M0 0H400V194C399 277 319 305 207 291C117 278 84 309 35 274C-2 248 0 190 0 150Z" fill={palette.blobSoft} />
+        </Svg>
+      </View>
+      <Text accessibilityRole="header" fontSize={36} fontWeight="800" letterSpacing={-1} color={palette.ink}>
+        Ton foyer.{'\n'}Ton garde-manger.
+      </Text>
+      <YStack marginTop={12} paddingRight={78} minHeight={86} justifyContent="center">
+        <Text fontSize={15} color={palette.ink}>Ce qu’il reste, quoi cuisiner, quoi racheter. Ensemble.</Text>
+      </YStack>
+      <Image source={require('../../../assets/illustrations/carrot-3d.png')} accessible={false} style={{ position: 'absolute', right: 8, bottom: 8, width: 104, height: 104 }} resizeMode="contain" />
+    </View>
+  )
+}
+
+/** One safe-area and keyboard-aware frame for the complete entry flow. */
+export function AuthScreenChrome({ maxWidth, overlay, hero, children }: {
   maxWidth: number
-  /**
-   * Rendered as a sibling of the safe area, inside the outer `position:
-   * relative` flex fill — not inside the scroll content. A `HintBubble`
-   * positions itself `absolute` against that fill; nested inside the
-   * scrolling column instead, it would anchor to the content height rather
-   * than the screen.
-   */
   overlay?: ReactNode
+  hero?: ReactNode
   children: ReactNode
 }) {
   const palette = useSoftPalette()
+  const { width } = useWindowDimensions()
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+  const wide = width >= 768
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true))
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false))
+    return () => { show.remove(); hide.remove() }
+  }, [])
+
   return (
-    <YStack flex={1} minHeight={0} backgroundColor={palette.gradientBottom} style={{ position: 'relative' }}>
-      <AuthBlobBackground />
-      <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1, minHeight: 0 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
-        >
+    <YStack flex={1} minHeight={0} backgroundColor={wide ? palette.layoutSurface : palette.gradientBottom}>
+      <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['top', 'bottom', 'left', 'right']}>
+        <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView
             style={{ flex: 1, minHeight: 0 }}
-            contentContainerStyle={{
-              flexGrow: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 24,
-              paddingVertical: 32,
-            }}
+            contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: wide ? 'center' : 'flex-start', padding: wide ? 32 : 20 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
-            <YStack width="100%" maxWidth={maxWidth} gap="$5">
+            <View style={{ width: '100%', maxWidth: hero && wide ? 1040 : maxWidth, padding: wide ? 32 : 0, borderRadius: 28, backgroundColor: palette.gradientBottom, gap: 24 }}>
               <AuthWordmark tone="ink" />
-              {children}
-            </YStack>
+              <View style={{ flexDirection: wide && hero && !keyboardOpen ? 'row' : 'column', alignItems: 'stretch', gap: wide ? 32 : 28 }}>
+                {hero && !keyboardOpen ? <View style={wide ? { flex: 1, justifyContent: 'center' } : undefined}>{hero}</View> : null}
+                <View style={{ ...(wide && hero && !keyboardOpen ? { flex: 1 } : { width: '100%' as const }), maxWidth, alignSelf: 'center', gap: 24 }}>
+                  {children}
+                </View>
+              </View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
