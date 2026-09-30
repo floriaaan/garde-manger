@@ -133,10 +133,10 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
     <View style={{ gap: 16 }}>
       <View style={{ display: emailActive ? 'none' : 'flex', gap: 12 }} accessibilityElementsHidden={emailActive} importantForAccessibility={emailActive ? 'no-hide-descendants' : 'auto'}>
         {hasSocial ? <View testID="auth-social-methods" style={{ flexDirection: 'row', gap: 8, alignItems: 'stretch' }}>
-          {apple ? <AuthProviderButton name="Apple" label="Continuer avec Apple" testID="auth-method-apple" apple icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />} pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} /> : null}
+          {apple ? <AuthProviderButton name="Apple" label="Continuer avec Apple" testID="auth-method-apple" icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />} pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} /> : null}
           {google ? <AuthProviderButton name="Google" label="Continuer avec Google" testID="auth-method-google" icon={<GoogleIcon size={24} />} pending={pendingProvider === 'google'} disabled={socialBusy} onPress={handleGoogle} /> : null}
-          {pocketId ? <AuthProviderButton name={pocketId.label} label={`Continuer avec ${pocketId.label}`} testID="auth-method-pocketid" icon={<PocketIdIcon size={24} color={palette.ink} />} pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} /> : null}
-          {passkey ? <AuthProviderButton name="Clé d’accès" label="Utiliser une clé d’accès" testID="auth-method-passkey" icon={<LockIcon size={24} color={palette.ink} />} pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} /> : null}
+          {pocketId ? <AuthProviderButton name={pocketId.label} label={`Continuer avec ${pocketId.label}`} testID="auth-method-pocketid" icon={<PocketIdIcon size={24} color={palette.accentLimeText} />} pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} /> : null}
+          {passkey ? <AuthProviderButton name="Clé d’accès" label="Utiliser une clé d’accès" testID="auth-method-passkey" icon={<LockIcon size={24} color={palette.accentLimeText} />} pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} /> : null}
         </View> : null}
         {socialError ? <AuthError message={socialError} /> : null}
         {nativeError ? <AuthError message={nativeError} /> : null}

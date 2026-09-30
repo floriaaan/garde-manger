@@ -45,8 +45,8 @@
     ],
     "typographyMeta": {
       "garden-display": {
-        "displayName": "Garden condensed hero",
-        "purpose": "Bundled Anton; size min(58, (measured hero column width - 52) / 6.1), line height 1.04. Compact header uses 38. Ordinary body fonts remain unchanged."
+        "displayName": "Garden Jakarta tagline",
+        "purpose": "Existing bundled Jakarta Sans 800; min(48, (hero width - 52) / 8), compact 32, line height 1.15. Supporting tagline uses bundled Jakarta 400. Splash brand retains Anton."
       },
       "garden-wordmark": {
         "displayName": "Garden wordmark",
@@ -69,20 +69,21 @@
         "thresholdContentMaxWidth": 480,
         "heroMeasurement": "onLayout column width",
         "keyboard": "No ScrollView. Fixed KeyboardAvoidingView/View; keyboard hides hero and secondary accessories, forms remain mounted, login/signup gaps become 8.",
-        "availableHeight": "Measured frame minus form height scales photograph into remaining hero area; short-height fallback uses a transparent wordmark strip over the shared blob. Small screens and large Dynamic Type need native captures.",
+        "availableHeight": "Measured frame minus form height scales the mascot into remaining hero area; short-height fallback uses a transparent wordmark strip. Small screens and large Dynamic Type need native captures.",
         "compactForms": {
           "signupThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 470 : 740) * fontScale",
           "loginThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale",
           "behavior": "One mounted field visible at a time; Continue until final field, then existing submit. 44px back action; drafts preserved and effect focuses active field after keyboard step changes. Zero/unmeasured or roomy frames retain the whole form. Password strength hides with keyboard; password-length hint remains."
         },
         "heroMeasurementReset": "Width, fontScale, compact, title, subtitle and font-loaded state reset text measurement and recalculate fallback.",
-        "householdKeyboard": "Hide intent selector, explanation, paste/scan, tour and sign-out; keep active name/code field and submit."
+        "householdKeyboard": "Hide intent selector, explanation, paste/scan, tour and sign-out; keep active name/code field and submit.",
+        "columns": "Two explicitly bounded 50% columns only with width >=768, width > height (landscape), and an explicit hero. iPad portrait and compact auth forms stay single-column; keyboard-open forms use 100% width."
       },
       "asset": {
-        "path": "assets/illustrations/garden-harvest.png",
-        "provenance": ".impeccable/mocks/decision/garden-harvest.prompt.txt",
-        "embeddedPrompt": true,
-        "purpose": "Generated transparent photographic carrots and pear; decorative, excluded from accessibility."
+        "path": "assets/mascot.png",
+        "origin": "Existing application mascot reused; no new asset generated",
+        "purpose": "Decorative fridge mascot shared by splash and auth header",
+        "authSize": "Square contain box: min(200, heroWidth × 0.52) large; 112pt compact; scales into available hero height"
       },
       "validation": {
         "disposition": "RECAPTURE",
@@ -133,6 +134,56 @@
           "legDurationMs": 7000,
           "continuity": "Same persistent Animated.Value and matched layer overhang; no remount on navigation"
         }
+      },
+      "delight": {
+        "scope": "household-threshold",
+        "thesis": "Feel welcomed into the real shared household after confirmed success",
+        "success": "Root success toast with server-returned household name; one success haptic; native accessibility announcement; immediate existing navigation",
+        "paste": "Existing HintBubble confirms received eight-character code and next action; never claims server validation",
+        "constraints": "No layout change, new asset, dependency, confetti, sound or delay; no welcome on failure or already-member recovery",
+        "validation": "Source and diff reviewed; targeted tests written but not run; native rendering and haptic feel pending"
+      },
+      "splash": {
+        "source": "src/presentation/shared/boot-splash.tsx",
+        "composition": "Existing fridge mascot above the two-line Anton brand, shared cream/blob ground, a leaf travelling along a rail and system loading copy",
+        "fonts": "Existing bundled Anton and Jakarta 800; no new font",
+        "responsive": "440pt max composition; compact display and 190pt mascot below height/fontScale 700; mascot 240pt ordinary; omit image below 500; compact stalled state prioritizes retry controls",
+        "behavior": "Existing 6s stall, retry and server change; no delayed navigation",
+        "continuity": "Loading gate registration preserves transparent native Stack and persistent shared blob while loading outside auth",
+        "nativeLaunch": "Existing expo-splash-screen plugin reuses mascot on light/dark cream, width 220; next native build required",
+        "validation": "Syntax and diff inspected; focused loading continuity regression written, not run under AGENTS.md; fresh native captures pending"
+      },
+      "loader": {
+        "source": "src/presentation/shared/pantry-loader.tsx",
+        "meaning": "Indeterminate activity, no percentage or false progress",
+        "motif": "Existing LeafIcon travels across a pantry rail",
+        "sizePt": [
+          108,
+          32
+        ],
+        "travelPt": 80,
+        "legDurationMs": 850,
+        "palette": [
+          "blobSoft",
+          "ink",
+          "creamPillEdge"
+        ],
+        "accessibility": "One labelled progressbar; decoration hidden; Reduce Motion holds leaf centred",
+        "lifecycle": "Native driver; pauses on route blur, app background and unmount",
+        "replaces": "Three loading dots on splash",
+        "validation": "Syntax inspected; accessibility/reduced-motion test written, not executed; native captures pending"
+      },
+      "authTypography": {
+        "headline": "Bundled Jakarta Sans 800 (GardenWordmark)",
+        "supportingTagline": "Bundled Jakarta Sans 400 (GardenTagline)",
+        "size": "min(48, (heroWidth - 52) / 8); compact 32; lineHeight 1.15; native padding 0.12em",
+        "splash": "Anton splash brand unchanged"
+      },
+      "socialButtons": {
+        "variant": "Filled, no outline; one row unchanged",
+        "fill": "paletteFor(light).blobSoft in both themes",
+        "ink": "palette.accentLimeText; matching PocketID/passkey icon ink",
+        "hierarchy": "Paler than accentLime email CTA; provider logos remain legible"
       }
     }
   },
@@ -199,7 +250,7 @@
       "refersTo": "garden-provider",
       "description": "One horizontal row, real provider icons and visible short names, 68px minimum controls. Preview shows PocketID; native component uses each provider’s actual asset. Apple keeps its official logo and native signInAsync. Email action is separate.",
       "html": "<div class=\"ds-garden-providers\"><button class=\"ds-garden-provider\" aria-label=\"Continuer avec PocketID\"><svg aria-hidden=\"true\" width=\"24\" height=\"24\" xmlns=\"http://www.w3.org/2000/svg\" xml:space=\"preserve\" viewBox=\"0 0 512 512\"><path d=\"M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0m106.4 288.7c-14.8 19.9-35 34.3-58.4 41.7l-6.5 2-15.5-76.2 4.3-2c14-6.7 23-21.1 23-36.6 0-22.4-18.2-40.6-40.6-40.6S228 195.2 228 217.6c0 15.5 9 29.8 23 36.6l4.2 2-25 153.4h-69.5V102.4h107.9c64.4 0 116.8 52.4 116.8 116.7 0 25.3-8 49.4-23 69.6\" fill=\"currentColor\"/></svg><span>PocketID</span></button></div>",
-      "css": ".ds-garden-providers{display:flex;gap:8px}.ds-garden-provider{flex:1;min-width:0;min-height:68px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1.25px solid #16211A;border-radius:11px;background:transparent;color:#16211A;font:700 12px system-ui}.ds-garden-provider:hover{transform:scale(1.035)}.ds-garden-provider:active{transform:scale(.96)}.ds-garden-provider:focus-visible{outline:2px solid #16211A;outline-offset:3px}.ds-garden-provider:disabled{opacity:.6}"
+      "css": ".ds-garden-providers{display:flex;gap:8px}.ds-garden-provider{flex:1;min-width:0;min-height:68px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:0;border-radius:11px;background:#EAF8D8;color:#0F2B1D;font:700 12px system-ui}.ds-garden-provider:hover{transform:scale(1.035)}.ds-garden-provider:active{transform:scale(.96)}.ds-garden-provider:focus-visible{outline:2px solid #16211A;outline-offset:3px}.ds-garden-provider:disabled{opacity:.6}"
     },
     {
       "name": "Garden Text Field",

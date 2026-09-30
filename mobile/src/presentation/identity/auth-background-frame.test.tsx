@@ -1,11 +1,12 @@
 import { render } from '@testing-library/react-native'
 import { Text } from 'react-native'
 import { ThemeProvider as NavigationThemeProvider, useSegments } from 'expo-router'
-import { AuthBackgroundFrame } from './auth-background-frame.js'
+import { AuthBackgroundFrame, useSplashBackground } from './auth-background-frame.js'
 import { AuthBlobBackground } from './auth-blob-background.js'
 
 const mockMount = jest.fn()
 const mockUnmount = jest.fn()
+beforeEach(() => jest.clearAllMocks())
 jest.mock('expo-router', () => ({
   useSegments: jest.fn(),
   useTheme: () => ({ dark: false, colors: { background: '#navigation-ground', primary: '#primary' } }),
@@ -39,4 +40,23 @@ test('keeps one background mounted across entry pages and pauses outside entry',
   expect(mockUnmount).not.toHaveBeenCalled()
   expect(jest.mocked(AuthBlobBackground).mock.lastCall?.[0]).toEqual({ ground: '#fff', active: false })
   expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors.background).toBe('#navigation-ground')
+})
+
+function LoadingGate() {
+  useSplashBackground()
+  return <Text>Chargement</Text>
+}
+
+test('a loading gate keeps the native container transparent outside auth without replacing the blob', async () => {
+  jest.mocked(useSegments).mockReturnValue(['(tabs)'])
+  const view = await render(<AuthBackgroundFrame><LoadingGate /></AuthBackgroundFrame>)
+  expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors.background).toBe('transparent')
+  expect(jest.mocked(AuthBlobBackground).mock.lastCall?.[0]).toEqual({ ground: '#fff', active: true })
+  expect(mockMount).toHaveBeenCalledTimes(1)
+
+  await view.rerender(<AuthBackgroundFrame><Text>Accueil</Text></AuthBackgroundFrame>)
+  expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors.background).toBe('#navigation-ground')
+  expect(jest.mocked(AuthBlobBackground).mock.lastCall?.[0]).toEqual({ ground: '#fff', active: false })
+  expect(mockMount).toHaveBeenCalledTimes(1)
+  expect(mockUnmount).not.toHaveBeenCalled()
 })

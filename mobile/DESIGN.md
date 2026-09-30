@@ -54,16 +54,16 @@ colors:
   cabinet-ink-secondary: "#5A6B72"
 typography:
   garden-display:
-    fontFamily: "Anton (bundled as GardenDisplay)"
-    fontSize: "min(58px, (measured hero width - 52px) / 6.1)"
+    fontFamily: "Plus Jakarta Sans ExtraBold (bundled as GardenWordmark)"
+    fontSize: "min(48px, (measured hero width - 52px) / 8)"
     fontWeight: 400
-    lineHeight: "1.04"
+    lineHeight: "1.15"
     letterSpacing: "-0.8px"
   garden-display-compact:
-    fontFamily: "Anton (bundled as GardenDisplay)"
-    fontSize: "38px"
+    fontFamily: "Plus Jakarta Sans ExtraBold (bundled as GardenWordmark)"
+    fontSize: "32px"
     fontWeight: 400
-    lineHeight: "1.04"
+    lineHeight: "1.15"
     letterSpacing: "-0.8px"
   garden-wordmark:
     fontFamily: "Plus Jakarta Sans ExtraBold (bundled as GardenWordmark)"
@@ -121,8 +121,8 @@ components:
     rounded: "{rounded.garden-control}"
     padding: "10px 18px"
   garden-provider:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
+    backgroundColor: "{colors.blob-soft} (light palette in both themes)"
+    textColor: "{colors.accent-lime-text}"
     rounded: "{rounded.garden-control}"
     padding: "8px"
   garden-field:
@@ -297,7 +297,7 @@ The exception is a *number*: the dashboard's stat cards still show `—` while l
 
 **The foyer belongs on the foyer's home screen.** `MemberAvatars` (`src/presentation/shared/member-avatars.tsx`) sits beside the household name on the dashboard and the block is the way into Réglages → Foyer. The one thing separating this product from a personal fridge tracker is that several people share the shelf, and it used to render in exactly one place — two taps deep, on a screen nobody opens.
 
-**A wait with no measurable progress gets `PulseDots`, not the OS spinner** (`src/presentation/shared/pulse-dots.tsx`). Three dots in the chip colours (orange / violet / teal), rising and dimming in a 150ms stagger so the row reads as one movement travelling across it; still and fully lit under Reduce Motion, like `Skeleton`'s shimmer. An `ActivityIndicator` is the one thing on screen drawn by the platform instead of by this system, and it lands on the screen whose entire job is a several-second wait. Dots never fade to 0 — a dot at zero reads as a gap in the row, not as a beat. The row carries one `progressbar` label; the dots themselves are not announced. Use a `Skeleton` instead whenever you know the shape of what will land: dots are for time you cannot draw, which on the composer is literal — nothing arrives on that screen at all, the sheet closes onto the recipe.
+**A wait with no measurable progress gets `PantryLoader`** (`src/presentation/shared/pantry-loader.tsx`): a single leaf travels back and forth across an 80pt rail, 850ms per leg, inside a 108×32pt frame. It signals activity without a percentage or a filled progress bar. Existing `LeafIcon`, `blobSoft`, `ink` and `creamPillEdge` give it the mobile identity. One accessible progressbar announces the real task; the decorations are hidden from accessibility. Under Reduce Motion, the leaf rests in the centre. Native-driven movement stops on route blur, app background and unmount. It replaces the three-dot loader on the splash; use a skeleton when the incoming content has a known shape.
 
 **A fake that answers instantly hides the state it is meant to exercise.** `FakeFridgeConnector` waits `DEFAULT_AI_LATENCY_MS` (2200) before `generateRecipes` resolves — success *and* failure alike, because a real provider spends the same seconds either way and an error that returns instantly teaches the wrong shape. Tests that want the generated data rather than the wait pass `{ aiLatencyMs: 0 }`. Any future fake that stands in for a slow call gets the same treatment; a loader you cannot see is a loader nobody can judge.
 
@@ -329,7 +329,7 @@ No borders anywhere in the system. Separation between surfaces is color contrast
 ### Buttons (`AuthButton`, the FAB, the sidebar Scanner button)
 - **Shape:** Garden auth buttons use `garden-control` rounding and minimum height 50px, growing with text. Outside Garden, auth buttons remain full pills (`999px`); the FAB is a 56×56 circle.
 - **Primary:** Garden uses `accent-lime` in both themes, `accent-lime-text` label and a trailing dark circular arrow. Outside Garden, `accent-lime` background remains the recipe. No border on primary actions.
-- **Secondary:** Garden secondary buttons are transparent and outlined in current ink (1.25px). Provider methods share one horizontal row of 68px-minimum outlined controls, each with its real icon, visible 12px/700 short name and full accessibility label. Apple uses its existing official logo asset on `authMethodSurface` and keeps native `signInAsync`; it no longer renders the native visual button. The email action remains separate. Outside Garden, the soft `buttonSecondary` fill remains.
+- **Secondary:** Garden secondary buttons are transparent and outlined in current ink (1.25px). Provider methods share one horizontal row of 68px-minimum filled controls, each with its real icon, visible 12px/700 short name and full accessibility label. Their fixed pale-green surface uses the light palette’s `blobSoft` with `accentLimeText` ink, in both themes; no outline. This stays lighter than the email CTA’s `accentLime` and keeps provider logos legible. Apple uses its existing official logo asset on the same pale green and keeps native `signInAsync`; it no longer renders the native visual button. The email action remains separate. Outside Garden, the soft `buttonSecondary` fill remains.
 - **Hover / Press:** every button spring-scales via `useHoverPress` — ×1.035 on web hover, ×0.96 on press-in, spring back on release. Disabled state drops opacity to 0.6 and disables the press handler; pending state swaps the leading icon for a spinner and uses `pendingLabel` ("Connexion...", "Inscription..."). Android keeps its bounded Material ripple.
 
 ### Browser defaults are part of the design
@@ -348,9 +348,11 @@ The parts of a web build nobody drew still carry a look, and it belongs to no de
 
 ### Cards / Containers
 - **Hero card:** asymmetric 36/20/36/20px radius, `hero-mocha` fill, hero-lift shadow, and a low-opacity warm radial glow (`HeroWarmGlow`) in one corner.
-- **Garden auth entry (`AuthShell`, `AuthGardenHero`):** the condensed headline and large photographic carrots/pear overlap retain the chosen composition; a shared animated radial blob now replaces its flat leaf field at the user’s request. `assets/illustrations/garden-harvest.png` is the generated transparent food still-life; provenance is retained in `.impeccable/mocks/decision/garden-harvest.prompt.txt` and asset metadata. Natural image width follows the measured column (`min(290, heroWidth × 0.72)`), with a 2:3 height-to-width ratio; compact headers start from 154px width. Available frame height can scale the image down or replace the hero with its wordmark strip. The large hero appears at method entry, a compact version at forms, and neither appears while the keyboard is open. The decorative asset is excluded from accessibility. No hero-lift shadow is added.
+- **Garden auth entry (`AuthShell`, `AuthGardenHero`):** the condensed headline retains the chosen composition; the latest user instruction brings the existing fridge mascot back in place of the photographic carrots/pear. `assets/mascot.png` is reused without a new asset. The mascot is contained in a square box: natural width `min(200, heroWidth × 0.52)` for the large header, 112pt compact. Available frame height scales that box down or replaces the hero with a wordmark strip. The large hero appears at method entry, a compact version at forms, and neither appears while the keyboard is open. Anton metric padding and font roles stay unchanged; decorative imagery is excluded from accessibility.
 - **Garden motion (`AuthStep`):** motion explains switching intent, never routine page arrival. Connexion/inscription and créer/rejoindre retain both mounted forms; the newly active branch travels 32pt laterally from its choice direction at full opacity (280ms iOS/web; 300ms with Material emphasized deceleration on Android). First render and keyboard resizing do not replay this motion. Interrupted transitions stop; hidden branches stay outside accessibility. Reduce Motion uses a 100ms opacity-only transition. Garden action buttons compress to 0.94 during a press on iOS/web; the primary action arrow advances 6pt with that same feedback, without displacement under Reduce Motion; Android retains its bounded ripple. Navigation keeps system transitions and the shared blob. All new animation uses the native driver, without layout animation, stagger or extra looping.
+- **Boot splash (`BootSplash`):** bridges Garden auth and the mobile system. The existing fridge mascot sits above the two-line `GARDE- / MANGER` brand in bundled Anton, with the auth headline’s native metric padding. Ground is `cream` with persistent auth blobs; `PantryLoader` and system body text express real loading. Safe areas frame a 440pt maximum composition; short screens reduce display and mascot (240pt ordinary, 190pt compact), hide the mascot below height/fontScale 500, and stalled compact screens prioritize recovery with a small Jakarta brand. Existing 6s timeout, retry and server-change behavior stays intact. Loading gates register with `AuthBackgroundFrame` to retain the transparent native container and shared blob through loading. Only foreground content fades out. The native launch plugin reuses the mascot on light/dark `cream`, width 220pt, effective on the next native build.
 - **Household threshold:** the compact Garden greeting leads into outlined create/join controls; selection uses leaf with palette ink. One form is visible; the create introduction is plain text, while joining preserves the existing eight-character field, paste and QR actions. A pending invitation selects joining. The optional tour switch starts off, and the first scan remains optional.
+- **Household delight:** after a confirmed create/join response and saved tour preference, the root success toast greets the member with the server-returned household name (`Bienvenue dans ….`), accompanied by one success haptic and a native accessibility announcement. No delay, confetti or extra screen. Pasting a recognized invitation displays the existing `HintBubble`: `Code collé`, with the next step; it confirms receipt only, never server validation or membership. Errors and already-member recovery do not trigger the welcome. Layout and existing motion remain intact.
 - **Stat card:** flex-1, one of three asymmetric corner sets, pastel fill (cream/lavender/mint-pale), a 36×36 saturated icon chip, card-float shadow. **A StatCard counts; it does not name.** A metric fits in half a phone width, a household name does not — Réglages opened on a StatCard pair and rendered "Le foyer de F…" on every phone.
   - **A card that counts a set of things opens that set.** All three dashboard metrics take `onPress` and spring like a `NavCard`: "Cette semaine" and "Dates dépassées" open the garde-manger already filtered to what they counted, "À racheter" opens the liste de courses. A number that names a group of products and then refuses to show them is a dead end wearing a summary's clothes. `onPress` stays optional so a card that genuinely leads nowhere stays inert instead of springing under the finger and doing nothing.
   - **Every level of a pressable card carries the stretch.** Wrapping the card in a `Pressable` + `Animated.View` moved it two levels off the row, and `flex:1` on the wrappers alone let the row equalise *them* while the pastel fills kept their own content heights — three cards ending at three different baselines on web, where "Dates dépassées" wraps to two lines and the others don't. Both wrappers carry `flex:1` **and** `alignSelf:'stretch'`, and the row states `alignItems="stretch"` rather than relying on the default.
@@ -460,3 +462,11 @@ Owned entirely by `AppShell` (see Layout) — no screen wires its own nav chrome
 - **Don't** size a card that holds words with a fixed constant, or pin its `lineHeight`. `ALTERNATE_WIDTH = 196` around a three-line title, and `lineHeight: 28` under a 22px title, both hold their shape while the OS text size grows and the words stop fitting. Scale them by `PixelRatio.getFontScale()`, capped, so a large-type setting grows the box instead of clipping the sentence.
 - **Don't** raise a control's *height* to reach the 44pt touch target when the design wants it smaller — pad the press area with `hitSlop` instead. The chips were 44pt tall for exactly this reason and read as a stack of buttons.
 - **Don't** hardcode an SVG gradient `id` as a literal string on a component that can mount more than once in the same DOM (e.g., inside a Stack navigator that keeps prior screens mounted) — use `useId()`. This shipped as a real bug (the sign-up screen's background blob silently failed to render) before being caught.
+
+Auth typography refinement: the “Votre foyer. Votre garde-manger.” tagline/header now uses local Jakarta Sans 800 (`GardenWordmark`), its supporting sentence uses local Jakarta Sans 400 (`GardenTagline`). The wider face fits the original three-line composition through the `garden-display` sizing above. The splash brand alone retains Anton. Ordinary form copy remains unchanged.
+
+Auth landscape sizing: the two-column frame explicitly bounds hero and form to 50% of its available width, after safe-area insets and outer padding. Both columns have minWidth 0 and flexShrink 1 so intrinsic text/form widths cannot take over the row. Existing form maxWidth remains; keyboard-open mode still uses one full-width form. Native iPhone landscape rendering remains to be recaptured.
+
+Large-screen auth forms use a centred single column with their compact header above the form. Only screens supplying an explicit hero use the split layout; method entry and the household greeting keep their two-column composition. Hero height budgeting subtracts form height in the single-column layout.
+
+Auth split-layout eligibility requires both width ≥768pt and landscape orientation (width > height). iPad portrait stays in one vertical column regardless of its width; the hero’s width estimate and padding use the same orientation rule. Compact auth forms remain single-column in every orientation.
