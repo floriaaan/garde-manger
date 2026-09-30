@@ -1,65 +1,118 @@
 import type { ReactNode } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { YStack } from '../shared/tamagui-typed.js'
+import { useEffect, useState } from 'react'
+import { Image, Keyboard, KeyboardAvoidingView, Platform, Text as NativeText, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useFonts } from 'expo-font'
+import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular'
+import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { AuthBlobBackground } from './auth-blob-background.js'
+import { useSharedAuthBackground } from './auth-background-frame.js'
 import { AuthWordmark } from './auth-wordmark.js'
+import { AuthEntryLayoutContext, AuthGardenContext, gardenColors, useAuthEntryLayout } from './auth-garden-theme.js'
 
-/**
- * The chrome the threshold screen uses: blob ground, safe area,
- * keyboard-avoiding scroll, and the carrot+wordmark lockup above the content.
- * Sign-in/sign-up moved off this (see `AuthShell`, now a bottom hero panel
- * over a photo rather than a centered card) once their own interaction
- * outgrew "one static card, vertically centered" — this remains exactly
- * that for the one screen still shaped like it.
- */
-export function AuthScreenChrome({
-  maxWidth,
-  overlay,
-  children,
-}: {
-  /** The lockup+content column's cap — narrower for a single card, wider for two. */
+/** The approved comp's edge-to-edge field, oversized lettering and the familiar fridge mascot. */
+export function AuthGardenHero({ compact = false, title, subtitle }: { compact?: boolean; title?: string; subtitle?: string }) {
+  const colors = gardenColors(useSoftPalette())
+  const { heroSpace } = useAuthEntryLayout()
+  const [textHeight, setTextHeight] = useState(0)
+  const { width, height, fontScale } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const wide = width >= 768 && width > height
+  const [heroWidth, setHeroWidth] = useState(wide ? Math.min(width - 64, 1040) / 2 : Math.min(width, 600))
+  const [measurementKey, setMeasurementKey] = useState('')
+  const [loaded] = useFonts({
+    GardenTagline: PlusJakartaSans_400Regular,
+    GardenWordmark: PlusJakartaSans_800ExtraBold,
+  })
+  const nextMeasurementKey = [width, fontScale, compact, title, subtitle, loaded].join('|')
+  if (measurementKey !== nextMeasurementKey) {
+    setMeasurementKey(nextMeasurementKey)
+    setTextHeight(0)
+    setHeroWidth(wide ? Math.min(width - 64, 1040) / 2 : Math.min(width, 600))
+  }
+  // Keep the comp's three lines at ordinary sizes; large Dynamic Type reflows naturally.
+  const displaySize = compact ? 32 : Math.min(48, (heroWidth - 52) / 8)
+  // Keep Jakarta's wider letterforms within the existing three-line composition.
+  const displayPadding = Math.ceil(displaySize * 0.12)
+  const naturalImageWidth = compact ? 112 : Math.min(200, heroWidth * 0.52)
+  const topPadding = wide ? Math.max(insets.top, 40) : Math.max(insets.top, 44) + 4
+  const bottomPadding = compact ? 12 : 20
+  const imageHeight = heroSpace === null || !textHeight
+    ? naturalImageWidth
+    : Math.min(naturalImageWidth, Math.max(0, heroSpace - topPadding - textHeight - bottomPadding - (compact ? 6 : 0)))
+  // Keep the composition intact where it fits; give short screens to the task.
+  if (heroSpace !== null && textHeight && heroSpace < topPadding + textHeight + bottomPadding + 32) return (
+    <View style={{ paddingTop: topPadding, paddingHorizontal: 26, paddingBottom: 12 }}>
+      <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
+    </View>
+  )
+  return (
+    <View onLayout={({ nativeEvent }) => setHeroWidth(nativeEvent.layout.width)} style={{ paddingTop: topPadding, paddingBottom: bottomPadding }}>
+      <View onLayout={({ nativeEvent }) => setTextHeight(nativeEvent.layout.height)} style={{ paddingHorizontal: 26 }}>
+        <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
+        {!compact || title ? (
+          <NativeText accessibilityRole="header" style={{ marginTop: compact ? 24 : 28, paddingTop: displayPadding, paddingBottom: displayPadding, includeFontPadding: true, color: colors.leafInk, fontFamily: loaded ? 'GardenWordmark' : undefined, fontWeight: loaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8 }}>
+            {title ?? (fontScale > 1.2 ? 'Votre foyer. Votre garde-manger.' : 'Votre foyer.\nVotre\ngarde-manger.')}
+          </NativeText>
+        ) : null}
+        {!compact || subtitle ? (
+          <NativeText style={{ marginTop: 18, fontFamily: loaded ? 'GardenTagline' : undefined, fontWeight: '400', fontSize: 18, lineHeight: 24, color: colors.leafInk }}>
+            {subtitle ?? 'Les produits de la maison,\nréunis au même endroit.'}
+          </NativeText>
+        ) : null}
+      </View>
+      <Image source={require('../../../assets/mascot.png')} accessible={false} style={{ alignSelf: 'flex-end', marginRight: 12, marginTop: compact ? 6 : 0, width: imageHeight, height: imageHeight }} resizeMode="contain" />
+    </View>
+  )
+}
+
+/** Native safe areas, natural-height forms, and a full-bleed Garden header. */
+export function AuthScreenChrome({ maxWidth, overlay, hero, children }: {
   maxWidth: number
-  /**
-   * Rendered as a sibling of the safe area, inside the outer `position:
-   * relative` flex fill — not inside the scroll content. A `HintBubble`
-   * positions itself `absolute` against that fill; nested inside the
-   * scrolling column instead, it would anchor to the content height rather
-   * than the screen.
-   */
   overlay?: ReactNode
+  hero?: ReactNode
   children: ReactNode
 }) {
+  const sharedBackground = useSharedAuthBackground()
   const palette = useSoftPalette()
+  const colors = gardenColors(palette)
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+  const [frameHeight, setFrameHeight] = useState(0)
+  const [contentHeight, setContentHeight] = useState(0)
+  const wide = width >= 768 && width > height
+  // A compact form header has no hero content to justify a second column.
+  const split = wide && Boolean(hero)
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true))
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false))
+    return () => { show.remove(); hide.remove() }
+  }, [])
+
+  const heroSpace = frameHeight ? Math.max(0, frameHeight - (split ? 0 : contentHeight) - 12) : null
+
   return (
-    <YStack flex={1} minHeight={0} backgroundColor={palette.gradientBottom} style={{ position: 'relative' }}>
-      <AuthBlobBackground />
-      <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1, minHeight: 0 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
-        >
-          <ScrollView
-            style={{ flex: 1, minHeight: 0 }}
-            contentContainerStyle={{
-              flexGrow: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 24,
-              paddingVertical: 32,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <YStack width="100%" maxWidth={maxWidth} gap="$5">
-              <AuthWordmark tone="ink" />
-              {children}
-            </YStack>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-      {overlay}
-    </YStack>
+    <AuthGardenContext.Provider value={colors}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={{ flex: 1, minHeight: 0, backgroundColor: sharedBackground ? 'transparent' : colors.ground }}>
+        <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['bottom', 'left', 'right']}>
+          <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <AuthEntryLayoutContext.Provider value={{ keyboardOpen, heroSpace, availableHeight: frameHeight }}>
+              <View onLayout={({ nativeEvent }) => setFrameHeight(nativeEvent.layout.height)} style={{ flex: 1, minHeight: 0, alignItems: 'center', justifyContent: keyboardOpen ? 'flex-end' : wide ? 'center' : 'flex-start', paddingHorizontal: wide ? 32 : 0, paddingBottom: 12 }}>
+                <View style={{ width: '100%', maxWidth: split ? 1040 : 600, flexDirection: split && !keyboardOpen ? 'row' : 'column', alignItems: 'stretch' }}>
+                  {!keyboardOpen ? <View style={split ? { width: '50%', minWidth: 0, flexShrink: 1, alignSelf: 'center' } : undefined}>{hero ?? <AuthGardenHero compact />}</View> : null}
+                  <View onLayout={({ nativeEvent }) => setContentHeight(nativeEvent.layout.height)} style={{ ...(split && !keyboardOpen ? { width: '50%' as const, minWidth: 0, flexShrink: 1 } : { width: '100%' as const }), maxWidth: maxWidth + 52, alignSelf: 'center', paddingHorizontal: 26, paddingTop: keyboardOpen ? insets.top + 8 : split ? 40 : 4, paddingBottom: 8, gap: keyboardOpen ? 8 : 16 }}>
+                    {children}
+                  </View>
+                </View>
+              </View>
+            </AuthEntryLayoutContext.Provider>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+        {overlay}
+      </View>
+      </TouchableWithoutFeedback>
+    </AuthGardenContext.Provider>
   )
 }

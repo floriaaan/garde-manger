@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { TextInput, View, type TextInputProps } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
+import { useAuthGarden } from './auth-garden-theme.js'
 
 /** Label above, rounded field below, lime focus ring — replaces the raw Tamagui `Input`. */
 export function AuthField({
@@ -15,17 +16,14 @@ export function AuthField({
   ...inputProps
 }: TextInputProps & {
   label: string
-  /**
-   * Overrides the label's ink for a field sitting on a *colored* card — the
-   * threshold's "Nom du foyer" lives on the mocha surface, where the system's
-   * flat `inkSecondary` is both unreadable and against the rule that
-   * secondary text on a colored card is tinted from that card's own hue.
-   */
+  ref?: Ref<TextInput>
+  /** Tinted label ink for callers placing the field on a colored surface. */
   labelColor?: string
   testID?: string
   trailingAction?: { label: string; icon: ReactNode; onPress: () => void; testID?: string }
 }) {
   const palette = useSoftPalette()
+  const garden = useAuthGarden()
   const [focused, setFocused] = useState(false)
   return (
     <YStack gap="$1.5">
@@ -48,15 +46,15 @@ export function AuthField({
           placeholderTextColor={palette.inkSecondary}
           style={{
             minHeight: 48,
-            borderRadius: 14,
+            borderRadius: garden ? 11 : 14,
             paddingLeft: 16,
             paddingRight: trailingAction ? 56 : 16,
             paddingVertical: 12,
             fontSize: 14,
             color: palette.ink,
-            backgroundColor: palette.cream,
+            backgroundColor: garden ? 'transparent' : palette.cream,
             borderWidth: 2,
-            borderColor: focused ? palette.accentLime : 'transparent',
+            borderColor: focused ? garden?.ink ?? palette.accentLime : garden?.muted ?? 'transparent',
           }}
         />
         {trailingAction ? (

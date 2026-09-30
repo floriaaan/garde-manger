@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useShareIntent } from 'expo-share-intent'
+import { AuthBackgroundFrame } from '../presentation/identity/auth-background-frame.js'
 import { ConfettiHost } from '../presentation/shared/confetti.js'
 import { ThemeProvider } from '../presentation/shared/theme-provider.js'
 import { ToastHost } from '../presentation/shared/toast.js'
@@ -82,36 +83,33 @@ export default function RootLayout() {
                 here as siblings of the tab group, which needs a real stack
                 navigator at the root to push onto. URLs are unchanged: `(tabs)`
                 is a group, so `/settings` was already `/settings`. */}
-              <Stack screenOptions={{ headerShown: false }}>
-                {/* The pre-auth carousel, shown once per device before `(auth)`
-                  gets a chance to. It sits at the route root rather than
-                  inside `(auth)` because it has no session to gate on — the
-                  gate here is `(tabs)/_layout.tsx`'s own welcome-seen flag,
-                  the one thing that decides whether "/" ever redirects here
-                  at all. */}
-                <Stack.Screen name="welcome" />
-                <Stack.Screen name="server-choice" />
-                <Stack.Screen name="reset-password" />
-                <Stack.Screen name="(auth)" />
-                {/* Between `(auth)` and `(tabs)`, and a sibling of both: an
-                  account with no foyer is signed in but has no screen inside
-                  the tabs that could honestly render, so it gets its own
-                  group with its own gate. `join` is the deep-link landing
-                  route for `gardemanger://join?code=…`. */}
-                <Stack.Screen name="(onboarding)" />
-                <Stack.Screen name="join" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="settings" />
-                <Stack.Screen name="expiry-reminders" />
-                <Stack.Screen name="account" />
-                <Stack.Screen name="delete-account" />
-                <Stack.Screen name="household" />
-                <Stack.Screen name="receipts" />
-                <Stack.Screen name="tasks" />
-                <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="debug" options={{ presentation: 'modal' }} />
-              </Stack>
+              <AuthBackgroundFrame>
+                <Stack screenOptions={{ headerShown: false }}>
+                  {/* First-time entry shares the auth screen in registration mode. */}
+                  <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="server-choice" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="reset-password" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="(auth)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  {/* Between `(auth)` and `(tabs)`, and a sibling of both: an
+                    account with no foyer is signed in but has no screen inside
+                    the tabs that could honestly render, so it gets its own
+                    group with its own gate. `join` is the deep-link landing
+                    route for `gardemanger://join?code=…`. */}
+                  <Stack.Screen name="(onboarding)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="join" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="(tabs)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                  <Stack.Screen name="settings" />
+                  <Stack.Screen name="expiry-reminders" />
+                  <Stack.Screen name="account" />
+                  <Stack.Screen name="delete-account" />
+                  <Stack.Screen name="household" />
+                  <Stack.Screen name="receipts" />
+                  <Stack.Screen name="tasks" />
+                  <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="debug" options={{ presentation: 'modal' }} />
+                </Stack>
+              </AuthBackgroundFrame>
             </ErrorBoundary>
           </ConnectorProvider>
         </QueryClientProvider>

@@ -3,52 +3,44 @@
  * session / foyer answer is pending, instead of `null` — which was a blank
  * screen for as long as a slow or unreachable server took to answer.
  *
- * It sits on the app's own ground (the auth blobs): the mascot and wordmark at full size are the only content, so a wait
+ * It sits on the app's own ground (the auth blobs): the condensed brand and the familiar fridge mascot anchor the wait, so a wait
  * reads as the brand arriving rather than as an empty screen. The retry block
- * lives at the bottom edge, so the lockup never jumps when it appears.
+ * lives at the bottom edge; compact recovery gives the actions priority.
  *
  * Past `STALLED_MS` the dots stop being an honest answer: say the server is
  * not answering and offer the two ways out (retry, or pick another server —
  * the usual cause is a stale URL).
  */
 import { useEffect, useState } from 'react'
-import { Animated, Easing, Image } from 'react-native'
+import { Image, Text as NativeText, useWindowDimensions } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useFonts } from 'expo-font'
 import Reanimated, { FadeOut } from 'react-native-reanimated'
 import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold'
 import { Text, YStack } from './tamagui-typed.js'
-import { PulseDots } from './pulse-dots.js'
+import { PantryLoader } from './pantry-loader.js'
 import { PillButton } from './pill-button.js'
 import { useReduceMotion } from './hover.js'
+import { useSharedAuthBackground, useSplashBackground } from '../identity/auth-background-frame.js'
 import { AuthBlobBackground } from '../identity/auth-blob-background.js'
-import { ChefHatIcon, LeafIcon, PackageIcon, ReceiptIcon } from '../dashboard/dashboard-icons.js'
-import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
+import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { queryClient } from '../../application/shared/query-client.js'
 
-const mascotIllustration = require('../../../assets/mascot.png')
+const mascot = require('../../../assets/mascot.png')
 
 const STALLED_MS = 6000
 
-/** The way out: the ground fades when a gate stops rendering the splash. Skipped under Reduce Motion. */
+/** Only foreground content fades out; the shared ground stays mounted. Skipped under Reduce Motion. */
 const GROUND_OUT = FadeOut.duration(300)
-/** One slow breath of the mascot: the screen's single authored motion. */
-const FLOAT_MS = 1800
-const FLOAT_RISE = 10
-
-/**
- * What the app handles, drifting around the mascot: the same pastel icon chips
- * the Réglages cards carry, tilted and counter-floating so the ground is not
- * empty. `dir` flips the float so the chips never all rise together.
- */
-const CHIPS = [
-  { Icon: ChefHatIcon, tint: (p: SoftPalette) => p.chipViolet, size: 60, rotate: '-12deg', dir: 1, pos: { top: 6, left: 4 } },
-  { Icon: LeafIcon, tint: (p: SoftPalette) => p.chipTeal, size: 48, rotate: '10deg', dir: -1, pos: { top: 0, right: 10 } },
-  { Icon: ReceiptIcon, tint: (p: SoftPalette) => p.chipOrange, size: 54, rotate: '8deg', dir: -1, pos: { top: 178, left: -6 } },
-  { Icon: PackageIcon, tint: (p: SoftPalette) => p.chipButter, size: 64, rotate: '-8deg', dir: 1, pos: { bottom: 4, right: 0 } },
-] as const
-
 export function BootSplash() {
+  const sharedBackground = useSharedAuthBackground()
+  useSplashBackground()
+  const { width, height, fontScale } = useWindowDimensions()
+  const compact = height / fontScale < 700
+  const displaySize = Math.min(compact ? 40 : 52, (width - 52) / 5.7)
+  const displayPadding = Math.ceil(displaySize * 0.12)
+  const imageWidth = Math.min(compact ? 190 : 240, width - 52)
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   // DESIGN.md's target family; the rest of the app is still on the system stack, so it is loaded here for the wordmark and title only.
@@ -59,7 +51,6 @@ export function BootSplash() {
   // A successful retry unmounts the splash (the gate lets the app through), so
   // still being here once it settles means the server did not answer.
   const [retried, setRetried] = useState(false)
-  const [float] = useState(() => new Animated.Value(0))
 
   function retry() {
     if (retrying) return
@@ -75,67 +66,38 @@ export function BootSplash() {
     return () => clearTimeout(timer)
   }, [])
 
-  useEffect(() => {
-    if (reduceMotion) return
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, { toValue: 1, duration: FLOAT_MS, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(float, { toValue: 0, duration: FLOAT_MS, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [float, reduceMotion])
-
   return (
     <Reanimated.View style={{ flex: 1 }} exiting={reduceMotion ? undefined : GROUND_OUT}>
-    <YStack testID="boot-splash" flex={1} overflow="hidden" backgroundColor={palette.gradientBottom}>
-      <AuthBlobBackground />
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$5">
-        <YStack width={320} height={300} alignItems="center" justifyContent="center">
-          {CHIPS.map(({ Icon, tint, size, rotate, dir, pos }) => (
-            <Animated.View
-              key={rotate}
-              style={{
-                position: 'absolute',
-                ...pos,
-                width: size,
-                height: size,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: tint(palette),
-                borderTopLeftRadius: size * 0.5,
-                borderTopRightRadius: size * 0.3,
-                borderBottomRightRadius: size * 0.5,
-                borderBottomLeftRadius: size * 0.3,
-                transform: [
-                  { rotate },
-                  { translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, dir * FLOAT_RISE] }) },
-                ],
-              }}
-            >
-              <Icon size={size * 0.46} color={palette.onDark} />
-            </Animated.View>
-          ))}
-          <Animated.View
-            style={{ transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -FLOAT_RISE] }) }] }}
-          >
-            <Image source={mascotIllustration} style={{ width: 220, height: 220 }} resizeMode="contain" accessibilityLabel="" />
-          </Animated.View>
+    <YStack testID="boot-splash" flex={1} overflow="hidden" backgroundColor={sharedBackground ? 'transparent' : palette.cream}>
+      {!sharedBackground ? <AuthBlobBackground ground={palette.cream} /> : null}
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+      <YStack flex={1} minHeight={0} alignItems="center" justifyContent="center" paddingHorizontal={26} paddingVertical={16}>
+        <YStack width="100%" maxWidth={440} alignItems="center">
+          {stalled && compact ? (
+            <Text fontFamily={brandFont} fontSize={22} fontWeight="800" color={palette.ink}>Garde-manger</Text>
+          ) : (
+            <>
+              {height / fontScale >= 500 ? <Image source={mascot} accessible={false} resizeMode="contain" style={{ width: imageWidth, height: imageWidth, marginBottom: 12 }} /> : null}
+              <NativeText accessibilityRole="header" style={{ alignSelf: 'stretch', textAlign: 'center', fontFamily: brandFont, fontWeight: fontLoaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8, paddingVertical: displayPadding, includeFontPadding: true, color: palette.ink }}>
+                {'GARDE-\nMANGER'}
+              </NativeText>
+            </>
+          )}
+          {!stalled || retrying ? (
+            <YStack alignItems="center" gap={16} marginTop={24} accessibilityLiveRegion="polite">
+              <Text fontSize={14} lineHeight={20} color={palette.inkSecondary} textAlign="center">Ouverture du garde-manger…</Text>
+              <PantryLoader palette={palette} label="Ouverture du garde-manger" testID="boot-splash-loader" />
+            </YStack>
+          ) : null}
         </YStack>
-        <Text fontFamily={brandFont} fontSize={34} fontWeight="800" letterSpacing={3} color={palette.ink} role="heading">
-          GARDE-MANGER
-        </Text>
-        {/* Loading is over once the wait is declared stalled: only a retry in flight brings the dots back. */}
-        {!stalled || retrying ? <PulseDots palette={palette} size={12} /> : null}
       </YStack>
       {stalled ? (
         <YStack
           testID="boot-splash-stalled"
           alignItems="center"
           gap="$3"
-          paddingHorizontal="$5"
-          paddingBottom="$8"
+          paddingHorizontal={26}
+          paddingBottom={16}
           accessibilityLiveRegion="polite"
         >
           <Text fontFamily={brandFont} fontSize={18} fontWeight="800" color={palette.ink}>
@@ -154,6 +116,7 @@ export function BootSplash() {
           />
         </YStack>
       ) : null}
+      </SafeAreaView>
     </YStack>
     </Reanimated.View>
   )

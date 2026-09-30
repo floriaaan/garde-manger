@@ -1,65 +1,33 @@
 import type { ReactNode } from 'react'
 import { ActivityIndicator, Animated } from 'react-native'
-import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { Pressable } from '../shared/pressable.js'
+import { Text } from '../shared/tamagui-typed.js'
 import { pointerCursor, useHoverPress } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'
-import { Pressable } from '../shared/pressable.js'
+import { paletteFor, useSoftPalette } from '../dashboard/soft-palette.js'
 
-/** Shared size and interaction for icon-only methods, with Apple's white surface. */
-export function AuthProviderButton({
-  label,
-  testID,
-  icon,
-  onPress,
-  pending,
-  disabled,
-  surface = 'cream',
-  onHint,
-}: {
+/** Compact, visibly named methods share one row; full action names stay accessible. */
+export function AuthProviderButton({ name, label, icon, testID, pending, disabled, onPress }: {
+  name: string
   label: string
-  testID: string
   icon: ReactNode
-  onPress: () => void
+  testID: string
   pending: boolean
   disabled: boolean
-  surface?: 'cream' | 'white'
-  onHint?: (label: string | null) => void
+  onPress: () => void
 }) {
   const palette = useSoftPalette()
   const hover = useHoverPress()
-  const backgroundColor = surface === 'white' ? palette.onDark : palette.authMethodSurface
-
+  const ink = palette.accentLimeText
+  // Keep a pale green method surface in both themes, like the fixed brand-logo ground.
+  const fill = paletteFor('light').blobSoft
   return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      disabled={disabled}
-      onHoverIn={() => { hover.onHoverIn(); onHint?.(label) }}
-      onHoverOut={() => { hover.onHoverOut(); onHint?.(null) }}
-      onFocus={() => onHint?.(label)}
-      onBlur={() => onHint?.(null)}
-      onLongPress={() => onHint?.(label)}
-      onPressIn={hover.onPressIn}
-      onPressOut={hover.onPressOut}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint="Maintenir pour afficher le nom de cette méthode"
-      accessibilityState={{ disabled, busy: pending }}
-      android_ripple={ripple(palette.accentLimeText)}
-      style={[pointerCursor, rippleClip(16), { flexGrow: 1, flexBasis: 0, minWidth: 0, height: 56 }]}
-    >
-      <Animated.View
-        style={{
-          flex: 1,
-          borderRadius: 16,
-          backgroundColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: [{ scale: hover.scale }],
-          opacity: disabled && !pending ? 0.6 : 1,
-        }}
-      >
-        {pending ? <ActivityIndicator color={palette.accentLimeText} /> : icon}
+    <Pressable testID={testID} onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, busy: pending }}
+      onHoverIn={hover.onHoverIn} onHoverOut={hover.onHoverOut} onPressIn={hover.onPressIn} onPressOut={hover.onPressOut}
+      android_ripple={ripple(ink)} style={[pointerCursor, rippleClip(11), { flex: 1, minWidth: 0 }]}>
+      <Animated.View style={{ minHeight: 68, padding: 8, borderRadius: 11, backgroundColor: fill, alignItems: 'center', justifyContent: 'center', gap: 6, opacity: disabled ? 0.6 : 1, transform: [{ scale: hover.scale }] }}>
+        {pending ? <ActivityIndicator color={ink} size="small" /> : icon}
+        <Text fontSize={12} fontWeight="700" color={ink} textAlign="center">{name}</Text>
       </Animated.View>
     </Pressable>
   )

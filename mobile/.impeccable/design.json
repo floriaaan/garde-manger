@@ -1,21 +1,191 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-27T00:00:00Z",
+  "generatedAt": "2026-09-30T00:00:00Z",
   "title": "Design System: Garde-manger",
   "extensions": {
     "shadows": [
-      { "name": "card-float", "value": "shadowColor:#0F2B1D; offset:0,10; opacity:0.1; radius:18-20", "purpose": "Stat cards and list containers that should feel lightly lifted off the ground." },
-      { "name": "hero-lift", "value": "shadowColor:#0F2B1D; offset:0,16; opacity:0.22; radius:28", "purpose": "The hero card and NavCards — heavier weight than card-float." },
-      { "name": "frame-lift", "value": "shadowColor:#3A2E20; offset:0,10; opacity:0.16; radius:22", "purpose": "The desktop content card inside the layout frame — warm shadow color to match the warm layoutSurface it sits on." },
-      { "name": "fab-lift", "value": "shadowColor:#0F2B1D; offset:0,10; opacity:0.28; radius:16", "purpose": "The floating action button, most elevated element on mobile." }
+      {
+        "name": "card-float",
+        "value": "shadowColor:#0F2B1D; offset:0,10; opacity:0.1; radius:18-20",
+        "purpose": "Stat cards and list containers that should feel lightly lifted off the ground."
+      },
+      {
+        "name": "hero-lift",
+        "value": "shadowColor:#0F2B1D; offset:0,16; opacity:0.22; radius:28",
+        "purpose": "The hero card and NavCards — heavier weight than card-float."
+      },
+      {
+        "name": "frame-lift",
+        "value": "shadowColor:#3A2E20; offset:0,10; opacity:0.16; radius:22",
+        "purpose": "The desktop content card inside the layout frame — warm shadow color to match the warm layoutSurface it sits on."
+      },
+      {
+        "name": "fab-lift",
+        "value": "shadowColor:#0F2B1D; offset:0,10; opacity:0.28; radius:16",
+        "purpose": "The floating action button, most elevated element on mobile."
+      }
     ],
     "motion": [
-      { "name": "hover-press-spring", "value": "Animated.spring, tension:200, friction:4-6, scale 1.035 (hover) / 0.96 (press)", "purpose": "Every Pressable's felt response — see src/presentation/shared/hover.ts useHoverPress." },
-      { "name": "entrance-spring", "value": "Animated.spring, friction:7, tension:60, opacity 0→1 + translateY 10→0", "purpose": "Hero card mount animation." }
+      {
+        "name": "hover-press-spring",
+        "value": "Animated.spring, tension:200, friction:4-6, scale 1.035 (hover) / 0.96 (press)",
+        "purpose": "Every Pressable's felt response — see src/presentation/shared/hover.ts useHoverPress."
+      },
+      {
+        "name": "entrance-spring",
+        "value": "Animated.spring, friction:7, tension:60, opacity 0→1 + translateY 10→0",
+        "purpose": "Hero card mount animation."
+      }
     ],
     "breakpoints": [
-      { "name": "tablet", "value": "768px" }
-    ]
+      {
+        "name": "tablet",
+        "value": "768px"
+      }
+    ],
+    "typographyMeta": {
+      "garden-display": {
+        "displayName": "Garden Jakarta tagline",
+        "purpose": "Existing bundled Jakarta Sans 800; min(48, (hero width - 52) / 8), compact 32, line height 1.15. Supporting tagline uses bundled Jakarta 400. Splash brand retains Anton."
+      },
+      "garden-wordmark": {
+        "displayName": "Garden wordmark",
+        "purpose": "Existing Plus Jakarta Sans 800 file loaded locally via expo-font; native weight 400 avoids synthetic bold."
+      }
+    },
+    "garden": {
+      "scope": [
+        "auth",
+        "server-choice",
+        "household-threshold"
+      ],
+      "source": "src/presentation/identity/auth-garden-theme.ts",
+      "authority": ".impeccable/mocks/decision/gardens.png",
+      "layout": {
+        "phoneCompositionMaxWidth": 600,
+        "tabletCompositionMaxWidth": 1040,
+        "tabletOuterPadding": 32,
+        "authContentMaxWidth": 440,
+        "thresholdContentMaxWidth": 480,
+        "heroMeasurement": "onLayout column width",
+        "keyboard": "No ScrollView. Fixed KeyboardAvoidingView/View; keyboard hides hero and secondary accessories, forms remain mounted, login/signup gaps become 8.",
+        "availableHeight": "Measured frame minus form height scales the mascot into remaining hero area; short-height fallback uses a transparent wordmark strip. Small screens and large Dynamic Type need native captures.",
+        "compactForms": {
+          "signupThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 470 : 740) * fontScale",
+          "loginThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale",
+          "behavior": "One mounted field visible at a time; Continue until final field, then existing submit. 44px back action; drafts preserved and effect focuses active field after keyboard step changes. Zero/unmeasured or roomy frames retain the whole form. Password strength hides with keyboard; password-length hint remains."
+        },
+        "heroMeasurementReset": "Width, fontScale, compact, title, subtitle and font-loaded state reset text measurement and recalculate fallback.",
+        "householdKeyboard": "Hide intent selector, explanation, paste/scan, tour and sign-out; keep active name/code field and submit.",
+        "columns": "Two explicitly bounded 50% columns only with width >=768, width > height (landscape), and an explicit hero. iPad portrait and compact auth forms stay single-column; keyboard-open forms use 100% width."
+      },
+      "asset": {
+        "path": "assets/mascot.png",
+        "origin": "Existing application mascot reused; no new asset generated",
+        "purpose": "Decorative fridge mascot shared by splash and auth header",
+        "authSize": "Square contain box: min(200, heroWidth × 0.52) large; 112pt compact; scales into available hero height"
+      },
+      "validation": {
+        "disposition": "RECAPTURE",
+        "nativeCaptures": false,
+        "reason": "Native computer-use permissions blocked two capture attempts. Static source review found tablet sizing tied to viewport; corrected to measured hero column. Rendered fidelity remains unverified.",
+        "costlyCommands": "No tests, builds, lint or typechecks executed per AGENTS.md.",
+        "focusedTests": "Two compact-form step/draft/submission tests added, not executed per AGENTS.md."
+      },
+      "paletteMapping": {
+        "ground": "palette.cream",
+        "leaf": "palette.blobStrong",
+        "leafInk": "palette.ink",
+        "ink": "palette.ink",
+        "muted": "palette.inkSecondary",
+        "action": "palette.accentLime",
+        "actionInk": "palette.accentLimeText"
+      },
+      "providers": "Single horizontal row with real icons, short names, full accessibility labels, pending spinners and disabling; separate email action. Apple retains native signInAsync and existing official logo asset.",
+      "background": {
+        "component": "src/presentation/identity/auth-background-frame.tsx",
+        "layer": "One AuthBlobBackground mounted above the root Stack",
+        "ground": "palette.cream",
+        "gradients": [
+          "palette.blobStrong",
+          "palette.blobSoft"
+        ],
+        "continuity": "Transparent entry scenes, loading gates and native navigation container (entry theme colors.background); stable Animated.Value across route changes; pause outside entry and in background without resetting. Native transitions not yet captured."
+      },
+      "motion": {
+        "component": "src/presentation/identity/auth-step.tsx",
+        "purpose": "Explain intent changes with a more perceptible lateral slide at full opacity; preserve mounted drafts; no first-render fade or rise and no keyboard choreography",
+        "durationMs": {
+          "iosWeb": 280,
+          "android": 300,
+          "reduceMotion": 100
+        },
+        "travelPt": 32,
+        "reduceMotion": "Opacity only",
+        "feedback": "Garden buttons compress to 0.94 and the primary arrow advances 6pt on iOS/web; reduced motion retains existing gentle feedback; Android keeps its ripple",
+        "continuity": "System navigation and the shared blob remain unchanged",
+        "validation": "Source reviewed; native device animation capture pending; regression test written, not executed under AGENTS.md",
+        "blobDrift": {
+          "horizontalRangePt": [
+            -20,
+            100
+          ],
+          "verticalAmplitudePt": 12,
+          "legDurationMs": 7000,
+          "continuity": "Same persistent Animated.Value and matched layer overhang; no remount on navigation"
+        }
+      },
+      "delight": {
+        "scope": "household-threshold",
+        "thesis": "Feel welcomed into the real shared household after confirmed success",
+        "success": "Root success toast with server-returned household name; one success haptic; native accessibility announcement; immediate existing navigation",
+        "paste": "Existing HintBubble confirms received eight-character code and next action; never claims server validation",
+        "constraints": "No layout change, new asset, dependency, confetti, sound or delay; no welcome on failure or already-member recovery",
+        "validation": "Source and diff reviewed; targeted tests written but not run; native rendering and haptic feel pending"
+      },
+      "splash": {
+        "source": "src/presentation/shared/boot-splash.tsx",
+        "composition": "Existing fridge mascot above the two-line Jakarta Sans 800 brand, shared cream/blob ground, a leaf travelling along a rail and system loading copy",
+        "fonts": "Existing bundled Jakarta Sans 800; no new font",
+        "responsive": "440pt max composition; compact display and 190pt mascot below height/fontScale 700; mascot 240pt ordinary; omit image below 500; compact stalled state prioritizes retry controls",
+        "behavior": "Existing 6s stall, retry and server change; no delayed navigation",
+        "continuity": "Loading gate registration preserves transparent native Stack and persistent shared blob while loading outside auth",
+        "nativeLaunch": "Existing expo-splash-screen plugin reuses mascot on light/dark cream, width 220; next native build required",
+        "validation": "Syntax and diff inspected; focused loading continuity regression written, not run under AGENTS.md; fresh native captures pending"
+      },
+      "loader": {
+        "source": "src/presentation/shared/pantry-loader.tsx",
+        "meaning": "Indeterminate activity, no percentage or false progress",
+        "motif": "Existing LeafIcon travels across a pantry rail",
+        "sizePt": [
+          108,
+          32
+        ],
+        "travelPt": 80,
+        "legDurationMs": 850,
+        "palette": [
+          "blobSoft",
+          "ink",
+          "creamPillEdge"
+        ],
+        "accessibility": "One labelled progressbar; decoration hidden; Reduce Motion holds leaf centred",
+        "lifecycle": "Native driver; pauses on route blur, app background and unmount",
+        "replaces": "Three loading dots on splash",
+        "validation": "Syntax inspected; accessibility/reduced-motion test written, not executed; native captures pending"
+      },
+      "authTypography": {
+        "headline": "Bundled Jakarta Sans 800 (GardenWordmark)",
+        "supportingTagline": "Bundled Jakarta Sans 400 (GardenTagline)",
+        "size": "min(48, (heroWidth - 52) / 8); compact 32; lineHeight 1.15; native padding 0.12em",
+        "splash": "Jakarta Sans 800 splash brand, native weight 400 to avoid synthetic bold"
+      },
+      "socialButtons": {
+        "variant": "Filled, no outline; one row unchanged",
+        "fill": "paletteFor(light).blobSoft in both themes",
+        "ink": "palette.accentLimeText; matching PocketID/passkey icon ink",
+        "hierarchy": "Paler than accentLime email CTA; provider logos remain legible"
+      }
+    }
   },
   "components": [
     {
@@ -65,6 +235,38 @@
       "description": "Desktop sidebar nav row — lime pill when active, transparent when not.",
       "html": "<button class=\"ds-nav-item ds-nav-item--active\">📦 Frigo</button>",
       "css": ".ds-nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:999px; background:transparent; color:#16211A; font-weight:700; font-size:13px; border:none; width:100%; text-align:left; } .ds-nav-item--active { background:#C4E538; color:#0F2B1D; }"
+    },
+    {
+      "name": "Garden Primary Button",
+      "kind": "button",
+      "refersTo": "garden-button-primary",
+      "description": "Scoped 50px minimum action; existing accent lime in both themes. Pending shows spinner and label.",
+      "html": "<button class=\"ds-garden-primary\"><span>Créer mon compte</span><svg aria-hidden=\"true\" width=\"30\" height=\"30\" viewBox=\"0 0 30 30\"><circle cx=\"15\" cy=\"15\" r=\"15\" fill=\"#0F2B1D\"/><path d=\"M9 15h12m-5-5 5 5-5 5\" fill=\"none\" stroke=\"#FDF6E8\" stroke-width=\"2\"/></svg></button>",
+      "css": ".ds-garden-primary{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:50px;padding:10px 18px;border:0;border-radius:11px;background:#C4E538;color:#0F2B1D;font:800 16px system-ui;transition:transform .15s}.ds-garden-primary:hover,.ds-garden-method:hover{transform:scale(1.035)}.ds-garden-primary:active,.ds-garden-method:active{transform:scale(.96)}.ds-garden-primary:focus-visible,.ds-garden-method:focus-visible{outline:2px solid #16211A;outline-offset:3px}.ds-garden-primary:disabled,.ds-garden-method:disabled{opacity:.6}"
+    },
+    {
+      "name": "Garden Provider Row",
+      "kind": "custom",
+      "refersTo": "garden-provider",
+      "description": "One horizontal row, real provider icons and visible short names, 68px minimum controls. Preview shows PocketID; native component uses each provider’s actual asset. Apple keeps its official logo and native signInAsync. Email action is separate.",
+      "html": "<div class=\"ds-garden-providers\"><button class=\"ds-garden-provider\" aria-label=\"Continuer avec PocketID\"><svg aria-hidden=\"true\" width=\"24\" height=\"24\" xmlns=\"http://www.w3.org/2000/svg\" xml:space=\"preserve\" viewBox=\"0 0 512 512\"><path d=\"M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0m106.4 288.7c-14.8 19.9-35 34.3-58.4 41.7l-6.5 2-15.5-76.2 4.3-2c14-6.7 23-21.1 23-36.6 0-22.4-18.2-40.6-40.6-40.6S228 195.2 228 217.6c0 15.5 9 29.8 23 36.6l4.2 2-25 153.4h-69.5V102.4h107.9c64.4 0 116.8 52.4 116.8 116.7 0 25.3-8 49.4-23 69.6\" fill=\"currentColor\"/></svg><span>PocketID</span></button></div>",
+      "css": ".ds-garden-providers{display:flex;gap:8px}.ds-garden-provider{flex:1;min-width:0;min-height:68px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:0;border-radius:11px;background:#EAF8D8;color:#0F2B1D;font:700 12px system-ui}.ds-garden-provider:hover{transform:scale(1.035)}.ds-garden-provider:active{transform:scale(.96)}.ds-garden-provider:focus-visible{outline:2px solid #16211A;outline-offset:3px}.ds-garden-provider:disabled{opacity:.6}"
+    },
+    {
+      "name": "Garden Text Field",
+      "kind": "input",
+      "refersTo": "garden-field",
+      "description": "Transparent 48px minimum field; muted 2px outline becomes ink on focus. Native trailing action keeps 44px touch width.",
+      "html": "<label class=\"ds-garden-label\">Adresse e-mail<input class=\"ds-garden-field\" placeholder=\"toi@exemple.fr\" type=\"email\"/></label>",
+      "css": ".ds-garden-label{display:grid;gap:6px;font:600 12px system-ui;color:#636A78}.ds-garden-field{min-height:48px;padding:12px 16px;border:2px solid #636A78;border-radius:11px;background:transparent;color:#16211A;font:14px system-ui}.ds-garden-field::placeholder{color:#636A78}.ds-garden-field:hover{border-color:#16211A}.ds-garden-field:focus-visible{border-color:#16211A;outline:0}"
+    },
+    {
+      "name": "Garden Household Intent",
+      "kind": "custom",
+      "refersTo": "garden-intent-selected",
+      "description": "Leaf selected intent beside a transparent outlined option; one branch visible, drafts retained.",
+      "html": "<div class=\"ds-garden-intents\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Créer mon foyer</button><button role=\"tab\" aria-selected=\"false\">Rejoindre un foyer</button></div>",
+      "css": ".ds-garden-intents{display:flex;gap:8px}.ds-garden-intents button{flex:1;min-height:50px;padding:12px;border:1.25px solid #C9BEA8;border-radius:11px;background:transparent;color:#16211A;font:700 15px system-ui}.ds-garden-intents [aria-selected=\"true\"]{background:#BFEE7A;border-color:#BFEE7A}.ds-garden-intents button:focus-visible{outline:2px solid #16211A;outline-offset:3px}.ds-garden-intents button:hover{border-color:#16211A}.ds-garden-intents button:active{opacity:.8}"
     }
   ],
   "narrative": {
@@ -79,11 +281,36 @@
       "Every pressable spring-scales on hover and press."
     ],
     "rules": [
-      { "name": "The One Dark Surface Rule", "body": "Exactly one surface per screen is allowed to be rich/dark. Two dark surfaces means the hierarchy broke.", "section": "colors" },
-      { "name": "The Layer Must Lighten Rule", "body": "layoutSurface must always be visibly darker than gradientBottom, or the inset-card effect disappears.", "section": "colors" },
-      { "name": "The Size-and-Weight-Only Rule", "body": "No token uses color to create hierarchy between a label and its value.", "section": "typography" },
-      { "name": "The Warm-Shadow-on-Warm-Ground Rule", "body": "A shadow cast onto layoutSurface uses a warm shadow color (#3A2E20); onto the mint/white ground, the cooler #0F2B1D.", "section": "elevation" },
-      { "name": "The No-Uniform-Radius Rule", "body": "If two adjacent cards in a row share an identical corner radius, pull one of the three named corner sets instead.", "section": "shapes" }
+      {
+        "name": "The One Dark Surface Rule",
+        "body": "Exactly one surface per screen is allowed to be rich/dark. Two dark surfaces means the hierarchy broke.",
+        "section": "colors"
+      },
+      {
+        "name": "The Layer Must Lighten Rule",
+        "body": "layoutSurface must always be visibly darker than gradientBottom, or the inset-card effect disappears.",
+        "section": "colors"
+      },
+      {
+        "name": "The Size-and-Weight-Only Rule",
+        "body": "No token uses color to create hierarchy between a label and its value.",
+        "section": "typography"
+      },
+      {
+        "name": "The Warm-Shadow-on-Warm-Ground Rule",
+        "body": "A shadow cast onto layoutSurface uses a warm shadow color (#3A2E20); onto the mint/white ground, the cooler #0F2B1D.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Uniform-Radius Rule",
+        "body": "If two adjacent cards in a row share an identical corner radius, pull one of the three named corner sets instead.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Recognizable Garden Rule",
+        "body": "Keep the chosen Garden composition recognizable through its condensed display headline, photographic carrots and pear, cream ground and outlined controls. The latest user instruction replaces the flat leaf field with one persistent animated AuthBlobBackground above the root Stack. Transparent auth/onboarding pages and loading gates share it without restarting on navigation. Motion pauses outside entry and in the background; Reduce Motion is respected. Providers remain in one horizontal row, with no auth/onboarding ScrollViews. Ordinary body type, native behavior and surrounding screens stay intact.",
+        "section": "colors"
+      }
     ],
     "dos": [
       "Do keep layoutSurface visibly lighter-than-mocha but darker than gradientBottom.",
@@ -91,14 +318,16 @@
       "Do give every new major card its own asymmetric corner set.",
       "Do set minHeight:0 on every flex:1 box in a chain that ends in a ScrollView.",
       "Do hover/press-scale every new Pressable via useHoverPress.",
-      "Do disclose a placeholder honestly rather than shipping a silently dead control."
+      "Do disclose a placeholder honestly rather than shipping a silently dead control.",
+      "Do preserve the recognizable Garden composition within entry screens while keeping ordinary body type, native behavior and the surrounding application system."
     ],
     "donts": [
       "Don't use #0F2B1D-family near-black greens anywhere.",
       "Don't use chip-teal/chip-violet/chip-orange behind white text.",
       "Don't add a second dark/high-contrast surface to a screen that already has the hero card.",
       "Don't add a visible border/stroke to any container.",
-      "Don't hardcode an SVG gradient id as a literal string on a component that can mount more than once in the same DOM."
+      "Don't hardcode an SVG gradient id as a literal string on a component that can mount more than once in the same DOM.",
+      "Don't treat source inspection or panel component previews as proof of native Garden fidelity; compare real captures to the chosen comp before a ship verdict."
     ]
   }
 }

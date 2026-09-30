@@ -30,5 +30,5 @@ export default function OnboardingLayout() {
   // someone who does have a foyer is carried back out by the gate rather than
   // stranded on an error screen with nothing to press.
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
 }

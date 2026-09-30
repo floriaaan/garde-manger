@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { ActivityIndicator, Animated } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { Text } from '../shared/tamagui-typed.js'
-import { pointerCursor, useHoverPress } from '../shared/hover.js'
+import { pointerCursor, useHoverPress, useReduceMotion } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { ArrowRightIcon } from '../dashboard/dashboard-icons.js'
+import { useAuthGarden } from './auth-garden-theme.js'
 
 /**
  * Full-width pill, lime (primary) or a soft filled surface (secondary) — spring
@@ -48,10 +50,12 @@ export function AuthButton({
   testID?: string
 }) {
   const palette = useSoftPalette()
+  const garden = useAuthGarden()
   const hover = useHoverPress()
+  const reduced = useReduceMotion()
   const isPrimary = variant === 'primary'
-  const secondaryColor = tone === 'on-dark' ? palette.accentLimeText : palette.ink
-  const secondaryFill = tone === 'on-dark' ? palette.authMethodSurface : palette.buttonSecondary
+  const secondaryColor = garden?.ink ?? (tone === 'on-dark' ? palette.accentLimeText : palette.ink)
+  const secondaryFill = garden ? 'transparent' : tone === 'on-dark' ? palette.authMethodSurface : palette.buttonSecondary
   const inert = Boolean(pending || disabled)
   return (
     <Pressable
@@ -66,23 +70,26 @@ export function AuthButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy: pending }}
       android_ripple={ripple(isPrimary ? palette.accentLimeText : secondaryColor)}
-      style={[pointerCursor, rippleClip(999)]}
+      style={[pointerCursor, rippleClip(garden ? 11 : 999)]}
     >
       <Animated.View
         style={{
-          transform: [{ scale: hover.scale }],
+          transform: [{ scale: garden && !reduced ? hover.scale.interpolate({ inputRange: [0.96, 1, 1.035], outputRange: [0.94, 1, 1.02], extrapolate: 'clamp' }) : hover.scale }],
           opacity: inert ? 0.6 : 1,
           // minHeight, not height — same Dynamic Type reasoning as
           // AuthField: a large system font size needs the pill to grow,
           // not clip the label.
           minHeight: 50,
           paddingVertical: 10,
-          borderRadius: 999,
+          paddingHorizontal: garden ? 18 : 0,
+          borderRadius: garden ? 11 : 999,
+          borderWidth: garden && !isPrimary ? 1.25 : 0,
+          borderColor: secondaryColor,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
-          backgroundColor: isPrimary ? palette.accentLime : secondaryFill,
+          gap: garden ? 12 : 8,
+          backgroundColor: isPrimary ? garden?.action ?? palette.accentLime : secondaryFill,
         }}
       >
         {pending ? (
@@ -94,9 +101,10 @@ export function AuthButton({
         ) : (
           icon
         )}
-        <Text fontSize={14} fontWeight="800" color={isPrimary ? palette.accentLimeText : secondaryColor}>
+        <Text style={garden ? { flexShrink: 1, ...(isPrimary ? { flex: 1 } : {}) } : undefined} fontSize={garden ? 16 : 14} fontWeight="800" color={isPrimary ? palette.accentLimeText : secondaryColor}>
           {pending ? (pendingLabel ?? label) : label}
         </Text>
+        {garden && isPrimary && !pending ? <Animated.View accessible={false} style={{ transform: reduced ? [] : [{ translateX: hover.scale.interpolate({ inputRange: [0.96, 1], outputRange: [6, 0], extrapolate: 'clamp' }) }], width: 30, height: 30, borderRadius: 15, backgroundColor: garden.actionInk, alignItems: 'center', justifyContent: 'center' }}><ArrowRightIcon size={19} color={palette.authMethodSurface} /></Animated.View> : null}
       </Animated.View>
     </Pressable>
   )

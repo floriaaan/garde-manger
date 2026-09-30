@@ -1,135 +1,64 @@
 import type { ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Keyboard, KeyboardAvoidingView, PixelRatio, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Keyboard } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { useReduceMotion } from '../shared/hover.js'
-import { HeroWarmGlow } from '../dashboard/hero-warm-glow.js'
-import { AuthPhotoBackground } from './auth-photo-background.js'
-import { AuthWordmark } from './auth-wordmark.js'
-import { AuthModePager, type AuthMode, type AuthPage } from './auth-mode-pager.js'
+import { Pressable } from '../shared/pressable.js'
+import { pointerCursor } from '../shared/hover.js'
+import { AuthStep } from './auth-step.js'
+import { AuthKeyboardAccessory } from './auth-garden-theme.js'
+import { AuthGardenHero, AuthScreenChrome } from './auth-screen-chrome.js'
 
-/** Same cap `tonight-rail.tsx` and `WelcomeScreen` use for their own scaled `lineHeight`s. */
-const MAX_FONT_SCALE = 1.6
+export type AuthMode = 'sign-in' | 'sign-up'
+interface AuthPage { title: string; subtitle: string; content: ReactNode }
 
-/**
- * Sign-in/sign-up's shell — the warm kitchen photo (same image the welcome
- * screen opens on) behind a bottom hero panel. On narrow screens it fills
- * the space above the panel, preserving the photo's composition; on wide
- * screens it fills the whole screen beside the centered half-width panel.
- *
- * Not `AuthScreenChrome`: this stopped being "one static card, vertically
- * centered" once the footer's own method-chooser needed to grow after a tap
- * (see `AuthMethodFooter`), and the threshold screen (still exactly that)
- * keeps `AuthScreenChrome` for itself.
- *
- * The panel is the hero card's own geometry, at screen scale — see
- * `WelcomeScreen`'s file comment for why it keeps only the top corner pair
- * and skips the hero-lift shadow: both exist to separate a floating card
- * from the ground around it, and this panel is flush to three of the four
- * screen edges.
- */
-export function AuthShell({
-  title,
-  subtitle,
-  mode,
-  onModeChange,
-  pages,
-  children,
-}: {
+export function AuthShell({ title, subtitle, mode, onModeChange, pages, children, garden = false, footer, back, busy = false }: {
   title?: string
   subtitle?: string
   mode?: AuthMode
   onModeChange?: (mode: AuthMode) => void
   pages?: { signIn: AuthPage; signUp: AuthPage }
   children?: ReactNode
+  garden?: boolean
+  footer?: ReactNode
+  back?: ReactNode
+  busy?: boolean
 }) {
   const palette = useSoftPalette()
-  const reduceMotion = useReduceMotion()
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions()
-  const isWide = windowWidth >= 768
-  const panelWidth = isWide ? windowWidth / 2 : windowWidth
-  const panelMaxHeight = Math.round(windowHeight * 0.78)
-  const fontScale = Math.min(PixelRatio.getFontScale(), MAX_FONT_SCALE)
-  const [entrance] = useState(() => new Animated.Value(reduceMotion ? 1 : 0))
-  const scrollRef = useRef<ScrollView>(null)
-
-  function changeMode(nextMode: AuthMode) {
-    if (!mode || !onModeChange || nextMode === mode) return
-    Keyboard.dismiss()
-    scrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion })
-    onModeChange(nextMode)
-  }
-
-  useEffect(() => {
-    if (reduceMotion) return
-    Animated.timing(entrance, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start()
-  }, [entrance, reduceMotion])
-
   return (
-    <YStack flex={1} minHeight={0} backgroundColor={palette.brandDeep} style={{ position: 'relative' }}>
-      {isWide ? <AuthPhotoBackground /> : null}
-      <KeyboardAvoidingView
-        style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
-      >
-        <YStack flex={1} minHeight={0} style={{ position: 'relative' }}>
-          {!isWide ? <AuthPhotoBackground /> : null}
-          <SafeAreaView edges={['top', 'left', 'right']} style={{ paddingTop: 16, paddingHorizontal: 24 }}>
-            <AuthWordmark tone="on-dark" />
-          </SafeAreaView>
-        </YStack>
-
-        <YStack
-          backgroundColor={palette.brandDeep}
-          overflow="hidden"
-          style={{ position: 'relative', borderTopLeftRadius: 36, borderTopRightRadius: 20, width: panelWidth, alignSelf: 'center' }}
-        >
-          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderTopLeftRadius: 36, borderTopRightRadius: 20 }]}>
-            <HeroWarmGlow warm={palette.accentWarm} ground={palette.brandDeep} />
-          </View>
-          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" bounces={false} style={{ maxHeight: panelMaxHeight }}>
-            <SafeAreaView edges={['bottom']}>
-              <Animated.View
-                style={{
-                  opacity: entrance,
-                  transform: [{ translateY: reduceMotion ? 0 : entrance.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-                  paddingHorizontal: 28,
-                  paddingTop: 32,
-                  paddingBottom: 20,
-                  gap: 20,
-                }}
-              >
-                {mode && onModeChange && pages ? (
-                  <AuthModePager
-                    mode={mode}
-                    onModeChange={changeMode}
-                    pages={pages}
-                    width={panelWidth - 56}
-                    fontScale={fontScale}
-                    reduceMotion={reduceMotion}
-                    palette={palette}
-                  />
-                ) : (
-                  <>
-                    <YStack gap="$1">
-                      <Text fontSize={24} fontWeight="800" lineHeight={30 * fontScale} color={palette.onDark}>
-                        {title}
-                      </Text>
-                      <Text fontSize={14} fontWeight="500" lineHeight={20 * fontScale} color={palette.onDarkSecondary}>
-                        {subtitle}
-                      </Text>
-                    </YStack>
-                    {children}
-                  </>
-                )}
-              </Animated.View>
-            </SafeAreaView>
-          </ScrollView>
-        </YStack>
-      </KeyboardAvoidingView>
-    </YStack>
+    <AuthScreenChrome maxWidth={440} hero={garden ? <AuthGardenHero /> : undefined}>
+      <AuthKeyboardAccessory>{back}</AuthKeyboardAccessory>
+      {mode && onModeChange && pages ? (
+        <>
+          {/* Keep both forms mounted so changing intent never erases a draft. */}
+          {(['sign-in', 'sign-up'] as const).map((key) => {
+            const page = key === 'sign-in' ? pages.signIn : pages.signUp
+            return (
+              <AuthStep key={key} active={mode === key} direction={key === 'sign-up' ? 1 : -1} style={{ gap: 20 }}>
+                <AuthKeyboardAccessory><YStack gap={8}>
+                  <Text accessibilityRole="header" fontSize={28} fontWeight="800" letterSpacing={-0.6} color={palette.ink}>{page.title}</Text>
+                  {!garden ? <Text fontSize={15} color={palette.inkSecondary}>{page.subtitle}</Text> : null}
+                </YStack></AuthKeyboardAccessory>
+                {page.content}
+              </AuthStep>
+            )
+          })}
+          <AuthKeyboardAccessory><Pressable testID={`auth-tab-${mode === 'sign-up' ? 'sign-in' : 'sign-up'}`} accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => { if (busy) return; Keyboard.dismiss(); onModeChange(mode === 'sign-up' ? 'sign-in' : 'sign-up') }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: busy ? 0.6 : 1 }]}>
+            <Text fontSize={14} color={palette.ink}>
+              {mode === 'sign-up' ? 'Déjà un compte ? ' : 'Pas encore de compte ? '}
+              <Text fontSize={14} fontWeight="800" textDecorationLine="underline" color={palette.ink}>{mode === 'sign-up' ? 'Se connecter' : 'Créer un compte'}</Text>
+            </Text>
+          </Pressable></AuthKeyboardAccessory>
+        </>
+      ) : (
+        <>
+          <AuthKeyboardAccessory><YStack gap={8}>
+            <Text accessibilityRole="header" fontSize={26} fontWeight="800" color={palette.ink}>{title}</Text>
+            <Text fontSize={15} color={palette.inkSecondary}>{subtitle}</Text>
+          </YStack></AuthKeyboardAccessory>
+          {children}
+        </>
+      )}
+      <AuthKeyboardAccessory>{footer}</AuthKeyboardAccessory>
+    </AuthScreenChrome>
   )
 }

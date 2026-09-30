@@ -10,11 +10,11 @@ import { clearSetting, readSetting, writeSetting } from './app-storage.js'
 import { queryClient } from './query-client.js'
 
 const SERVER_URL_KEY = 'server_url'
-const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? ''
 
 // Hardcoded, not env-driven: there is exactly one official instance and
 // every build should agree on it.
 export const OFFICIAL_SERVER_URL = 'https://api-gardemanger.floriaaan.fr'
+const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL || OFFICIAL_SERVER_URL
 
 /** `expo.version` from app.json — what a self-hosted instance's reported version gets compared against. */
 export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'

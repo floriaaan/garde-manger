@@ -25,8 +25,9 @@ const KEY = 'garde-manger.first-run-tour.armed'
  * Awaited by the threshold before it navigates: the dashboard reads this key
  * on mount, and a write still in flight is a tour that silently never runs.
  */
-export async function armFirstRunTour(): Promise<void> {
-  await writeSetting(KEY, '1')
+export async function armFirstRunTour(enabled = true): Promise<void> {
+  if (enabled) await writeSetting(KEY, '1')
+  else await clearSetting(KEY)
 }
 
 export function useFirstRunTour(enabled: boolean): { show: boolean; dismiss: () => void } {

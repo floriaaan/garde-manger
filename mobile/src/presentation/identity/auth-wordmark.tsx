@@ -1,10 +1,4 @@
-/**
- * The mascot+"GARDE-MANGER" lockup — shared by `AuthScreenChrome` (the
- * threshold's blob ground, `tone="ink"`) and `AuthShell` (sign-in/sign-up's
- * photo ground, `tone="on-dark"`). Pulled out once a second copy of it was
- * about to exist with the only difference being which palette token the
- * label used.
- */
+/** Shared mascot lockup for the entry flow; development triple-tap opens debug. */
 import { useRef } from 'react'
 import { Image, Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -15,7 +9,7 @@ const mascotIllustration = require('../../../assets/mascot.png')
 
 const TRIPLE_TAP_MS = 600
 
-export function AuthWordmark({ tone }: { tone: 'ink' | 'on-dark' }) {
+export function AuthWordmark({ tone, garden = false, color, fontFamily }: { tone: 'ink' | 'on-dark'; garden?: boolean; color?: string; fontFamily?: string }) {
   const palette = useSoftPalette()
   const taps = useRef<number[]>([])
   // Triple tap opens the debug modal in dev builds only — a hidden feature in
@@ -30,7 +24,8 @@ export function AuthWordmark({ tone }: { tone: 'ink' | 'on-dark' }) {
     }
   }
   return (
-    <Pressable onPress={onTap} accessible={false} style={{ alignSelf: 'center' }}>
+    <Pressable onPress={onTap} accessible={false} style={{ alignSelf: garden ? 'flex-start' : 'center' }}>
+    {garden ? <Text style={{ fontFamily, fontSize: 18, fontWeight: fontFamily ? '400' : '800', letterSpacing: -0.5, color: color ?? palette.ink }}>Garde-manger</Text> : (
     <XStack alignItems="center" gap="$2" alignSelf="center">
       {/* 56, not the carrot glyph's old 36 — the mascot is a full character
           (face, arms, a held leaf), not a simple icon shape, and needs more
@@ -40,6 +35,7 @@ export function AuthWordmark({ tone }: { tone: 'ink' | 'on-dark' }) {
         GARDE-MANGER
       </Text>
     </XStack>
+    )}
     </Pressable>
   )
 }
