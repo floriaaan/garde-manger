@@ -45,6 +45,9 @@ export interface StoreLinks {
   /** `null` until the app is published — rendered as a disabled "bientôt" badge. */
   appStore: string | null
   playStore: string | null
+  testFlight: string
+  googleGroup: string
+  googlePlayBeta: string
 }
 
 /**
@@ -81,6 +84,11 @@ export interface LandingUi {
     or: string
     storesAvailable: string
     storesFallback: string
+    betaHeading: string
+    testFlight: string
+    googleGroup: string
+    googlePlayBeta: string
+    androidBetaNote: string
   }
   faq: {
     headingBefore: string

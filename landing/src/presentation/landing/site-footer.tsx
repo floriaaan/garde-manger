@@ -58,14 +58,6 @@ export function SiteFooter({ content }: { content: LandingContent }) {
             'radial-gradient(45% 60% at 100% 0%, rgb(191 238 122 / 0.55), transparent 70%), linear-gradient(#e9f6d8, #e9f6d8)',
         }}
       >
-        <img
-          src="/mascot.png"
-          alt=""
-          width={80}
-          height={80}
-          className="pointer-events-none absolute top-10 right-[8%] hidden size-20 rotate-12 lg:block"
-        />
-
         <div className="relative mx-auto grid max-w-7xl gap-14 px-6 pt-16 sm:px-10 sm:pt-20 lg:grid-cols-[1.5fr_1fr]">
           <div>
             <p className="max-w-2xl text-4xl leading-[1] font-extrabold tracking-[-0.045em] text-balance text-ink sm:text-6xl">

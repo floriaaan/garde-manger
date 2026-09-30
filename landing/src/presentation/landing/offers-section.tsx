@@ -75,6 +75,34 @@ export function OffersSection({ content }: { content: LandingContent }) {
                 titleClassName="text-4xl sm:text-6xl"
               />
               <p className="mt-6 max-w-md text-lg text-white/85">{hosted.description}</p>
+              <div className="mt-8 space-y-4">
+                <p className="flex items-center gap-2 font-semibold">
+                  <SmartphoneIcon aria-hidden className="size-4" />
+                  {ui.offers.betaHeading}
+                </p>
+                <Button asChild variant="quiet" className="h-auto min-h-11 max-w-full whitespace-normal py-3 text-center">
+                  <a href={stores.testFlight}>
+                    {ui.offers.testFlight} <ArrowUpRightIcon aria-hidden data-motion="lift" />
+                  </a>
+                </Button>
+                <p className="max-w-md text-sm text-white/85">{ui.offers.androidBetaNote}</p>
+                <ol className="flex flex-wrap gap-3">
+                  <li className="max-w-full">
+                    <Button asChild variant="quiet" className="h-auto min-h-11 max-w-full whitespace-normal py-3 text-center">
+                      <a href={stores.googleGroup}>
+                        {ui.offers.googleGroup} <ArrowUpRightIcon aria-hidden data-motion="lift" />
+                      </a>
+                    </Button>
+                  </li>
+                  <li className="max-w-full">
+                    <Button asChild variant="quiet" className="h-auto min-h-11 max-w-full whitespace-normal py-3 text-center">
+                      <a href={stores.googlePlayBeta}>
+                        {ui.offers.googlePlayBeta} <ArrowUpRightIcon aria-hidden data-motion="lift" />
+                      </a>
+                    </Button>
+                  </li>
+                </ol>
+              </div>
               <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
                 <WaitlistForm ui={ui.waitlist} />
                 <p className="flex items-center gap-2 text-sm font-semibold text-white/85">

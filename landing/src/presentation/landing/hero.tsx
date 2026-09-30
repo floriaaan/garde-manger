@@ -38,8 +38,7 @@ export function Hero({ content }: { content: LandingContent }) {
       }}
     >
       <div className="mx-auto max-w-4xl px-5 text-center sm:px-8">
-        <p className="inline-flex max-w-full flex-wrap items-center justify-center gap-3 rounded-full bg-ground-white py-1.5 pr-5 pl-1.5 text-sm font-medium text-ink shadow-list-container">
-          <img src="/mascot.png" alt="" width={36} height={38} className="size-9 object-contain" />
+        <p className="inline-flex max-w-full flex-wrap items-center justify-center gap-3 rounded-full bg-ground-white px-5 py-2 text-sm font-medium text-ink shadow-list-container">
           {hero.eyebrow}
           {project && (
             <span className="inline-flex items-center gap-1 text-ink-secondary">
