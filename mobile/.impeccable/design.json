@@ -69,7 +69,7 @@
         "thresholdContentMaxWidth": 480,
         "heroMeasurement": "onLayout column width",
         "keyboard": "No ScrollView. Fixed KeyboardAvoidingView/View; keyboard hides hero and secondary accessories, forms remain mounted, login/signup gaps become 8.",
-        "availableHeight": "Measured frame minus form height scales photograph into remaining hero area; short-height fallback uses a leaf-color wordmark strip. Small screens and large Dynamic Type need native captures.",
+        "availableHeight": "Measured frame minus form height scales photograph into remaining hero area; short-height fallback uses a transparent wordmark strip over the shared blob. Small screens and large Dynamic Type need native captures.",
         "compactForms": {
           "signupThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 470 : 740) * fontScale",
           "loginThreshold": "availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale",
@@ -100,7 +100,40 @@
         "action": "palette.accentLime",
         "actionInk": "palette.accentLimeText"
       },
-      "providers": "Single horizontal row with real icons, short names, full accessibility labels, pending spinners and disabling; separate email action. Apple retains native signInAsync and existing official logo asset."
+      "providers": "Single horizontal row with real icons, short names, full accessibility labels, pending spinners and disabling; separate email action. Apple retains native signInAsync and existing official logo asset.",
+      "background": {
+        "component": "src/presentation/identity/auth-background-frame.tsx",
+        "layer": "One AuthBlobBackground mounted above the root Stack",
+        "ground": "palette.cream",
+        "gradients": [
+          "palette.blobStrong",
+          "palette.blobSoft"
+        ],
+        "continuity": "Transparent entry scenes, loading gates and native navigation container (entry theme colors.background); stable Animated.Value across route changes; pause outside entry and in background without resetting. Native transitions not yet captured."
+      },
+      "motion": {
+        "component": "src/presentation/identity/auth-step.tsx",
+        "purpose": "Explain intent changes with a more perceptible lateral slide at full opacity; preserve mounted drafts; no first-render fade or rise and no keyboard choreography",
+        "durationMs": {
+          "iosWeb": 280,
+          "android": 300,
+          "reduceMotion": 100
+        },
+        "travelPt": 32,
+        "reduceMotion": "Opacity only",
+        "feedback": "Garden buttons compress to 0.94 and the primary arrow advances 6pt on iOS/web; reduced motion retains existing gentle feedback; Android keeps its ripple",
+        "continuity": "System navigation and the shared blob remain unchanged",
+        "validation": "Source reviewed; native device animation capture pending; regression test written, not executed under AGENTS.md",
+        "blobDrift": {
+          "horizontalRangePt": [
+            -20,
+            100
+          ],
+          "verticalAmplitudePt": 12,
+          "legDurationMs": 7000,
+          "continuity": "Same persistent Animated.Value and matched layer overhang; no remount on navigation"
+        }
+      }
     }
   },
   "components": [
@@ -224,7 +257,7 @@
       },
       {
         "name": "The Recognizable Garden Rule",
-        "body": "Keep the chosen Garden composition recognizable through its broad organic field, condensed display headline, photographic carrots and pear, cream ground and outlined controls. The latest user instruction adapts only colors to the existing mobile palette, puts providers in one horizontal row and removes auth/onboarding ScrollViews. Ordinary body type, native behavior and surrounding screens stay intact.",
+        "body": "Keep the chosen Garden composition recognizable through its condensed display headline, photographic carrots and pear, cream ground and outlined controls. The latest user instruction replaces the flat leaf field with one persistent animated AuthBlobBackground above the root Stack. Transparent auth/onboarding pages and loading gates share it without restarting on navigation. Motion pauses outside entry and in the background; Reduce Motion is respected. Providers remain in one horizontal row, with no auth/onboarding ScrollViews. Ordinary body type, native behavior and surrounding screens stay intact.",
         "section": "colors"
       }
     ],

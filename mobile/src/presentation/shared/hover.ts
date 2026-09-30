@@ -121,7 +121,7 @@ export const BLOB_DRIFT_Y = 6
  * Respects Reduce Motion the same way `useHoverPress` does: frozen at rest
  * (`transform: []`) rather than an instant jump to some mid-cycle position.
  */
-export function useBlobDrift({ rangeX = BLOB_DRIFT_X_RANGE, amplitudeY = BLOB_DRIFT_Y, duration = 8000 } = {}) {
+export function useBlobDrift({ rangeX = BLOB_DRIFT_X_RANGE, amplitudeY = BLOB_DRIFT_Y, duration = 8000, active = true } = {}) {
   const reduceMotion = useReduceMotion()
   // `Animated.Value` is RN's mutable animation primitive, not a React ref
   // this rule targets; reading `.current` synchronously here is the
@@ -130,16 +130,18 @@ export function useBlobDrift({ rangeX = BLOB_DRIFT_X_RANGE, amplitudeY = BLOB_DR
   // eslint-disable-next-line react-hooks/refs
   const progress = useRef(new Animated.Value(0)).current
   useEffect(() => {
-    if (reduceMotion) return
+    if (!active || reduceMotion) return
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(progress, { toValue: 1, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(progress, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]),
+      // Resume a paused shared background from its current value.
+      { resetBeforeIteration: false },
     )
     loop.start()
     return () => loop.stop()
-  }, [reduceMotion, duration, progress])
+  }, [active, reduceMotion, duration, progress])
 
   if (reduceMotion) return { transform: [] }
   return {

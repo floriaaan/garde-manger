@@ -10,6 +10,7 @@ import { PillButton } from '../shared/pill-button.js'
 import { HintBubble, useHint } from '../shared/hint-bubble.js'
 import { AuthGardenHero, AuthScreenChrome } from '../identity/auth-screen-chrome.js'
 import { AuthKeyboardAccessory, gardenColors } from '../identity/auth-garden-theme.js'
+import { AuthStep } from '../identity/auth-step.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { AuthError } from '../identity/auth-error.js'
 import { AuthField } from '../identity/auth-field.js'
@@ -191,7 +192,7 @@ export function ThresholdScreen({
         ))}
       </View></AuthKeyboardAccessory>
 
-      <View testID="threshold-create-card" style={{ display: intent === 'create' ? 'flex' : 'none', gap: 20 }} accessibilityElementsHidden={intent !== 'create'} importantForAccessibility={intent === 'create' ? 'auto' : 'no-hide-descendants'}>
+      <AuthStep testID="threshold-create-card" active={intent === 'create'} direction={-1} style={{ gap: 20 }}>
         <AuthKeyboardAccessory><YStack gap={8}>
           <Text fontSize={22} fontWeight="800" color={palette.ink}>Tout commence chez toi.</Text>
           <Text fontSize={15} color={palette.inkSecondary}>Donne un nom à ton foyer. Tu pourras ensuite inviter les autres avec un code.</Text>
@@ -199,9 +200,9 @@ export function ThresholdScreen({
         <AuthField label="Nom du foyer" placeholder="Maison Bellevue" value={householdName} onChangeText={setHouseholdName} maxLength={80} editable={!busy} testID="threshold-household-name" returnKeyType="done" onSubmitEditing={handleCreate} />
         {createError ? <AuthError message={createError} /> : null}
         <AuthButton testID="threshold-create-submit" label="Créer le foyer" pendingLabel="Création…" pending={create.isPending} disabled={!canCreate} onPress={handleCreate} />
-      </View>
+      </AuthStep>
 
-      <View testID="threshold-join-card" style={{ display: intent === 'join' ? 'flex' : 'none', gap: 20 }} accessibilityElementsHidden={intent !== 'join'} importantForAccessibility={intent === 'join' ? 'auto' : 'no-hide-descendants'}>
+      <AuthStep testID="threshold-join-card" active={intent === 'join'} direction={1} style={{ gap: 20 }}>
         <AuthKeyboardAccessory><YStack gap={8}>
           <Text fontSize={22} fontWeight="800" color={palette.ink}>Une place t’attend.</Text>
           <Text fontSize={15} color={palette.inkSecondary}>Saisis les huit caractères du code d’invitation, ou scanne le QR de ton foyer.</Text>
@@ -213,7 +214,7 @@ export function ThresholdScreen({
         </XStack></AuthKeyboardAccessory>
         {joinError ? <AuthError message={joinError} /> : null}
         <AuthButton testID="threshold-join-submit" label="Rejoindre le foyer" pendingLabel="On te fait entrer…" pending={join.isPending} disabled={!canJoin} onPress={handleJoin} />
-      </View>
+      </AuthStep>
 
       <AuthKeyboardAccessory><XStack gap={16} alignItems="center" justifyContent="space-between">
         <YStack flex={1} gap={4}>

@@ -8,5 +8,5 @@ export default function AuthLayout() {
   if (session.isPending) return <BootSplash />
   if (session.data) return <Redirect href="/(tabs)" />
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
 }

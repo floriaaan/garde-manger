@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import { ActivityIndicator, Animated, View } from 'react-native'
+import { ActivityIndicator, Animated } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { Text } from '../shared/tamagui-typed.js'
-import { pointerCursor, useHoverPress } from '../shared/hover.js'
+import { pointerCursor, useHoverPress, useReduceMotion } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { ArrowRightIcon } from '../dashboard/dashboard-icons.js'
@@ -52,6 +52,7 @@ export function AuthButton({
   const palette = useSoftPalette()
   const garden = useAuthGarden()
   const hover = useHoverPress()
+  const reduced = useReduceMotion()
   const isPrimary = variant === 'primary'
   const secondaryColor = garden?.ink ?? (tone === 'on-dark' ? palette.accentLimeText : palette.ink)
   const secondaryFill = garden ? 'transparent' : tone === 'on-dark' ? palette.authMethodSurface : palette.buttonSecondary
@@ -73,7 +74,7 @@ export function AuthButton({
     >
       <Animated.View
         style={{
-          transform: [{ scale: hover.scale }],
+          transform: [{ scale: garden && !reduced ? hover.scale.interpolate({ inputRange: [0.96, 1, 1.035], outputRange: [0.94, 1, 1.02], extrapolate: 'clamp' }) : hover.scale }],
           opacity: inert ? 0.6 : 1,
           // minHeight, not height — same Dynamic Type reasoning as
           // AuthField: a large system font size needs the pill to grow,
@@ -103,7 +104,7 @@ export function AuthButton({
         <Text style={garden ? { flexShrink: 1, ...(isPrimary ? { flex: 1 } : {}) } : undefined} fontSize={garden ? 16 : 14} fontWeight="800" color={isPrimary ? palette.accentLimeText : secondaryColor}>
           {pending ? (pendingLabel ?? label) : label}
         </Text>
-        {garden && isPrimary && !pending ? <View accessible={false} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: garden.actionInk, alignItems: 'center', justifyContent: 'center' }}><ArrowRightIcon size={19} color={palette.authMethodSurface} /></View> : null}
+        {garden && isPrimary && !pending ? <Animated.View accessible={false} style={{ transform: reduced ? [] : [{ translateX: hover.scale.interpolate({ inputRange: [0.96, 1], outputRange: [6, 0], extrapolate: 'clamp' }) }], width: 30, height: 30, borderRadius: 15, backgroundColor: garden.actionInk, alignItems: 'center', justifyContent: 'center' }}><ArrowRightIcon size={19} color={palette.authMethodSurface} /></Animated.View> : null}
       </Animated.View>
     </Pressable>
   )
