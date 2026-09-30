@@ -5,13 +5,14 @@ import type { LandingContent } from '../../domain/content/landing-content.js'
 export const landingContentFr: LandingContent = {
   locale: 'fr',
   repositoryUrl: 'https://github.com/floriaaan/garde-manger',
+  webAppUrl: 'https://app.gardemanger.floriaaan.fr',
   hero: {
-    eyebrow: 'Open source · app officielle bientôt, ou chez toi',
+    eyebrow: 'Open source · disponible sur le web',
     titleBefore: 'Du frigo à l’assiette, ',
     titleHighlight: 'sans rien jeter',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. L’app officielle arrive bientôt ; tu peux déjà l’auto-héberger sur ton propre serveur.',
+      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. La version web est disponible ; les apps mobiles arrivent bientôt.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -126,14 +127,14 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Sur quels appareils ?',
       answer:
-        'iOS et Android. L’app arrive sur les stores. En attendant, sur Android, elle s’installe avec l’APK publié dans les Releases ; sur iOS, elle passe provisoirement par Expo Go.',
+      'Sur le web, iOS et Android. La version web est disponible ; les apps arrivent sur les stores. En attendant, sur Android, l’app s’installe avec l’APK publié dans les Releases ; sur iOS, elle passe provisoirement par Expo Go.',
     },
   ],
   stores: { appStore: null, playStore: null },
   ui: {
     skipToContent: 'Aller au contenu',
     nav: { features: 'Fonctionnalités', start: 'Démarrer', faq: 'FAQ' },
-    cta: { start: 'Commencer', viewOnGithub: 'Voir sur GitHub' },
+    cta: { start: 'Commencer', openWebApp: 'Ouvrir l’application web', viewOnGithub: 'Voir sur GitHub' },
     featuresHeading: 'Fonctionnalités',
     starsSuffix: 'étoiles sur GitHub',
     waitlist: {
@@ -175,6 +176,7 @@ export const landingContentFr: LandingContent = {
       navProject: 'Le projet',
       navLegal: 'Légal',
       links: {
+        webApp: 'Application web',
         features: 'Fonctionnalités',
         start: 'Deux façons de s’y mettre',
         faq: 'Questions fréquentes',

@@ -2,7 +2,6 @@ import { ArrowRightIcon } from 'lucide-react'
 import type { LandingContent } from '../../domain/content/landing-content.js'
 import { Button } from '../ui/button.js'
 import { GithubIcon } from '../ui/github-icon.js'
-import { illustrationSrc } from './illustration.js'
 import { ScribbleUnderline } from './scribble-underline.js'
 
 const LEGAL_LINKS = [
@@ -27,6 +26,7 @@ export function SiteFooter({ content }: { content: LandingContent }) {
     {
       title: ui.footer.navApp,
       links: [
+        { href: content.webAppUrl, label: ui.footer.links.webApp },
         { href: `${home}#fonctionnalites`, label: ui.footer.links.features },
         { href: `${home}#demarrer`, label: ui.footer.links.start },
         { href: `${home}#faq`, label: ui.footer.links.faq },
@@ -59,7 +59,7 @@ export function SiteFooter({ content }: { content: LandingContent }) {
         }}
       >
         <img
-          src={illustrationSrc('carrot')}
+          src="/mascot.png"
           alt=""
           width={80}
           height={80}

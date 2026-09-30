@@ -5,7 +5,6 @@ import { Button } from '../ui/button.js'
 import { GithubIcon } from '../ui/github-icon.js'
 import { cn } from '../ui/cn.js'
 import { FeatureCard } from './feature-card.js'
-import { illustrationSrc } from './illustration.js'
 import { PhoneMockup } from './phone-mockup.js'
 
 /**
@@ -39,14 +38,8 @@ export function Hero({ content }: { content: LandingContent }) {
       }}
     >
       <div className="mx-auto max-w-4xl px-5 text-center sm:px-8">
-        <p className="inline-flex items-center gap-3 rounded-full bg-ground-white py-1.5 pr-5 pl-1.5 text-sm font-medium text-ink shadow-list-container">
-          <span className="flex -space-x-2" aria-hidden>
-            {(['carrot', 'pot-of-food', 'shopping-cart'] as const).map((name) => (
-              <span key={name} className="grid size-8 place-items-center rounded-full bg-cream ring-2 ring-ground-white">
-                <img src={illustrationSrc(name)} alt="" className="size-5" />
-              </span>
-            ))}
-          </span>
+        <p className="inline-flex max-w-full flex-wrap items-center justify-center gap-3 rounded-full bg-ground-white py-1.5 pr-5 pl-1.5 text-sm font-medium text-ink shadow-list-container">
+          <img src="/mascot.png" alt="" width={36} height={38} className="size-9 object-contain" />
           {hero.eyebrow}
           {project && (
             <span className="inline-flex items-center gap-1 text-ink-secondary">
@@ -87,6 +80,11 @@ export function Hero({ content }: { content: LandingContent }) {
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Button asChild size="lg">
+            <a href={content.webAppUrl}>
+              {ui.cta.openWebApp} <ArrowRightIcon aria-hidden data-motion="nudge" />
+            </a>
+          </Button>
+          <Button asChild size="lg" variant="quiet">
             <a href="#demarrer">
               {ui.cta.start} <ArrowRightIcon aria-hidden data-motion="nudge" />
             </a>

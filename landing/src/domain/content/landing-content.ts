@@ -54,7 +54,7 @@ export interface StoreLinks {
 export interface LandingUi {
   skipToContent: string
   nav: { features: string; start: string; faq: string }
-  cta: { start: string; viewOnGithub: string }
+  cta: { start: string; openWebApp: string; viewOnGithub: string }
   /** sr-only heading above the feature cards. */
   featuresHeading: string
   /** sr-only suffix after the GitHub star count in the hero eyebrow. */
@@ -98,6 +98,7 @@ export interface LandingUi {
     navProject: string
     navLegal: string
     links: {
+      webApp: string
       features: string
       start: string
       faq: string
@@ -114,6 +115,7 @@ export interface LandingUi {
 export interface LandingContent {
   locale: Locale
   repositoryUrl: string
+  webAppUrl: string
   hero: {
     eyebrow: string
     /** The headline is split so the presentation can circle the middle part. */

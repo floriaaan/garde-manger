@@ -5,13 +5,14 @@ import type { LandingContent } from '../../domain/content/landing-content.js'
 export const landingContentEn: LandingContent = {
   locale: 'en',
   repositoryUrl: 'https://github.com/floriaaan/garde-manger',
+  webAppUrl: 'https://app.gardemanger.floriaaan.fr',
   hero: {
-    eyebrow: 'Open source · official app soon, or at home',
+    eyebrow: 'Open source · available on the web',
     titleBefore: 'From the fridge to the plate, ',
     titleHighlight: 'nothing wasted',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. The official app is coming soon; you can already self-host it on your own server.',
+      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. The web app is available now; the mobile apps are coming soon.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -126,14 +127,14 @@ export const landingContentEn: LandingContent = {
     {
       question: 'What devices does it run on?',
       answer:
-        'iOS and Android. The app is coming to the stores. In the meantime, on Android it installs from the APK published in Releases; on iOS it temporarily runs through Expo Go.',
+      'On the web, iOS and Android. The web app is available now; the mobile apps are coming to the stores. In the meantime, on Android it installs from the APK published in Releases; on iOS it temporarily runs through Expo Go.',
     },
   ],
   stores: { appStore: null, playStore: null },
   ui: {
     skipToContent: 'Skip to content',
     nav: { features: 'Features', start: 'Get started', faq: 'FAQ' },
-    cta: { start: 'Get started', viewOnGithub: 'View on GitHub' },
+    cta: { start: 'Get started', openWebApp: 'Open the web app', viewOnGithub: 'View on GitHub' },
     featuresHeading: 'Features',
     starsSuffix: 'stars on GitHub',
     waitlist: {
@@ -175,6 +176,7 @@ export const landingContentEn: LandingContent = {
       navProject: 'The project',
       navLegal: 'Legal',
       links: {
+        webApp: 'Web app',
         features: 'Features',
         start: 'Two ways to get started',
         faq: 'Frequently asked questions',
