@@ -61,10 +61,12 @@ export class SendExpiryDigest implements UseCase<{ today: string }, { sent: numb
         invalid.push(...result.invalidTokens)
         sent += native.length - result.invalidTokens.length
         if (this.webSender && web.length > 0) {
-          const webResult = await this.webSender.send(web.map((message) => ({
-            ...message,
-            keys: claimed.find((target) => target.token === message.to)!.keys!,
-          })))
+          const webResult = await this.webSender.send(
+            web.map((message) => ({
+              ...message,
+              keys: claimed.find((target) => target.token === message.to)!.keys!,
+            })),
+          )
           invalid.push(...webResult.invalidTokens)
           sent += web.length - webResult.invalidTokens.length
         }

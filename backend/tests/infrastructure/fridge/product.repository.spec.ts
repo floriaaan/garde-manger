@@ -123,16 +123,28 @@ test.group('LucidProductRepository', (group) => {
     assert.equal(expiring[0]?.id, 'p_5')
   })
 
-  test('daily digest uses calendar dates and current stock after a correction or removal', async ({ assert }) => {
+  test('daily digest uses calendar dates and current stock after a correction or removal', async ({
+    assert,
+  }) => {
     await createUser('u_digest', 'digest@example.com')
     await createHousehold('h_digest', 'u_digest')
     const repository = new LucidProductRepository()
-    await repository.save(buildProduct('p_digest', 'h_digest', { expiresAt: new Date('2026-09-20T00:00:00Z') }))
+    await repository.save(
+      buildProduct('p_digest', 'h_digest', { expiresAt: new Date('2026-09-20T00:00:00Z') }),
+    )
 
-    assert.deepEqual((await repository.findExpiringForDigest('h_digest', '2026-09-20', 0)).map((p) => p.id), ['p_digest'])
-    await repository.save(buildProduct('p_digest', 'h_digest', { expiresAt: new Date('2026-09-28T00:00:00Z') }))
+    const expiring = await repository.findExpiringForDigest('h_digest', '2026-09-20', 0)
+    assert.deepEqual(
+      expiring.map((p) => p.id),
+      ['p_digest'],
+    )
+    await repository.save(
+      buildProduct('p_digest', 'h_digest', { expiresAt: new Date('2026-09-28T00:00:00Z') }),
+    )
     assert.lengthOf(await repository.findExpiringForDigest('h_digest', '2026-09-20', 7), 0)
-    const product = buildProduct('p_digest', 'h_digest', { expiresAt: new Date('2026-09-27T00:00:00Z') })
+    const product = buildProduct('p_digest', 'h_digest', {
+      expiresAt: new Date('2026-09-27T00:00:00Z'),
+    })
     await repository.save(product)
     assert.lengthOf(await repository.findExpiringForDigest('h_digest', '2026-09-20', 7), 1)
     const { outcome, remaining } = outcomeFor(product, 1, 'u_digest', 'o_digest')

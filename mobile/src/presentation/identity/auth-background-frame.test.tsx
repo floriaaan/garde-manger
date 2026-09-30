@@ -4,6 +4,7 @@ import { ThemeProvider as NavigationThemeProvider, useSegments } from 'expo-rout
 import { AuthBackgroundFrame, useSplashBackground } from './auth-background-frame.js'
 import { AuthBlobBackground } from './auth-blob-background.js'
 
+const mockSegments = useSegments as jest.Mock<string[], []>
 const mockMount = jest.fn()
 const mockUnmount = jest.fn()
 beforeEach(() => jest.clearAllMocks())
@@ -22,19 +23,19 @@ jest.mock('./auth-blob-background.js', () => ({
 }))
 
 test('keeps one background mounted across entry pages and pauses outside entry', async () => {
-  jest.mocked(useSegments).mockReturnValue(['(auth)', 'sign-in'])
+  mockSegments.mockReturnValue(['(auth)', 'sign-in'])
   const view = await render(<AuthBackgroundFrame><Text>Connexion</Text></AuthBackgroundFrame>)
   expect(mockMount).toHaveBeenCalledTimes(1)
   expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors).toEqual({ background: 'transparent', primary: '#primary' })
 
-  jest.mocked(useSegments).mockReturnValue(['(onboarding)'])
+  mockSegments.mockReturnValue(['(onboarding)'])
   await view.rerender(<AuthBackgroundFrame><Text>Votre foyer</Text></AuthBackgroundFrame>)
   expect(mockMount).toHaveBeenCalledTimes(1)
   expect(mockUnmount).not.toHaveBeenCalled()
   expect(jest.mocked(AuthBlobBackground).mock.lastCall?.[0]).toEqual({ ground: '#fff', active: true })
   expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors.background).toBe('transparent')
 
-  jest.mocked(useSegments).mockReturnValue(['(tabs)'])
+  mockSegments.mockReturnValue(['(tabs)'])
   await view.rerender(<AuthBackgroundFrame><Text>Accueil</Text></AuthBackgroundFrame>)
   expect(mockMount).toHaveBeenCalledTimes(1)
   expect(mockUnmount).not.toHaveBeenCalled()
@@ -48,7 +49,7 @@ function LoadingGate() {
 }
 
 test('a loading gate keeps the native container transparent outside auth without replacing the blob', async () => {
-  jest.mocked(useSegments).mockReturnValue(['(tabs)'])
+  mockSegments.mockReturnValue(['(tabs)'])
   const view = await render(<AuthBackgroundFrame><LoadingGate /></AuthBackgroundFrame>)
   expect(jest.mocked(NavigationThemeProvider).mock.lastCall?.[0].value?.colors.background).toBe('transparent')
   expect(jest.mocked(AuthBlobBackground).mock.lastCall?.[0]).toEqual({ ground: '#fff', active: true })

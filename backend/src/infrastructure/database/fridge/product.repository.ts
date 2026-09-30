@@ -54,7 +54,11 @@ export class LucidProductRepository implements ProductRepository {
     return this.findByHousehold(householdId, { expiringWithinDays: withinDays })
   }
 
-  async findExpiringForDigest(householdId: string, today: string, days: number): Promise<Product[]> {
+  async findExpiringForDigest(
+    householdId: string,
+    today: string,
+    days: number,
+  ): Promise<Product[]> {
     // Product dates are stored as UTC-midnight calendar dates by the form.
     // Compare whole dates so a product dated today is still eligible at 9 h.
     const through = new Date(`${today}T00:00:00.000Z`)

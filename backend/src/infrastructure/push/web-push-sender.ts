@@ -13,7 +13,11 @@ export class VapidWebPushSender implements WebPushSender {
       try {
         await webpush.sendNotification(
           { endpoint: message.to, keys: message.keys },
-          JSON.stringify({ title: message.title, body: message.body, route: message.data?.route ?? '/fridge' }),
+          JSON.stringify({
+            title: message.title,
+            body: message.body,
+            route: message.data?.route ?? '/fridge',
+          }),
           { vapidDetails: this.vapid, TTL: 24 * 60 * 60, timeout: 15_000 },
         )
       } catch (error) {

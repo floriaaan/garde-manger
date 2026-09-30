@@ -4,7 +4,7 @@ export default class extends BaseSchema {
   async up() {
     this.schema.createTable('expiry_reminder_setting', (table) => {
       table.text('household_id').primary().references('id').inTable('household').onDelete('CASCADE')
-      table.integer('days').notNullable().checkIn([0, 1, 2, 3, 7])
+      table.integer('days').notNullable().checkIn(['0', '1', '2', '3', '7'])
     })
   }
 

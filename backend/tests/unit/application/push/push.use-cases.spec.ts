@@ -43,7 +43,10 @@ class FakeTokens implements PushTokenRepository {
   }
 }
 
-const products = (byHousehold: Record<string, string[]>, onQuery?: (householdId: string, today: string, days: number) => void) =>
+const products = (
+  byHousehold: Record<string, string[]>,
+  onQuery?: (householdId: string, today: string, days: number) => void,
+) =>
   ({
     findExpiringForDigest: async (householdId: string, today: string, days: number) => {
       onQuery?.(householdId, today, days)
@@ -141,9 +144,12 @@ test.group('SendExpiryDigest', () => {
 
   test('is a no-op when every device was already served', async ({ assert }) => {
     const sender = new FakeSender()
-    const result = await new SendExpiryDigest(new FakeTokens([], []), products({}), sender, settings()).execute(
-      { today: '2026-09-20' },
-    )
+    const result = await new SendExpiryDigest(
+      new FakeTokens([], []),
+      products({}),
+      sender,
+      settings(),
+    ).execute({ today: '2026-09-20' })
     assert.equal(result.sent, 0)
     assert.lengthOf(sender.sent, 0)
   })
@@ -160,7 +166,9 @@ test.group('SendExpiryDigest', () => {
     assert.equal(sender.sent[0]!.body, 'Lait approche de sa date. Une idée de repas ?')
   })
 
-  test('uses the chosen household window and sends web subscriptions through VAPID', async ({ assert }) => {
+  test('uses the chosen household window and sends web subscriptions through VAPID', async ({
+    assert,
+  }) => {
     const calls: string[] = []
     const web: WebPushSender = {
       send: async (messages) => {
@@ -169,12 +177,28 @@ test.group('SendExpiryDigest', () => {
       },
     }
     const sender = new FakeSender()
-    const tokens = new FakeTokens([], [{ token: 'https://web.push.apple.com/x', userId: 'u1',
-      householdId: 'h1', platform: 'web', keys: { p256dh: 'key', auth: 'secret' } }])
+    const tokens = new FakeTokens(
+      [],
+      [
+        {
+          token: 'https://web.push.apple.com/x',
+          userId: 'u1',
+          householdId: 'h1',
+          platform: 'web',
+          keys: { p256dh: 'key', auth: 'secret' },
+        },
+      ],
+    )
     const queried: string[] = []
-    const result = await new SendExpiryDigest(tokens,
-      products({ h1: ['Lait'] }, (householdId, today, days) => queried.push(`${householdId}:${today}:${days}`)),
-      sender, settings(7), web).execute({ today: '2026-09-20' })
+    const result = await new SendExpiryDigest(
+      tokens,
+      products({ h1: ['Lait'] }, (householdId, today, days) =>
+        queried.push(`${householdId}:${today}:${days}`),
+      ),
+      sender,
+      settings(7),
+      web,
+    ).execute({ today: '2026-09-20' })
     assert.deepEqual(queried, ['h1:2026-09-20:7'])
     assert.deepEqual(calls, ['https://web.push.apple.com/x:key'])
     assert.lengthOf(sender.sent, 0)
