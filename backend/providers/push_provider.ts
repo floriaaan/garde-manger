@@ -16,7 +16,8 @@ export default class PushProvider {
 
   register() {
     this.app.container.singleton('push.reminderSettings', async () => {
-      const { LucidReminderSettingsRepository } = await import('#infrastructure/database/push/reminder-settings.repository')
+      const { LucidReminderSettingsRepository } =
+        await import('#infrastructure/database/push/reminder-settings.repository')
       return new LucidReminderSettingsRepository()
     })
     this.app.container.singleton('push.tokens', async () => {
@@ -45,8 +46,9 @@ export default class PushProvider {
       if (!subject || !publicKey || !privateKey) return null
       const { VapidWebPushSender } = await import('#infrastructure/push/web-push-sender')
       const logger = await this.app.container.make('logger')
-      return new VapidWebPushSender({ subject, publicKey, privateKey },
-        (error, message) => logger.error({ err: error }, message))
+      return new VapidWebPushSender({ subject, publicKey, privateKey }, (error, message) =>
+        logger.error({ err: error }, message),
+      )
     })
   }
 

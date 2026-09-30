@@ -53,7 +53,7 @@ export function ExpiryReminderScreen() {
             {REMINDER_DAYS.map((days) => (
               <RadioCard key={days} testID={`reminder-days-${days}`} label={label(days)}
                 description={days === 2 ? 'Choix par défaut' : undefined}
-                selected={settings.data.days === days} disabled={update.isPending}
+                selected={settings.data?.days === days} disabled={update.isPending}
                 onPress={() => void choose(days)} palette={palette} />
             ))}
           </YStack>

@@ -3,7 +3,12 @@ import type { DigestTarget, PushToken } from '../push-token.js'
 export interface PushTokenRepository {
   /** Insert, or move an already known token to `userId`. */
   upsert(token: PushToken): Promise<void>
-  upsertWeb(subscription: { id: string; userId: string; endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void>
+  upsertWeb(subscription: {
+    id: string
+    userId: string
+    endpoint: string
+    keys: { p256dh: string; auth: string }
+  }): Promise<void>
   /** Only the owner can remove a token. */
   deleteForUser(userId: string, token: string): Promise<void>
   /** Tokens Expo reported as dead. */

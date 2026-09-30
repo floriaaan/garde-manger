@@ -12,7 +12,10 @@ export class LucidReminderSettingsRepository implements ReminderSettingsReposito
   }
 
   async setDays(householdId: string, days: ReminderDays): Promise<void> {
-    await db.table('expiry_reminder_setting').insert({ household_id: householdId, days })
-      .onConflict('household_id').merge({ days })
+    await db
+      .table('expiry_reminder_setting')
+      .insert({ household_id: householdId, days })
+      .onConflict('household_id')
+      .merge({ days })
   }
 }
