@@ -83,12 +83,7 @@ export default function RootLayout() {
                 navigator at the root to push onto. URLs are unchanged: `(tabs)`
                 is a group, so `/settings` was already `/settings`. */}
               <Stack screenOptions={{ headerShown: false }}>
-                {/* The pre-auth carousel, shown once per device before `(auth)`
-                  gets a chance to. It sits at the route root rather than
-                  inside `(auth)` because it has no session to gate on — the
-                  gate here is `(tabs)/_layout.tsx`'s own welcome-seen flag,
-                  the one thing that decides whether "/" ever redirects here
-                  at all. */}
+                {/* First-time entry shares the auth screen in registration mode. */}
                 <Stack.Screen name="welcome" />
                 <Stack.Screen name="server-choice" />
                 <Stack.Screen name="reset-password" />

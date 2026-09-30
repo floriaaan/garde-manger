@@ -1,28 +1,26 @@
-/**
- * Between `/welcome` and the creation tab on a first launch — see
- * `app/welcome.tsx` and `app/server-choice.tsx`. The radio-card + verify/save
- * form itself lives in `ServerChoiceForm` (`../shared/server-choice-form.js`),
- * shared with Réglages' "Changer de serveur" page.
- */
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { setServerUrl } from '../../application/shared/server-config.js'
+import { getServerUrl, setServerUrl } from '../../application/shared/server-config.js'
+import { PillButton } from '../shared/pill-button.js'
+import { ArrowLeftIcon } from '../dashboard/dashboard-icons.js'
 import { AuthShell } from '../identity/auth-shell.js'
 import { ServerChoiceForm } from '../shared/server-choice-form.js'
 
-export function ServerChoiceScreen({ onDone }: { onDone: () => void }) {
+export function ServerChoiceScreen({ onDone, onBack }: { onDone: () => void; onBack?: () => void }) {
   const palette = useSoftPalette()
 
   return (
     <AuthShell
-      title="Choisis ton serveur"
+      back={onBack ? <PillButton label="Retour" tone="quiet" palette={palette} onPress={onBack} icon={(color) => <ArrowLeftIcon size={16} color={color} />} /> : undefined}
+      title="Ton serveur"
       subtitle="Utilise le serveur officiel, prêt à l'emploi, ou ton propre serveur Garde-manger."
     >
       <ServerChoiceForm
         palette={palette}
-        fieldLabelColor={palette.onDarkSecondary}
+        defaultUrl={getServerUrl()}
+        fieldLabelColor={palette.inkSecondary}
         saveLabel="Utiliser ce serveur"
         onSave={async (url) => {
-          await setServerUrl(url)
+          if (url !== getServerUrl()) await setServerUrl(url)
           onDone()
         }}
       />

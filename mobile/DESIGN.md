@@ -128,7 +128,7 @@ Status (fresh/soon/expired) is always icon **and** color **and** word — a `Sta
 
 **Key Characteristics:**
 - Near-white mint blob ground on mobile; near-white warm-gray "mat" surround with an inset white content card on tablet/desktop — never a flat rectangle gradient, always a soft off-center radial blob.
-- Exactly one dark, rich surface (the hero card) carries the "sole high-contrast block" role; everything else is light.
+- Exactly one dark, rich surface (the hero card) carries the "sole high-contrast block" role on dashboard compositions; everything else is light. The Garden auth/onboarding entry is a scoped light-surface composition without a mocha hero.
 - Lime is reserved for interactive/progress meaning, never decoration.
 - Exception: the AI quota bar (`AiQuotaHint`) fills with `mint-pale-text`, not lime — lime on a white or pastel surface is ~1.3:1, and a progress fill still has to clear 3:1. Its track is `ink` at 22 %. On the dark paywall the price and check marks are `on-dark`; lime there belongs to the CTA alone.
 - Asymmetric corner radii (each major card gets its own, slightly different, corner set) instead of one uniform radius everywhere.
@@ -143,7 +143,7 @@ Warm and near-white by design; color is spent deliberately (lime for action, one
 - **Accent Lime** (`#C4E538`): every interactive/progress element — primary buttons, the FAB, the sidebar's active nav pill, progress fills. Never used decoratively. Pairs with **Accent Lime Text** (`#0F2B1D`) for on-lime labels (≈10.6:1 contrast).
 
 ### Secondary
-- **Hero Mocha** (`#6B5642`): the one deliberately dark, rich surface in the whole system (the "AUJOURD'HUI DANS TON FRIGO" hero card, the auth-screen equivalent, status toast). Carries white text (`#FFFFFF`, ≈6.9:1) and a low-opacity warm-orange ember glow in one corner for warmth.
+- **Hero Mocha** (`#6B5642`): the one deliberately dark, rich surface in the whole system (the "AUJOURD'HUI DANS TON FRIGO" hero card, status toast). Carries white text (`#FFFFFF`, ≈6.9:1) and a low-opacity warm-orange ember glow in one corner for warmth.
 - **Accent Warm** (`#FF8A3D`): the second bold hue — the hero card's ember glow (`HeroWarmGlow`), nowhere else. Paired text `#3D1B00` (≈10.6:1) for anything ever set on it. It used to also fill a tilted "12j sans gaspi" streak badge; that badge is gone (2026-09-05) because no "days without waste" concept exists in the domain, so nothing could compute it — it rendered a fixture number to every foyer.
 
 ### Tertiary
@@ -182,7 +182,7 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 **The Cold-Surface Rule.** These tokens exist to be the one *cold* surface in a warm system, and that inversion is the whole effect — an appliance reads as an appliance because everything around it is a sunlit pantry. They never appear on a screen that also carries the warm hero card, and no warm token is ever used inside the cabinet.
 
 ### Named Rules
-**The One Dark Surface Rule.** Exactly one surface per screen is allowed to be rich/dark (the hero card, or the auth card's — no, the auth card is white; the hero-equivalent status toast). Two dark surfaces on one screen means the hierarchy broke; the fix is never "make it lighter," it's "which one loses hero status."
+**The One Dark Surface Rule.** Exactly one surface per dashboard composition is allowed to be rich/dark (the hero card or the hero-equivalent status toast). Two dark surfaces on one screen means the hierarchy broke; the fix is never "make it lighter," it's "which one loses hero status." Garden auth/onboarding uses a light composition without a mocha hero; this does not change the dashboard rule.
 
 **The Layer Must Lighten Rule.** On tablet/desktop, `layoutSurface` (the surround) must always be visibly darker than `gradientBottom` (the content card). If a future token change makes them equal or inverts them, the inset-card effect the whole layout depends on disappears — this was a real regression once already.
 
@@ -193,7 +193,7 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 **Character:** Hierarchy is built on size and weight only — never color. A label is always small/regular/secondary-toned above; a value is always larger/bold/ink-toned below.
 
 ### Hierarchy
-- **Onboarding Display** (900, 44px, 52px line-height, -1px tracking): the pre-auth welcome screen's headline only — the one screen in the app that is a single decisive moment rather than a dense in-app view, so it earns a size above the in-app `display` ceiling rather than reusing it undersized. Sits inside the welcome screen's own hero panel, never loose over the photo.
+- **Onboarding Display** (900, 44px, 52px line-height, -1px tracking): retained legacy token from the former welcome composition; the current Garden entry does not use it. Its screen-local headline is 36px/800 with -1px tracking, auth form titles are 26px/800, and the household greeting is 32px/800. All keep the existing system font; this is not a global type-scale replacement.
 - **Display** (800, 24px, 30px line-height): the hero headline ("3 produits à surveiller").
 - **Title** (800, 20px): screen/card titles ("Content de te revoir", household name).
 - **Value** (800, 22px): stat-card numbers (StatCard's `value`).
@@ -207,7 +207,7 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 
 **The header is pinned, never scrolled.** Every screen passes its `ScreenHeader` to `AppShell`'s `header` prop, which renders it *outside* the ScrollView, on the same horizontal measure and max-width as the content beneath it. A screen used to lose its own name three swipes into a long garde-manger or a long ticket. **The pinned block carries no fill and no shadow.** It was given the ground colour plus a header-lift shadow to separate it from the content, but it is a sibling *above* the ScrollView, never a layer over it — nothing passes under it to be separated from, and the opaque fill only punched a flat band across the `BlobBackground`. The ground reads continuously from the title to the last card, exactly as it did when the header still scrolled.
 
-**`AppShell` (`src/presentation/shared/app-shell.tsx`) is the layout contract — every screen renders through it, not a per-screen reimplementation.** An audit (2026-08-30) found this chrome copy-pasted independently across four screens, diverging each time, while two screens skipped it entirely — the mobile bottom nav and FAB worked on the dashboard alone. `AppShell` now owns both breakpoints below and the nav chrome; a screen supplies only its own header/content as children plus a `nav` prop:
+**`AppShell` (`src/presentation/shared/app-shell.tsx`) is the authenticated app layout contract — these screens render through it, not a per-screen reimplementation.** An audit (2026-08-30) found this chrome copy-pasted independently across four screens, diverging each time, while two screens skipped it entirely — the mobile bottom nav and FAB worked on the dashboard alone. `AppShell` now owns both breakpoints below and the nav chrome; a screen supplies only its own header/content as children plus a `nav` prop:
 
 - **`{ kind: 'tab', tab, onScan }`** — one of the four top-level sections (Accueil/Garde-manger/Recettes/Courses). Mobile gets the bottom nav; desktop gets the Sidebar with `tab` highlighted.
 - **`{ kind: 'stack' }`** — a pushed, non-tab screen (Réglages, Foyer, Historique des tickets). Mobile carries no bottom nav (the screen renders its own `BackButton` in its header instead); desktop still gets the Sidebar, DESIGN.md's tablet/desktop frame being universal rather than per-screen-opt-in, with nothing highlighted since no tab is active.
@@ -222,6 +222,8 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 `AppShell` wraps children in its own `ScrollView` by default. A screen that owns a virtualized `FlatList` instead (fridge, receipts) passes `scrollable={false}` and builds its list's `contentContainerStyle` from the exported `shellContentStyle()` + `useAppShellLayout()` helpers, so its padding/max-width still matches every other screen exactly.
 
 Every `flex:1` box in a scrollable chain declares `minHeight:0` explicitly — a CSS default (`min-height:auto`) that silently breaks nested scroll containers on web and was the root cause of two real layout bugs during this build.
+
+**Entry frame (`AuthScreenChrome`):** auth, server choice and the household threshold share a native safe-area frame with a keyboard-avoiding, naturally scrolling content column. Phone padding is 20px; from 768px, a 28px-radius `gradientBottom` frame sits on `layoutSurface` with 32px padding. Auth forms remain capped at 440px and the threshold at 480px. When the Garden hero is present on a wide screen, the frame expands to 1040px and places the illustration beside the form. It is removed immediately while the keyboard is open, and the form uses natural height; no animated height controls field access. These entry screens carry no app navigation chrome.
 
 ## Android: Material 3
 
@@ -266,7 +268,7 @@ Hybrid: flat color fields for status/pastel surfaces, wide/soft/low-opacity shad
 
 ## Shapes
 
-Every major surface gets its own **asymmetric** corner radius — two opposite corners larger, two smaller — rather than one uniform radius reused everywhere. Three named corner sets rotate across the stat cards and NavCards (`corner="a"|"b"|"c"` in `StatCard`, `"a"|"b"` in `NavCard`) so a row of same-purpose cards still reads as organic, not stamped. The hero card and auth card use a consistent 36/20/36/20 (px) pattern. Full-pill (`999px`) radius is reserved for anything that's a status/action/badge (chips, buttons, the FAB) — never for a content container.
+Every major surface gets its own **asymmetric** corner radius — two opposite corners larger, two smaller — rather than one uniform radius reused everywhere. Three named corner sets rotate across the stat cards and NavCards (`corner="a"|"b"|"c"` in `StatCard`, `"a"|"b"` in `NavCard`) so a row of same-purpose cards still reads as organic, not stamped. The hero card and the household-creation introduction use a consistent 36/20/36/20 (px) pattern. Garden's entry hero uses a soft organic mint SVG contour, while its shared wide-screen frame has 28px corners. Full-pill (`999px`) radius is reserved for anything that's a status/action/badge (chips, buttons, the FAB) — never for a content container.
 
 No borders anywhere in the system. Separation between surfaces is color contrast and shadow, never a stroke.
 
@@ -276,10 +278,10 @@ No borders anywhere in the system. Separation between surfaces is color contrast
 ## Components
 
 ### Buttons (`AuthButton`, the FAB, the sidebar Scanner button)
-- **Shape:** full pill (`999px`), height 50px (auth buttons) or 56×56 circle (FAB).
+- **Shape:** full pill (`999px`), minimum height 50px (auth buttons, growing with text) or 56×56 circle (FAB).
 - **Primary:** `accent-lime` background, `accent-lime-text` label, no border.
-- **Secondary:** transparent background, 2px `hero-mocha` border, `hero-mocha` label (the PocketID button).
-- **Hover / Press:** every button spring-scales via `useHoverPress` — ×1.035 on web hover, ×0.96 on press-in, spring back on release. Disabled state drops opacity to 0.6 and disables the press handler; the label swaps to a `pendingLabel` ("Connexion...", "Inscription...") rather than adding a spinner.
+- **Secondary:** soft `buttonSecondary` fill with `ink` label and no border for named auth methods such as PocketID and Google. Apple uses its native provider button when available.
+- **Hover / Press:** every button spring-scales via `useHoverPress` — ×1.035 on web hover, ×0.96 on press-in, spring back on release. Disabled state drops opacity to 0.6 and disables the press handler; pending state swaps the leading icon for a spinner and uses `pendingLabel` ("Connexion...", "Inscription..."). Android keeps its bounded Material ripple.
 
 ### Browser defaults are part of the design
 The parts of a web build nobody drew still carry a look, and it belongs to no design system. Three places answer for them:
@@ -296,7 +298,9 @@ The parts of a web build nobody drew still carry a look, and it belongs to no de
   - **An icon only when it distinguishes.** A chip takes an optional 13px glyph tinted to match its label — the three location chips carry theirs everywhere they appear, so "Congélateur" is recognisable before it is read. A row of chips that would all carry the *same* glyph (four date shortcuts, three AI providers) carries none: an identical icon repeated down a row is decoration, and the labels already say it.
 
 ### Cards / Containers
-- **Hero card / auth card:** asymmetric 36/20/36/20px radius, `hero-mocha` or white fill, hero-lift shadow, a low-opacity warm radial glow (`HeroWarmGlow`) in one corner. The auth card had drifted to 32/20/32/20 and a lighter warm shadow (0.12 opacity, `shadowWarm`) before a pass that brought it back to this exact spec — `shadowCool`, not `shadowWarm`, since the card sits on the mint/photo ground, not `layoutSurface` (see the Warm-Shadow-on-Warm-Ground Rule under Elevation). Sign-in/sign-up's ground (`AuthScreenChrome`'s `background="photo"`) is the same warm kitchen photo the welcome screen opens on, dimmed by `scrim` — reused exactly as documented ("something else has the floor"), not a fresh literal — so the pre-auth funnel reads as one continuous moment; the threshold screen keeps the plain blob ground, unasked. The card's own title runs the `display` scale (24/800) — up from the in-app `title` scale (20/800) it used before, since this is the first screen a signed-out visitor focuses on, not a dense in-app view.
+- **Hero card:** asymmetric 36/20/36/20px radius, `hero-mocha` fill, hero-lift shadow, and a low-opacity warm radial glow (`HeroWarmGlow`) in one corner.
+- **Garden auth entry (`AuthShell`, `AuthGardenHero`):** light `gradientBottom` ground, an organic `blobSoft` mint lobe, ink headline, and the pre-existing `assets/illustrations/carrot-3d.png` as its decorative food illustration. No kitchen photo, scrim, mocha form panel or hero-lift shadow remains in this entry composition. Cream fields and lime submit buttons keep the incumbent design system. The hero appears at the account-method entry and gives way to the e-mail form; password-only servers open the form directly. Its visibility changes immediately, without an entrance or height animation.
+- **Household threshold:** a cream create/join selector with a mint selected state controls one visible form. The create introduction is an asymmetric mint panel; joining shows the eight-character code field with paste and QR actions. A pending invitation selects joining. The optional tour switch starts off, and the first scan remains optional.
 - **Stat card:** flex-1, one of three asymmetric corner sets, pastel fill (cream/lavender/mint-pale), a 36×36 saturated icon chip, card-float shadow. **A StatCard counts; it does not name.** A metric fits in half a phone width, a household name does not — Réglages opened on a StatCard pair and rendered "Le foyer de F…" on every phone.
   - **A card that counts a set of things opens that set.** All three dashboard metrics take `onPress` and spring like a `NavCard`: "Cette semaine" and "Dates dépassées" open the garde-manger already filtered to what they counted, "À racheter" opens the liste de courses. A number that names a group of products and then refuses to show them is a dead end wearing a summary's clothes. `onPress` stays optional so a card that genuinely leads nowhere stays inert instead of springing under the finger and doing nothing.
   - **Every level of a pressable card carries the stretch.** Wrapping the card in a `Pressable` + `Animated.View` moved it two levels off the row, and `flex:1` on the wrappers alone let the row equalise *them* while the pastel fills kept their own content heights — three cards ending at three different baselines on web, where "Dates dépassées" wraps to two lines and the others don't. Both wrappers carry `flex:1` **and** `alignSelf:'stretch'`, and the row states `alignItems="stretch"` rather than relying on the default.
@@ -304,6 +308,11 @@ The parts of a web build nobody drew still carry a look, and it belongs to no de
 - **Pill button (`PillButton`, `src/presentation/shared/pill-button.tsx`):** the one lime action pill — 44pt, full-pill radius, optional leading glyph tinted to the label, hover/press spring, `alignSelf:'flex-start'` (a Pressable in a YStack stretches, and a pill that stretches stops being a pill). `tone="quiet"` is the `cream` secondary that stands beside it. It replaced five independent implementations that had drifted in padding, hover wiring and stretch behaviour; the chips were consolidated long before the pills were. `AuthButton` stays separate — it is the 50pt full-width form submit of the auth screens.
 - **NavCard:** asymmetric corner set, `navcard-teal`/`navcard-violet` fill, an `IllustrationSlot` (blurred radial glow + a bundled 3D illustration or a flat icon fallback tagged "3D · bientôt"), hero-lift shadow, hover/press spring.
 - **Internal padding:** `$4` (16px) to `$5` (20px) depending on card size.
+
+### Auth entry behavior
+Welcome now opens the same account-entry surface; there is no required welcome carousel. Sign-in and sign-up use explicit labeled actions instead of a horizontal pager. Enabled, platform-compatible methods are discovered from the active server and shown by name; hidden forms keep their drafts and leave the accessibility tree. The e-mail path provides name/e-mail/password for registration, password visibility, autofill and keyboard progression.
+
+The active server and “Modifier le serveur” stay visible before authentication. A saved URL is preserved; otherwise `EXPO_PUBLIC_API_URL` overrides the official-server fallback. Server configuration is an optional detour with verification and return to the selected auth intent, rather than a mandatory first-launch screen. Method loading, unavailable methods and server failures have explicit feedback and retry. Invitation handling and session/household gates remain part of the existing routes.
 
 ### Inputs / Fields (`AuthField`, `FormField`)
 Two components, one recipe: `AuthField` on the auth screens, `FormField` (`src/presentation/fridge/form-field.tsx`) everywhere else.

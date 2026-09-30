@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { TextInput } from 'react-native'
 import zxcvbn from 'zxcvbn'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -11,6 +12,8 @@ import { AuthPasswordField } from './auth-password-field.js'
 
 export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const palette = useSoftPalette()
+  const emailRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +31,7 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const strengthColors = [palette.expired, palette.expired, palette.soon, palette.fresh, palette.fresh]
 
   async function handleSubmit() {
-    if (!canSubmit) return
+    if (!canSubmit || signUp.isPending) return
     const result = await signUp.mutateAsync({ email: trimmedEmail, password, name: trimmedName })
     if (result.ok) onSuccess()
   }
@@ -39,33 +42,45 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     <YStack gap="$3">
       <AuthField
         label="Nom"
-        labelColor={palette.onDarkSecondary}
+        labelColor={palette.inkSecondary}
         placeholder="Ton prénom"
         value={name}
         onChangeText={setName}
+        autoComplete="name"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => emailRef.current?.focus()}
         testID="signup-name"
       />
       <AuthField
-        label="Email"
-        labelColor={palette.onDarkSecondary}
+        ref={emailRef}
+        label="E-mail"
+        labelColor={palette.inkSecondary}
         placeholder="toi@exemple.com"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
+        autoCorrect={false}
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => passwordRef.current?.focus()}
         testID="signup-email"
       />
       <AuthPasswordField
+        ref={passwordRef}
         label="Mot de passe"
-        labelColor={palette.onDarkSecondary}
+        labelColor={palette.inkSecondary}
         placeholder="••••••••"
         value={password}
         onChangeText={setPassword}
         autoComplete="new-password"
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
         testID="signup-password"
       />
-      <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary}>
+      <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
         Entre 8 et 128 caractères.
       </Text>
       {password ? (
@@ -75,14 +90,14 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
               <YStack key={segment} flex={1} height={5} borderRadius={999} backgroundColor={segment <= strength ? strengthColors[strength] : palette.heroPillFill} />
             ))}
           </XStack>
-          <Text fontSize={12} fontWeight="700" color={palette.onDarkSecondary}>
+          <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
             {`Force du mot de passe : ${strengthLabels[strength]}`}
           </Text>
         </YStack>
       ) : null}
       {error ? <AuthError message={error} /> : null}
       <AuthButton
-        label="S'inscrire"
+        label="Créer mon compte"
         pendingLabel="Inscription..."
         pending={signUp.isPending}
         disabled={!canSubmit}

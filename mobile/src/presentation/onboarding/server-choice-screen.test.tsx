@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
+import * as serverConfig from '../../application/shared/server-config.js'
 import { ServerChoiceScreen } from './server-choice-screen.js'
 
 function renderWithProviders(children: ReactNode) {
@@ -18,6 +19,7 @@ test('a recognized server shows what was found, then confirming calls onDone', a
   const onDone = jest.fn()
   await renderWithProviders(<ServerChoiceScreen onDone={onDone} />)
 
+  await fireEvent.press(screen.getByTestId('server-choice-self-hosted'))
   await fireEvent.changeText(screen.getByTestId('server-choice-url'), 'https://valid.example.com')
   await fireEvent.press(screen.getByTestId('server-choice-submit'))
 
@@ -32,6 +34,7 @@ test('an address with no protocol is rejected before any network call', async ()
   const onDone = jest.fn()
   await renderWithProviders(<ServerChoiceScreen onDone={onDone} />)
 
+  await fireEvent.press(screen.getByTestId('server-choice-self-hosted'))
   await fireEvent.changeText(screen.getByTestId('server-choice-url'), 'mon-serveur.exemple.com')
   await fireEvent.press(screen.getByTestId('server-choice-submit'))
 
@@ -45,6 +48,7 @@ test('a server that does not answer like Garde-manger is rejected with a clear m
   const onDone = jest.fn()
   await renderWithProviders(<ServerChoiceScreen onDone={onDone} />)
 
+  await fireEvent.press(screen.getByTestId('server-choice-self-hosted'))
   await fireEvent.changeText(screen.getByTestId('server-choice-url'), 'https://not-a-garde-manger.example.com')
   await fireEvent.press(screen.getByTestId('server-choice-submit'))
 
@@ -53,4 +57,16 @@ test('a server that does not answer like Garde-manger is rejected with a clear m
   )
   expect(screen.getByText('Vérifier')).toBeTruthy()
   expect(onDone).not.toHaveBeenCalled()
+})
+
+test('confirming the active official server preserves the auth query cache', async () => {
+  const current = jest.spyOn(serverConfig, 'getServerUrl').mockReturnValue(serverConfig.OFFICIAL_SERVER_URL)
+  const save = jest.spyOn(serverConfig, 'setServerUrl')
+  const onDone = jest.fn()
+  await renderWithProviders(<ServerChoiceScreen onDone={onDone} />)
+  await fireEvent.press(screen.getByTestId('server-choice-submit'))
+  expect(save).not.toHaveBeenCalled()
+  expect(onDone).toHaveBeenCalledTimes(1)
+  current.mockRestore()
+  save.mockRestore()
 })

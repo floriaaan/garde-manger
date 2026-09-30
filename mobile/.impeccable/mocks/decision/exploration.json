@@ -1,0 +1,15 @@
+{
+  "seed": "01e57bcf",
+  "mode": "operate",
+  "candidates": [
+    "Invitation imprimée",
+    "Émail de cuisine",
+    "Linge étiqueté",
+    "Album du foyer",
+    "Bibliothèque de quartier",
+    "Radio du matin",
+    "Enseignes du marché"
+  ],
+  "scope": "auth et onboarding mobile uniquement",
+  "outcome": "création de compte simple et rassurante"
+}

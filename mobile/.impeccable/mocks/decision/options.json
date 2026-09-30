@@ -1,0 +1,222 @@
+{
+  "title": "Garde-manger · Une inscription plus simple",
+  "question": "Choisis l’univers des pages d’authentification et de l’onboarding. Les maquettes montrent la même entrée de création de compte ; les fournisseurs visibles illustrent une instance qui les active.",
+  "options": [
+    {
+      "id": "album",
+      "label": "L’album du foyer",
+      "kicker": "À EXPLORER",
+      "lineage": "Albums photographiques du quotidien",
+      "thesis": "Une entrée chaleureuse où le compte ouvre sur un foyer partagé.",
+      "palette": [
+        "#FAF6EE",
+        "#292622",
+        "#C34C36",
+        "#E8DFD0"
+      ],
+      "materials": [
+        "Papier ivoire",
+        "Photographie documentaire cadrée",
+        "Typographie éditoriale"
+      ],
+      "viewport": "Une petite scène de cuisine partagée, puis Créer mon compte et les méthodes disponibles, sur une seule page claire.",
+      "risk": "La photo doit évoquer tous les foyers, sans réduire le produit à la famille avec enfants.",
+      "comp": ".impeccable/mocks/decision/album.png",
+      "raised": [
+        {
+          "from": "Spécimen typographique",
+          "raise": "Une hiérarchie typographique ferme, sans décor concurrent."
+        },
+        {
+          "from": "Signal domestique",
+          "raise": "Des états attente, réussite et échec toujours explicites."
+        },
+        {
+          "from": "Le pli protecteur",
+          "raise": "Une continuité visuelle entre choix, saisie et confirmation."
+        },
+        {
+          "from": "La maison de nuages",
+          "raise": "Des zones nettement séparées sans empiler les cartes."
+        },
+        {
+          "from": "La partition du foyer",
+          "raise": "Un ordre de lecture stable et une étape active clairement nommée."
+        }
+      ]
+    },
+    {
+      "id": "invitation",
+      "label": "Bienvenue chez vous",
+      "kicker": "MA RECOMMANDATION",
+      "lineage": "Cartons d’invitation contemporains",
+      "thesis": "L’inscription devient une invitation personnelle, lisible en un regard.",
+      "palette": [
+        "#FFF9EF",
+        "#272622",
+        "#B74432",
+        "#E7D8C5"
+      ],
+      "materials": [
+        "Aplat crème",
+        "Grand titre accueillant",
+        "Accent vermillon"
+      ],
+      "viewport": "Garde-manger en tête, un titre ample, trois méthodes de création clairement nommées et un lien de connexion.",
+      "risk": "Une approche familière et efficace ; son caractère dépend beaucoup de la typographie et des proportions.",
+      "comp": ".impeccable/mocks/decision/invitation.png"
+    },
+    {
+      "id": "gardens",
+      "label": "Le jardin commun",
+      "verdict": "competitive",
+      "lineage": "Guides de jardins en aplats colorés",
+      "thesis": "Un grand territoire vert accueille les aliments et mène à la création de compte.",
+      "palette": [
+        "#F5F1E4",
+        "#8ED462",
+        "#2C2E2A",
+        "#F5E211"
+      ],
+      "materials": [
+        "Aplats francs",
+        "Découpe organique",
+        "Photos de produits détourées"
+      ],
+      "viewport": "Un grand lobe vert porte le titre et une petite nature morte ; les actions restent groupées dans une zone calme.",
+      "risk": "Plus expressif ; la forme doit rester discrète dès que le clavier apparaît.",
+      "case": "Identification : aussi accueillant pour un foyer. Clarté : la forme attire davantage l’attention que l’inscription.",
+      "hero": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map.webp",
+      "comp": ".impeccable/mocks/decision/gardens.png"
+    },
+    {
+      "id": "specimen",
+      "label": "Spécimen typographique",
+      "verdict": "declined",
+      "lineage": "variable-font-specimen",
+      "thesis": "Le prénom saisi devient le titre vivant du compte.",
+      "palette": [
+        "#FAFAF7",
+        "#242424",
+        "#D24B37"
+      ],
+      "materials": [
+        "Papier et grands caractères"
+      ],
+      "viewport": "Un grand prénom au-dessus des champs et une seule action.",
+      "risk": "Le foyer s’efface derrière une démonstration de lettres.",
+      "case": "Identification : distante. Clarté : le texte animé concurrence la tâche.",
+      "kept": "Une hiérarchie typographique ferme, sans décor concurrent.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp"
+    },
+    {
+      "id": "signal",
+      "label": "Signal domestique",
+      "verdict": "declined",
+      "lineage": "scientific-notation-oscilloscope-signal-bench",
+      "thesis": "L’accès au serveur et au compte devient une chaîne de signaux confirmés.",
+      "palette": [
+        "#161B1D",
+        "#8EE78F",
+        "#DCA75A"
+      ],
+      "materials": [
+        "Affichage instrumental"
+      ],
+      "viewport": "Un signal de connexion suivi du formulaire.",
+      "risk": "Le vocabulaire instrumental rend l’entrée technique.",
+      "case": "Identification : atelier plutôt que foyer. Clarté : une mesure remplace une explication.",
+      "kept": "Des états attente, réussite et échec toujours explicites.",
+      "hero": "https://impeccable.style/worlds/cards/scientific-notation-oscilloscope-signal-bench-hero.webp"
+    },
+    {
+      "id": "cape",
+      "label": "Le pli protecteur",
+      "verdict": "declined",
+      "lineage": "textiles-weave-drape-fashion-drawcord-transforming-cape",
+      "thesis": "Le formulaire se déploie comme un tissu autour du compte.",
+      "palette": [
+        "#222124",
+        "#D2B56D",
+        "#67666E"
+      ],
+      "materials": [
+        "Textile mat et plis"
+      ],
+      "viewport": "Un panneau ouvert laisse voir la méthode choisie.",
+      "risk": "Le geste de déploiement ajoute une interaction à apprendre.",
+      "case": "Identification : mode plutôt que cuisine. Clarté : déplier masque les choix.",
+      "kept": "Une continuité visuelle entre choix, saisie et confirmation.",
+      "hero": "https://impeccable.style/worlds/cards/textiles-weave-drape-fashion-drawcord-transforming-cape-hero.webp"
+    },
+    {
+      "id": "cloud",
+      "label": "La maison de nuages",
+      "verdict": "declined",
+      "lineage": "dream-surreal-impossible-worlds-cloud-quarry",
+      "thesis": "Créer le foyer assemble des blocs clairs dans un petit espace commun.",
+      "palette": [
+        "#F7FAFC",
+        "#5E9BC5",
+        "#5F6B79"
+      ],
+      "materials": [
+        "Volumes blancs et ciel"
+      ],
+      "viewport": "Le compte remplit le premier bloc et le foyer le second.",
+      "risk": "La métaphore peut suggérer des fonctions de construction inexistantes.",
+      "case": "Identification : univers lointain. Clarté : les blocs demandent une interprétation.",
+      "kept": "Des zones nettement séparées sans empiler les cartes.",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-cloud-quarry-hero.webp"
+    },
+    {
+      "id": "score",
+      "label": "La partition du foyer",
+      "verdict": "declined",
+      "lineage": "notation-diagram-systems-labanotation",
+      "thesis": "Compte et foyer sont deux temps alignés sur une portée.",
+      "palette": [
+        "#FFFFFF",
+        "#252525",
+        "#E6E6E6"
+      ],
+      "materials": [
+        "Papier de partition"
+      ],
+      "viewport": "Deux étapes bilatérales guident la création.",
+      "risk": "La lecture montante et les symboles sont étrangers à l’inscription.",
+      "case": "Identification : notation spécialisée. Clarté : la symétrie complique l’ordre de lecture.",
+      "kept": "Un ordre de lecture stable et une étape active clairement nommée.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "L’entrée mobile classique",
+    "thesis": "Un écran natif sobre où les méthodes d’inscription prennent toute la place.",
+    "palette": [
+      "#FFFFFF",
+      "#242424",
+      "#456342"
+    ],
+    "materials": [
+      "Surfaces unies",
+      "Typographie système"
+    ],
+    "viewport": "Nom du produit, titre, méthodes de création, connexion et serveur dans une colonne.",
+    "risk": "Très prévisible et facile à lire, mais peu distinctif.",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

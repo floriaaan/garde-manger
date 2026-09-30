@@ -28,6 +28,7 @@ async function renderScreen(connector = new FakeFridgeConnector()) {
 test('verifying then saving signs out, clears the cache, and lands on sign-in', async () => {
   const connector = await renderScreen()
 
+  await fireEvent.press(screen.getByTestId('server-choice-self-hosted'))
   await fireEvent.changeText(screen.getByTestId('server-choice-url'), 'https://valid.example.com')
   await fireEvent.press(screen.getByTestId('server-choice-submit'))
 
@@ -42,6 +43,7 @@ test('verifying then saving signs out, clears the cache, and lands on sign-in', 
 test('a server that does not answer like Garde-manger is rejected, never saved', async () => {
   await renderScreen()
 
+  await fireEvent.press(screen.getByTestId('server-choice-self-hosted'))
   await fireEvent.changeText(screen.getByTestId('server-choice-url'), 'https://not-a-garde-manger.example.com')
   await fireEvent.press(screen.getByTestId('server-choice-submit'))
 

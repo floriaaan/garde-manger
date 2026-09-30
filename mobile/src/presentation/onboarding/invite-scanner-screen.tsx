@@ -75,12 +75,12 @@ export function InviteScannerScreen({
           style={[pointerCursor, { padding: 12 }]}
         >
           <YStack
-            width={44}
-            height={44}
+            width={48}
+            height={48}
             borderRadius={999}
             alignItems="center"
             justifyContent="center"
-            backgroundColor="rgba(0,0,0,0.45)"
+            backgroundColor={palette.cameraScrim}
           >
             <XIcon size={22} color={palette.onDark} />
           </YStack>
@@ -90,7 +90,7 @@ export function InviteScannerScreen({
         {/* One line, on the same scrim the close glyph uses, because a camera
             frame is the one surface in this app whose background is unknown. */}
         <YStack alignItems="center" padding="$4">
-          <YStack backgroundColor="rgba(0,0,0,0.45)" borderRadius={999} paddingVertical="$2" paddingHorizontal="$4">
+          <YStack backgroundColor={palette.cameraScrim} borderRadius={999} paddingVertical="$2" paddingHorizontal="$4">
             <Text fontSize={13} fontWeight="600" color={palette.onDark}>
               Vise le QR code de l’écran Foyer
             </Text>
