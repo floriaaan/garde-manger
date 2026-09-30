@@ -38,13 +38,13 @@ export function BootSplash() {
   useSplashBackground()
   const { width, height, fontScale } = useWindowDimensions()
   const compact = height / fontScale < 700
-  const displaySize = Math.min(compact ? 44 : 58, (width - 52) / 5.7)
-  const displayPadding = Math.ceil(displaySize * 0.25)
+  const displaySize = Math.min(compact ? 40 : 52, (width - 52) / 5.7)
+  const displayPadding = Math.ceil(displaySize * 0.12)
   const imageWidth = Math.min(compact ? 190 : 240, width - 52)
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   // DESIGN.md's target family; the rest of the app is still on the system stack, so it is loaded here for the wordmark and title only.
-  const [fontLoaded] = useFonts({ PlusJakartaSans_800ExtraBold, GardenDisplay: require('../../../assets/fonts/Anton-Regular.ttf') })
+  const [fontLoaded] = useFonts({ PlusJakartaSans_800ExtraBold })
   const brandFont = fontLoaded ? 'PlusJakartaSans_800ExtraBold' : undefined
   const [stalled, setStalled] = useState(false)
   const [retrying, setRetrying] = useState(false)
@@ -78,7 +78,7 @@ export function BootSplash() {
           ) : (
             <>
               {height / fontScale >= 500 ? <Image source={mascot} accessible={false} resizeMode="contain" style={{ width: imageWidth, height: imageWidth, marginBottom: 12 }} /> : null}
-              <NativeText accessibilityRole="header" style={{ alignSelf: 'stretch', textAlign: 'center', fontFamily: fontLoaded ? 'GardenDisplay' : undefined, fontWeight: fontLoaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.04, letterSpacing: -0.8, paddingVertical: displayPadding, includeFontPadding: true, color: palette.ink }}>
+              <NativeText accessibilityRole="header" style={{ alignSelf: 'stretch', textAlign: 'center', fontFamily: brandFont, fontWeight: fontLoaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8, paddingVertical: displayPadding, includeFontPadding: true, color: palette.ink }}>
                 {'GARDE-\nMANGER'}
               </NativeText>
             </>

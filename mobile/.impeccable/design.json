@@ -145,8 +145,8 @@
       },
       "splash": {
         "source": "src/presentation/shared/boot-splash.tsx",
-        "composition": "Existing fridge mascot above the two-line Anton brand, shared cream/blob ground, a leaf travelling along a rail and system loading copy",
-        "fonts": "Existing bundled Anton and Jakarta 800; no new font",
+        "composition": "Existing fridge mascot above the two-line Jakarta Sans 800 brand, shared cream/blob ground, a leaf travelling along a rail and system loading copy",
+        "fonts": "Existing bundled Jakarta Sans 800; no new font",
         "responsive": "440pt max composition; compact display and 190pt mascot below height/fontScale 700; mascot 240pt ordinary; omit image below 500; compact stalled state prioritizes retry controls",
         "behavior": "Existing 6s stall, retry and server change; no delayed navigation",
         "continuity": "Loading gate registration preserves transparent native Stack and persistent shared blob while loading outside auth",
@@ -177,7 +177,7 @@
         "headline": "Bundled Jakarta Sans 800 (GardenWordmark)",
         "supportingTagline": "Bundled Jakarta Sans 400 (GardenTagline)",
         "size": "min(48, (heroWidth - 52) / 8); compact 32; lineHeight 1.15; native padding 0.12em",
-        "splash": "Anton splash brand unchanged"
+        "splash": "Jakarta Sans 800 splash brand, native weight 400 to avoid synthetic bold"
       },
       "socialButtons": {
         "variant": "Filled, no outline; one row unchanged",
