@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Keyboard, Switch, View } from 'react-native'
+import { AccessibilityInfo, Keyboard, Platform, Switch, View } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
 import { useQueryClient } from '@tanstack/react-query'
 import * as Clipboard from 'expo-clipboard'
+import * as Haptics from 'expo-haptics'
+import { haptic } from '../shared/haptics.js'
+import { showToast } from '../../application/shared/toast.js'
 import { getTelemetry } from '../../application/shared/telemetry.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -106,6 +109,12 @@ export function ThresholdScreen({
     // Store the preference before publishing the household: the layout gate
     // can redirect as soon as the cache changes, before onEnteredHousehold.
     await armFirstRunTour(showTour)
+    // Confirm the real household before the gate redirects; the root toast
+    // follows the member onto the dashboard without delaying that transition.
+    const welcome = `Bienvenue dans ${household.name}.`
+    showToast(welcome, 'success')
+    if (Platform.OS !== 'web') AccessibilityInfo.announceForAccessibility(welcome)
+    haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success))
     queryClient.setQueryData(['household'], household)
     queryClient.invalidateQueries({ queryKey: ['household'] })
     onEnteredHousehold()
@@ -166,6 +175,7 @@ export function ThresholdScreen({
       return
     }
     setCode(parsed)
+    showHint('Code collé', 'success', { description: 'Les huit caractères sont prêts. Tu peux rejoindre le foyer.' })
   }
 
   async function handleSignOut() {

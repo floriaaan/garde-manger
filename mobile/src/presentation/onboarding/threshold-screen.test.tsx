@@ -7,12 +7,16 @@ import { configureTelemetry } from '../../application/shared/telemetry.js'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
+import { showToast } from '../../application/shared/toast.js'
 import { ThresholdScreen } from './threshold-screen.js'
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
   useFocusEffect: jest.fn(),
 }))
+
+jest.mock('../../application/shared/toast.js', () => ({ showToast: jest.fn() }))
+beforeEach(() => jest.mocked(showToast).mockClear())
 
 jest.mock('expo-clipboard', () => ({
   getStringAsync: jest.fn(async () => ''),
@@ -81,6 +85,16 @@ test('a clipboard read failure records telemetry and shows the empty-clipboard h
   spy.mockRestore()
 })
 
+test('pasting an invitation acknowledges receipt without announcing household access', async () => {
+  jest.mocked(Clipboard.getStringAsync).mockResolvedValueOnce('K4Q2M7XP')
+  const { onEnteredHousehold } = await renderThreshold({ intent: 'join' })
+  await fireEvent.press(screen.getByTestId('threshold-paste'))
+  await waitFor(() => expect(screen.getByTestId('threshold-invite-code').props.value).toBe('K4Q2M7XP'))
+  expect(screen.getByText('Code collé')).toBeTruthy()
+  expect(onEnteredHousehold).not.toHaveBeenCalled()
+  expect(showToast).not.toHaveBeenCalled()
+})
+
 test('choosing an intent reveals only its form, without leaving the screen', async () => {
   await renderThreshold()
   expect(screen.getByTestId('threshold-household-name')).toBeTruthy()
@@ -108,6 +122,7 @@ test('naming a foyer creates it and hands the account over to the gate', async (
 
   await waitFor(() => expect(createSpy).toHaveBeenCalledWith('Coloc du 3e'))
   await waitFor(() => expect(onEnteredHousehold).toHaveBeenCalled())
+  expect(showToast).toHaveBeenCalledWith('Bienvenue dans Coloc du 3e.', 'success')
 })
 
 test('a code arriving whole from a deep link fills the field and arms the button', async () => {
@@ -170,6 +185,7 @@ test('a rejected code is said on the field, and the foyer name is not lost with 
   // (`error-serializer.ts`), and it uses a straight quote where this app's copy
   // uses a curly one.
   await waitFor(() => expect(screen.getByText(/invitation invalide/)).toBeTruthy())
+  expect(showToast).not.toHaveBeenCalled()
   // The other branch is untouched: someone who mistyped a code has not
   // abandoned the name they were considering.
   await fireEvent.press(screen.getByTestId('threshold-choose-create'))
