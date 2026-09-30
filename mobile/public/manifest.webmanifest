@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "Garde-manger",
+  "short_name": "Garde-manger",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}

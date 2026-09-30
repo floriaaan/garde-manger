@@ -18,6 +18,9 @@ export class FakeProductRepository implements ProductRepository {
   async findExpiringSoon() {
     return []
   }
+  async findExpiringForDigest() {
+    return []
+  }
   async findByReceiptId() {
     return []
   }

@@ -16,10 +16,10 @@ Les deux besoins se règlent avec le même canal.
 - **Deux envois** : la fin d'une tâche IA (réussie ou échouée, au créateur de la tâche,
   ouvre `/tasks`) et un digest quotidien de péremption (ouvre `/fridge`).
 - **Digest par appareil**, à `PUSH_DIGEST_HOUR` (défaut 9 h) dans `PUSH_TIMEZONE` (défaut
-  `Europe/Paris`), seuil de 2 jours (`findExpiringSoon`, qui exclut les produits déjà
-  périmés). Idempotent grâce à `push_token.last_digest_on` : un redémarrage ou une
-  seconde instance ne l'envoie jamais deux fois, et un serveur relancé après 9 h l'envoie
-  quand même, une fois.
+  `Europe/Paris`). Le foyer choisit 0, 1, 2, 3 ou 7 jours (défaut 2). Les dates sont
+  comparées en jours calendaires ; le stock est relu au moment de l'envoi. La date du
+  jour reste éligible à 9 h. Chaque appareil est revendiqué atomiquement avant l'envoi
+  pour éviter les doublons entre instances. Un échec d'envoi est journalisé et abandonné.
 - **Scheduler en processus** (tick toutes les 5 min), démarré comme le worker de tâches
   dans le seul process web. Pas de cron externe : la même raison que pour la file (pas de
   broker à opérer).
@@ -27,11 +27,17 @@ Les deux besoins se règlent avec le même canal.
   où l'utilisateur la comprend. Désactiver supprime le jeton côté serveur ; se déconnecter
   aussi (la préférence reste, pour la prochaine connexion).
 - `PUSH_ENABLED=false` coupe l'envoi et le scheduler ; `EXPO_ACCESS_TOKEN` est facultatif.
+- Sur le Web, l'abonnement du navigateur est stocké séparément des jetons Expo et livré
+  par Web Push/VAPID. L'instance doit conserver `WEB_PUSH_VAPID_SUBJECT`,
+  `WEB_PUSH_VAPID_PUBLIC_KEY` et `WEB_PUSH_VAPID_PRIVATE_KEY` entre les redémarrages.
+  Sans ces trois valeurs, l'activation Web indique qu'elle est indisponible. HTTPS est
+  requis (sauf localhost). Sur iPhone/iPad, le site doit être ajouté à l'écran d'accueil.
 
 ## Conséquences
 
 - Le push distant exige un **build de développement EAS** avec un `projectId` : Expo Go
   (SDK 53+) ne le reçoit pas. Sans `projectId`, l'activation répond « indisponible ».
 - Un envoi raté est journalisé et abandonné : il ne fait jamais échouer une tâche.
-- Le digest est le même pour tous les membres d'un foyer, mais envoyé par appareil : pas
-  d'heure ni de seuil personnalisables (à ajouter si on le demande).
+- Le délai est commun au foyer et modifiable par ses membres. Chaque membre active les
+  notifications sur chacun de ses appareils. L'heure et le fuseau restent configurés par
+  l'administrateur de l'instance, y compris en auto-hébergement.

@@ -1,6 +1,7 @@
 import { Stack, router } from 'expo-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useShareIntent } from 'expo-share-intent'
 import { ConfettiHost } from '../presentation/shared/confetti.js'
@@ -32,6 +33,16 @@ export default function RootLayout() {
   // EXPO_PUBLIC_TELEMETRY_ENABLED is "true", and it opens no connection —
   // the first export happens 15s later, batched.
   useEffect(() => startTelemetry(), [])
+
+  // The SPA's manifest lets iOS offer Web Push when installed on the home screen.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return
+    const link = document.createElement('link')
+    link.rel = 'manifest'
+    link.href = '/manifest.webmanifest'
+    document.head.appendChild(link)
+    return () => link.remove()
+  }, [])
 
   // Blocks the first render on the chosen server URL (SecureStore, falling
   // back to EXPO_PUBLIC_API_URL) — auth-client and http-client both read it
@@ -91,6 +102,7 @@ export default function RootLayout() {
                 <Stack.Screen name="join" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="settings" />
+                <Stack.Screen name="expiry-reminders" />
                 <Stack.Screen name="account" />
                 <Stack.Screen name="delete-account" />
                 <Stack.Screen name="household" />
