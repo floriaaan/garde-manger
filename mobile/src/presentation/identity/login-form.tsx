@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
-import type { TextInput } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, useWindowDimensions, type TextInput } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useSignInEmailMutation } from '../../application/identity/sign-in.mutation.js'
 import { authErrorMessage } from './auth-error-message.js'
+import { AuthKeyboardAccessory, useAuthEntryLayout } from './auth-garden-theme.js'
 import { AuthButton } from './auth-button.js'
 import { AuthError } from './auth-error.js'
 import { AuthField } from './auth-field.js'
@@ -17,7 +18,15 @@ import { router } from 'expo-router'
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const palette = useSoftPalette()
+  const { keyboardOpen, availableHeight } = useAuthEntryLayout()
+  const { fontScale } = useWindowDimensions()
+  const compactForm = availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale
+  const [field, setField] = useState<'email' | 'password'>('email')
+  const emailRef = useRef<TextInput>(null)
   const passwordRef = useRef<TextInput>(null)
+  useEffect(() => {
+    if (compactForm && keyboardOpen) (field === 'email' ? emailRef : passwordRef).current?.focus()
+  }, [field, compactForm, keyboardOpen])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [recovery, setRecovery] = useState<'login' | 'request' | 'sent' | 'unavailable'>('login')
@@ -49,13 +58,13 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const requestError = authErrorMessage(requestReset.error, requestReset.data, 'Impossible d’envoyer le lien pour le moment.')
 
   if (recovery !== 'login') return (
-    <YStack gap="$3">
+    <YStack gap={keyboardOpen ? 8 : '$3'}>
       {recovery === 'unavailable' ? (
         <Text fontSize={14} color={palette.inkSecondary}>
           La récupération par e-mail n’est pas encore disponible. Contacte l’administrateur de ton serveur pour retrouver ton accès.
         </Text>
       ) : recovery === 'sent' ? (
-        <YStack gap="$3">
+        <YStack gap={keyboardOpen ? 8 : '$3'}>
           <Text fontSize={14} color={palette.inkSecondary} accessibilityLiveRegion="polite">
             {isFakeConnector ? 'Mode démo : aucun e-mail n’est envoyé.' : 'Si un compte correspond à cette adresse, un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes spams.'}
           </Text>
@@ -76,8 +85,11 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   )
 
   return (
-    <YStack gap="$3">
+    <YStack gap={keyboardOpen ? 8 : '$3'}>
+      <View style={{ display: !compactForm || field === 'email' ? 'flex' : 'none' }}>
       <AuthField
+        ref={emailRef}
+        onFocus={() => setField('email')}
         label="Email"
         labelColor={palette.inkSecondary}
         placeholder="toi@exemple.com"
@@ -89,10 +101,13 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         autoCorrect={false}
         returnKeyType="next"
         submitBehavior="submit"
-        onSubmitEditing={() => passwordRef.current?.focus()}
+        onSubmitEditing={() => { if (!trimmedEmail) return; setField('password'); if (!compactForm) passwordRef.current?.focus() }}
         testID="login-email"
       />
+      </View>
+      <View style={{ display: !compactForm || field === 'password' ? 'flex' : 'none' }}>
       <AuthPasswordField
+        onFocus={() => setField('password')}
         ref={passwordRef}
         label="Mot de passe"
         labelColor={palette.inkSecondary}
@@ -104,23 +119,27 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         onSubmitEditing={handleSubmit}
         testID="login-password"
       />
-      <Pressable
+      </View>
+      <AuthKeyboardAccessory><Pressable
         onPress={() => setRecovery(resetAvailable ? 'request' : 'unavailable')}
         accessibilityRole="button"
         accessibilityLabel="Mot de passe oublié ?"
         style={[pointerCursor, { alignSelf: 'flex-end', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}
       >
         <Text fontSize={13} fontWeight="700" color={palette.ink}>Mot de passe oublié ?</Text>
-      </Pressable>
+      </Pressable></AuthKeyboardAccessory>
       {error ? <AuthError message={error} /> : null}
       <AuthButton
-        label="Se connecter"
+        label={compactForm && field === 'email' ? 'Continuer' : 'Se connecter'}
         pendingLabel="Connexion..."
         pending={signIn.isPending}
-        disabled={!canSubmit}
-        onPress={handleSubmit}
+        disabled={signIn.isPending || (compactForm && field === 'email' ? !trimmedEmail : !canSubmit)}
+        onPress={() => { if (compactForm && field === 'email') setField('password'); else void handleSubmit() }}
         testID="login-submit"
       />
+      {compactForm && field === 'password' ? <Pressable testID="login-previous-field" accessibilityRole="button" accessibilityLabel="Revenir à l’e-mail" disabled={signIn.isPending} onPress={() => setField('email')} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }]}>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>Retour à l’e-mail</Text>
+      </Pressable> : null}
     </YStack>
   )
 }

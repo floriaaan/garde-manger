@@ -2,32 +2,39 @@
 version: 1
 slug: "src-presentation-onboarding-threshold-screen-tsx"
 primary_target: "src/presentation/onboarding/threshold-screen.tsx"
-related_targets: ["src/presentation/onboarding/invite-code-field.tsx","src/presentation/onboarding/first-run-tour.tsx"]
+related_targets: ["src/presentation/onboarding/invite-code-field.tsx", "src/presentation/onboarding/first-run-tour.tsx", "src/presentation/identity/auth-screen-chrome.tsx"]
 ---
 
-Scope: le groupe `(onboarding)` — le seuil créer/rejoindre, le scan QR du code, et les quatre temps posés sur le dashboard réel. Mode visiteur : Operate.
-
-Audience : deux populations. Le fondateur, seul dans sa cuisine, qui nomme le foyer et repart avec un code. Le rejoignant, qui arrive avec un code déjà en main — souvent depuis un lien `gardemanger://join?code=…` ou un QR.
-
-Contraintes : les mutations mobiles de création/jonction utilisent les contrats backend existants (`POST /api/households`, `POST /api/households/join`, code `^[A-Z0-9]{8}$`). Les gates de session et de foyer existants restent en place ; ce redesign ne change pas les contrats backend.
-
-Hors périmètre : aucune amorce de remplissage. Le dernier temps du tour peut offrir le scanner ; il ne l'impose pas.
-
-Non résolu : pas d'universal link — l'instance est auto-hébergée, il n'existe aucun domaine à revendiquer, donc le partage repose sur le schéma `gardemanger://` plus le code en clair.
+Scope : le seuil créer/rejoindre, le scan QR et la visite facultative du vrai dashboard. Mode : Operate.
+Audience : fondateur qui nomme son foyer, rejoignant qui possède déjà un code ou une invitation.
+Contraintes : contrats backend existants (`POST /api/households`, `POST /api/households/join`, code `^[A-Z0-9]{8}$`), gates session et foyer conservés. Pas d’universal link : partage par schéma `gardemanger://` et code lisible. Aucun remplissage ni premier scan obligatoire.
 
 ## Direction contract
 
-THESIS: l'onboarding est un seuil franchi, pas un couloir traversé. Une décision plein écran — créer un foyer ou en rejoindre un — puis le vrai dashboard qui se présente lui-même. Refuse le stepper à cinq écrans et le carrousel de slides.
+THESIS: l’onboarding est un seuil franchi, pas un couloir traversé : créer ou rejoindre, puis entrer dans le vrai garde-manger.
 
-OWN-WORLD: Garden adapté au Sunlit Pantry existant sur demande explicite de l’utilisateur — fond clair, menthe organique, crème, lime réservée à l’action, angles asymétriques et composants livrés. Le seuil partage le cadre natif `AuthScreenChrome` avec l’authentification ; pas de panneau mocha dans cette composition. Aucun token nouveau.
+OWN-WORLD: la maquette `gardens.png` reste l’autorité de composition reconnaissable : large aplat organique, titre condensé et nature morte photographique. La première adaptation menthe pâle/petite carotte 3D/pilules a été rejetée. La dernière consigne utilisateur conserve ce design/layout et adapte uniquement les couleurs à `mobile/DESIGN.md`, avec fournisseurs en une rangée et sans ScrollView. `gardenColors` réutilise exclusivement `cream`, `blobStrong`, `ink`, `inkSecondary`, `accentLime` et `accentLimeText`, dans les deux thèmes. Aucun nouveau token de couleur.
 
-STORY: le fondateur nomme le foyer et repart avec un code à partager ; le rejoignant arrive par lien ou QR, code déjà posé dans les cases, et atterrit dans le même garde-manger.
-
-FIRST VIEWPORT: marque en haut, accueil personnel, puis sélecteur explicite créer/rejoindre sur crème. Une seule branche est visible : création avec introduction menthe asymétrique et nom du foyer, ou jonction avec les huit cases de code, collage et scan QR. Un code reçu par lien ou scan active rejoindre. Les deux branches gardent leurs saisies ; la branche cachée quitte l’arbre d’accessibilité. Le cadre respecte les safe areas, le clavier et une largeur de contenu bornée. « Me faire visiter l’app » est désactivé par défaut ; la visite choisie montre un temps à la fois et reste passable. « Changer de compte » reste disponible hors requête en cours.
-
-FORM: adaptation du seuil antérieur « Le seuil, puis la maison » (candidat 6, clé be93e49c) à Garden, choisi pour le parcours d’entrée complet (seed 01e57bcf). La consigne d’adaptation à `DESIGN.md` remplace le pixel-match de la maquette. Contrat courant : `src-presentation-identity-auth-shell-tsx.md`.
+FORM: en-tête plein bord sur téléphone ; colonne mesurée pour le titre Anton (`min(58, (heroWidth - 52) / 6.1)`, compact 38), mot-symbole Jakarta, contrôles arrondis à 11px, champs transparents à contour. Le cadre natif fixe utilise `KeyboardAvoidingView` et `View`, sans ScrollView. Il mesure cadre et formulaire ; l’image prend la hauteur restante, et un petit bandeau de marque remplace le hero quand l’espace manque. À partir de 768px, composition en deux colonnes bornée à 1040px. Le clavier masque hero et accessoires secondaires, en conservant les formulaires montés. La saisie reste ancrée juste au-dessus du clavier ; toucher hors du champ ferme le clavier. La touche Terminé du code d’invitation libère explicitement le focus sans effacer le code. Cette adaptation au manque de hauteur n’est pas une promesse de pixel-match sur petit écran ou en grande taille de texte.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 
+STORY: le fondateur nomme le foyer et obtient un code à partager ; le rejoignant arrive par lien ou QR, avec le code conservé pendant l’authentification.
 
-Réalisation et revue : mise à jour implémentée ; verdict ship au périmètre statique. La préférence de visite est enregistrée avant la publication du foyer dans le cache. Sources et tests inspectés, tests écrits/modifiés mais non exécutés. Aucun test, build, lint, typecheck, détecteur ou capture native lancé ; rendu natif, clavier, grande taille de texte et adaptations visuelles ne sont pas vérifiés à l’exécution. Aucun nouvel asset raster sur ce seuil.
+FIRST VIEWPORT: en-tête Garden compact avec accueil personnel, choix créer/rejoindre à contour et sélection `blobStrong`/`ink`, puis une seule branche visible sur le fond `cream`. Création : introduction simple et nom du foyer. Jonction : huit cases de code, collage et scan QR. Les branches conservent les saisies ; la branche cachée quitte l’arbre d’accessibilité. Contenu borné à 480px. Le clavier masque l’introduction, la visite facultative et changer de compte ; le champ actif et son action restent disponibles. Le cadre sans ScrollView adapte la place du hero à la hauteur disponible.
+
+## Comportements conservés
+
+Une invitation en attente, un lien ou un scan sélectionne rejoindre. La validation, les erreurs de code, le collage depuis un message partagé et le scan sont conservés. Requêtes en cours : contrôles désactivés et état d’attente visible. La préférence de visite est enregistrée avant publication du foyer dans le cache ; « Me faire visiter l’app » démarre désactivé et reste passable. « Changer de compte » est disponible hors clavier et hors requête. Les courses de création/jonction déjà résolues déclenchent une relecture du foyer.
+
+## Réalisation et revue
+
+Disposition indépendante : **RECAPTURE**, pas de verdict ship. Les deux tentatives de capture native ont été bloquées par les permissions de contrôle de l’ordinateur. La revue des sources a identifié une taille de titre calculée depuis le viewport tablette ; elle est maintenant calculée depuis la colonne mesurée par `onLayout`. La fidélité visuelle au comp, le clavier, les petits écrans, les grandes tailles de texte et le rendu sombre/tablette restent à vérifier sur captures natives. Les aperçus de composants et l’inspection statique ne les valident pas. Aucun test, build, lint ou typecheck exécuté conformément à AGENTS.md.
+
+Asset : `assets/illustrations/garden-harvest.png`, nature morte photographique générée de carottes et poire sur fond transparent ; prompt conservé dans `.impeccable/mocks/decision/garden-harvest.prompt.txt` et dans les métadonnées du PNG. La petite carotte 3D de l’ancienne adaptation n’est plus le visuel du hero. Anton est embarquée dans `assets/fonts/Anton-Regular.ttf` ; le mot-symbole charge localement le fichier Plus Jakarta Sans 800 existant. Les polices ordinaires de l’application restent inchangées.
+
+## Adaptation aux faibles hauteurs
+
+Le cadre transmet sa hauteur mesurée aux formulaires. Inscription : un champ à la fois sous `(clavier ? 470 : 740) × fontScale` ; connexion : sous `(clavier ? 410 : 560) × fontScale`. Une hauteur encore inconnue (0) ou suffisante conserve le formulaire complet. Les champs restent montés avec leurs valeurs, refs et mutations ; les champs inactifs sont masqués. « Continuer » avance jusqu’au mot de passe, puis l’action habituelle soumet. Un retour de 44px minimum permet de revenir ; le focus suit l’étape après rendu lorsque le clavier est ouvert. L’indicateur de force se masque au clavier, mais l’aide de longueur du mot de passe reste présente à cette étape. Deux tests ciblés couvrent étapes compactes, brouillons et soumission ; ils n’ont pas été exécutés.
+
+Au seuil foyer, le clavier masque aussi le sélecteur créer/rejoindre, les explications, collage/scan, visite et changement de compte ; le champ actif et son action restent visibles. Le hero invalide ses mesures sur changement de largeur, taille du texte, mode compact, titre, sous-titre ou chargement des polices, afin de recalculer le repli en bandeau. Ces adaptations nécessaires au cadre sans défilement ne constituent pas un pixel-match garanti sur petits écrans ; la disposition reste **RECAPTURE**.

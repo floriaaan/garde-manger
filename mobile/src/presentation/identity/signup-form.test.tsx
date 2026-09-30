@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
+import { AuthEntryLayoutContext } from './auth-garden-theme.js'
 import { SignupForm } from './signup-form.js'
 import zxcvbn from 'zxcvbn'
 
@@ -54,6 +55,27 @@ test('a valid password can still create an account', async () => {
   await renderWithProviders(<SignupForm onSuccess={onSuccess} />)
   await fireEvent.changeText(screen.getByTestId('signup-name'), 'Alice')
   await fireEvent.changeText(screen.getByTestId('signup-email'), 'alice@example.com')
+  await fireEvent.changeText(screen.getByTestId('signup-password'), 'correct-horse-battery-staple')
+  await fireEvent.press(screen.getByTestId('signup-submit'))
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+})
+
+test('short-screen field progression preserves the draft and submits only the complete account', async () => {
+  const onSuccess = jest.fn()
+  await renderWithProviders(
+    <AuthEntryLayoutContext.Provider value={{ keyboardOpen: false, heroSpace: null, availableHeight: 600 }}>
+      <SignupForm onSuccess={onSuccess} />
+    </AuthEntryLayoutContext.Provider>,
+  )
+  await fireEvent.changeText(screen.getByTestId('signup-name'), 'Alice')
+  await fireEvent.press(screen.getByTestId('signup-submit'))
+  expect(onSuccess).not.toHaveBeenCalled()
+  await fireEvent.changeText(screen.getByTestId('signup-email'), 'alice@example.com')
+  await fireEvent.press(screen.getByTestId('signup-previous-field'))
+  expect(screen.getByTestId('signup-name').props.value).toBe('Alice')
+  await fireEvent.press(screen.getByTestId('signup-submit'))
+  expect(screen.getByTestId('signup-email').props.value).toBe('alice@example.com')
+  await fireEvent.press(screen.getByTestId('signup-submit'))
   await fireEvent.changeText(screen.getByTestId('signup-password'), 'correct-horse-battery-staple')
   await fireEvent.press(screen.getByTestId('signup-submit'))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))

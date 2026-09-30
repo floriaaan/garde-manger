@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
+import { AuthEntryLayoutContext } from './auth-garden-theme.js'
 import { LoginForm } from './login-form.js'
 
 // @testing-library/react-native v14: render() AND fireEvent (press/changeText/
@@ -63,4 +64,22 @@ test('the eye toggles visibility without changing the entered password', async (
   expect(screen.getByTestId('login-password').props.value).toBe(' secret-password ')
   await fireEvent.press(screen.getByTestId('login-password-visibility'))
   expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(true)
+})
+
+test('short-screen login preserves e-mail when returning from the password step', async () => {
+  const onSuccess = jest.fn()
+  await renderWithProviders(
+    <AuthEntryLayoutContext.Provider value={{ keyboardOpen: false, heroSpace: null, availableHeight: 400 }}>
+      <LoginForm onSuccess={onSuccess} />
+    </AuthEntryLayoutContext.Provider>,
+  )
+  await fireEvent.changeText(screen.getByTestId('login-email'), 'alice@example.com')
+  await fireEvent.press(screen.getByTestId('login-submit'))
+  expect(onSuccess).not.toHaveBeenCalled()
+  await fireEvent.press(screen.getByTestId('login-previous-field'))
+  expect(screen.getByTestId('login-email').props.value).toBe('alice@example.com')
+  await fireEvent.press(screen.getByTestId('login-submit'))
+  await fireEvent.changeText(screen.getByTestId('login-password'), 'correct-horse-battery-staple')
+  await fireEvent.press(screen.getByTestId('login-submit'))
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
 })

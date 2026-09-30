@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { Keyboard, View } from 'react-native'
+import { Image, Keyboard, View } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { Text } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useAuthMethodsQuery } from '../../application/identity/auth-methods.query.js'
 import { useSignInSocialMutation } from '../../application/identity/sign-in.mutation.js'
 import { authErrorMessage } from './auth-error-message.js'
+import { AuthKeyboardAccessory } from './auth-garden-theme.js'
+import { AuthProviderButton } from './auth-provider-button.js'
 import { AuthButton } from './auth-button.js'
-import { AuthDivider } from './auth-divider.js'
 import { AuthError } from './auth-error.js'
 import { PillButton } from '../shared/pill-button.js'
 import { ArrowLeftIcon, LockIcon } from '../dashboard/dashboard-icons.js'
@@ -131,30 +132,19 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
   return (
     <View style={{ gap: 16 }}>
       <View style={{ display: emailActive ? 'none' : 'flex', gap: 12 }} accessibilityElementsHidden={emailActive} importantForAccessibility={emailActive ? 'no-hide-descendants' : 'auto'}>
-        {apple ? isFakeConnector ? (
-          <AuthButton testID="auth-method-apple" label="Continuer avec Apple" pendingLabel="Connexion Apple…" pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} variant="secondary" />
-        ) : (
-          <View pointerEvents={socialBusy ? 'none' : 'auto'} accessibilityState={{ busy: pendingNativeProvider === 'apple', disabled: socialBusy }}>
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={allowPasskey ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN : AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-              buttonStyle={palette.blurTint === 'dark' ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-              cornerRadius={25}
-              style={{ height: 50, width: '100%', opacity: socialBusy ? 0.6 : 1 }}
-              onPress={handleApple}
-            />
-            {pendingNativeProvider === 'apple' ? <Text accessibilityLiveRegion="polite" fontSize={13} color={palette.inkSecondary}>Connexion Apple…</Text> : null}
-          </View>
-        ) : null}
-        {google ? <AuthButton testID="auth-method-google" label="Continuer avec Google" pendingLabel="Connexion Google…" pending={pendingProvider === 'google'} disabled={socialBusy} onPress={handleGoogle} variant="secondary" icon={<GoogleIcon size={20} />} /> : null}
-        {pocketId ? <AuthButton testID="auth-method-pocketid" label={pocketId.label} pendingLabel="Connexion…" pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} variant="secondary" icon={<PocketIdIcon size={20} color={palette.ink} />} /> : null}
-        {passkey ? <AuthButton testID="auth-method-passkey" label="Utiliser une clé d’accès" pendingLabel="Vérification…" pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} variant="secondary" icon={<LockIcon size={20} color={palette.ink} />} /> : null}
+        {hasSocial ? <View testID="auth-social-methods" style={{ flexDirection: 'row', gap: 8, alignItems: 'stretch' }}>
+          {apple ? <AuthProviderButton name="Apple" label="Continuer avec Apple" testID="auth-method-apple" apple icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />} pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} /> : null}
+          {google ? <AuthProviderButton name="Google" label="Continuer avec Google" testID="auth-method-google" icon={<GoogleIcon size={24} />} pending={pendingProvider === 'google'} disabled={socialBusy} onPress={handleGoogle} /> : null}
+          {pocketId ? <AuthProviderButton name={pocketId.label} label={`Continuer avec ${pocketId.label}`} testID="auth-method-pocketid" icon={<PocketIdIcon size={24} color={palette.ink} />} pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} /> : null}
+          {passkey ? <AuthProviderButton name="Clé d’accès" label="Utiliser une clé d’accès" testID="auth-method-passkey" icon={<LockIcon size={24} color={palette.ink} />} pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} /> : null}
+        </View> : null}
         {socialError ? <AuthError message={socialError} /> : null}
         {nativeError ? <AuthError message={nativeError} /> : null}
-        {password && emailForm ? <>{hasSocial ? <AuthDivider label="ou avec ton e-mail" /> : null}<AuthButton testID="auth-method-email" label={emailLabel} disabled={socialBusy} onPress={() => changeEmailMode(true)} /></> : null}
+        {password && emailForm ? <AuthButton testID="auth-method-email" label={emailLabel} disabled={socialBusy} onPress={() => changeEmailMode(true)} /> : null}
       </View>
       {everEnteredEmail || emailActive ? (
         <View style={{ display: emailActive ? 'flex' : 'none', gap: 16 }} accessibilityElementsHidden={!emailActive} importantForAccessibility={emailActive ? 'auto' : 'no-hide-descendants'}>
-          {hasSocial ? <PillButton testID="auth-method-back" label="Autre méthode" tone="quiet" palette={palette} disabled={socialBusy} icon={(color) => <ArrowLeftIcon size={16} color={color} />} onPress={() => changeEmailMode(false)} /> : null}
+          {hasSocial ? <AuthKeyboardAccessory><PillButton testID="auth-method-back" label="Autre méthode" tone="quiet" palette={palette} disabled={socialBusy} icon={(color) => <ArrowLeftIcon size={16} color={color} />} onPress={() => changeEmailMode(false)} /></AuthKeyboardAccessory> : null}
           {emailForm}
         </View>
       ) : null}
