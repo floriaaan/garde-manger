@@ -21,6 +21,7 @@ import { Text, YStack } from './tamagui-typed.js'
 import { PulseDots } from './pulse-dots.js'
 import { PillButton } from './pill-button.js'
 import { useReduceMotion } from './hover.js'
+import { useSharedAuthBackground } from '../identity/auth-background-frame.js'
 import { AuthBlobBackground } from '../identity/auth-blob-background.js'
 import { ChefHatIcon, LeafIcon, PackageIcon, ReceiptIcon } from '../dashboard/dashboard-icons.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
@@ -49,6 +50,7 @@ const CHIPS = [
 ] as const
 
 export function BootSplash() {
+  const sharedBackground = useSharedAuthBackground()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   // DESIGN.md's target family; the rest of the app is still on the system stack, so it is loaded here for the wordmark and title only.
@@ -89,8 +91,8 @@ export function BootSplash() {
 
   return (
     <Reanimated.View style={{ flex: 1 }} exiting={reduceMotion ? undefined : GROUND_OUT}>
-    <YStack testID="boot-splash" flex={1} overflow="hidden" backgroundColor={palette.gradientBottom}>
-      <AuthBlobBackground />
+    <YStack testID="boot-splash" flex={1} overflow="hidden" backgroundColor={sharedBackground ? 'transparent' : palette.gradientBottom}>
+      {!sharedBackground ? <AuthBlobBackground /> : null}
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$5">
         <YStack width={320} height={300} alignItems="center" justifyContent="center">
           {CHIPS.map(({ Icon, tint, size, rotate, dir, pos }) => (

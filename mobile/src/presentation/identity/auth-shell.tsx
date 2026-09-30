@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import { Keyboard, View } from 'react-native'
+import { Keyboard } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
+import { AuthStep } from './auth-step.js'
 import { AuthKeyboardAccessory } from './auth-garden-theme.js'
 import { AuthGardenHero, AuthScreenChrome } from './auth-screen-chrome.js'
 
@@ -32,13 +33,13 @@ export function AuthShell({ title, subtitle, mode, onModeChange, pages, children
           {(['sign-in', 'sign-up'] as const).map((key) => {
             const page = key === 'sign-in' ? pages.signIn : pages.signUp
             return (
-              <View key={key} style={{ display: mode === key ? 'flex' : 'none', gap: 20 }} accessibilityElementsHidden={mode !== key} importantForAccessibility={mode === key ? 'auto' : 'no-hide-descendants'}>
+              <AuthStep key={key} active={mode === key} direction={key === 'sign-up' ? 1 : -1} style={{ gap: 20 }}>
                 <AuthKeyboardAccessory><YStack gap={8}>
                   <Text accessibilityRole="header" fontSize={28} fontWeight="800" letterSpacing={-0.6} color={palette.ink}>{page.title}</Text>
                   {!garden ? <Text fontSize={15} color={palette.inkSecondary}>{page.subtitle}</Text> : null}
                 </YStack></AuthKeyboardAccessory>
                 {page.content}
-              </View>
+              </AuthStep>
             )
           })}
           <AuthKeyboardAccessory><Pressable testID={`auth-tab-${mode === 'sign-up' ? 'sign-in' : 'sign-up'}`} accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => { if (busy) return; Keyboard.dismiss(); onModeChange(mode === 'sign-up' ? 'sign-in' : 'sign-up') }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: busy ? 0.6 : 1 }]}>

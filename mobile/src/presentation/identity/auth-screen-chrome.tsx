@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text as NativeText, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native'
+import { Image, Keyboard, KeyboardAvoidingView, Platform, Text as NativeText, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
 import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold'
-import Svg, { Path } from 'react-native-svg'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
+import { useSharedAuthBackground } from './auth-background-frame.js'
 import { AuthWordmark } from './auth-wordmark.js'
 import { AuthEntryLayoutContext, AuthGardenContext, gardenColors, useAuthEntryLayout } from './auth-garden-theme.js'
 
@@ -42,17 +42,12 @@ export function AuthGardenHero({ compact = false, title, subtitle }: { compact?:
     : Math.min(naturalImageWidth * 2 / 3, Math.max(0, heroSpace - topPadding - textHeight - bottomPadding - (compact ? 6 : 0)))
   // Keep the composition intact where it fits; give short screens to the task.
   if (heroSpace !== null && textHeight && heroSpace < topPadding + textHeight + bottomPadding + 32) return (
-    <View style={{ paddingTop: topPadding, paddingHorizontal: 26, paddingBottom: 12, backgroundColor: colors.leaf }}>
+    <View style={{ paddingTop: topPadding, paddingHorizontal: 26, paddingBottom: 12 }}>
       <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
     </View>
   )
   return (
     <View onLayout={({ nativeEvent }) => setHeroWidth(nativeEvent.layout.width)} style={{ paddingTop: topPadding, paddingBottom: bottomPadding }}>
-      <View pointerEvents="none" accessible={false} style={[StyleSheet.absoluteFill, { bottom: compact ? 28 : 72 }]}>
-        <Svg width="100%" height="100%" viewBox="0 0 390 420" preserveAspectRatio="none">
-          <Path d="M0 0H327L390 70V280C366 349 317 389 230 401C174 408 140 432 92 413C45 395 15 366 0 334Z" fill={colors.leaf} />
-        </Svg>
-      </View>
       <View onLayout={({ nativeEvent }) => setTextHeight(nativeEvent.layout.height)} style={{ paddingHorizontal: 26 }}>
         <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
         {!compact || title ? (
@@ -78,6 +73,7 @@ export function AuthScreenChrome({ maxWidth, overlay, hero, children }: {
   hero?: ReactNode
   children: ReactNode
 }) {
+  const sharedBackground = useSharedAuthBackground()
   const palette = useSoftPalette()
   const colors = gardenColors(palette)
   const { width } = useWindowDimensions()
@@ -97,7 +93,7 @@ export function AuthScreenChrome({ maxWidth, overlay, hero, children }: {
   return (
     <AuthGardenContext.Provider value={colors}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={{ flex: 1, minHeight: 0, backgroundColor: colors.ground }}>
+      <View style={{ flex: 1, minHeight: 0, backgroundColor: sharedBackground ? 'transparent' : colors.ground }}>
         <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['bottom', 'left', 'right']}>
           <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <AuthEntryLayoutContext.Provider value={{ keyboardOpen, heroSpace, availableHeight: frameHeight }}>

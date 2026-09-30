@@ -2,9 +2,11 @@ import { useId } from 'react'
 import { Animated } from 'react-native'
 import { Defs, RadialGradient, Rect, Stop, Svg } from 'react-native-svg'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { BLOB_DRIFT_X_RANGE, BLOB_DRIFT_Y, useBlobDrift } from '../shared/hover.js'
+import { useBlobDrift } from '../shared/hover.js'
 
-const [BLOB_DRIFT_MIN, BLOB_DRIFT_MAX] = BLOB_DRIFT_X_RANGE
+const AUTH_BLOB_RANGE: [number, number] = [-20, 100]
+const [BLOB_DRIFT_MIN, BLOB_DRIFT_MAX] = AUTH_BLOB_RANGE
+const BLOB_DRIFT_Y = 12
 
 /**
  * Same two soft off-center radial blobs as the dashboard's `BlobBackground`,
@@ -28,11 +30,12 @@ const [BLOB_DRIFT_MIN, BLOB_DRIFT_MAX] = BLOB_DRIFT_X_RANGE
  * elements in one DOM collide, and `fill="url(#authBlob1)"` resolves to
  * whichever one the browser picks, which is how sign-up rendered blank.
  */
-export function AuthBlobBackground() {
+export function AuthBlobBackground({ ground, active = true }: { ground?: string; active?: boolean } = {}) {
   const palette = useSoftPalette()
   const id1 = useId()
   const id2 = useId()
-  const drift = useBlobDrift()
+  const drift = useBlobDrift({ active, rangeX: AUTH_BLOB_RANGE, amplitudeY: BLOB_DRIFT_Y, duration: 7000 })
+  const groundColor = ground ?? palette.gradientBottom
   return (
     <>
       <Svg
@@ -40,7 +43,7 @@ export function AuthBlobBackground() {
         height="100%"
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}
       >
-        <Rect x="0" y="0" width="100%" height="100%" fill={palette.gradientBottom} />
+        <Rect x="0" y="0" width="100%" height="100%" fill={groundColor} />
       </Svg>
       <Animated.View
         style={{
@@ -58,11 +61,11 @@ export function AuthBlobBackground() {
             <RadialGradient id={id1} cx="18%" cy="-8%" r="65%">
               <Stop offset="0" stopColor={palette.blobStrong} stopOpacity={0.85} />
               <Stop offset="0.5" stopColor={palette.blobSoft} stopOpacity={0.5} />
-              <Stop offset="1" stopColor={palette.gradientBottom} stopOpacity={0} />
+              <Stop offset="1" stopColor={groundColor} stopOpacity={0} />
             </RadialGradient>
             <RadialGradient id={id2} cx="92%" cy="100%" r="60%">
               <Stop offset="0" stopColor={palette.blobSoft} stopOpacity={0.7} />
-              <Stop offset="1" stopColor={palette.gradientBottom} stopOpacity={0} />
+              <Stop offset="1" stopColor={groundColor} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id2})`} />
