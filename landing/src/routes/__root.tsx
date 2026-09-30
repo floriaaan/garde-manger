@@ -17,7 +17,7 @@ const ORGANIZATION_JSON_LD = {
   url: SITE_URL,
   image: absoluteUrl('/logo.png'),
   applicationCategory: 'LifestyleApplication',
-  operatingSystem: 'iOS, Android',
+  operatingSystem: 'Web, iOS, Android',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
   sameAs: ['https://github.com/floriaaan/garde-manger'],
 }

@@ -5,13 +5,14 @@ import type { LandingContent } from '../../domain/content/landing-content.js'
 export const landingContentFr: LandingContent = {
   locale: 'fr',
   repositoryUrl: 'https://github.com/floriaaan/garde-manger',
+  webAppUrl: 'https://app.gardemanger.floriaaan.fr',
   hero: {
-    eyebrow: 'Open source · app officielle bientôt, ou chez toi',
+    eyebrow: 'Open source · disponible sur le web',
     titleBefore: 'Du frigo à l’assiette, ',
     titleHighlight: 'sans rien jeter',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. L’app officielle arrive bientôt ; tu peux déjà l’auto-héberger sur ton propre serveur.',
+      'Garde-manger tient l’inventaire du frigo de tout le foyer, prévient avant les dates et propose quoi cuisiner avec ce qui reste. La version web est disponible ; les apps mobiles sont accessibles en bêta.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -57,7 +58,7 @@ export const landingContentFr: LandingContent = {
     titleHighlight: 'Deux façons',
     titleAfter: ' de s’y mettre',
     subtitle:
-      'Même app, mêmes fonctionnalités. L’app officielle sera la façon la plus simple de démarrer ; tu peux aussi tout installer chez toi.',
+      'Même app, mêmes fonctionnalités. L’app officielle est accessible sur le web et en bêta sur mobile ; tu peux aussi tout installer chez toi.',
     hosted: {
       label: 'Clé en main',
       tag: 'Le plus simple',
@@ -126,14 +127,20 @@ export const landingContentFr: LandingContent = {
     {
       question: 'Sur quels appareils ?',
       answer:
-        'iOS et Android. L’app arrive sur les stores. En attendant, sur Android, elle s’installe avec l’APK publié dans les Releases ; sur iOS, elle passe provisoirement par Expo Go.',
+      'Sur le web, iOS et Android. La version web est disponible. Sur iOS, rejoins la bêta via TestFlight. Sur Android, rejoins d’abord le groupe de test Google, puis accède à la bêta sur Google Play avec le même compte. L’APK reste disponible dans les Releases.',
     },
   ],
-  stores: { appStore: null, playStore: null },
+  stores: {
+    appStore: null,
+    playStore: null,
+    testFlight: 'https://testflight.apple.com/join/AcGZsS4B',
+    googleGroup: 'https://groups.google.com/g/garde-manger-beta',
+    googlePlayBeta: 'https://play.google.com/apps/testing/com.floriaaan.gardemanger',
+  },
   ui: {
     skipToContent: 'Aller au contenu',
     nav: { features: 'Fonctionnalités', start: 'Démarrer', faq: 'FAQ' },
-    cta: { start: 'Commencer', viewOnGithub: 'Voir sur GitHub' },
+    cta: { start: 'Commencer', openWebApp: 'Ouvrir l’application web', viewOnGithub: 'Voir sur GitHub' },
     featuresHeading: 'Fonctionnalités',
     starsSuffix: 'étoiles sur GitHub',
     waitlist: {
@@ -158,6 +165,11 @@ export const landingContentFr: LandingContent = {
       or: 'ou',
       storesAvailable: 'App Store et Google Play',
       storesFallback: 'iOS et Android · bientôt sur les stores',
+      betaHeading: 'Tester les apps mobiles',
+      testFlight: 'iOS · TestFlight',
+      googleGroup: '1. Rejoindre le groupe Google',
+      googlePlayBeta: '2. Tester sur Google Play',
+      androidBetaNote: 'Sur Android, rejoins le groupe de test, puis accède à la bêta Google Play avec le même compte Google.',
     },
     faq: {
       headingBefore: 'Des',
@@ -175,6 +187,7 @@ export const landingContentFr: LandingContent = {
       navProject: 'Le projet',
       navLegal: 'Légal',
       links: {
+        webApp: 'Application web',
         features: 'Fonctionnalités',
         start: 'Deux façons de s’y mettre',
         faq: 'Questions fréquentes',

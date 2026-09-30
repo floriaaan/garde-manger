@@ -27,6 +27,7 @@ export function SiteFooter({ content }: { content: LandingContent }) {
     {
       title: ui.footer.navApp,
       links: [
+        { href: content.webAppUrl, label: ui.footer.links.webApp },
         { href: `${home}#fonctionnalites`, label: ui.footer.links.features },
         { href: `${home}#demarrer`, label: ui.footer.links.start },
         { href: `${home}#faq`, label: ui.footer.links.faq },

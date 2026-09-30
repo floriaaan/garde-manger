@@ -14,9 +14,9 @@ export function SiteHeader({ content }: { content: LandingContent }) {
   return (
     <header className="absolute inset-x-0 top-0 z-20">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-5 sm:px-8">
-        <a href={home} className="flex items-center gap-2.5 rounded-full font-extrabold text-ink">
+        <a href={home} aria-label="Garde-manger" className="flex items-center gap-2.5 rounded-full font-extrabold text-ink">
           <img src="/logo.png" alt="" width={36} height={36} className="size-9 rounded-[10px]" />
-          <span className="text-lg tracking-tight">Garde-manger</span>
+          <span className="hidden text-lg tracking-tight sm:inline">Garde-manger</span>
         </a>
         <nav aria-label="Principale" className="hidden md:block">
           <ul className="flex items-center gap-9 text-[15px] font-medium text-ink">
@@ -32,8 +32,10 @@ export function SiteHeader({ content }: { content: LandingContent }) {
         <div className="flex items-center gap-4">
           <LocaleSwitcher locale={locale} />
           <Button asChild>
-            <a href={`${home}#demarrer`}>
-              {ui.cta.start} <ArrowRightIcon aria-hidden data-motion="nudge" />
+            <a href={content.webAppUrl}>
+              <span className="sm:hidden">{ui.footer.links.webApp}</span>
+              <span className="hidden sm:inline">{ui.cta.openWebApp}</span>
+              <ArrowRightIcon aria-hidden data-motion="nudge" />
             </a>
           </Button>
         </div>
