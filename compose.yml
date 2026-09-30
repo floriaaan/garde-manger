@@ -82,6 +82,13 @@ services:
       # survive a rebuild.
       STORAGE_ROOT: /app/data/storage
       HOME_ASSISTANT_ALLOWED_HOSTS: ${HOME_ASSISTANT_ALLOWED_HOSTS:-}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      PUSH_DIGEST_HOUR: ${PUSH_DIGEST_HOUR:-9}
+      PUSH_TIMEZONE: ${PUSH_TIMEZONE:-Europe/Paris}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-}
+      WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
       # Observability (cf. docs/adr/0011). On by default, and deliberately
       # *not* a `depends_on`: the API must start and serve with the collector
       # and the store absent, stopped or broken.

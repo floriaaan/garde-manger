@@ -13,4 +13,6 @@ export interface DigestTarget {
   token: string
   userId: string
   householdId: string
+  platform: PushPlatform | 'web'
+  keys?: { p256dh: string; auth: string }
 }

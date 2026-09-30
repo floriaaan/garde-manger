@@ -11,6 +11,8 @@ export interface ProductRepository {
   findById(id: string): Promise<Product | null>
   findByHousehold(householdId: string, filters?: ProductFilters): Promise<Product[]>
   findExpiringSoon(householdId: string, withinDays: number): Promise<Product[]>
+  /** Calendar dates for the daily digest, inclusive of today and the chosen final day. */
+  findExpiringForDigest(householdId: string, today: string, days: number): Promise<Product[]>
   findByReceiptId(receiptId: string): Promise<Product[]>
   save(product: Product): Promise<void>
   /** A data-entry correction: removes the product and records nothing (ADR-0012). */

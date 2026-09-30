@@ -19,6 +19,12 @@ Copy `mobile/.env.example` to `mobile/.env` and adjust as needed:
 - `EXPO_PUBLIC_CONNECTOR` — `http` to talk to the real backend, or `fake` to use the in-memory fake connector (no backend required).
 - `EXPO_PUBLIC_API_URL` — base URL of the backend API (used when `EXPO_PUBLIC_CONNECTOR=http`).
 
+## Expiry reminders
+
+In **Réglages → Rappels de péremption**, a household member chooses 0, 1, 2, 3 or 7 days (2 by default). Each member enables notifications on each desired device. The server sends one summary per device each day at 09:00 Europe/Paris by default; instance operators can change the hour and timezone with `PUSH_DIGEST_HOUR` and `PUSH_TIMEZONE`.
+
+Native push needs an installed development/store build with Expo push credentials. Web push needs HTTPS, a service worker, and the backend's stable `WEB_PUSH_VAPID_*` settings. On iPhone/iPad, add the web app to the home screen before enabling notifications. The backend's `.env.example` describes the VAPID setup.
+
 ## Running
 
 ```bash

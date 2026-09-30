@@ -20,6 +20,7 @@ import type { ProductLookupResult } from '../../domain/fridge/product-lookup-res
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
 import type { ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
+import type { ReminderDays, ReminderSettings, WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 import type {
   HaLink,
   HaTodoEntity,
@@ -717,6 +718,33 @@ export class HttpFridgeConnector implements FridgeConnector {
       { method: 'DELETE', body: JSON.stringify({ token }) },
       { action: 'push.unregister' },
     )
+  }
+
+  async getWebPushPublicKey(): Promise<string | null> {
+    const result = await apiFetch<{ publicKey: string | null }>('/api/web-push/config', undefined,
+      { action: 'push.get_web_config' })
+    return result.ok ? result.value.publicKey : null
+  }
+
+  async registerWebPush(subscription: WebPushSubscription): Promise<Result<void, ApiError>> {
+    return apiFetch<void>('/api/web-push/subscriptions',
+      { method: 'POST', body: JSON.stringify(subscription) }, { action: 'push.register_web' })
+  }
+
+  async unregisterWebPush(endpoint: string): Promise<Result<void, ApiError>> {
+    return apiFetch<void>('/api/web-push/subscriptions',
+      { method: 'DELETE', body: JSON.stringify({ endpoint }) }, { action: 'push.unregister_web' })
+  }
+
+  async getReminderSettings(): Promise<ReminderSettings | null> {
+    const result = await apiFetch<ReminderSettings>('/api/settings/expiry-reminders', undefined,
+      { action: 'push.get_reminder_settings' })
+    return result.ok ? result.value : null
+  }
+
+  async setReminderDays(days: ReminderDays): Promise<Result<ReminderSettings, ApiError>> {
+    return apiFetch<ReminderSettings>('/api/settings/expiry-reminders',
+      { method: 'PATCH', body: JSON.stringify({ days }) }, { action: 'push.set_reminder_days' })
   }
 
   async getScanDrafts(): Promise<ScanDraft[]> {

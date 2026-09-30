@@ -93,6 +93,12 @@ test('tapping the AI card opens the provider page', async () => {
   expect(router.push).toHaveBeenCalledWith('/ai-provider')
 })
 
+test('opens the household expiry reminder settings', async () => {
+  await renderAuthenticated()
+  fireEvent.press(screen.getByTestId('settings-expiry-reminders'))
+  expect(router.push).toHaveBeenCalledWith('/expiry-reminders')
+})
+
 test('does not file the receipt history under settings — it is content, and it lives on the dashboard now', async () => {
   await renderAuthenticated()
 
