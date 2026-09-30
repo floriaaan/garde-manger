@@ -14,6 +14,7 @@ import type { ProductLookupResult } from '../fridge/product-lookup-result.js'
 import type { Receipt, ImportReceiptInput } from '../receipt/receipt.js'
 import type { ImportProductsItemInput } from '../fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../settings/ai-settings.js'
+import type { ReminderDays, ReminderSettings, WebPushSubscription } from '../settings/reminder-settings.js'
 import type {
   HaLink,
   HaTodoEntity,
@@ -127,6 +128,11 @@ export interface FridgeConnector {
   /** Registers this device for push notifications; re-sending a known token is fine. */
   registerPushToken(token: string, platform: 'ios' | 'android'): Promise<Result<void, ApiError>>
   unregisterPushToken(token: string): Promise<Result<void, ApiError>>
+  getWebPushPublicKey(): Promise<string | null>
+  registerWebPush(subscription: WebPushSubscription): Promise<Result<void, ApiError>>
+  unregisterWebPush(endpoint: string): Promise<Result<void, ApiError>>
+  getReminderSettings(): Promise<ReminderSettings | null>
+  setReminderDays(days: ReminderDays): Promise<Result<ReminderSettings, ApiError>>
   getScanDrafts(): Promise<ScanDraft[]>
   getScanDraft(draftId: string): Promise<ScanDraft | null>
   discardScanDraft(draftId: string): Promise<Result<void, ApiError>>

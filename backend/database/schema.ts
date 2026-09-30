@@ -105,6 +105,15 @@ export class AiUsageSchema extends BaseModel {
   declare period: string
 }
 
+export class ExpiryReminderSettingSchema extends BaseModel {
+  static $columns = ['days', 'householdId'] as const
+  $columns = ExpiryReminderSettingSchema.$columns
+  @column()
+  declare days: number
+  @column({ isPrimary: true })
+  declare householdId: string
+}
+
 export class HomeAssistantLinkSchema extends BaseModel {
   static $columns = ['createdAt', 'direction', 'enabled', 'encryptedToken', 'householdId', 'id', 'instanceUrl', 'lastError', 'lastSyncAt', 'todoEntityId', 'todoEntityName', 'updatedAt'] as const
   $columns = HomeAssistantLinkSchema.$columns
@@ -498,4 +507,23 @@ export class VerificationSchema extends BaseModel {
   declare updatedAt: DateTime
   @column()
   declare value: string
+}
+
+export class WebPushSubscriptionSchema extends BaseModel {
+  static $columns = ['auth', 'createdAt', 'endpoint', 'id', 'lastDigestOn', 'p256Dh', 'userId'] as const
+  $columns = WebPushSubscriptionSchema.$columns
+  @column()
+  declare auth: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare endpoint: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column.date()
+  declare lastDigestOn: DateTime | null
+  @column()
+  declare p256Dh: string
+  @column()
+  declare userId: string
 }

@@ -31,6 +31,7 @@ import type { ReceiptDraft } from '../../domain/receipt/receipt-draft.js'
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
 import type { FridgeScanDraft, ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
+import { DEFAULT_REMINDER_DAYS, type ReminderDays, type ReminderSettings, type WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 import type { HaLink, HaTodoEntity, SaveHaConnectionInput, BindHaListInput } from '../../domain/home-assistant/ha-link.js'
 import type { InstanceInfo } from '../../domain/instance/instance-info.js'
 
@@ -678,6 +679,31 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   readonly pushTokens = new Set<string>()
+  readonly webPushSubscriptions = new Map<string, WebPushSubscription>()
+  private reminderDays: ReminderDays = DEFAULT_REMINDER_DAYS
+
+  async getWebPushPublicKey(): Promise<string | null> {
+    return null
+  }
+
+  async registerWebPush(subscription: WebPushSubscription): Promise<Result<void, ApiError>> {
+    this.webPushSubscriptions.set(subscription.endpoint, subscription)
+    return Result.ok(undefined)
+  }
+
+  async unregisterWebPush(endpoint: string): Promise<Result<void, ApiError>> {
+    this.webPushSubscriptions.delete(endpoint)
+    return Result.ok(undefined)
+  }
+
+  async getReminderSettings(): Promise<ReminderSettings> {
+    return { days: this.reminderDays, hour: 9, timeZone: 'Europe/Paris' }
+  }
+
+  async setReminderDays(days: ReminderDays): Promise<Result<ReminderSettings, ApiError>> {
+    this.reminderDays = days
+    return Result.ok({ days, hour: 9, timeZone: 'Europe/Paris' })
+  }
 
   async registerPushToken(token: string): Promise<Result<void, ApiError>> {
     this.pushTokens.add(token)

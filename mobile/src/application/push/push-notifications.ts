@@ -12,6 +12,7 @@ import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 import { readSetting, writeSetting } from '../shared/app-storage.js'
 import type { FridgeConnector } from '../../domain/interfaces/fridge-connector.js'
+import type { WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 
 const ENABLED_KEY = 'push_enabled'
 const TOKEN_KEY = 'push_token'
@@ -31,6 +32,49 @@ let lastHandled: string | null = null
 const isExpoGoAndroid = Platform.OS === 'android' && Constants.executionEnvironment === 'storeClient'
 
 const isSupported = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoAndroid
+
+function webSupported(): boolean {
+  return Platform.OS === 'web' && typeof window !== 'undefined' && window.isSecureContext &&
+    'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window
+}
+
+function vapidKeyBytes(key: string): Uint8Array<ArrayBuffer> {
+  const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/'))
+  const bytes = new Uint8Array(new ArrayBuffer(raw.length))
+  for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index)
+  return bytes
+}
+
+async function webSubscription(): Promise<PushSubscription | null> {
+  if (!webSupported()) return null
+  const registration = await navigator.serviceWorker.getRegistration('/push-sw.js')
+  return (await registration?.pushManager.getSubscription()) ?? null
+}
+
+async function registerWeb(connector: FridgeConnector, prompt: boolean, readyKey?: string): Promise<EnablePushResult> {
+  if (!webSupported()) return 'unavailable'
+  if (Notification.permission !== 'granted') {
+    if (!prompt || (await Notification.requestPermission()) !== 'granted') return 'denied'
+  }
+  const publicKey = readyKey ?? await connector.getWebPushPublicKey()
+  if (!publicKey) return 'unavailable'
+  try {
+    const registration = await navigator.serviceWorker.register('/push-sw.js')
+    const subscription = (await registration.pushManager.getSubscription()) ??
+      (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKeyBytes(publicKey) }))
+    const json = subscription.toJSON()
+    if (!json.keys?.p256dh || !json.keys.auth) return 'unavailable'
+    const payload: WebPushSubscription = {
+      endpoint: subscription.endpoint,
+      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+    }
+    if (!(await connector.registerWebPush(payload)).ok) return 'unavailable'
+    await writeSetting(ENABLED_KEY, '1')
+    return 'enabled'
+  } catch {
+    return 'unavailable'
+  }
+}
 
 async function currentToken(): Promise<string | null> {
   const Notifications = await import('expo-notifications')
@@ -60,11 +104,32 @@ async function register(connector: FridgeConnector): Promise<boolean> {
 }
 
 export async function isPushEnabled(): Promise<boolean> {
-  return (await readSetting(ENABLED_KEY)) === '1'
+  if ((await readSetting(ENABLED_KEY)) !== '1') return false
+  if (Platform.OS === 'web') return webSupported() && Notification.permission === 'granted'
+  if (!isSupported) return false
+  const Notifications = await import('expo-notifications')
+  return (await Notifications.getPermissionsAsync()).granted
+}
+
+export async function pushPermissionMessage(): Promise<string | null> {
+  if ((await readSetting(ENABLED_KEY)) !== '1') return null
+  if (Platform.OS === 'web') {
+    if (!webSupported()) return 'Push Web indisponible : HTTPS est requis ; sur iPhone, ajoute le site à l’écran d’accueil.'
+    return Notification.permission === 'denied'
+      ? 'Notifications bloquées pour ce site : modifie les permissions du navigateur.'
+      : null
+  }
+  if (!isSupported) return 'Notifications indisponibles sur cette version de l’app.'
+  const Notifications = await import('expo-notifications')
+  const permission = await Notifications.getPermissionsAsync()
+  return !permission.granted && !permission.canAskAgain
+    ? 'Notifications bloquées : autorise-les dans les réglages du téléphone.'
+    : null
 }
 
 /** Asks for the permission if needed, then registers this device. */
-export async function enablePush(connector: FridgeConnector): Promise<EnablePushResult> {
+export async function enablePush(connector: FridgeConnector, webPublicKey?: string): Promise<EnablePushResult> {
+  if (Platform.OS === 'web') return registerWeb(connector, true, webPublicKey)
   if (!isSupported) return 'unavailable'
   const Notifications = await import('expo-notifications')
   let { granted } = await Notifications.getPermissionsAsync()
@@ -80,6 +145,15 @@ export async function disablePush(
   connector: FridgeConnector,
   { keepPreference = false }: { keepPreference?: boolean } = {},
 ): Promise<void> {
+  if (Platform.OS === 'web') {
+    const subscription = await webSubscription()
+    if (subscription) {
+      await connector.unregisterWebPush(subscription.endpoint)
+      await subscription.unsubscribe()
+    }
+    if (!keepPreference) await writeSetting(ENABLED_KEY, '0')
+    return
+  }
   const token = await readSetting(TOKEN_KEY)
   if (token) await connector.unregisterPushToken(token)
   if (!keepPreference) await writeSetting(ENABLED_KEY, '0')
@@ -87,6 +161,12 @@ export async function disablePush(
 
 /** Tokens rotate: on launch, silently re-register a device that opted in. Never prompts. */
 export async function syncPushToken(connector: FridgeConnector): Promise<void> {
+  if (Platform.OS === 'web') {
+    if ((await readSetting(ENABLED_KEY)) === '1' && webSupported() && Notification.permission === 'granted') {
+      await registerWeb(connector, false)
+    }
+    return
+  }
   if (!isSupported || !(await isPushEnabled())) return
   const Notifications = await import('expo-notifications')
   if (!(await Notifications.getPermissionsAsync()).granted) return

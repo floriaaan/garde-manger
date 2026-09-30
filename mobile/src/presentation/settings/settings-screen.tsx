@@ -12,6 +12,7 @@ import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
 import {
     HomeIcon,
+  BellIcon,
   LogOutIcon,
     ServerIcon,
   SettingsIcon,
@@ -202,6 +203,19 @@ export function SettingsScreen() {
           // member count, the role badge and the avatars — everything the card
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
+        />
+        <IdentityCard
+          testID="settings-expiry-reminders"
+          bg={palette.butter}
+          labelColor={palette.butterText}
+          chipColor={palette.chipButter}
+          icon={<BellIcon size={18} color={palette.onDark} />}
+          label="Rappels de péremption"
+          value="Choisir le délai"
+          secondary="Un résumé quotidien pour le foyer."
+          corner="a"
+          palette={palette}
+          onPress={() => router.push('/expiry-reminders')}
         />
         {plan === 'self-hosted' || !platformCapabilities.billing ? null : (
           <IdentityCard
