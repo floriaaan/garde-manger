@@ -2,9 +2,10 @@ import { Redirect, router } from 'expo-router'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useIsMutating } from '@tanstack/react-query'
 import { ActivityIndicator } from 'react-native'
-import { Text, YStack } from '../shared/tamagui-typed.js'
+import { Text } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { PillButton } from '../shared/pill-button.js'
+import { Pressable } from '../shared/pressable.js'
+import { pointerCursor } from '../shared/hover.js'
 import { AuthButton } from './auth-button.js'
 import { AuthError } from './auth-error.js'
 import { AuthShell, type AuthMode } from './auth-shell.js'
@@ -45,12 +46,13 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
   }
 
   const footer = (
-    <YStack gap={4} alignItems="center">
-      <Text fontSize={12} color={palette.inkSecondary} textAlign="center">
-        {server === OFFICIAL_SERVER_URL ? 'Serveur officiel Garde-manger' : server}
+    <Pressable testID="auth-change-server" accessibilityRole="button" accessibilityLabel="Modifier le serveur" accessibilityState={{ disabled: authBusy }} disabled={authBusy} onPress={() => { if (!authBusy) router.push({ pathname: '/server-choice', params: { next: mode } }) }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: authBusy ? 0.6 : 1 }]}>
+      <Text fontSize={12} color={palette.inkSecondary}>
+        {server === OFFICIAL_SERVER_URL ? 'Serveur officiel' : server}
+        {' · '}
+        <Text fontSize={12} color={palette.inkSecondary} textDecorationLine="underline">Modifier</Text>
       </Text>
-      <PillButton testID="auth-change-server" label="Modifier le serveur" tone="quiet" palette={palette} disabled={authBusy} onPress={() => { if (!authBusy) router.push({ pathname: '/server-choice', params: { next: mode } }) }} />
-    </YStack>
+    </Pressable>
   )
 
   if (session.data) return <Redirect href="/(tabs)" />
@@ -71,7 +73,6 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
   )
 
   const hasPassword = methods.data.some((method) => method.id === 'password' && method.enabled)
-  const passwordOnly = methods.data.filter((method) => method.enabled && (mode === 'sign-in' || method.id !== 'passkey')).every((method) => method.id === 'password')
   if (!hasPassword) return (
     <AuthShell title="Bienvenue chez toi" subtitle="Choisis comment accéder à ton garde-manger." garden footer={footer}>
       <AuthMethodFooter key={server} emailLabel="Continuer avec e-mail" emailForm={null} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} />
@@ -84,7 +85,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
       mode={mode}
       onModeChange={setMode}
       busy={authBusy}
-      garden={mode === 'sign-up' && !emailModes[mode] && !passwordOnly}
+      garden={!emailModes[mode]}
       footer={footer}
       pages={{
         signIn: {
@@ -95,7 +96,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
         signUp: {
           title: 'Créer mon compte',
           subtitle: 'Ton compte d’abord, ton foyer juste après.',
-          content: <AuthMethodFooter emailLabel="Créer un compte avec e-mail" allowPasskey={false} emailForm={<SignupForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-up': active }))} />,
+          content: <AuthMethodFooter emailLabel="Continuer avec e-mail" allowPasskey={false} emailForm={<SignupForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-up': active }))} />,
         },
       }}
     />

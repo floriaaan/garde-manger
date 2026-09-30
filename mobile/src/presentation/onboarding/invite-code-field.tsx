@@ -23,7 +23,7 @@
  * one value, and the platform's own paste and autofill land on it intact.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Animated, Platform, Pressable, TextInput, type TextStyle } from 'react-native'
+import { Animated, Keyboard, Platform, Pressable, TextInput, type TextStyle } from 'react-native'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useReduceMotion } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -155,7 +155,14 @@ export function InviteCodeField({
         editable={!disabled}
         accessibilityState={{ disabled }}
         onChangeText={(next) => onChangeText(normalizeInviteCode(next))}
-        onSubmitEditing={onSubmit}
+        returnKeyType="done"
+        submitBehavior="blurAndSubmit"
+        onSubmitEditing={() => {
+          inputRef.current?.blur()
+          setFocused(false)
+          Keyboard.dismiss()
+          onSubmit?.()
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         autoFocus={autoFocus}

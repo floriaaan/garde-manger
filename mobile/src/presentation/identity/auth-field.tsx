@@ -5,6 +5,7 @@ import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
+import { useAuthGarden } from './auth-garden-theme.js'
 
 /** Label above, rounded field below, lime focus ring — replaces the raw Tamagui `Input`. */
 export function AuthField({
@@ -22,6 +23,7 @@ export function AuthField({
   trailingAction?: { label: string; icon: ReactNode; onPress: () => void; testID?: string }
 }) {
   const palette = useSoftPalette()
+  const garden = useAuthGarden()
   const [focused, setFocused] = useState(false)
   return (
     <YStack gap="$1.5">
@@ -44,15 +46,15 @@ export function AuthField({
           placeholderTextColor={palette.inkSecondary}
           style={{
             minHeight: 48,
-            borderRadius: 14,
+            borderRadius: garden ? 11 : 14,
             paddingLeft: 16,
             paddingRight: trailingAction ? 56 : 16,
             paddingVertical: 12,
             fontSize: 14,
             color: palette.ink,
-            backgroundColor: palette.cream,
+            backgroundColor: garden ? 'transparent' : palette.cream,
             borderWidth: 2,
-            borderColor: focused ? palette.accentLime : 'transparent',
+            borderColor: focused ? garden?.ink ?? palette.accentLime : garden?.muted ?? 'transparent',
           }}
         />
         {trailingAction ? (
