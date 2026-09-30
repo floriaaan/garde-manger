@@ -5,7 +5,7 @@
  * shared with Réglages' "Changer de serveur" page.
  */
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { setServerUrl } from '../../application/shared/server-config.js'
+import { getServerUrl, setServerUrl } from '../../application/shared/server-config.js'
 import { AuthShell } from '../identity/auth-shell.js'
 import { ServerChoiceForm } from '../shared/server-choice-form.js'
 
@@ -19,6 +19,7 @@ export function ServerChoiceScreen({ onDone }: { onDone: () => void }) {
     >
       <ServerChoiceForm
         palette={palette}
+        defaultUrl={getServerUrl()}
         fieldLabelColor={palette.onDarkSecondary}
         saveLabel="Utiliser ce serveur"
         onSave={async (url) => {

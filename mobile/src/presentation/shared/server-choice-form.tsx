@@ -10,7 +10,7 @@ import { AuthButton } from '../identity/auth-button.js'
 import { AuthError } from '../identity/auth-error.js'
 import { useConnector } from '../../application/shared/connector-context.js'
 import { APP_UPDATE_URL, APP_VERSION, getDefaultServerUrl, OFFICIAL_SERVER_URL } from '../../application/shared/server-config.js'
-import { CircleCheckIcon, RefreshIcon, SearchIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
+import { ChevronDownIcon, ChevronRightIcon, CircleCheckIcon, RefreshIcon, SearchIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { haptic } from './haptics.js'
 import { isSameVersion, type InstanceInfo } from '../../domain/instance/instance-info.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -170,8 +170,11 @@ export function ServerChoiceForm({
 }) {
   const connector = useConnector()
   const initialUrl = defaultUrl ?? getDefaultServerUrl()
-  const [mode, setMode] = useState<Mode>(initialUrl === OFFICIAL_SERVER_URL ? 'official' : 'self-hosted')
-  const [url, setUrl] = useState(initialUrl)
+  const initialMode: Mode = initialUrl !== '' && initialUrl !== OFFICIAL_SERVER_URL ? 'self-hosted' : 'official'
+  const [mode, setMode] = useState<Mode>(initialMode)
+  const [advancedOpen, setAdvancedOpen] = useState(initialMode === 'self-hosted')
+  const [selfHostedUrl, setSelfHostedUrl] = useState(initialMode === 'self-hosted' ? initialUrl : '')
+  const url = mode === 'official' ? OFFICIAL_SERVER_URL : selfHostedUrl
   const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -197,7 +200,7 @@ export function ServerChoiceForm({
       haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error))
       return
     }
-    setUrl(trimmed)
+    setSelfHostedUrl(trimmed)
     setVerified(info)
     haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success))
   }
@@ -214,7 +217,7 @@ export function ServerChoiceForm({
     if (!ready) return
     setSaving(true)
     try {
-      await onSave(url, verified)
+      await onSave(url, mode === 'official' ? null : verified)
     } finally {
       setSaving(false)
     }
@@ -231,54 +234,81 @@ export function ServerChoiceForm({
           subtitle="Notre serveur, prêt à l'emploi, sans rien à installer ni à maintenir."
           onPress={() => {
             setMode('official')
-            setUrl(OFFICIAL_SERVER_URL)
             setVerified(null)
             setError(null)
           }}
         />
-        <RadioOption
-          testID="server-choice-self-hosted"
-          palette={palette}
-          selected={mode === 'self-hosted'}
-          title="Auto-hébergé"
-          subtitle="Connecte-toi à ton propre serveur Garde-manger : tu gardes la main sur tes données et leur hébergement."
-          onPress={() => setMode('self-hosted')}
-        />
       </YStack>
 
       <YStack gap="$3">
-        {mode === 'self-hosted' ? (
-          <AuthField
-            label="Adresse du serveur"
-            labelColor={fieldLabelColor}
-            placeholder="https://mon-serveur.exemple.com"
-            value={url}
-            onChangeText={(next) => {
-              setUrl(next)
+        <Pressable
+          testID="server-choice-advanced"
+          onPress={() => {
+            setAdvancedOpen((open) => !open)
+            if (advancedOpen && mode === 'self-hosted') {
+              setMode('official')
               setVerified(null)
               setError(null)
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            testID="server-choice-url"
-          />
-        ) : null}
-
-        {error ? <AuthError message={error} /> : null}
-
-        {verified && mode === 'self-hosted' ? (
-          <YStack borderRadius={14} padding="$3" backgroundColor={palette.mintPale} gap="$1">
-            <Text testID="server-choice-found" fontSize={13} fontWeight="700" color={palette.mintPaleText}>
-              {verified.name ? `${verified.name} — v${verified.version}` : `Serveur trouvé — v${verified.version}`}
+            }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Options avancées"
+          accessibilityState={{ expanded: advancedOpen }}
+          android_ripple={ripple(palette.chipTeal)}
+          style={[pointerCursor, rippleClip(12)]}
+        >
+          <XStack minHeight={48} paddingHorizontal="$3" alignItems="center" gap="$2">
+            <Text flex={1} fontSize={14} fontWeight="700" color={palette.ink}>
+              Options avancées
             </Text>
-          </YStack>
-        ) : null}
+            {advancedOpen ? <ChevronDownIcon size={16} color={palette.inkSecondary} /> : <ChevronRightIcon size={16} color={palette.inkSecondary} />}
+          </XStack>
+        </Pressable>
 
-        {/* Non-blocking: server ahead of or behind this build doesn't stop
-            sign-in, just offers an update. */}
-        {verified && mode === 'self-hosted' && !isSameVersion(verified.version, APP_VERSION) ? (
-          <UpdateAppBanner palette={palette} serverVersion={verified.version} />
+        {advancedOpen ? (
+          <YStack gap="$3">
+            <RadioOption
+              testID="server-choice-self-hosted"
+              palette={palette}
+              selected={mode === 'self-hosted'}
+              title="Auto-hébergé"
+              subtitle="Connecte-toi à ton propre serveur Garde-manger : tu gardes la main sur tes données et leur hébergement."
+              onPress={() => setMode('self-hosted')}
+            />
+            {mode === 'self-hosted' ? (
+              <AuthField
+                label="Adresse du serveur"
+                labelColor={fieldLabelColor}
+                placeholder="https://mon-serveur.exemple.com"
+                value={selfHostedUrl}
+                onChangeText={(next) => {
+                  setSelfHostedUrl(next)
+                  setVerified(null)
+                  setError(null)
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                testID="server-choice-url"
+              />
+            ) : null}
+
+            {mode === 'self-hosted' && error ? <AuthError message={error} /> : null}
+
+            {verified && mode === 'self-hosted' ? (
+              <YStack borderRadius={14} padding="$3" backgroundColor={palette.mintPale} gap="$1">
+                <Text testID="server-choice-found" fontSize={13} fontWeight="700" color={palette.mintPaleText}>
+                  {verified.name ? `${verified.name} — v${verified.version}` : `Serveur trouvé — v${verified.version}`}
+                </Text>
+              </YStack>
+            ) : null}
+
+            {/* Non-blocking: server ahead of or behind this build doesn't stop
+                sign-in, just offers an update. */}
+            {verified && mode === 'self-hosted' && !isSameVersion(verified.version, APP_VERSION) ? (
+              <UpdateAppBanner palette={palette} serverVersion={verified.version} />
+            ) : null}
+          </YStack>
         ) : null}
 
         <AuthButton
