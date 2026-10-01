@@ -31,7 +31,10 @@ export interface RunJobDeps {
   clock: Clock
   // Receipt/recipe quota is per call; a fridge scan is billed only on its first successful photo.
   resolveReceiptExtraction: (householdId: string) => Promise<ReceiptExtractionPort>
-  resolveFridgeScanExtraction: (householdId: string, usageAlreadyRecorded?: boolean) => Promise<FridgeScanExtractionPort>
+  resolveFridgeScanExtraction: (
+    householdId: string,
+    usageAlreadyRecorded?: boolean,
+  ) => Promise<FridgeScanExtractionPort>
   resolveRecipeGeneration: (householdId: string) => Promise<RecipeGenerationPort>
   unitTimeoutMs: number
   draftTtlHours: number
@@ -155,7 +158,8 @@ export class RunJob {
     if (!image) return Result.err('extraction_failed')
     return this.attempt(async () => {
       const extraction = await this.deps.resolveFridgeScanExtraction(
-        job.householdId, job.input.aiUsageRecorded === true || job.progress.done > 0,
+        job.householdId,
+        job.input.aiUsageRecorded === true || job.progress.done > 0,
       )
       return new ScanFridge(extraction).execute({ image: image.buffer })
     }, 'extraction_failed')

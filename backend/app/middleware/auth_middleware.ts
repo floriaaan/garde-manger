@@ -1,4 +1,9 @@
-import { diagnosticAttributes, errorCode, errorStatus, failureLevel } from '#domain/shared/log-diagnostic'
+import {
+  diagnosticAttributes,
+  errorCode,
+  errorStatus,
+  failureLevel,
+} from '#domain/shared/log-diagnostic'
 import { loggedExceptions } from '#presentation/shared/trace-action'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
@@ -23,12 +28,15 @@ export default class AuthMiddleware {
     } catch (error) {
       const code = errorCode(error, 'session_resolution_failed')
       const level = failureLevel(code, errorStatus(error))
-      ctx.logger[level]({
-        'app.operation': 'identity.resolve_session',
-        'error.code': code,
-        'event.outcome': level === 'error' ? 'failure' : 'refused',
-        ...(level === 'error' ? diagnosticAttributes(error) : {}),
-      }, 'session resolution failed')
+      ctx.logger[level](
+        {
+          'app.operation': 'identity.resolve_session',
+          'error.code': code,
+          'event.outcome': level === 'error' ? 'failure' : 'refused',
+          ...(level === 'error' ? diagnosticAttributes(error) : {}),
+        },
+        'session resolution failed',
+      )
       if (error && typeof error === 'object') loggedExceptions.set(error, ctx)
       throw error
     }

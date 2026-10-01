@@ -1,5 +1,10 @@
 import logger from '@adonisjs/core/services/logger'
-import { diagnosticAttributes, errorCode, errorStatus, failureLevel } from '#domain/shared/log-diagnostic'
+import {
+  diagnosticAttributes,
+  errorCode,
+  errorStatus,
+  failureLevel,
+} from '#domain/shared/log-diagnostic'
 import { betterAuth, APIError } from 'better-auth'
 import { genericOAuth } from 'better-auth/plugins'
 import { expo } from '@better-auth/expo'
@@ -57,23 +62,36 @@ export const auth = betterAuth({
     level: 'warn',
     log(level, message, ...args) {
       // Better Auth otherwise bypasses Pino and can print arbitrary auth payloads.
-      const error = args.find((value) => value instanceof Error
-        || (value && typeof value === 'object' && ('code' in value || 'message' in value)))
-        ?? { name: 'AuthError', message }
+      const error = args.find(
+        (value) =>
+          value instanceof Error ||
+          (value && typeof value === 'object' && ('code' in value || 'message' in value)),
+      ) ?? { name: 'AuthError', message }
       const code = errorCode(error, 'auth_failure')
       const status = errorStatus(error)
       const classified = failureLevel(code, status)
-      const severity = status !== undefined && status >= 500 ? 'error'
-        : level === 'error' ? classified
-          : level === 'warn' ? (classified === 'info' ? 'info' : 'warn')
-            : level === 'debug' ? 'debug' : 'info'
-      logger[severity]({
-        'app.operation': /session/i.test(message) ? 'identity.get_session' : 'identity.auth',
-        'error.code': code,
-        'http.response.status_code': status,
-        'event.outcome': classified === 'info' ? 'refused' : 'failure',
-        ...(classified !== 'info' ? diagnosticAttributes(error) : {}),
-      }, 'auth diagnostic')
+      const severity =
+        status !== undefined && status >= 500
+          ? 'error'
+          : level === 'error'
+            ? classified
+            : level === 'warn'
+              ? classified === 'info'
+                ? 'info'
+                : 'warn'
+              : level === 'debug'
+                ? 'debug'
+                : 'info'
+      logger[severity](
+        {
+          'app.operation': /session/i.test(message) ? 'identity.get_session' : 'identity.auth',
+          'error.code': code,
+          'http.response.status_code': status,
+          'event.outcome': classified === 'info' ? 'refused' : 'failure',
+          ...(classified !== 'info' ? diagnosticAttributes(error) : {}),
+        },
+        'auth diagnostic',
+      )
     },
   },
   database: { db, type: 'postgres' },

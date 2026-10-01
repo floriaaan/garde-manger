@@ -74,7 +74,11 @@ export default class SettingsProvider {
       const clock = await this.app.container.make('shared.clock')
       return (householdId: string | null, usageAlreadyRecorded = false) =>
         resolveFridgeScanExtractionAdapter(
-          aiSettingsProvider, quota, clock, householdId, usageAlreadyRecorded,
+          aiSettingsProvider,
+          quota,
+          clock,
+          householdId,
+          usageAlreadyRecorded,
         )
     })
   }

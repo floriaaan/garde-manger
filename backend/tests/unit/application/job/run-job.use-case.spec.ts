@@ -164,21 +164,38 @@ function propsOf(job: Job) {
   }
 }
 
-
-test('one hosted fridge scan uses one quota unit across all photos and partial retries', async ({ assert }) => {
+test('one hosted fridge scan uses one quota unit across all photos and partial retries', async ({
+  assert,
+}) => {
   let used = 0
   let calls = 0
   let existing: ScanDraft | null = null
   const settings: AiSettingsProvider = {
     async resolveEffective() {
-      return { activeProvider: 'gemini', source: 'environment', availableProviders: ['gemini'],
-        canChooseProvider: true, models: { vision: '', text: '' },
-        access: { plan: 'free', used, limit: 1, resetsAt: null, expiresAt: null, cancelsAtPeriodEnd: false } }
+      return {
+        activeProvider: 'gemini',
+        source: 'environment',
+        availableProviders: ['gemini'],
+        canChooseProvider: true,
+        models: { vision: '', text: '' },
+        access: {
+          plan: 'free',
+          used,
+          limit: 1,
+          resetsAt: null,
+          expiresAt: null,
+          cancelsAtPeriodEnd: false,
+        },
+      }
     },
   }
   const quota: AiQuotaPort = {
-    async usage() { return { used, limit: 1, resetsAt: null } },
-    async record() { used++ },
+    async usage() {
+      return { used, limit: 1, resetsAt: null }
+    },
+    async record() {
+      used++
+    },
   }
   const original = GeminiFridgeScanExtractionAdapter.prototype.extract
   GeminiFridgeScanExtractionAdapter.prototype.extract = async () => {
@@ -188,9 +205,15 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
   }
   try {
     const { run, saved } = setup([], {
-      drafts: { findById: async () => existing } as RunJobDeps['drafts'],
+      drafts: { findById: async () => existing } as unknown as RunJobDeps['drafts'],
       resolveFridgeScanExtraction: (householdId, recorded) =>
-        resolveFridgeScanExtractionAdapter(settings, quota, { now: () => now }, householdId, recorded),
+        resolveFridgeScanExtractionAdapter(
+          settings,
+          quota,
+          { now: () => now },
+          householdId,
+          recorded,
+        ),
     })
     const job = fridgeJob(['a', 'b', 'c'])
     await run.execute(job)
@@ -214,7 +237,9 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
   }
 })
 
-test('a full retry after an unexpected error remembers the scan already counted', async ({ assert }) => {
+test('a full retry after an unexpected error remembers the scan already counted', async ({
+  assert,
+}) => {
   let calls = 0
   let charged = 0
   const { run } = setup([], {

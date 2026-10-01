@@ -13,7 +13,8 @@ const loggerConfig = defineConfig({
       level: env.get('LOG_LEVEL'),
       base: {
         'service.name': process.env.OTEL_SERVICE_NAME || 'garde-manger-backend',
-        'deployment.environment.name': process.env.DEPLOY_ENV || process.env.NODE_ENV || 'development',
+        'deployment.environment.name':
+          process.env.DEPLOY_ENV || process.env.NODE_ENV || 'development',
         'service.version': process.env.APP_VERSION || '0.0.0',
         'service.build': process.env.APP_BUILD || process.env.APP_VERSION || '0.0.0',
         'os.name': 'node',

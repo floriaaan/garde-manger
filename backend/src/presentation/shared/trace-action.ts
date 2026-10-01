@@ -1,4 +1,9 @@
-import { diagnosticAttributes, errorCode, errorStatus, failureLevel } from '#domain/shared/log-diagnostic'
+import {
+  diagnosticAttributes,
+  errorCode,
+  errorStatus,
+  failureLevel,
+} from '#domain/shared/log-diagnostic'
 
 export const loggedExceptions = new WeakMap<object, object>()
 
@@ -71,10 +76,17 @@ export async function traceAction<T>(
   try {
     const result = await fn()
     const failed = opts?.isError?.(result) ?? false
-    const resultError = failed && result && typeof result === 'object' && 'error' in result ? result.error : undefined
-    const code = failed ? errorCode(resultError, `http_${ctx.response?.getStatus() ?? 400}`) : undefined
+    const resultError =
+      failed && result && typeof result === 'object' && 'error' in result ? result.error : undefined
+    const code = failed
+      ? errorCode(resultError, `http_${ctx.response?.getStatus() ?? 400}`)
+      : undefined
     const status = ctx.response?.getStatus() ?? 400
-    const level = failed ? (status >= 500 ? 'error' : opts?.failureLevel ?? failureLevel(code!, status)) : 'info'
+    const level = failed
+      ? status >= 500
+        ? 'error'
+        : (opts?.failureLevel ?? failureLevel(code!, status))
+      : 'info'
     ctx.logger[level](
       {
         ...base,
@@ -91,7 +103,7 @@ export async function traceAction<T>(
   } catch (error) {
     const status = errorStatus(error) ?? 500
     const code = errorCode(error, 'unexpected_error')
-    const level = status >= 500 ? 'error' : opts?.failureLevel ?? failureLevel(code, status)
+    const level = status >= 500 ? 'error' : (opts?.failureLevel ?? failureLevel(code, status))
     ctx.logger[level](
       {
         ...base,

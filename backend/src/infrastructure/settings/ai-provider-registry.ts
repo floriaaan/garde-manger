@@ -69,8 +69,10 @@ function createResolver<T>(
       // will never be billed back.
       const { access } = effective
       if (
-        !usageAlreadyRecorded && access.plan !== 'self-hosted'
-        && access.limit !== null && access.used >= access.limit
+        !usageAlreadyRecorded &&
+        access.plan !== 'self-hosted' &&
+        access.limit !== null &&
+        access.used >= access.limit
       ) {
         throw new AiQuotaExceededError(access.limit)
       }

@@ -64,16 +64,21 @@ function sanitizeValue(value: unknown, key: string): Record<string, unknown> | n
   if (typeof value !== 'object' || value === null) return null
   const source = value as Record<string, unknown>
 
-  if (typeof source.stringValue === 'string') return {
-    stringValue: ['exception.cause', 'exception.stacktrace'].includes(key)
-      ? source.stringValue.slice(0, 8192) : truncate(source.stringValue),
-  }
+  if (typeof source.stringValue === 'string')
+    return {
+      stringValue: ['exception.cause', 'exception.stacktrace'].includes(key)
+        ? source.stringValue.slice(0, 8192)
+        : truncate(source.stringValue),
+    }
   if (typeof source.boolValue === 'boolean') return { boolValue: source.boolValue }
-  if ((typeof source.intValue === 'number' && Number.isSafeInteger(source.intValue))
-    || (typeof source.intValue === 'string' && /^-?\d{1,20}$/.test(source.intValue))) {
+  if (
+    (typeof source.intValue === 'number' && Number.isSafeInteger(source.intValue)) ||
+    (typeof source.intValue === 'string' && /^-?\d{1,20}$/.test(source.intValue))
+  ) {
     return { intValue: source.intValue }
   }
-  if (typeof source.doubleValue === 'number' && Number.isFinite(source.doubleValue)) return { doubleValue: source.doubleValue }
+  if (typeof source.doubleValue === 'number' && Number.isFinite(source.doubleValue))
+    return { doubleValue: source.doubleValue }
   return null
 }
 
@@ -119,32 +124,48 @@ function timestamp(value: unknown): string | undefined {
 function sanitizeSpan(span: unknown): Record<string, unknown> | null {
   if (typeof span !== 'object' || span === null) return null
   const source = span as Record<string, unknown>
-  if (typeof source.traceId !== 'string' || !/^[0-9a-f]{32}$/.test(source.traceId)
-    || typeof source.spanId !== 'string' || !/^[0-9a-f]{16}$/.test(source.spanId)) return null
+  if (
+    typeof source.traceId !== 'string' ||
+    !/^[0-9a-f]{32}$/.test(source.traceId) ||
+    typeof source.spanId !== 'string' ||
+    !/^[0-9a-f]{16}$/.test(source.spanId)
+  )
+    return null
 
   const events = Array.isArray(source.events)
-    ? source.events.filter((event) => typeof event === 'object' && event !== null).slice(0, MAX_EVENTS_PER_SPAN).map((event) => {
-        const item = event as Record<string, unknown>
-        return {
-          name: typeof item.name === 'string' ? safeOperation(item.name) : 'event',
-          timeUnixNano: timestamp(item.timeUnixNano),
-          attributes: sanitizeAttributes(item.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
-        }
-      })
+    ? source.events
+        .filter((event) => typeof event === 'object' && event !== null)
+        .slice(0, MAX_EVENTS_PER_SPAN)
+        .map((event) => {
+          const item = event as Record<string, unknown>
+          return {
+            name: typeof item.name === 'string' ? safeOperation(item.name) : 'event',
+            timeUnixNano: timestamp(item.timeUnixNano),
+            attributes: sanitizeAttributes(item.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
+          }
+        })
     : undefined
 
   return {
     traceId: source.traceId,
     spanId: source.spanId,
-    parentSpanId: typeof source.parentSpanId === 'string' && /^[0-9a-f]{16}$/.test(source.parentSpanId) ? source.parentSpanId : undefined,
+    parentSpanId:
+      typeof source.parentSpanId === 'string' && /^[0-9a-f]{16}$/.test(source.parentSpanId)
+        ? source.parentSpanId
+        : undefined,
     name: typeof source.name === 'string' ? safeOperation(source.name) : 'span',
     kind: typeof source.kind === 'number' ? source.kind : 1,
     startTimeUnixNano: timestamp(source.startTimeUnixNano),
     endTimeUnixNano: timestamp(source.endTimeUnixNano),
     attributes: sanitizeAttributes(source.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
-    status: typeof source.status === 'object' && source.status !== null
-      ? { code: [0, 1, 2].includes((source.status as { code: number }).code) ? (source.status as { code: number }).code : 0 }
-      : undefined,
+    status:
+      typeof source.status === 'object' && source.status !== null
+        ? {
+            code: [0, 1, 2].includes((source.status as { code: number }).code)
+              ? (source.status as { code: number }).code
+              : 0,
+          }
+        : undefined,
     events,
   }
 }
@@ -157,20 +178,31 @@ function sanitizeLogRecord(record: unknown): Record<string, unknown> | null {
   // graph from an untrusted client — exactly the shape a request payload
   // would arrive in.
   const body = (source.body as { stringValue?: unknown } | undefined)?.stringValue
-  const message = typeof body === 'string' && ['operation failed', 'invalid response'].includes(body)
-    ? body.slice(0, MAX_BODY_LENGTH) : 'client event'
+  const message =
+    typeof body === 'string' && ['operation failed', 'invalid response'].includes(body)
+      ? body.slice(0, MAX_BODY_LENGTH)
+      : 'client event'
 
   return {
     timeUnixNano: timestamp(source.timeUnixNano),
     observedTimeUnixNano: timestamp(source.observedTimeUnixNano),
     severityNumber: typeof source.severityNumber === 'number' ? source.severityNumber : 9,
     severityText:
-      typeof source.severityText === 'string' && ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'].includes(source.severityText) ? source.severityText : undefined,
+      typeof source.severityText === 'string' &&
+      ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'].includes(source.severityText)
+        ? source.severityText
+        : undefined,
     body: { stringValue: message },
     attributes: sanitizeAttributes(source.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
     // Keep only valid W3C ids for correlation; arbitrary client text is discarded.
-    traceId: typeof source.traceId === 'string' && /^[0-9a-f]{32}$/.test(source.traceId) ? source.traceId : undefined,
-    spanId: typeof source.spanId === 'string' && /^[0-9a-f]{16}$/.test(source.spanId) ? source.spanId : undefined,
+    traceId:
+      typeof source.traceId === 'string' && /^[0-9a-f]{32}$/.test(source.traceId)
+        ? source.traceId
+        : undefined,
+    spanId:
+      typeof source.spanId === 'string' && /^[0-9a-f]{16}$/.test(source.spanId)
+        ? source.spanId
+        : undefined,
   }
 }
 

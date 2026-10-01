@@ -125,14 +125,16 @@ test.group('traceAction', () => {
   })
 })
 
-
 test('expected household refusals are info and keep their stable code', async ({ assert }) => {
   for (const code of ['no_household', 'owner_cannot_leave']) {
     const { ctx, calls } = fakeContext()
     const result = { ok: false, error: code }
-    assert.strictEqual(await traceAction(ctx, 'identity', { name: 'LeaveHousehold' }, async () => result, {
-      isError: (value) => !value.ok,
-    }), result)
+    assert.strictEqual(
+      await traceAction(ctx, 'identity', { name: 'LeaveHousehold' }, async () => result, {
+        isError: (value) => !value.ok,
+      }),
+      result,
+    )
     assert.equal(calls[0]?.level, 'info')
     assert.equal(calls[0]?.obj['error.code'], code)
     assert.equal(calls[0]?.obj['event.outcome'], 'refused')
@@ -142,9 +144,17 @@ test('expected household refusals are info and keep their stable code', async ({
 test('a thrown 401 is info; a structured 503 retains technical diagnostics', async ({ assert }) => {
   for (const status of [401, 503]) {
     const { ctx, calls } = fakeContext()
-    const error = { code: status === 401 ? 'unauthenticated' : 'session_resolution_failed', statusCode: status,
-      message: 'password=secret alice@example.com', cause: new Error('fetch failed') }
-    try { await traceAction(ctx, 'identity', { name: 'GetSession' }, async () => { throw error }) } catch (caught) {
+    const error = {
+      code: status === 401 ? 'unauthenticated' : 'session_resolution_failed',
+      statusCode: status,
+      message: 'password=secret alice@example.com',
+      cause: new Error('fetch failed'),
+    }
+    try {
+      await traceAction(ctx, 'identity', { name: 'GetSession' }, async () => {
+        throw error
+      })
+    } catch (caught) {
       assert.strictEqual(caught, error)
     }
     assert.equal(calls[0]?.level, status === 401 ? 'info' : 'error')
@@ -155,11 +165,13 @@ test('a thrown 401 is info; a structured 503 retains technical diagnostics', asy
   }
 })
 
-
 test('mobile and backend logging conventions stay identical', async ({ assert }) => {
   const [backend, mobile] = await Promise.all([
     readFile(new URL('../../../../src/domain/shared/log-diagnostic.ts', import.meta.url), 'utf8'),
-    readFile(new URL('../../../../../mobile/src/domain/shared/log-diagnostic.ts', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../../../../../mobile/src/domain/shared/log-diagnostic.ts', import.meta.url),
+      'utf8',
+    ),
   ])
   assert.equal(backend, mobile)
 })
