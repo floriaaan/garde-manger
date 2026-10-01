@@ -10,7 +10,7 @@ import type { Result as ResultType } from '#domain/shared/result'
 
 export type ScanFridgeError = 'provider_not_configured' | 'extraction_failed'
 
-/** One photo per call — see `FridgeScanExtractionPort`. The mobile side orchestrates N calls, one per photo, and merges the drafts. */
+/** One photo per provider call; the job worker merges photos and counts the entire scan as one quota unit. */
 export class ScanFridge implements UseCase<
   { image: Buffer },
   ResultType<FridgeScanDraft, ScanFridgeError>

@@ -173,6 +173,9 @@ Le fournisseur actif se change ensuite à chaud depuis les réglages de l’app 
 Une instance auto-hébergée n'est jamais plafonnée sur l'usage IA. Seule l'instance
 officielle hébergée (`INSTANCE_MODE=hosted`) applique un quota mensuel par foyer,
 relevé par un abonnement dans l'app ([ADR 0014](docs/adr/0014-abonnement-ia-par-foyer-via-revenuecat.md), [ADR 0015](docs/adr/0015-paiement-stripe-sans-stores.md)).
+Un scan de frigo consomme un seul appel du quota IA, quel que soit le nombre de photos.
+Les photos supplémentaires et les relances du même scan déjà décompté
+ne consomment pas d’appel supplémentaire.
 
 ### Connexion via PocketID (optionnel)
 

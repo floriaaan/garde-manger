@@ -15,7 +15,8 @@ COPY backend ./backend
 RUN pnpm --filter garde-manger-backend run build
 
 FROM base AS production
-ENV NODE_ENV=production
+ARG APP_BUILD=local
+ENV NODE_ENV=production APP_BUILD=$APP_BUILD
 RUN addgroup -S gardemanger && adduser -S gardemanger -G gardemanger
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules

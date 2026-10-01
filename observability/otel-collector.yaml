@@ -50,7 +50,8 @@ processors:
     attributes:
       - key: deployment.environment.name
         value: ${env:DEPLOY_ENV}
-        action: upsert
+        # Preserve the producer environment; only fill a missing dimension.
+        action: insert
 
   batch:
     send_batch_size: 512

@@ -27,7 +27,7 @@ Décision et justifications : `docs/adr/0011`. Ce document-ci est opérationnel.
                    logs · traces · métriques, rétention 30 j
 ```
 
-Le `traceparent` du mobile est la totalité du mécanisme de corrélation : le backend
+Le `traceparent` du mobile est le mécanisme principal de corrélation : le backend
 continue la trace au lieu d'en ouvrir une nouvelle, donc `GET /api/recipes` depuis le
 téléphone, le span HTTP serveur, les spans PostgreSQL et l'appel sortant au fournisseur
 d'IA portent tous le même `trace_id`.
@@ -184,3 +184,129 @@ exporters:
 ```
 
 Plus le compose du nouveau backend. Aucun code applicatif, aucune variable côté mobile.
+
+
+## Convention de logging — audit Rootprint du 30 septembre 2026
+
+Cette convention s'applique aux actions backend (`traceAction`), aux exceptions HTTP,
+à Better Auth et à la résolution de session, ainsi qu'au client HTTP/session Expo
+sur Android, iOS et web. Le site vitrine `landing` n'exécute pas ces parcours de session.
+La politique pure est identique dans `backend/src/domain/shared/log-diagnostic.ts` et
+`mobile/src/domain/shared/log-diagnostic.ts` ; un test de parité empêche leur divergence.
+
+### Niveaux et résultats
+
+| Niveau | Utilisation | `event.outcome` |
+| --- | --- | --- |
+| INFO | Succès backend ; refus attendu (`unauthenticated`, `no_household`, `owner_cannot_leave`, identifiants invalides ou session expirée) | `success` ou `refused` |
+| WARN | Autre refus HTTP 4xx, validation ou avertissement de dépendance | `refused` ou `failure` |
+| ERROR | Exception inattendue, réseau/stockage indisponible, timeout de session, réponse illisible, HTTP 5xx | `failure` |
+
+Un 5xx reste ERROR même s'il porte un code de refus métier. Un refus connu peut être
+escaladé selon le contexte via `TraceActionOptions.failureLevel` ou `recordError.level`.
+Le gestionnaire HTTP respecte aussi les exclusions Adonis (`shouldReport`). Les alias
+historiques `action`, `outcome` et `error.type` restent disponibles là où ils existaient ;
+utiliser les champs communs ci-dessous pour les nouveaux tableaux de bord.
+
+### Champs communs et déploiement
+
+| Dimension | Champ canonique | Backend | Expo mobile / web |
+| --- | --- | --- | --- |
+| Service | `service.name` | `garde-manger-backend` (ou `OTEL_SERVICE_NAME`) | `garde-manger-mobile` / `garde-manger-web` |
+| Environnement du producteur | `deployment.environment.name` | `DEPLOY_ENV`, puis `NODE_ENV` | `EXPO_PUBLIC_APP_ENV`, puis mode dev/prod |
+| Version | `service.version` | `APP_VERSION` | version Expo |
+| Build | `service.build` | `APP_BUILD`, puis version | `EXPO_PUBLIC_APP_BUILD`, puis numéro iOS/Android, puis version |
+| Plateforme | `os.name` | `node` | `android`, `ios`, `web` |
+| Opération | `app.operation` | nom d'action ou méthode + route modèle | nom d'action ou méthode + chemin sans query |
+| Résultat | `event.outcome` | `success`, `refused`, `failure` | `refused`, `failure` |
+| Code stable | `error.code` | code applicatif, SQLSTATE, statut HTTP ou `unexpected_error` | code Better Auth/API ou code technique ci-dessous |
+
+Les ressources OTLP et les logs stdout backend portent les dimensions de service,
+environnement, version/build et plateforme. Le Collector complète uniquement un
+environnement absent : il ne remplace plus celui du client par son propre `DEPLOY_ENV`.
+Les images backend et Expo web produites par la CI embarquent le SHA Git comme build.
+Pour un lancement local, configurer `APP_BUILD` dans l'environnement backend ; pour
+un build natif, configurer `EXPO_PUBLIC_APP_BUILD` ou les numéros de build Expo.
+Renseigner `APP_VERSION` au déploiement : `0.0.0` est un fallback, pas une version de release.
+Aucun build, déploiement ou redémarrage n'est effectué par ce changement de code.
+
+Dans Rootprint, filtrer sur les champs canoniques (ou leurs noms aplatis par
+l'ingestion) et distinguer d'abord `event.outcome=failure` de `refused`. Le code et
+l'opération doivent figurer dans toute tâche créée à partir d'un incident.
+
+### Diagnostic et corrélation
+
+La récupération de session émet `session_timeout` après 5 secondes, un code Better Auth
+lorsqu'il existe, `session_http_<status>` pour une erreur HTTP sans code, ou
+`session_fetch_failed` comme fallback technique. Une erreur backend antérieure au
+contrôleur porte `identity.resolve_session` et `session_resolution_failed` à défaut
+d'un code plus précis. L'absence normale de session n'émet pas d'erreur.
+
+Les autres phases distinguent `cookie_read_failed`, `network_error`, `invalid_response`
+et les codes API. Les logs techniques conservent `exception.type`, un
+`exception.message` sûr, `exception.cause` (profondeur maximale 3) et
+`exception.stacktrace` (20 positions de frames maximum). Les objets Better Auth sont
+identifiés comme `StructuredError`, plutôt que `unknown`. Les messages réseau connus
+sont conservés ; certaines erreurs réseau/JSON sont reformulées sans leurs valeurs
+interpolées. Tout autre message libre est marqué `[redacted diagnostic message]`.
+Les stacks gardent fichier/ligne/colonne, sans chemin absolu, URL, arguments ou message.
+
+`traceparent` est maintenant injecté aussi dans `authClient.getSession`. Avec la
+collecte activée, le log client et les logs backend peuvent être rapprochés par la trace
+(`traceId` OTLP / `trace_id` Pino). Les requêtes HTTP et la récupération de session conservent aussi le
+`request_id` renvoyé via `x-request-id`, exposé par CORS. Il sert de fallback pour
+une réponse en erreur ou illisible lorsque le client n'a pas de span. Une erreur
+réseau survenue avant l'envoi n'a naturellement pas de log backend correspondant.
+
+### Répétitions
+
+- Un échec transport est enregistré à sa source, sans second log dans le catch appelant.
+- Une exception déjà enregistrée dans cette requête n'est pas réémise par le gestionnaire HTTP.
+- Les refus INFO de même opération/code/statut/entité encore dans la file client sont
+  regroupés sur une fenêtre maximale de 15 secondes : `event.occurrences` conserve le
+  nombre et le premier log conserve sa trace. Les spans HTTP restent individuels.
+- Les erreurs techniques et les avertissements restent distincts. Cette stratégie ne
+  masque pas deux exceptions similaires provenant de requêtes différentes.
+- Un export partiellement réussi remet en file seulement le signal en échec. Le
+  backoff reste plafonné à 5 minutes et chaque file à 256 événements ; le compteur de
+  pertes existant reste disponible. Comme tout export HTTP, une réponse perdue après
+  acceptation peut entraîner une retransmission : aucune garantie « exactly once ».
+
+### Protection et exemples synthétiques
+
+La liste blanche est appliquée avant émission client et à nouveau au relais. Les
+payloads auth, headers, objets libres et messages arbitraires ne sont jamais émis dans
+les parcours modifiés. Pino masque les clés de secrets connues et les emails, et ses
+serializers `err`/`error` ne gardent que les diagnostics sûrs. Le relais filtre aussi
+les corps libres, les messages de statut de span et les identifiants de trace invalides.
+Les logs d'action n'ajoutent plus `userId` ni `householdId` ; les identifiants métier
+ciblés peuvent rester utiles. La pseudonymisation HMAC du relais reste en place.
+
+Exemples synthétiques, avec dimensions de ressource aplaties pour la lecture :
+
+```json
+{"severityText":"ERROR","service.name":"garde-manger-mobile","deployment.environment.name":"production","service.version":"1.0.0","service.build":"42","os.name":"ios","app.operation":"identity.get_session","event.outcome":"failure","error.code":"session_timeout","exception.type":"TimeoutError","exception.message":"Session request timed out","event.occurrences":1}
+{"severityText":"INFO","service.name":"garde-manger-web","deployment.environment.name":"production","service.version":"1.0.0","service.build":"demo-build","os.name":"web","app.operation":"identity.leave_household","event.outcome":"refused","error.code":"owner_cannot_leave","http.response.status_code":409,"event.occurrences":3}
+```
+
+Ces exemples ne contiennent ni compte réel, ni cookie/token, ni secret. Les fixtures de
+régression injectent volontairement mot de passe, token, email, chemin privé et cause
+cyclique afin de vérifier leur exclusion.
+
+### Validation de la livraison
+
+Tests écrits ou adaptés : politique de diagnostic/masquage, refus backend, propagation
+et timeout de session, réponse JSON invalide corrélée, regroupement des occurrences,
+erreurs techniques distinctes, relais et export partiellement réussi. Ils ne sont pas
+exécutés automatiquement, conformément à `AGENTS.md`.
+
+Après déploiement dans un environnement de validation, vérifier dans Rootprint :
+
+- Session inaccessible/timeout : ERROR, code précis et contexte technique sûr.
+- Session absente, aucun foyer, propriétaire qui quitte : refus INFO, pas incident ERROR.
+- Appel HTTP en erreur : retrouver la trace backend ou le `request_id` de réponse.
+- Filtres service/environnement/version/build/plateforme/opération renseignés ; environnement client conservé.
+- Polling répété : compteur de refus ; incidents techniques distincts et pas de renvoi d'un export réussi.
+- Échantillons réels : absence de credentials, cookies, email, payload auth et chemins privés.
+
+Cette vérification en environnement n'a pas été effectuée dans cette livraison locale.

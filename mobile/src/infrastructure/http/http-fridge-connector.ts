@@ -1,3 +1,4 @@
+import { errorStatus } from '../../domain/shared/log-diagnostic.js'
 import { Platform } from 'react-native'
 import { File } from 'expo-file-system'
 import { authClient } from '../auth/auth-client.js'
@@ -45,20 +46,8 @@ function toSession(
   }
 }
 
-/**
- * The auth calls below swallow their errors on purpose — a failed session
- * read must not block startup, and a failed sign-in has its own user-facing
- * message. Swallowed used to mean invisible: the errors went to
- * `console.warn`, i.e. to a device log nobody reads, carrying whatever the
- * auth client happened to put in the object.
- *
- * They now go to telemetry as an operation name plus an error *type* — never
- * the error's own message or payload, which for these particular calls can
- * contain the credentials that were being verified. The raw object is still
- * printed in development, where it is a local console and not a data store.
- */
+/** Auth failures emit only safe structured diagnostics, including in development. */
 function reportFailure(operation: string, error: unknown): void {
-  if (__DEV__) console.warn(`[${operation}]`, error)
   telemetry.recordError(`${operation} failed`, { error, attributes: { 'app.operation': operation } })
 }
 
@@ -104,8 +93,10 @@ const SESSION_TIMEOUT_MS = 5000
  * treated as a closed session: the stored cookie is dropped and `null` sends
  * the gates to sign-in, rather than leaving a half-alive session behind.
  */
-function closeSession(action: string, error: unknown): null {
-  reportFailure(action, error)
+function closeSession(
+  action: string, error: unknown, span?: ReturnType<typeof telemetry.startClientSpan>, requestId?: string,
+): null {
+  telemetry.recordError(`${action} failed`, { error, ...(span ? { span } : {}), attributes: { 'app.operation': action, 'error.code': errorStatus(error) ? `session_http_${errorStatus(error)}` : 'session_fetch_failed', request_id: requestId } })
   authClient.signOut().catch(() => {})
   return null
 }
@@ -130,30 +121,43 @@ export class HttpFridgeConnector implements FridgeConnector {
     // holds the launch gates (which render nothing while this is pending)
     // on a blank screen for the length of the TCP timeout. `null` falls through
     // to the sign-in gate, which is where a dead server now shows up.
+    const span = telemetry.startClientSpan('identity.get_session', { 'app.operation': 'identity.get_session' })
+    let requestId: string | undefined
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS)
     try {
-      const { data, error } = await authClient.getSession({ fetchOptions: { signal: controller.signal } })
-      if (error) return closeSession('identity.get_session', error)
+      const { data, error } = await authClient.getSession({ fetchOptions: {
+        signal: controller.signal,
+        onResponse({ response }) { requestId = response.headers.get('x-request-id') ?? undefined },
+        ...(span ? { headers: { traceparent: span.traceparent } } : {}),
+      } })
+      if (error) {
+        const diagnostic = controller.signal.aborted
+          ? { name: 'TimeoutError', code: 'session_timeout', message: 'Session request timed out', cause: error }
+          : error
+        span?.end({ error: diagnostic, attributes: { request_id: requestId } })
+        return closeSession('identity.get_session', diagnostic, span, requestId)
+      }
+      span?.end({ attributes: { request_id: requestId } })
       return toSession(data)
     } catch (error) {
-      return closeSession('identity.get_session', error)
+      const diagnostic = controller.signal.aborted
+        ? { name: 'TimeoutError', code: 'session_timeout', message: 'Session request timed out', cause: error }
+        : error
+      span?.end({ error: diagnostic, attributes: { request_id: requestId } })
+      return closeSession('identity.get_session', diagnostic, span, requestId)
     } finally {
       clearTimeout(timer)
     }
   }
 
   async getAuthMethods(): Promise<AuthMethod[]> {
-    try {
-      const result = await apiFetch<{ methods: AuthMethod[] }>('/api/auth/methods', undefined, {
-        action: 'identity.get_auth_methods',
-      })
-      if (!result.ok) throw new Error(result.error.message)
-      return result.value.methods
-    } catch (error) {
-      reportFailure('identity.get_auth_methods', error)
-      throw error
-    }
+    const result = await apiFetch<{ methods: AuthMethod[] }>('/api/auth/methods', undefined, {
+      action: 'identity.get_auth_methods',
+    })
+    // apiFetch already recorded transport/HTTP failures; do not log the same failure again.
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.methods
   }
 
   async signInEmail(email: string, password: string): Promise<Result<Session, ApiError>> {

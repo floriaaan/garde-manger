@@ -120,7 +120,7 @@ test('apiFetch() records telemetry with the given action name when the response 
 
   expect(spy).toHaveBeenCalledWith(
     'action failed: validation_failed',
-    expect.objectContaining({ attributes: { 'error.type': 'validation_failed', action: 'fridge.create_product' } }),
+    expect.objectContaining({ attributes: expect.objectContaining({ 'error.type': 'validation_failed', action: 'fridge.create_product', 'http.response.status_code': 422 }) }),
   )
   spy.mockRestore()
 })
@@ -178,7 +178,29 @@ test('apiFetch() falls back to method+path as the action label when none is give
 
   expect(spy).toHaveBeenCalledWith(
     'action failed: server_error',
-    expect.objectContaining({ attributes: { 'error.type': 'server_error', action: 'GET /api/whatever' } }),
+    expect.objectContaining({ attributes: expect.objectContaining({ 'error.type': 'server_error', action: 'GET /api/whatever', 'http.response.status_code': 500 }) }),
   )
+  spy.mockRestore()
+})
+
+
+test('transport failures emit once and malformed JSON keeps response correlation', async () => {
+  const spy = jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch
+  await apiFetch('/api/products?token=secret')
+  expect(spy).toHaveBeenCalledTimes(1)
+  expect(spy).toHaveBeenLastCalledWith('operation failed', expect.objectContaining({
+    attributes: expect.objectContaining({ 'error.code': 'network_error', 'app.operation': 'GET /api/products' }),
+  }))
+  spy.mockClear()
+  globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200,
+    headers: new Headers({ 'x-request-id': 'request-123' }),
+    json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+  }) as unknown as typeof fetch
+  await apiFetch('/api/products')
+  expect(spy).toHaveBeenCalledTimes(1)
+  expect(spy).toHaveBeenLastCalledWith('invalid response', expect.objectContaining({
+    attributes: expect.objectContaining({ 'error.code': 'invalid_response', request_id: 'request-123' }),
+  }))
   spy.mockRestore()
 })

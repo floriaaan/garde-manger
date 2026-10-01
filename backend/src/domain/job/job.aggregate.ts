@@ -13,6 +13,8 @@ export interface JobProgress {
 export interface JobInput {
   imageKeys?: string[]
   prompt?: string
+  /** Fridge scans consume one quota unit; keep this across full and partial retries. */
+  aiUsageRecorded?: boolean
 }
 
 export interface JobResult {

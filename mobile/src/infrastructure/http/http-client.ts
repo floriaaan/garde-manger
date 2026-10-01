@@ -1,3 +1,4 @@
+import { safeOperation } from '../../domain/shared/log-diagnostic.js'
 import { Platform } from 'react-native'
 import { Result } from '../../domain/shared/result.js'
 import { telemetry } from '../telemetry/telemetry.js'
@@ -72,11 +73,12 @@ async function tracedFetch(
   context?: ActionContext,
 ): Promise<{ response: Response; span: ReturnType<typeof telemetry.startClientSpan> }> {
   const apiUrl = getServerUrl()
-  const span = telemetry.startClientSpan(context?.action ?? `${method} ${path}`, {
+  const operation = safeOperation(context?.action ?? `${method} ${path.split('?')[0]}`)
+  const span = telemetry.startClientSpan(operation, {
+    'app.operation': operation,
     'http.request.method': method,
     // The path, never the query string: it is where ids and search terms live.
     'url.path': path.split('?')[0],
-    'server.address': apiUrl,
     ...context?.attributes,
   })
 
@@ -93,36 +95,50 @@ async function tracedFetch(
   // "unneeded" — `expo-secure-store`'s web shim doesn't implement
   // `getValueWithKeyAsync` at all, so calling `getCookie()` here on web threw
   // on every single request, silently failing every `apiFetch` call.
-  const cookie = Platform.OS === 'web' ? null : await authClient.getCookie()
-
-  const headers = {
-    ...(init.headers as Record<string, string>),
-    ...(span ? { traceparent: span.traceparent } : null),
-    ...(cookie ? { Cookie: cookie } : null),
-  }
-
+  let phase = 'cookie_read_failed'
   try {
+    const cookie = Platform.OS === 'web' ? null : await authClient.getCookie()
+
+    const headers = {
+      ...(init.headers as Record<string, string>),
+      ...(span ? { traceparent: span.traceparent } : null),
+      ...(cookie ? { Cookie: cookie } : null),
+    }
+
+    phase = 'network_error'
     const response = await fetch(`${apiUrl}${path}`, { ...init, headers })
-    span?.end({ attributes: { 'http.response.status_code': response.status } })
+    span?.end({
+      attributes: {
+        'http.response.status_code': response.status,
+        request_id: response.headers?.get('x-request-id') ?? undefined,
+        'event.outcome': response.status >= 500 ? 'failure' : response.status >= 400 ? 'refused' : 'success',
+      },
+      ...(response.status >= 500 ? { error: { code: `http_${response.status}`, name: 'HttpError' } } : {}),
+    })
     return { response, span }
   } catch (error) {
     span?.end({ error })
-    // A transport failure never reaches the backend, so this is the only
-    // trace of it anywhere — and it must not depend on telemetry being
-    // configured. `recordError` below only fires when `span` is non-null
-    // (telemetry off/unconfigured, the common case in local dev, returns
-    // `null` from `startClientSpan`), which used to mean a dev running
-    // without a telemetry relay saw absolutely nothing for a request that
-    // never left the device — not even in the Metro console. This one
-    // always prints, telemetry or not.
-    console.error(`[api] ${method} ${path} failed before reaching the server`, error)
-    if (span) {
-      telemetry.recordError(`${method} ${path} failed before reaching the server`, {
-        error,
-        span,
-        attributes: { 'http.request.method': method, 'url.path': path.split('?')[0] },
-      })
+    const attributes = {
+      'app.operation': operation,
+      'error.code': phase,
+      'http.request.method': method,
     }
+    telemetry.recordError('operation failed', { error, ...(span ? { span } : {}), attributes })
+    throw error
+  }
+}
+
+/** Parsing failures belong to the request's trace and are not transport failures. */
+async function readResponse(response: Response, span: ReturnType<typeof telemetry.startClientSpan>, operation: string) {
+  try {
+    const body = await response.json()
+    if (!response.ok && (!body?.error || typeof body.error.type !== 'string')) {
+      throw new TypeError('Invalid API error response')
+    }
+    return body
+  } catch (error) {
+    const attributes = { 'app.operation': safeOperation(operation), 'error.code': 'invalid_response', 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined }
+    telemetry.recordError('invalid response', { error, ...(span ? { span } : {}), attributes, level: 'error' })
     throw error
   }
 }
@@ -145,28 +161,19 @@ export async function apiFetch<T>(
     )
     // A 204 always means "success, no body" — nothing to parse.
     if (response.status === 204) return Result.ok(undefined as T)
-    const body = await response.json()
+    const body = await readResponse(response, span, context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`)
     if (!response.ok) {
       const error = body.error as ApiError
-      // The request reached the backend, so this is not a transport failure
-      // — `tracedFetch` already ended the span as "success" with the status
-      // code attached, which used to leave every 4xx/5xx business error
-      // invisible in traces. Recorded here instead of restructuring the
-      // span's timing above.
+      // Logs qualify business refusals separately from technical HTTP failures.
       telemetry.recordError(`action failed: ${error.type}`, {
-        attributes: { 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path}` },
+        attributes: { 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
       if (error.type === 'unauthenticated') handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)
-  } catch (error) {
-    // Covers two cases: `tracedFetch` already logged a pure transport
-    // failure (this just adds the "here's the generic error the caller
-    // sees" breadcrumb next to it); a *successful* response whose body
-    // wasn't valid JSON never gets logged anywhere else at all.
-    console.error(`[api] ${init?.method ?? 'GET'} ${path} could not be completed`, error)
+  } catch {
     return networkErrorResult<T>()
   }
 }
@@ -191,19 +198,18 @@ export async function apiFetchMultipart<T>(
       context,
     )
     if (response.status === 204) return Result.ok(undefined as T)
-    const body = await response.json()
+    const body = await readResponse(response, span, context?.action ?? `POST ${path.split('?')[0]}`)
     if (!response.ok) {
       const error = body.error as ApiError
       telemetry.recordError(`action failed: ${error.type}`, {
-        attributes: { 'error.type': error.type, action: context?.action ?? `POST ${path}` },
+        attributes: { 'error.type': error.type, action: context?.action ?? `POST ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
       if (error.type === 'unauthenticated') handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)
-  } catch (error) {
-    console.error(`[api] POST ${path} could not be completed`, error)
+  } catch {
     return networkErrorResult<T>()
   }
 }

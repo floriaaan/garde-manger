@@ -1,3 +1,4 @@
+import { traceAction } from '#presentation/shared/trace-action'
 import router from '@adonisjs/core/services/router'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -48,6 +49,22 @@ router.get('/api/session', [SessionController, 'show'])
 
 router.any('/api/auth/*', async (ctx: HttpContext) => {
   const authHandler = await ctx.containerResolver.make('identity.authHandler')
-  const response = await authHandler(await toFetchRequest(ctx))
-  await sendFetchResponse(response, ctx)
+  const execute = async () => {
+    const response = await authHandler(await toFetchRequest(ctx))
+    let error: unknown
+    if (!response.ok && ctx.request.url().split('?')[0] === '/api/auth/get-session') {
+      try {
+        const body = await response.clone().json()
+        error = { code: body.code ?? body.error?.type, status: response.status }
+      } catch { /* Non-JSON failures retain the stable HTTP status fallback. */ }
+    }
+    await sendFetchResponse(response, ctx)
+    return { ok: response.ok, error }
+  }
+  if (ctx.request.url().split('?')[0] === '/api/auth/get-session') {
+    return traceAction(ctx, 'identity', { name: 'GetSession' }, execute, {
+      isError: (response) => !response.ok, action: 'identity.get_session',
+    })
+  }
+  await execute()
 })

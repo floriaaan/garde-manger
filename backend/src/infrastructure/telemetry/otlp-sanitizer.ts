@@ -1,3 +1,4 @@
+import { LOG_SIGNAL_ATTRIBUTES, safeAttribute, safeOperation } from '#domain/shared/log-diagnostic'
 import type {
   TelemetryAttribution,
   RelayedTelemetrySignal,
@@ -31,35 +32,19 @@ const MAX_BODY_LENGTH = 2048
 const ALLOWED_RESOURCE_ATTRIBUTES = new Set([
   'service.name',
   'service.version',
+  'service.build',
   'deployment.environment.name',
   'os.name',
   'os.version',
   'app.session.id',
+  'app.telemetry.dropped',
   'telemetry.sdk.name',
   'telemetry.sdk.language',
   'telemetry.sdk.version',
 ])
 
 /** Span/log attributes the app may set. */
-const ALLOWED_SIGNAL_ATTRIBUTES = new Set([
-  'http.request.method',
-  'http.response.status_code',
-  'url.path',
-  'server.address',
-  'error.type',
-  'exception.type',
-  'exception.message',
-  'network.connection.type',
-  'app.screen',
-  'app.operation',
-  'app.telemetry.dropped',
-  'action',
-  // Single shared entity-id key for every domain (product/recipe/item/
-  // receipt/targetUser), mirroring the backend's own `entityId` field in
-  // trace-action.ts — one allowlist entry instead of five per-domain ones.
-  'entity.id',
-  'app.storage_key',
-])
+const ALLOWED_SIGNAL_ATTRIBUTES = LOG_SIGNAL_ATTRIBUTES
 
 interface OtlpAttribute {
   key?: unknown
@@ -75,16 +60,20 @@ function truncate(value: string): string {
  * dropped wholesale: nesting is where an unreviewed blob of request data
  * would hide, and nothing the app emits needs it.
  */
-function sanitizeValue(value: unknown): Record<string, unknown> | null {
+function sanitizeValue(value: unknown, key: string): Record<string, unknown> | null {
   if (typeof value !== 'object' || value === null) return null
   const source = value as Record<string, unknown>
 
-  if (typeof source.stringValue === 'string') return { stringValue: truncate(source.stringValue) }
+  if (typeof source.stringValue === 'string') return {
+    stringValue: ['exception.cause', 'exception.stacktrace'].includes(key)
+      ? source.stringValue.slice(0, 8192) : truncate(source.stringValue),
+  }
   if (typeof source.boolValue === 'boolean') return { boolValue: source.boolValue }
-  if (typeof source.intValue === 'number' || typeof source.intValue === 'string') {
+  if ((typeof source.intValue === 'number' && Number.isSafeInteger(source.intValue))
+    || (typeof source.intValue === 'string' && /^-?\d{1,20}$/.test(source.intValue))) {
     return { intValue: source.intValue }
   }
-  if (typeof source.doubleValue === 'number') return { doubleValue: source.doubleValue }
+  if (typeof source.doubleValue === 'number' && Number.isFinite(source.doubleValue)) return { doubleValue: source.doubleValue }
   return null
 }
 
@@ -95,7 +84,10 @@ function sanitizeAttributes(input: unknown, allowed: Set<string>): OtlpAttribute
     if (typeof attribute !== 'object' || attribute === null) continue
     const { key, value } = attribute as OtlpAttribute
     if (typeof key !== 'string' || !allowed.has(key)) continue
-    const sanitized = sanitizeValue(value)
+    const sanitized = sanitizeValue(value, key)
+    if (sanitized && 'stringValue' in sanitized) {
+      sanitized.stringValue = safeAttribute(key, sanitized.stringValue as string)
+    }
     if (sanitized) output.push({ key, value: sanitized })
   }
   return output
@@ -120,17 +112,22 @@ function sanitizeResource(resource: unknown, attribution: TelemetryAttribution) 
   return { attributes }
 }
 
+function timestamp(value: unknown): string | undefined {
+  return typeof value === 'string' && /^\d{1,20}$/.test(value) ? value : undefined
+}
+
 function sanitizeSpan(span: unknown): Record<string, unknown> | null {
   if (typeof span !== 'object' || span === null) return null
   const source = span as Record<string, unknown>
-  if (typeof source.traceId !== 'string' || typeof source.spanId !== 'string') return null
+  if (typeof source.traceId !== 'string' || !/^[0-9a-f]{32}$/.test(source.traceId)
+    || typeof source.spanId !== 'string' || !/^[0-9a-f]{16}$/.test(source.spanId)) return null
 
   const events = Array.isArray(source.events)
-    ? source.events.slice(0, MAX_EVENTS_PER_SPAN).map((event) => {
+    ? source.events.filter((event) => typeof event === 'object' && event !== null).slice(0, MAX_EVENTS_PER_SPAN).map((event) => {
         const item = event as Record<string, unknown>
         return {
-          name: typeof item.name === 'string' ? truncate(item.name) : 'event',
-          timeUnixNano: item.timeUnixNano,
+          name: typeof item.name === 'string' ? safeOperation(item.name) : 'event',
+          timeUnixNano: timestamp(item.timeUnixNano),
           attributes: sanitizeAttributes(item.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
         }
       })
@@ -139,13 +136,15 @@ function sanitizeSpan(span: unknown): Record<string, unknown> | null {
   return {
     traceId: source.traceId,
     spanId: source.spanId,
-    parentSpanId: typeof source.parentSpanId === 'string' ? source.parentSpanId : undefined,
-    name: typeof source.name === 'string' ? truncate(source.name) : 'span',
+    parentSpanId: typeof source.parentSpanId === 'string' && /^[0-9a-f]{16}$/.test(source.parentSpanId) ? source.parentSpanId : undefined,
+    name: typeof source.name === 'string' ? safeOperation(source.name) : 'span',
     kind: typeof source.kind === 'number' ? source.kind : 1,
-    startTimeUnixNano: source.startTimeUnixNano,
-    endTimeUnixNano: source.endTimeUnixNano,
+    startTimeUnixNano: timestamp(source.startTimeUnixNano),
+    endTimeUnixNano: timestamp(source.endTimeUnixNano),
     attributes: sanitizeAttributes(source.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
-    status: typeof source.status === 'object' && source.status !== null ? source.status : undefined,
+    status: typeof source.status === 'object' && source.status !== null
+      ? { code: [0, 1, 2].includes((source.status as { code: number }).code) ? (source.status as { code: number }).code : 0 }
+      : undefined,
     events,
   }
 }
@@ -158,19 +157,20 @@ function sanitizeLogRecord(record: unknown): Record<string, unknown> | null {
   // graph from an untrusted client — exactly the shape a request payload
   // would arrive in.
   const body = (source.body as { stringValue?: unknown } | undefined)?.stringValue
-  const message = typeof body === 'string' ? body.slice(0, MAX_BODY_LENGTH) : ''
+  const message = typeof body === 'string' && ['operation failed', 'invalid response'].includes(body)
+    ? body.slice(0, MAX_BODY_LENGTH) : 'client event'
 
   return {
-    timeUnixNano: source.timeUnixNano,
-    observedTimeUnixNano: source.observedTimeUnixNano,
+    timeUnixNano: timestamp(source.timeUnixNano),
+    observedTimeUnixNano: timestamp(source.observedTimeUnixNano),
     severityNumber: typeof source.severityNumber === 'number' ? source.severityNumber : 9,
     severityText:
-      typeof source.severityText === 'string' ? truncate(source.severityText) : undefined,
+      typeof source.severityText === 'string' && ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'].includes(source.severityText) ? source.severityText : undefined,
     body: { stringValue: message },
     attributes: sanitizeAttributes(source.attributes, ALLOWED_SIGNAL_ATTRIBUTES),
-    // Kept verbatim — this is what stitches the mobile span to the backend one.
-    traceId: typeof source.traceId === 'string' ? source.traceId : undefined,
-    spanId: typeof source.spanId === 'string' ? source.spanId : undefined,
+    // Keep only valid W3C ids for correlation; arbitrary client text is discarded.
+    traceId: typeof source.traceId === 'string' && /^[0-9a-f]{32}$/.test(source.traceId) ? source.traceId : undefined,
+    spanId: typeof source.spanId === 'string' && /^[0-9a-f]{16}$/.test(source.spanId) ? source.spanId : undefined,
   }
 }
 

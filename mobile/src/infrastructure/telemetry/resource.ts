@@ -33,8 +33,12 @@ export function intAttribute(key: string, value: number): OtlpAttribute {
 export function buildResource(): { attributes: OtlpAttribute[] } {
   return {
     attributes: [
-      stringAttribute('service.name', 'garde-manger-mobile'),
+      stringAttribute('service.name', Platform.OS === 'web' ? 'garde-manger-web' : 'garde-manger-mobile'),
       stringAttribute('service.version', Constants.expoConfig?.version ?? '0.0.0'),
+      stringAttribute('service.build', process.env.EXPO_PUBLIC_APP_BUILD
+        ?? (Platform.OS === 'ios' ? Constants.expoConfig?.ios?.buildNumber
+          : Platform.OS === 'android' ? Constants.expoConfig?.android?.versionCode?.toString() : undefined)
+        ?? Constants.expoConfig?.version ?? '0.0.0'),
       stringAttribute(
         'deployment.environment.name',
         process.env.EXPO_PUBLIC_APP_ENV ?? (__DEV__ ? 'development' : 'production'),

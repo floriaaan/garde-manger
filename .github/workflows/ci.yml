@@ -193,6 +193,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_BUILD=${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -273,5 +275,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             EXPO_PUBLIC_API_URL=${{ vars.EXPO_PUBLIC_API_URL || 'https://api-gardemanger.floriaaan.fr' }}
+            EXPO_PUBLIC_APP_BUILD=${{ github.sha }}
           cache-from: type=gha,scope=expo-web
           cache-to: type=gha,mode=max,scope=expo-web

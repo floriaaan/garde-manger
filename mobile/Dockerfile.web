@@ -7,12 +7,14 @@ COPY mobile/package.json ./mobile/package.json
 RUN pnpm install --frozen-lockfile --filter garde-manger-mobile...
 
 COPY mobile ./mobile
+ARG EXPO_PUBLIC_APP_BUILD=local
 ARG EXPO_PUBLIC_API_URL=https://api-gardemanger.floriaaan.fr
 ENV EXPO_PUBLIC_CONNECTOR=http \
     EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL \
     EXPO_PUBLIC_TELEMETRY_ENABLED=true \
     EXPO_PUBLIC_TELEMETRY_SAMPLE_RATIO=1 \
-    EXPO_PUBLIC_APP_ENV=production
+    EXPO_PUBLIC_APP_ENV=production \
+    EXPO_PUBLIC_APP_BUILD=$EXPO_PUBLIC_APP_BUILD
 RUN pnpm --filter garde-manger-mobile exec expo export --platform web
 
 FROM nginx:stable-alpine
