@@ -75,3 +75,55 @@ test('a request still succeeds when the telemetry export throws', async () => {
 
   expect(result).toEqual({ ok: true, value: { ok: 1 } })
 })
+
+
+function logRecords(fetchMock: jest.Mock) {
+  return fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/logs'))
+    .flatMap(([, init]) => JSON.parse(init.body).resourceLogs[0].scopeLogs[0].logRecords)
+}
+
+test('expected refusals aggregate occurrences; distinct technical failures stay ERROR and redact secrets', async () => {
+  const { telemetry } = loadModules(true)
+  telemetry.start()
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 202 })
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  for (let index = 0; index < 3; index += 1) telemetry.recordError('no household', {
+    attributes: { 'error.code': 'no_household', 'app.operation': 'identity.get_household', 'http.response.status_code': 403 },
+  })
+  telemetry.recordError('owner refusal', { attributes: { 'error.code': 'owner_cannot_leave', 'app.operation': 'identity.leave_household' } })
+  for (let index = 0; index < 2; index += 1) telemetry.recordError('password=supersecret', {
+    error: { name: 'TypeError', message: 'token=supersecret alice@example.com', cause: { code: 'ECONNREFUSED', message: 'fetch failed' } },
+    attributes: { 'app.operation': 'identity.get_session', 'error.code': 'session_fetch_failed', password: 'supersecret' },
+  })
+  telemetry.shutdown()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  const records = logRecords(fetchMock)
+  expect(records).toHaveLength(4)
+  expect(records.map((record) => record.severityText)).toEqual(['INFO', 'INFO', 'ERROR', 'ERROR'])
+  expect(records[0].attributes).toContainEqual({ key: 'event.occurrences', value: { intValue: 3 } })
+  const emitted = JSON.stringify(fetchMock.mock.calls)
+  expect(emitted).not.toContain('supersecret')
+  expect(emitted).not.toContain('alice@example.com')
+  expect(emitted).toContain('ECONNREFUSED')
+  expect(emitted).toContain('StructuredError')
+})
+
+test('a successful trace export is not repeated when only logs fail', async () => {
+  const { telemetry } = loadModules(true)
+  telemetry.start()
+  let logAttempts = 0
+  const fetchMock = jest.fn().mockImplementation((url: string) => Promise.resolve({ status: 202,
+    ok: !url.endsWith('/logs') || ++logAttempts > 1,
+  }))
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  telemetry.startClientSpan('identity.get_session')?.end()
+  telemetry.recordError('session failure', { attributes: { 'error.code': 'session_fetch_failed', 'app.operation': 'identity.get_session' } })
+  telemetry.shutdown()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  const now = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000)
+  telemetry.shutdown()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/traces'))).toHaveLength(1)
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/logs'))).toHaveLength(2)
+  now.mockRestore()
+})

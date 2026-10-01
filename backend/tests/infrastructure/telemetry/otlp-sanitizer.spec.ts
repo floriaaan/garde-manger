@@ -125,3 +125,76 @@ test.group('sanitizeOtlpPayload', () => {
     assert.isNull(sanitizeOtlpPayload('traces', 'not-an-object', attribution))
   })
 })
+
+test('diagnostic fields remain useful while auth payloads and free-form secrets are removed', ({
+  assert,
+}) => {
+  const result = sanitizeOtlpPayload(
+    'traces',
+    tracePayload([
+      { key: 'error.code', value: { stringValue: 'session_timeout' } },
+      { key: 'app.operation', value: { stringValue: 'identity.get_session' } },
+      { key: 'event.occurrences', value: { intValue: 3 } },
+      {
+        key: 'exception.message',
+        value: { stringValue: 'password=supersecret alice@example.com' },
+      },
+      {
+        key: 'exception.stacktrace',
+        value: { stringValue: 'at run (/Users/alice/session.ts:42:9)' },
+      },
+      {
+        key: 'exception.cause',
+        value: {
+          stringValue: JSON.stringify({
+            code: 'ECONNREFUSED',
+            'exception.type': 'Error',
+            'exception.message': 'fetch failed',
+            password: 'supersecret',
+          }),
+        },
+      },
+      { key: 'cookie', value: { stringValue: 'supersecret' } },
+    ]),
+    attribution,
+  )
+  const text = JSON.stringify(result)
+  assert.include(text, 'session_timeout')
+  assert.include(text, 'ECONNREFUSED')
+  assert.include(text, 'session.ts:42:9')
+  assert.notInclude(text, 'supersecret')
+  assert.notInclude(text, 'alice')
+})
+
+test('free-form span status and log bodies do not survive the relay', ({ assert }) => {
+  const payload = tracePayload([])
+  const span = payload.resourceSpans[0]!.scopeSpans[0]!.spans[0]!
+  Object.assign(span, { status: { code: 2, message: 'token=supersecret' } })
+  const traces = sanitizeOtlpPayload('traces', payload, attribution)
+  assert.notInclude(JSON.stringify(traces), 'supersecret')
+  const logs = sanitizeOtlpPayload(
+    'logs',
+    {
+      resourceLogs: [
+        {
+          resource: {},
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  body: { stringValue: 'password=supersecret alice@example.com' },
+                  severityText: 'ERROR',
+                  traceId: 'token=supersecret',
+                  spanId: 'cookie=supersecret',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    attribution,
+  )
+  assert.notInclude(JSON.stringify(logs), 'supersecret')
+  assert.notInclude(JSON.stringify(logs), 'alice@example.com')
+})

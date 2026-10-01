@@ -100,6 +100,8 @@ if (enabled) {
     const resource = resourceFromAttributes({
       'service.name': process.env.OTEL_SERVICE_NAME || 'garde-manger-backend',
       'service.version': process.env.APP_VERSION || '0.0.0',
+      'service.build': process.env.APP_BUILD || process.env.APP_VERSION || '0.0.0',
+      'os.name': 'node',
       'deployment.environment.name':
         process.env.DEPLOY_ENV || process.env.NODE_ENV || 'development',
       // Container hostname — enough to tell two instances apart, and nothing

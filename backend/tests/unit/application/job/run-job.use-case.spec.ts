@@ -1,3 +1,7 @@
+import { resolveFridgeScanExtractionAdapter } from '#infrastructure/settings/ai-provider-registry'
+import { GeminiFridgeScanExtractionAdapter } from '#infrastructure/settings/gemini-fridge-scan-extraction.adapter'
+import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings-provider.interface'
+import type { AiQuotaPort } from '#domain/settings/interfaces/ai-quota-port.interface'
 import { test } from '@japa/runner'
 import { RunJob } from '#application/job/run-job.use-case'
 import type { RunJobDeps } from '#application/job/run-job.use-case'
@@ -159,3 +163,104 @@ function propsOf(job: Job) {
     createdAt: job.createdAt,
   }
 }
+
+test('one hosted fridge scan uses one quota unit across all photos and partial retries', async ({
+  assert,
+}) => {
+  let used = 0
+  let calls = 0
+  let existing: ScanDraft | null = null
+  const settings: AiSettingsProvider = {
+    async resolveEffective() {
+      return {
+        activeProvider: 'gemini',
+        source: 'environment',
+        availableProviders: ['gemini'],
+        canChooseProvider: true,
+        models: { vision: '', text: '' },
+        access: {
+          plan: 'free',
+          used,
+          limit: 1,
+          resetsAt: null,
+          expiresAt: null,
+          cancelsAtPeriodEnd: false,
+        },
+      }
+    },
+  }
+  const quota: AiQuotaPort = {
+    async usage() {
+      return { used, limit: 1, resetsAt: null }
+    },
+    async record() {
+      used++
+    },
+  }
+  const original = GeminiFridgeScanExtractionAdapter.prototype.extract
+  GeminiFridgeScanExtractionAdapter.prototype.extract = async () => {
+    calls++
+    if (calls === 1) throw new ReceiptExtractionParseError('bad first photo')
+    return { items: [item(`Produit ${calls}`)] }
+  }
+  try {
+    const { run, saved } = setup([], {
+      drafts: { findById: async () => existing } as unknown as RunJobDeps['drafts'],
+      resolveFridgeScanExtraction: (householdId, recorded) =>
+        resolveFridgeScanExtractionAdapter(
+          settings,
+          quota,
+          { now: () => now },
+          householdId,
+          recorded,
+        ),
+    })
+    const job = fridgeJob(['a', 'b', 'c'])
+    await run.execute(job)
+    assert.equal(job.status, 'succeeded')
+    assert.deepEqual(job.progress, { total: 3, done: 2, failed: [0] })
+    assert.equal(used, 1)
+    existing = saved[0]!
+    job.requeue(now)
+    await run.execute(job)
+    assert.deepEqual(job.progress, { total: 3, done: 3, failed: [] })
+    assert.equal(used, 1)
+    assert.equal(calls, 4)
+    // A separate scan still needs an available quota unit.
+    const next = fridgeJob(['d'])
+    await run.execute(next)
+    assert.equal(next.status, 'failed')
+    assert.equal(next.errorType, 'ai_quota_exceeded')
+    assert.equal(calls, 4)
+  } finally {
+    GeminiFridgeScanExtractionAdapter.prototype.extract = original
+  }
+})
+
+test('a full retry after an unexpected error remembers the scan already counted', async ({
+  assert,
+}) => {
+  let calls = 0
+  let charged = 0
+  const { run } = setup([], {
+    resolveFridgeScanExtraction: async (_householdId, recorded) => ({
+      async extract() {
+        calls++
+        if (calls === 2) throw new Error('temporary failure')
+        if (!recorded) charged++
+        return { items: [item('Lait')] }
+      },
+    }),
+  })
+  const job = fridgeJob(['a', 'b'])
+  await run.execute(job)
+  assert.equal(job.status, 'queued')
+  assert.isNull(job.result)
+  assert.equal(charged, 1)
+  // Reconstruct as on the next worker run: progress resets, the persisted input does not.
+  const retry = Job.reconstruct(propsOf(job))
+  await run.execute(retry)
+  assert.equal(retry.status, 'succeeded')
+  assert.equal(charged, 1)
+  assert.equal(calls, 4)
+})

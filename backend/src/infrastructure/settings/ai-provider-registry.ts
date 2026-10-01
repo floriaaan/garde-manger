@@ -55,6 +55,7 @@ function createResolver<T>(
       quota: AiQuotaPort,
       clock: Clock,
       householdId: string | null,
+      usageAlreadyRecorded = false,
     ): Promise<T> {
       if (testOverride) return testOverride
 
@@ -67,14 +68,20 @@ function createResolver<T>(
       // than letting the adapter spend the operator's key on a call that
       // will never be billed back.
       const { access } = effective
-      if (access.plan !== 'self-hosted' && access.limit !== null && access.used >= access.limit) {
+      if (
+        !usageAlreadyRecorded &&
+        access.plan !== 'self-hosted' &&
+        access.limit !== null &&
+        access.used >= access.limit
+      ) {
         throw new AiQuotaExceededError(access.limit)
       }
 
       const cached = cache.get(provider) ?? build(provider)
       cache.set(provider, cached)
 
-      if (access.plan === 'self-hosted' || !householdId) return cached
+      // Remaining photos/retries belong to the scan whose first success was already charged.
+      if (usageAlreadyRecorded || access.plan === 'self-hosted' || !householdId) return cached
       return wrap(cached, () => quota.record(householdId, clock.now()))
     },
   }
@@ -190,6 +197,7 @@ export function resolveFridgeScanExtractionAdapter(
   quota: AiQuotaPort,
   clock: Clock,
   householdId: string | null,
+  usageAlreadyRecorded = false,
 ): Promise<FridgeScanExtractionPort> {
-  return fridgeScanExtraction.resolve(settings, quota, clock, householdId)
+  return fridgeScanExtraction.resolve(settings, quota, clock, householdId, usageAlreadyRecorded)
 }

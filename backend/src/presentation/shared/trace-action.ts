@@ -1,3 +1,12 @@
+import {
+  diagnosticAttributes,
+  errorCode,
+  errorStatus,
+  failureLevel,
+} from '#domain/shared/log-diagnostic'
+
+export const loggedExceptions = new WeakMap<object, object>()
+
 type LogFn = (mergingObject: Record<string, unknown>, message: string) => void
 
 /**
@@ -10,6 +19,8 @@ export interface ActionContext {
   authenticatedUser: { id: string } | null
   household: { id: string } | null | undefined
   params: Record<string, string | undefined>
+  request?: { id(): string | null | undefined }
+  response?: { getStatus(): number }
 }
 
 export interface TraceActionOptions<T> {
@@ -20,6 +31,8 @@ export interface TraceActionOptions<T> {
    * `fn` throws.
    */
   isError?: (result: T) => boolean
+  /** Escalate a refusal when this operation's context makes it unexpected. 5xx stays ERROR. */
+  failureLevel?: 'info' | 'warn' | 'error'
   /** Resolves the id of the entity the action produced/targeted, when it is not already the route's `:id` param. */
   entityId?: (result: T) => string | undefined
   /**
@@ -54,46 +67,57 @@ export async function traceAction<T>(
   const action = opts?.action ?? `${domain}.${toSnakeCase(useCase.name)}`
   const base = {
     action,
+    'app.operation': action,
+    request_id: ctx.request?.id(),
     useCase: useCase.name,
-    userId: ctx.authenticatedUser?.id,
-    householdId: ctx.household?.id,
     entityId: ctx.params.id,
   }
 
   try {
     const result = await fn()
     const failed = opts?.isError?.(result) ?? false
-    ctx.logger[failed ? 'warn' : 'info'](
+    const resultError =
+      failed && result && typeof result === 'object' && 'error' in result ? result.error : undefined
+    const code = failed
+      ? errorCode(resultError, `http_${ctx.response?.getStatus() ?? 400}`)
+      : undefined
+    const status = ctx.response?.getStatus() ?? 400
+    const level = failed
+      ? status >= 500
+        ? 'error'
+        : (opts?.failureLevel ?? failureLevel(code!, status))
+      : 'info'
+    ctx.logger[level](
       {
         ...base,
         entityId: base.entityId ?? opts?.entityId?.(result),
         durationMs: Math.round(performance.now() - startedAt),
         outcome: failed ? 'error' : 'success',
+        'event.outcome': failed ? (level === 'error' ? 'failure' : 'refused') : 'success',
+        'error.code': code,
+        ...(failed ? { 'http.response.status_code': status } : {}),
       },
       `action:${action}`,
     )
     return result
   } catch (error) {
-    // A routine 4xx (validation failure, the 401 `requireAuthenticatedUser`
-    // throws) is not the same kind of event as an unexpected 5xx — mirrors
-    // the exact status-resolution fallback chain `exception-handler.ts` uses
-    // for the same distinction, so a thrown error is classified identically
-    // whether it escapes to the client or only reaches this log line.
-    const status =
-      typeof (error as { status?: unknown })?.status === 'number'
-        ? (error as { status: number }).status
-        : typeof (error as { statusCode?: unknown })?.statusCode === 'number'
-          ? (error as { statusCode: number }).statusCode
-          : 500
-    ctx.logger[status < 500 ? 'warn' : 'error'](
+    const status = errorStatus(error) ?? 500
+    const code = errorCode(error, 'unexpected_error')
+    const level = status >= 500 ? 'error' : (opts?.failureLevel ?? failureLevel(code, status))
+    ctx.logger[level](
       {
         ...base,
         durationMs: Math.round(performance.now() - startedAt),
         outcome: 'error',
-        errorType: error instanceof Error ? error.constructor.name : 'unknown',
+        'event.outcome': level === 'error' ? 'failure' : 'refused',
+        'error.code': code,
+        'http.response.status_code': status,
+        errorType: diagnosticAttributes(error)['exception.type'],
+        ...(level === 'error' ? diagnosticAttributes(error) : {}),
       },
       `action:${action}`,
     )
+    if (error && typeof error === 'object') loggedExceptions.set(error, ctx)
     throw error
   }
 }

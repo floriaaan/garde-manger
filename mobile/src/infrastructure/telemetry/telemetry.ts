@@ -1,3 +1,4 @@
+import { diagnosticAttributes, errorCode, errorStatus, failureLevel, LOG_SIGNAL_ATTRIBUTES, safeAttribute, safeOperation } from '../../domain/shared/log-diagnostic.js'
 import { AppState, type AppStateStatus } from 'react-native'
 import { newSpanId, newTraceId, toTraceparent } from './ids.js'
 import { buildResource, intAttribute, stringAttribute, type OtlpAttribute } from './resource.js'
@@ -62,10 +63,12 @@ function toAttributes(input: Record<string, AttributeValue> | undefined): OtlpAt
   if (!input) return []
   const out: OtlpAttribute[] = []
   for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || value === null) continue
-    if (typeof value === 'number') out.push(intAttribute(key, Math.round(value)))
+    if (value === undefined || value === null || !LOG_SIGNAL_ATTRIBUTES.has(key)) continue
+    if (typeof value === 'number') {
+      if (Number.isFinite(value)) out.push(intAttribute(key, Math.round(value)))
+    }
     else if (typeof value === 'boolean') out.push({ key, value: { boolValue: value } })
-    else out.push(stringAttribute(key, value))
+    else out.push(stringAttribute(key, safeAttribute(key, value)))
   }
   return out
 }
@@ -151,10 +154,13 @@ class MobileTelemetry {
           this.enqueueSpan({
             traceId,
             spanId,
-            name,
+            name: safeOperation(name),
             startTimeUnixNano: nanos(startedAt),
             endTimeUnixNano: nanos(Date.now()),
-            attributes: toAttributes({ ...attributes, ...outcome?.attributes }),
+            attributes: toAttributes({
+              ...attributes, ...outcome?.attributes,
+              ...(failed ? { 'error.code': errorCode(outcome?.error), ...diagnosticAttributes(outcome?.error) } : {}),
+            }),
             status: failed ? { code: 2 } : undefined,
           })
         } catch {
@@ -170,33 +176,52 @@ class MobileTelemetry {
    * line up in one view.
    */
   recordError(
-    message: string,
+    _message: string,
     options?: {
       error?: unknown
       span?: Pick<SpanHandle, 'traceId' | 'spanId'>
       attributes?: Record<string, AttributeValue>
+      level?: 'info' | 'warn' | 'error'
     },
   ): void {
     try {
-      const errorType =
-        options?.error instanceof Error ? options.error.name : options?.error ? 'unknown' : undefined
-      this.enqueueLog({
+      const attributes = options?.attributes
+      const code = errorCode(
+        typeof options?.error === 'string' ? undefined : options?.error,
+        errorCode({ code: attributes?.['error.code'] ?? attributes?.['error.type'] }),
+      )
+      const status = typeof attributes?.['http.response.status_code'] === 'number'
+        ? attributes['http.response.status_code'] : errorStatus(options?.error)
+      const level = status !== undefined && status >= 500 ? 'error' : options?.level ?? failureLevel(code, status)
+      const log: QueuedLog = {
         timeUnixNano: nanos(Date.now()),
-        severityText: 'ERROR',
-        severityNumber: 17,
-        body: { stringValue: message.slice(0, 2_048) },
-        // `errorType` only overrides a caller-supplied `error.type` when it is
-        // actually known — otherwise spreading `undefined` last would erase
-        // an `attributes['error.type']` the caller already computed (e.g.
-        // http-client.ts's business-error call sites, which pass a known
-        // `error.type` string but no `options.error`).
+        severityText: level.toUpperCase(),
+        severityNumber: { info: 9, warn: 13, error: 17 }[level],
+        body: { stringValue: 'operation failed' },
         attributes: toAttributes({
-          ...options?.attributes,
-          ...(errorType !== undefined ? { 'error.type': errorType } : null),
+          ...attributes,
+          'app.operation': attributes?.['app.operation'] ?? attributes?.action ?? 'unspecified',
+          'event.outcome': level === 'error' ? 'failure' : 'refused',
+          'error.code': code,
+          'error.type': code,
+          'event.occurrences': 1,
+          'http.response.status_code': status,
+          ...(options?.error !== undefined && level === 'error' ? diagnosticAttributes(options.error) : {}),
         }),
         traceId: options?.span?.traceId,
         spanId: options?.span?.spanId,
-      })
+      }
+      // A safe local diagnostic remains available when OTLP is disabled.
+      if (level === 'error') {
+        const flatten = (items: OtlpAttribute[]) => Object.fromEntries(
+          items.map(({ key, value }) => [key, Object.values(value)[0]]),
+        )
+        console.error('operation failed', {
+          ...flatten(buildResource().attributes), ...flatten(log.attributes),
+          trace_id: log.traceId, span_id: log.spanId,
+        })
+      }
+      this.enqueueLog(log)
     } catch {
       // Same contract as above.
     }
@@ -214,6 +239,22 @@ class MobileTelemetry {
 
   private enqueueLog(log: QueuedLog): void {
     if (this.stopped) return
+    if (log.severityText === 'INFO') {
+      const signature = (entry: QueuedLog) => JSON.stringify(
+        ['app.operation', 'error.code', 'http.response.status_code', 'entity.id'].map(
+          (key) => entry.attributes.find((attribute) => attribute.key === key)?.value,
+        ),
+      )
+      const previous = this.logs.find((entry) => entry.severityText === 'INFO'
+        && Number(log.timeUnixNano) - Number(entry.timeUnixNano) < FLUSH_INTERVAL_MS * 1e6
+        && signature(entry) === signature(log))
+      if (previous) {
+        const count = previous.attributes.find((attribute) => attribute.key === 'event.occurrences')
+        if (count && 'intValue' in count.value) count.value.intValue += 1
+        // Preserve the representative first trace; all HTTP spans remain distinct.
+        return
+      }
+    }
     if (this.logs.length >= MAX_QUEUE) {
       this.logs.shift()
       this.dropped += 1
@@ -238,6 +279,8 @@ class MobileTelemetry {
 
     try {
       const results: boolean[] = []
+      let tracesSent = spans.length === 0
+      let logsSent = logs.length === 0
       if (spans.length > 0) {
         results.push(
           await this.post('traces', {
@@ -245,6 +288,7 @@ class MobileTelemetry {
           }),
         )
       }
+      tracesSent = spans.length === 0 || results[0] === true
       if (logs.length > 0) {
         results.push(
           await this.post('logs', {
@@ -253,15 +297,15 @@ class MobileTelemetry {
         )
       }
 
+      logsSent = logs.length === 0 || results[results.length - 1] === true
       if (results.every(Boolean)) {
         this.consecutiveFailures = 0
         this.retryNotBefore = 0
       } else {
-        // One re-queue attempt, at the front, then the backoff decides. The
-        // batch is never retried forever: a phone on a train would otherwise
-        // spend its battery on a collector it cannot reach.
-        this.spans.unshift(...spans.slice(0, MAX_QUEUE - this.spans.length))
-        this.logs.unshift(...logs.slice(0, MAX_QUEUE - this.logs.length))
+        // Requeue only failed signals; the queue ceiling and exponential
+        // backoff bound memory and radio use. Successful exports never repeat.
+        if (!tracesSent) this.spans.unshift(...spans.slice(0, MAX_QUEUE - this.spans.length))
+        if (!logsSent) this.logs.unshift(...logs.slice(0, MAX_QUEUE - this.logs.length))
         this.consecutiveFailures += 1
         this.retryNotBefore =
           Date.now() + Math.min(FLUSH_INTERVAL_MS * 2 ** this.consecutiveFailures, MAX_BACKOFF_MS)

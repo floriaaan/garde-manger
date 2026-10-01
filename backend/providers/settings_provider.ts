@@ -72,8 +72,14 @@ export default class SettingsProvider {
       const aiSettingsProvider = await this.app.container.make('settings.aiSettingsProvider')
       const quota = await this.app.container.make('settings.aiQuota')
       const clock = await this.app.container.make('shared.clock')
-      return (householdId: string | null) =>
-        resolveFridgeScanExtractionAdapter(aiSettingsProvider, quota, clock, householdId)
+      return (householdId: string | null, usageAlreadyRecorded = false) =>
+        resolveFridgeScanExtractionAdapter(
+          aiSettingsProvider,
+          quota,
+          clock,
+          householdId,
+          usageAlreadyRecorded,
+        )
     })
   }
 }
@@ -93,6 +99,7 @@ declare module '@adonisjs/core/types' {
     ) => Promise<RecipeGenerationPort>
     'settings.resolveFridgeScanExtractionPort': (
       householdId: string | null,
+      usageAlreadyRecorded?: boolean,
     ) => Promise<FridgeScanExtractionPort>
   }
 }

@@ -1,3 +1,10 @@
+import {
+  diagnosticAttributes,
+  errorCode,
+  errorStatus,
+  failureLevel,
+} from '#domain/shared/log-diagnostic'
+import { loggedExceptions } from './trace-action.js'
 import app from '@adonisjs/core/services/app'
 import { ExceptionHandler as BaseExceptionHandler } from '@adonisjs/core/http'
 
@@ -23,6 +30,27 @@ type RenderValidationErrorAsJSON = BaseExceptionHandler['renderValidationErrorAs
  */
 export class HttpExceptionHandler extends BaseExceptionHandler {
   protected debug = !app.inProduction
+
+  async report(error: unknown, ctx: Parameters<BaseExceptionHandler['report']>[1]) {
+    if (error && typeof error === 'object' && loggedExceptions.get(error) === ctx) return
+    if (!this.shouldReport(this.toHttpError(error))) return
+    const status = errorStatus(error) ?? 500
+    const code = errorCode(error)
+    const level = failureLevel(code, status)
+    ctx.logger[level](
+      {
+        'app.operation': (ctx.request.url().split('?')[0] ?? '').startsWith('/api/auth/get-session')
+          ? 'identity.get_session'
+          : `${ctx.request.method()} ${ctx.route?.pattern ?? 'unmatched_route'}`,
+        request_id: ctx.request.id(),
+        'event.outcome': level === 'error' ? 'failure' : 'refused',
+        'error.code': code,
+        'http.response.status_code': status,
+        ...(level === 'error' ? diagnosticAttributes(error) : {}),
+      },
+      'request failed',
+    )
+  }
 
   async renderErrorAsJSON(...args: Parameters<RenderErrorAsJSON>): ReturnType<RenderErrorAsJSON> {
     const [error, ctx] = args

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import { traceAction, type ActionContext } from '#presentation/shared/trace-action'
 
@@ -29,8 +30,8 @@ test.group('traceAction', () => {
     assert.equal(calls[0]?.msg, 'action:fridge.list_products')
     assert.equal(calls[0]?.obj.action, 'fridge.list_products')
     assert.equal(calls[0]?.obj.useCase, 'ListProducts')
-    assert.equal(calls[0]?.obj.userId, 'user-1')
-    assert.equal(calls[0]?.obj.householdId, 'household-1')
+    assert.isUndefined(calls[0]?.obj.userId)
+    assert.isUndefined(calls[0]?.obj.householdId)
     assert.equal(calls[0]?.obj.outcome, 'success')
     assert.isNumber(calls[0]?.obj.durationMs)
   })
@@ -122,4 +123,55 @@ test.group('traceAction', () => {
     assert.equal(calls[0]?.obj.useCase, 'ListProducts')
     assert.equal(calls[0]?.msg, 'action:fridge.get_products')
   })
+})
+
+test('expected household refusals are info and keep their stable code', async ({ assert }) => {
+  for (const code of ['no_household', 'owner_cannot_leave']) {
+    const { ctx, calls } = fakeContext()
+    const result = { ok: false, error: code }
+    assert.strictEqual(
+      await traceAction(ctx, 'identity', { name: 'LeaveHousehold' }, async () => result, {
+        isError: (value) => !value.ok,
+      }),
+      result,
+    )
+    assert.equal(calls[0]?.level, 'info')
+    assert.equal(calls[0]?.obj['error.code'], code)
+    assert.equal(calls[0]?.obj['event.outcome'], 'refused')
+  }
+})
+
+test('a thrown 401 is info; a structured 503 retains technical diagnostics', async ({ assert }) => {
+  for (const status of [401, 503]) {
+    const { ctx, calls } = fakeContext()
+    const error = {
+      code: status === 401 ? 'unauthenticated' : 'session_resolution_failed',
+      statusCode: status,
+      message: 'password=secret alice@example.com',
+      cause: new Error('fetch failed'),
+    }
+    try {
+      await traceAction(ctx, 'identity', { name: 'GetSession' }, async () => {
+        throw error
+      })
+    } catch (caught) {
+      assert.strictEqual(caught, error)
+    }
+    assert.equal(calls[0]?.level, status === 401 ? 'info' : 'error')
+    assert.equal(calls[0]?.obj['http.response.status_code'], status)
+    assert.notInclude(JSON.stringify(calls), 'secret')
+    assert.notInclude(JSON.stringify(calls), 'alice@example.com')
+    if (status === 503) assert.include(String(calls[0]?.obj['exception.cause']), 'fetch failed')
+  }
+})
+
+test('mobile and backend logging conventions stay identical', async ({ assert }) => {
+  const [backend, mobile] = await Promise.all([
+    readFile(new URL('../../../../src/domain/shared/log-diagnostic.ts', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../../../../../mobile/src/domain/shared/log-diagnostic.ts', import.meta.url),
+      'utf8',
+    ),
+  ])
+  assert.equal(backend, mobile)
 })

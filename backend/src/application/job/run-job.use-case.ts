@@ -29,10 +29,12 @@ export interface RunJobDeps {
   products: ProductRepository
   idGenerator: IdGenerator
   clock: Clock
-  // Resolved per unit, not once per job: the resolver is also where the monthly
-  // quota is checked, and it must see the calls this very job already made.
+  // Receipt/recipe quota is per call; a fridge scan is billed only on its first successful photo.
   resolveReceiptExtraction: (householdId: string) => Promise<ReceiptExtractionPort>
-  resolveFridgeScanExtraction: (householdId: string) => Promise<FridgeScanExtractionPort>
+  resolveFridgeScanExtraction: (
+    householdId: string,
+    usageAlreadyRecorded?: boolean,
+  ) => Promise<FridgeScanExtractionPort>
   resolveRecipeGeneration: (householdId: string) => Promise<RecipeGenerationPort>
   unitTimeoutMs: number
   draftTtlHours: number
@@ -108,6 +110,7 @@ export class RunJob {
         if (isFatal(outcome.error)) break
         continue
       }
+      if (job.kind === 'fridge_scan') job.input.aiUsageRecorded = true
       job.recordUnit(index, true)
       if (job.kind === 'receipt_scan') receiptDraft = outcome.value as ReceiptDraft
       else fridgeItems.push(...(outcome.value as FridgeScanDraft).items)
@@ -154,7 +157,10 @@ export class RunJob {
     const image = key ? await this.deps.storage.read(key) : null
     if (!image) return Result.err('extraction_failed')
     return this.attempt(async () => {
-      const extraction = await this.deps.resolveFridgeScanExtraction(job.householdId)
+      const extraction = await this.deps.resolveFridgeScanExtraction(
+        job.householdId,
+        job.input.aiUsageRecorded === true || job.progress.done > 0,
+      )
       return new ScanFridge(extraction).execute({ image: image.buffer })
     }, 'extraction_failed')
   }

@@ -19,6 +19,7 @@ jest.mock('../auth/auth-client.js', () => ({
     // cookie — unrelated to what most tests in this file exercise, but
     // still awaited on every request, so it needs a resolved value here.
     getCookie: jest.fn().mockResolvedValue(''),
+    getSession: jest.fn(),
   },
 }))
 
@@ -484,4 +485,41 @@ describe('authentication integrations', () => {
       ok: false, error: { type: 'ERROR_CEREMONY_ABORTED', message: 'Cancelled' },
     })
   })
+})
+
+
+test('session retrieval propagates traceparent and keeps a structured auth failure code', async () => {
+  const span = { traceId: 'a'.repeat(32), spanId: 'b'.repeat(16), traceparent: `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`, end: jest.fn() }
+  const start = jest.spyOn(telemetry, 'startClientSpan').mockReturnValue(span)
+  const report = jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
+  ;(authClient.getSession as jest.Mock).mockImplementationOnce(async ({ fetchOptions }) => {
+    fetchOptions.onResponse({ response: { headers: new Headers({ 'x-request-id': 'session-request-123' }) } })
+    return { error: { code: 'SERVICE_UNAVAILABLE', status: 503 } }
+  })
+  expect(await new HttpFridgeConnector().getSession()).toBeNull()
+  expect(authClient.getSession).toHaveBeenLastCalledWith(expect.objectContaining({ fetchOptions: expect.objectContaining({
+    headers: { traceparent: span.traceparent }, signal: expect.any(AbortSignal),
+  }) }))
+  expect(report).toHaveBeenLastCalledWith('identity.get_session failed', expect.objectContaining({
+    span, error: expect.objectContaining({ code: 'SERVICE_UNAVAILABLE' }),
+    attributes: expect.objectContaining({ 'app.operation': 'identity.get_session', 'error.code': 'session_http_503', request_id: 'session-request-123' }),
+  }))
+  start.mockRestore()
+  report.mockRestore()
+})
+
+test('session timeout has its own code and retains the aborted request as cause', async () => {
+  jest.useFakeTimers()
+  const report = jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
+  ;(authClient.getSession as jest.Mock).mockImplementationOnce(({ fetchOptions }) => new Promise((resolve) => {
+    fetchOptions.signal.addEventListener('abort', () => resolve({ error: { name: 'AbortError' } }))
+  }))
+  const request = new HttpFridgeConnector().getSession()
+  await jest.advanceTimersByTimeAsync(5000)
+  expect(await request).toBeNull()
+  expect(report).toHaveBeenLastCalledWith('identity.get_session failed', expect.objectContaining({
+    error: expect.objectContaining({ code: 'session_timeout', cause: { name: 'AbortError' } }),
+  }))
+  report.mockRestore()
+  jest.useRealTimers()
 })
