@@ -352,7 +352,10 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   }
                   style={[{ flex: 1 }, pointerCursor]}
                 >
-                  <YStack flex={1}>
+                  {/* Keep the greeting's intrinsic height: flex={1} gives
+                      this column a zero basis on web, so its text can spill
+                      below the header while the mascot stays centred. */}
+                  <YStack>
                     {/* `body` (14/500) over `title` (20/800) — DESIGN.md's own
                         in-app scale, not bumped: this screen is a dense view,
                         the one place DESIGN.md keeps `display` (24/800) away
