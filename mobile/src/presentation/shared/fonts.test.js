@@ -1,4 +1,4 @@
-/** @jest-environment node */
+/* global describe, it, expect, __dirname */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -11,7 +11,7 @@ describe('self-hosted web fonts', () => {
     for (const face of faces) {
       const url = face.match(/url\('([^']+)'\)/)?.[1]
       expect(url).toMatch(/^\/fonts\/[^/]+\.woff2$/)
-      const asset = readFileSync(resolve(__dirname, '../../..', 'public', url!.slice(1)))
+      const asset = readFileSync(resolve(__dirname, '../../..', 'public', url.slice(1)))
       expect(asset.subarray(0, 4).toString('ascii')).toBe('wOF2')
     }
   })
