@@ -75,6 +75,8 @@ function DarkSurface({ testID, palette, children }: { testID: string; palette: S
       overflow="hidden"
       backgroundColor={palette.brandDeep}
       style={{
+        // Anchor the absolute mascot and glow to this card on web too.
+        position: 'relative',
         borderTopLeftRadius: 36,
         borderTopRightRadius: 20,
         borderBottomRightRadius: 36,
