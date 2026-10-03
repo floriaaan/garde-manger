@@ -15,6 +15,7 @@
  * rhythm the StatCards and the settings rows already have.
  */
 import type { ReactNode } from 'react'
+import { Platform } from 'react-native'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 import { BackButton } from './back-button.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -65,7 +66,7 @@ export function ScreenHeader({
               how a non-visual user finds their place on a long list. */}
           {/* Two lines: at 200% text, "Envie de quoi ?" no longer fits one line
               between the icon and a trailing button. */}
-          <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={2} role="heading">
+          <Text fontFamily={Platform.OS === 'web' ? '$heading' : undefined} fontSize={20} fontWeight={Platform.OS === 'web' ? '600' : '800'} color={palette.ink} numberOfLines={2} role="heading">
             {title}
           </Text>
           {subtitle ? (
