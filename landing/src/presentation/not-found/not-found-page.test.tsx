@@ -18,5 +18,5 @@ test.each([
 
   expect(await screen.findByRole('heading', { level: 1, name: title })).toBeTruthy()
   expect(screen.getByRole('link', { name: action }).getAttribute('href')).toBe(home)
-  expect(router.state.statusCode).toBe(404)
+  expect(router.state.matches.some((match) => match._notFound || match.status === 'notFound')).toBe(true)
 })

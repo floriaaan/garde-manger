@@ -45,8 +45,11 @@ pnpm test src/presentation/not-found/not-found-page.test.tsx
 
 ## Limite de la vérification dans ce worktree
 
-Les dépendances mobile et landing sont absentes. Les tests, captures sur appareils
-et requêtes au serveur SSR n’ont donc pas été exécutés. La revue statique couvre
-le branchement des replis, les destinations, les safe areas, le défilement,
-les thèmes, la sémantique et les règles CSS responsive ; elle ne confirme pas
-le statut HTTP servi par un déploiement ni le rendu sur appareil.
+Les commandes `task mobile:check` et `task landing:check` passent localement.
+La landing exécute 9 tests ; les 4 tests mobiles ciblés ci-dessus passent aussi
+(les tests mobiles sont actuellement désactivés dans `mobile:check`).
+Le test landing vérifie l’état « not found » du routeur, pas une réponse HTTP.
+Les captures sur appareils et les requêtes au serveur SSR n’ont pas été exécutées.
+La revue statique couvre les safe areas, le défilement, les thèmes, la sémantique
+et les règles CSS responsive ; elle ne confirme pas le statut HTTP servi par
+un déploiement ni le rendu sur appareil.
