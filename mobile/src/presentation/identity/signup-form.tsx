@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { View, useWindowDimensions, type TextInput } from 'react-native'
+import { Platform, View, useWindowDimensions, type TextInput } from 'react-native'
 import zxcvbn from 'zxcvbn'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -17,7 +17,8 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const palette = useSoftPalette()
   const { keyboardOpen, availableHeight } = useAuthEntryLayout()
   const { fontScale } = useWindowDimensions()
-  const compactForm = availableHeight > 0 && availableHeight < (keyboardOpen ? 470 : 740) * fontScale
+  // Keep every web field in the tab order, including on short windows.
+  const compactForm = Platform.OS !== 'web' && availableHeight > 0 && availableHeight < (keyboardOpen ? 470 : 740) * fontScale
   const [field, setField] = useState<'name' | 'email' | 'password'>('name')
   const nameRef = useRef<TextInput>(null)
   const emailRef = useRef<TextInput>(null)

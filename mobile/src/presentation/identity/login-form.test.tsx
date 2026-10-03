@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -82,4 +83,26 @@ test('short-screen login preserves e-mail when returning from the password step'
   await fireEvent.changeText(screen.getByTestId('login-password'), 'correct-horse-battery-staple')
   await fireEvent.press(screen.getByTestId('login-submit'))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+})
+
+
+test('short web windows keep all fields visible and editable for keyboard navigation', async () => {
+  jest.replaceProperty(Platform, 'OS', 'web')
+  try {
+    await renderWithProviders(
+      <AuthEntryLayoutContext.Provider value={{ keyboardOpen: false, heroSpace: null, availableHeight: 400 }}>
+        <LoginForm onSuccess={jest.fn()} />
+      </AuthEntryLayoutContext.Provider>,
+    )
+    expect(screen.getByTestId('login-email')).toBeVisible()
+    await fireEvent(screen.getByTestId('login-email'), 'focus', { nativeEvent: {} })
+    await fireEvent.changeText(screen.getByTestId('login-email'), 'alice@example.com')
+    expect(screen.getByTestId('login-email').props.value).toBe('alice@example.com')
+    expect(screen.getByTestId('login-password')).toBeVisible()
+    await fireEvent(screen.getByTestId('login-password'), 'focus', { nativeEvent: {} })
+    await fireEvent.changeText(screen.getByTestId('login-password'), 'correct-horse-battery-staple')
+    expect(screen.getByTestId('login-password').props.value).toBe('correct-horse-battery-staple')
+  } finally {
+    jest.restoreAllMocks()
+  }
 })

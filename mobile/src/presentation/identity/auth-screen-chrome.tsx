@@ -92,27 +92,34 @@ export function AuthScreenChrome({ maxWidth, overlay, hero, children }: {
 
   const heroSpace = frameHeight ? Math.max(0, frameHeight - (split ? 0 : contentHeight) - 12) : null
 
-  return (
-    <AuthGardenContext.Provider value={colors}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={{ flex: 1, minHeight: 0, backgroundColor: sharedBackground ? 'transparent' : colors.ground }}>
-        <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['bottom', 'left', 'right']}>
-          <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <AuthEntryLayoutContext.Provider value={{ keyboardOpen, heroSpace, availableHeight: frameHeight }}>
-              <View onLayout={({ nativeEvent }) => setFrameHeight(nativeEvent.layout.height)} style={{ flex: 1, minHeight: 0, alignItems: 'center', justifyContent: keyboardOpen ? 'flex-end' : wide ? 'center' : 'flex-start', paddingHorizontal: wide ? 32 : 0, paddingBottom: 12 }}>
-                <View style={{ width: '100%', maxWidth: split ? 1040 : 600, flexDirection: split && !keyboardOpen ? 'row' : 'column', alignItems: 'stretch' }}>
-                  {!keyboardOpen ? <View style={split ? { width: '50%', minWidth: 0, flexShrink: 1, alignSelf: 'center' } : undefined}>{hero ?? <AuthGardenHero compact />}</View> : null}
-                  <View onLayout={({ nativeEvent }) => setContentHeight(nativeEvent.layout.height)} style={{ ...(split && !keyboardOpen ? { width: '50%' as const, minWidth: 0, flexShrink: 1 } : { width: '100%' as const }), maxWidth: maxWidth + 52, alignSelf: 'center', paddingHorizontal: 26, paddingTop: keyboardOpen ? insets.top + 8 : split ? 40 : 4, paddingBottom: 8, gap: keyboardOpen ? 8 : 16 }}>
-                    {children}
-                  </View>
+  const content = (
+    <View style={{ flex: 1, minHeight: 0, backgroundColor: sharedBackground ? 'transparent' : colors.ground }}>
+      <SafeAreaView style={{ flex: 1, minHeight: 0 }} edges={['bottom', 'left', 'right']}>
+        <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <AuthEntryLayoutContext.Provider value={{ keyboardOpen, heroSpace, availableHeight: frameHeight }}>
+            <View onLayout={({ nativeEvent }) => setFrameHeight(nativeEvent.layout.height)} style={{ flex: 1, minHeight: 0, alignItems: 'center', justifyContent: keyboardOpen ? 'flex-end' : wide ? 'center' : 'flex-start', paddingHorizontal: wide ? 32 : 0, paddingBottom: 12 }}>
+              <View style={{ width: '100%', maxWidth: split ? 1040 : 600, flexDirection: split && !keyboardOpen ? 'row' : 'column', alignItems: 'stretch' }}>
+                {!keyboardOpen ? <View style={split ? { width: '50%', minWidth: 0, flexShrink: 1, alignSelf: 'center' } : undefined}>{hero ?? <AuthGardenHero compact />}</View> : null}
+                <View onLayout={({ nativeEvent }) => setContentHeight(nativeEvent.layout.height)} style={{ ...(split && !keyboardOpen ? { width: '50%' as const, minWidth: 0, flexShrink: 1 } : { width: '100%' as const }), maxWidth: maxWidth + 52, alignSelf: 'center', paddingHorizontal: 26, paddingTop: keyboardOpen ? insets.top + 8 : split ? 40 : 4, paddingBottom: 8, gap: keyboardOpen ? 8 : 16 }}>
+                  {children}
                 </View>
               </View>
-            </AuthEntryLayoutContext.Provider>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-        {overlay}
-      </View>
-      </TouchableWithoutFeedback>
+            </View>
+          </AuthEntryLayoutContext.Provider>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+      {overlay}
+    </View>
+  )
+
+  return (
+    <AuthGardenContext.Provider value={colors}>
+      {/* On web, descendant input clicks bubble here and dismiss blurs the input. */}
+      {Platform.OS === 'web' ? content : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          {content}
+        </TouchableWithoutFeedback>
+      )}
     </AuthGardenContext.Provider>
   )
 }
