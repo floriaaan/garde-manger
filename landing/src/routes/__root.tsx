@@ -5,6 +5,7 @@ import { HeadContent, Outlet, Scripts, createRootRouteWithContext, useRouterStat
 import type { LandingConnector } from '../domain/interfaces/landing-connector.js'
 import { SITE_URL, absoluteUrl } from '../lib/seo.js'
 import appCss from '../styles/app.css?url'
+import { NotFoundPage } from '../presentation/not-found/not-found-page.js'
 
 const TITLE = 'Garde-manger — le frigo partagé du foyer, auto-hébergé'
 const DESCRIPTION =
@@ -26,6 +27,7 @@ export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
   connector: LandingConnector
 }>()({
+  notFoundComponent: NotFoundPage,
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -62,7 +64,7 @@ function RootDocument({ children }: { children: ReactNode }) {
   // rather than from loader data (each locale is its own route: '/' is fr,
   // '/en' is en — cf. routes/index.tsx and routes/en.tsx).
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const lang = pathname.startsWith('/en') ? 'en' : 'fr'
+  const lang = pathname === '/en' || pathname.startsWith('/en/') ? 'en' : 'fr'
 
   return (
     <html lang={lang}>
