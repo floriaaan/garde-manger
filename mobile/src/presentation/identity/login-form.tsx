@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, useWindowDimensions, type TextInput } from 'react-native'
+import { Platform, View, useWindowDimensions, type TextInput } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { Pressable } from '../shared/pressable.js'
 import { pointerCursor } from '../shared/hover.js'
@@ -20,7 +20,8 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const palette = useSoftPalette()
   const { keyboardOpen, availableHeight } = useAuthEntryLayout()
   const { fontScale } = useWindowDimensions()
-  const compactForm = availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale
+  // Keep every web field in the tab order, including on short windows.
+  const compactForm = Platform.OS !== 'web' && availableHeight > 0 && availableHeight < (keyboardOpen ? 410 : 560) * fontScale
   const [field, setField] = useState<'email' | 'password'>('email')
   const emailRef = useRef<TextInput>(null)
   const passwordRef = useRef<TextInput>(null)

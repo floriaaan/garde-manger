@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -79,4 +80,30 @@ test('short-screen field progression preserves the draft and submits only the co
   await fireEvent.changeText(screen.getByTestId('signup-password'), 'correct-horse-battery-staple')
   await fireEvent.press(screen.getByTestId('signup-submit'))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+})
+
+
+test('short web windows keep all fields visible and editable for keyboard navigation', async () => {
+  jest.replaceProperty(Platform, 'OS', 'web')
+  try {
+    await renderWithProviders(
+      <AuthEntryLayoutContext.Provider value={{ keyboardOpen: false, heroSpace: null, availableHeight: 600 }}>
+        <SignupForm onSuccess={jest.fn()} />
+      </AuthEntryLayoutContext.Provider>,
+    )
+    expect(screen.getByTestId('signup-name')).toBeVisible()
+    await fireEvent(screen.getByTestId('signup-name'), 'focus', { nativeEvent: {} })
+    await fireEvent.changeText(screen.getByTestId('signup-name'), 'Alice')
+    expect(screen.getByTestId('signup-name').props.value).toBe('Alice')
+    expect(screen.getByTestId('signup-email')).toBeVisible()
+    await fireEvent(screen.getByTestId('signup-email'), 'focus', { nativeEvent: {} })
+    await fireEvent.changeText(screen.getByTestId('signup-email'), 'alice@example.com')
+    expect(screen.getByTestId('signup-email').props.value).toBe('alice@example.com')
+    expect(screen.getByTestId('signup-password')).toBeVisible()
+    await fireEvent(screen.getByTestId('signup-password'), 'focus', { nativeEvent: {} })
+    await fireEvent.changeText(screen.getByTestId('signup-password'), 'correct-horse-battery-staple')
+    expect(screen.getByTestId('signup-password').props.value).toBe('correct-horse-battery-staple')
+  } finally {
+    jest.restoreAllMocks()
+  }
 })
