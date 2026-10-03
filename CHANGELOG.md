@@ -4,6 +4,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+## [1.0.0-rc.4]
+
+### Added
+- Configurable household expiry reminders, with windows of 0, 1, 2, 3 or 7 days and a daily digest.
+- Web Push notifications on supported browsers, with VAPID configuration and PWA assets for the self-hosted web app.
+- Dedicated not-found pages on the landing site and in the app, with recovery links for unknown routes and deep links.
+- Landing-page links to the web app, TestFlight and Google Play beta.
+- Bundled Plus Jakarta Sans and Spectral fonts for the self-hosted web app.
+
+### Changed
+- Redesigned welcome, authentication, server selection and household setup with explicit sign-in/sign-up and join/create paths.
+- Authentication and onboarding share an animated garden background, transitions with reduced-motion support, refreshed illustrations and loading screens.
+- Refreshed landing-page branding and food illustrations, app splash typography and App Store screenshots.
+- Backend and mobile diagnostics now sanitize sensitive data, correlate requests and include build metadata; observability configuration and documentation have been updated.
+
+### Fixed
+- A fridge scan consumes one AI quota unit for the whole scan, including multiple photos and resumed jobs.
+- Web login and sign-up fields retain focus and keyboard navigation, and remain visible in short windows.
+- Dashboard greeting text and AI card illustrations stay correctly aligned.
+- Expiry-reminder validation accepts all supported windows, and settings no longer render errors while reminder preferences are loading.
+- Missing web font assets return a 404 instead of the app's HTML fallback.
+
 ## [1.0.0-rc.3]
 
 ### Added
@@ -60,7 +82,8 @@ First release candidate.
 - Install guide: minimal compose file, secrets in a `.env`, HTTPS with Caddy, versioned updates with a backup step.
 - Application id is now `com.floriaaan.gardemanger` on iOS and Android.
 
-[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.4...HEAD
+[1.0.0-rc.4]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.2...1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.1...1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/floriaaan/garde-manger/releases/tag/1.0.0-rc.1
