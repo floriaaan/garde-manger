@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode, Ref } from 'react'
-import { TextInput, View, type TextInputProps } from 'react-native'
+import { Platform, TextInput, View, type TextInputProps } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { Pressable } from '../shared/pressable.js'
@@ -51,6 +51,7 @@ export function AuthField({
             paddingRight: trailingAction ? 56 : 16,
             paddingVertical: 12,
             fontSize: 14,
+            fontFamily: Platform.OS === 'web' ? '"Plus Jakarta Sans", system-ui, sans-serif' : undefined,
             color: palette.ink,
             backgroundColor: garden ? 'transparent' : palette.cream,
             borderWidth: 2,

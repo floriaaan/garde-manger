@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { TextInput, type KeyboardTypeOptions, type TextInputProps } from 'react-native'
+import { Platform, TextInput, type KeyboardTypeOptions, type TextInputProps } from 'react-native'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
@@ -90,6 +90,7 @@ export function FormField({
           paddingHorizontal: 12,
           paddingVertical: 10,
           fontSize: 15,
+          fontFamily: Platform.OS === 'web' ? '"Plus Jakarta Sans", system-ui, sans-serif' : undefined,
           color: palette.ink,
           backgroundColor: surface === 'card' ? palette.creamPill : palette.cream,
           borderWidth: 2,

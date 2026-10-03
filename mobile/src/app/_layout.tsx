@@ -1,3 +1,4 @@
+import '../presentation/shared/fonts.css'
 import { Stack, router } from 'expo-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'

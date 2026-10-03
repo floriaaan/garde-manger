@@ -12,7 +12,7 @@
  * the usual cause is a stale URL).
  */
 import { useEffect, useState } from 'react'
-import { Image, Text as NativeText, useWindowDimensions } from 'react-native'
+import { Image, Platform, Text as NativeText, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useFonts } from 'expo-font'
@@ -43,9 +43,9 @@ export function BootSplash() {
   const imageWidth = Math.min(compact ? 190 : 240, width - 52)
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
-  // DESIGN.md's target family; the rest of the app is still on the system stack, so it is loaded here for the wordmark and title only.
-  const [fontLoaded] = useFonts({ PlusJakartaSans_800ExtraBold })
-  const brandFont = fontLoaded ? 'PlusJakartaSans_800ExtraBold' : undefined
+  // Web uses the shared variable face, with its actual 800 weight.
+  const [fontLoaded] = useFonts(Platform.OS === 'web' ? {} : { PlusJakartaSans_800ExtraBold })
+  const brandFont = Platform.OS === 'web' ? '"Plus Jakarta Sans", system-ui, sans-serif' : fontLoaded ? 'PlusJakartaSans_800ExtraBold' : undefined
   const [stalled, setStalled] = useState(false)
   const [retrying, setRetrying] = useState(false)
   // A successful retry unmounts the splash (the gate lets the app through), so
@@ -78,7 +78,7 @@ export function BootSplash() {
           ) : (
             <>
               {height / fontScale >= 500 ? <Image source={mascot} accessible={false} resizeMode="contain" style={{ width: imageWidth, height: imageWidth, marginBottom: 12 }} /> : null}
-              <NativeText accessibilityRole="header" style={{ alignSelf: 'stretch', textAlign: 'center', fontFamily: brandFont, fontWeight: fontLoaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8, paddingVertical: displayPadding, includeFontPadding: true, color: palette.ink }}>
+              <NativeText accessibilityRole="header" style={{ alignSelf: 'stretch', textAlign: 'center', fontFamily: brandFont, fontWeight: Platform.OS === 'web' ? '800' : fontLoaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8, paddingVertical: displayPadding, includeFontPadding: true, color: palette.ink }}>
                 {'GARDE-\nMANGER'}
               </NativeText>
             </>

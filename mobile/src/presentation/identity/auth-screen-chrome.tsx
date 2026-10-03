@@ -20,10 +20,13 @@ export function AuthGardenHero({ compact = false, title, subtitle }: { compact?:
   const wide = width >= 768 && width > height
   const [heroWidth, setHeroWidth] = useState(wide ? Math.min(width - 64, 1040) / 2 : Math.min(width, 600))
   const [measurementKey, setMeasurementKey] = useState('')
-  const [loaded] = useFonts({
+  const [loaded] = useFonts(Platform.OS === 'web' ? {} : {
     GardenTagline: PlusJakartaSans_400Regular,
     GardenWordmark: PlusJakartaSans_800ExtraBold,
   })
+  const wordmarkFont = Platform.OS === 'web' ? undefined : loaded ? 'GardenWordmark' : undefined
+  const titleFont = Platform.OS === 'web' ? 'Spectral, Georgia, serif' : wordmarkFont
+  const titleWeight = Platform.OS === 'web' ? '600' : loaded ? '400' : '900'
   const nextMeasurementKey = [width, fontScale, compact, title, subtitle, loaded].join('|')
   if (measurementKey !== nextMeasurementKey) {
     setMeasurementKey(nextMeasurementKey)
@@ -43,20 +46,20 @@ export function AuthGardenHero({ compact = false, title, subtitle }: { compact?:
   // Keep the composition intact where it fits; give short screens to the task.
   if (heroSpace !== null && textHeight && heroSpace < topPadding + textHeight + bottomPadding + 32) return (
     <View style={{ paddingTop: topPadding, paddingHorizontal: 26, paddingBottom: 12 }}>
-      <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
+      <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={wordmarkFont} />
     </View>
   )
   return (
     <View onLayout={({ nativeEvent }) => setHeroWidth(nativeEvent.layout.width)} style={{ paddingTop: topPadding, paddingBottom: bottomPadding }}>
       <View onLayout={({ nativeEvent }) => setTextHeight(nativeEvent.layout.height)} style={{ paddingHorizontal: 26 }}>
-        <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={loaded ? 'GardenWordmark' : undefined} />
+        <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={wordmarkFont} />
         {!compact || title ? (
-          <NativeText accessibilityRole="header" style={{ marginTop: compact ? 24 : 28, paddingTop: displayPadding, paddingBottom: displayPadding, includeFontPadding: true, color: colors.leafInk, fontFamily: loaded ? 'GardenWordmark' : undefined, fontWeight: loaded ? '400' : '900', fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8 }}>
+          <NativeText accessibilityRole="header" style={{ marginTop: compact ? 24 : 28, paddingTop: displayPadding, paddingBottom: displayPadding, includeFontPadding: true, color: colors.leafInk, fontFamily: titleFont, fontWeight: titleWeight, fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8 }}>
             {title ?? (fontScale > 1.2 ? 'Votre foyer. Votre garde-manger.' : 'Votre foyer.\nVotre\ngarde-manger.')}
           </NativeText>
         ) : null}
         {!compact || subtitle ? (
-          <NativeText style={{ marginTop: 18, fontFamily: loaded ? 'GardenTagline' : undefined, fontWeight: '400', fontSize: 18, lineHeight: 24, color: colors.leafInk }}>
+          <NativeText style={{ marginTop: 18, fontFamily: Platform.OS === 'web' ? '"Plus Jakarta Sans", system-ui, sans-serif' : loaded ? 'GardenTagline' : undefined, fontWeight: '400', fontSize: 18, lineHeight: 24, color: colors.leafInk }}>
             {subtitle ?? 'Les produits de la maison,\nréunis au même endroit.'}
           </NativeText>
         ) : null}

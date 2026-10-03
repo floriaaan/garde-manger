@@ -53,6 +53,14 @@ colors:
   cabinet-ink: "#16211A"
   cabinet-ink-secondary: "#5A6B72"
 typography:
+  web-title:
+    fontFamily: "Spectral"
+    fontWeight: 600
+    roles: "Auth Garden title and shared ScreenHeader; Georgia/serif fallback"
+  web-body:
+    fontFamily: "Plus Jakarta Sans"
+    fontWeight: "200–800 variable"
+    roles: "Tamagui body, form fields, supporting text, brand (800); system-ui/sans-serif fallback"
   garden-display:
     fontFamily: "Plus Jakarta Sans ExtraBold (bundled as GardenWordmark)"
     fontSize: "min(48px, (measured hero width - 52px) / 8)"
@@ -237,7 +245,9 @@ The fridge screen's cabinet is a disclosed, screen-scoped material exception, th
 
 ## Typography
 
-**Ordinary mobile body/display font:** System sans-serif (Tamagui `defaultConfig`'s platform stack). The brief calls for "une seule famille sans-serif géométrique" (one geometric sans); that choice is now **Plus Jakarta Sans** (variable, 200–800, OFL), self-hosted through `@fontsource-variable/plus-jakarta-sans` and already live on the landing site (`landing/`). Ordinary mobile text still renders the system stack. Garden alone loads bundled Anton for its hero and the existing Plus Jakarta Sans ExtraBold package for its wordmark through `expo-font`; this does not replace the app body font.
+**Web typography:** **Spectral** 600 provides the serif contrast for the Garden auth title and shared screen headers. **Plus Jakarta Sans** variable (200–800) provides ordinary Tamagui text, form fields, supporting text and the brand at 800. Both are official OFL faces, self-hosted as Latin/Latin Extended WOFF2 under `mobile/public/fonts/` and declared once in the root stylesheet with `font-display: swap`. Georgia/serif and system-ui/sans-serif keep the interface readable while assets load or fail. The landing site (`landing/`) retains its existing Jakarta typography.
+
+**Native typography:** Ordinary iOS/Android text keeps Tamagui's system stack. Garden continues loading Plus Jakarta Sans 400 and 800 through `expo-font`; native font delivery is unchanged by the web correction.
 
 **Character:** Hierarchy is built on size and weight only — never color. A label is always small/regular/secondary-toned above; a value is always larger/bold/ink-toned below.
 
