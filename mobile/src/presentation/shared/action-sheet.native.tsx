@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { Pressable } from './pressable.js'
 import { Text, YStack } from './tamagui-typed.js'
 import { ActionSheetRow } from './action-sheet-content.js'
@@ -17,7 +17,7 @@ export function ActionSheet({ visible, onClose, options, title, description, chi
   children?: React.ReactNode
 }) {
   const palette = useSoftPalette()
-  const owner = useRef(Symbol('sheet')).current
+  const [owner] = useState(() => Symbol('sheet'))
   const close = () => nativeSheetStore.close(owner)
   useLayoutEffect(() => {
     if (!visible) {

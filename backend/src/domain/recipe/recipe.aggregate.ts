@@ -101,9 +101,13 @@ export class Recipe extends AggregateRoot<string> {
     return new Recipe(id, props)
   }
 
-  get isArchived(): boolean { return this.props.isArchived ?? false }
+  get isArchived(): boolean {
+    return this.props.isArchived ?? false
+  }
 
-  get isFavorite(): boolean { return this.props.isFavorite ?? false }
+  get isFavorite(): boolean {
+    return this.props.isFavorite ?? false
+  }
 
   get householdId(): string {
     return this.props.householdId

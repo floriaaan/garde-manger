@@ -116,13 +116,20 @@ export class LucidRecipeRepository implements RecipeRepository {
     })
   }
 
-  async updateState(id: string, householdId: string, state: { isArchived?: boolean; isFavorite?: boolean }): Promise<Recipe | null> {
+  async updateState(
+    id: string,
+    householdId: string,
+    state: { isArchived?: boolean; isFavorite?: boolean },
+  ): Promise<Recipe | null> {
     // Update only supplied columns: simultaneous archive and favorite edits cannot overwrite each other.
     const changes: Record<string, boolean> = {}
     if (state.isArchived !== undefined) changes.is_archived = state.isArchived
     if (state.isFavorite !== undefined) changes.is_favorite = state.isFavorite
-    const rows = await RecipeModel.query().where('id', id).where('household_id', householdId)
-      .update(changes).returning('id')
+    const rows = await RecipeModel.query()
+      .where('id', id)
+      .where('household_id', householdId)
+      .update(changes)
+      .returning('id')
     return rows.length > 0 ? this.findById(id) : null
   }
 
