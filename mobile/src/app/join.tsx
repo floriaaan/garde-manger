@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { BootSplash } from '../presentation/shared/boot-splash.js'
 import { Redirect, useLocalSearchParams } from 'expo-router'
 import { parseInviteCode } from '../presentation/onboarding/join-link.js'
 import { rememberInviteCode } from '../presentation/onboarding/pending-invite.js'
@@ -28,11 +29,11 @@ export default function JoinDeepLink() {
   // round trip. Holding the redirect until a keychain write settles would put
   // a blank screen in front of someone who tapped a link.
   useEffect(() => {
-    if (session.isPending || signedIn || !parsed) return
+    if (session.isPending || session.isError || signedIn || !parsed) return
     rememberInviteCode(parsed)
-  }, [session.isPending, signedIn, parsed])
+  }, [session.isPending, session.isError, signedIn, parsed])
 
-  if (session.isPending) return null
+  if (session.isPending || (session.isError && session.data === undefined)) return <BootSplash />
   if (!signedIn) return <Redirect href={{ pathname: '/(auth)/sign-in', params: { mode: 'sign-up' } }} />
   return <Redirect href={parsed ? { pathname: '/(onboarding)', params: { code: parsed } } : '/(onboarding)'} />
 }

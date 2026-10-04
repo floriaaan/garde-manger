@@ -5,7 +5,7 @@ import { useSessionQuery } from '../../application/identity/session.query.js'
 export default function AuthLayout() {
   const session = useSessionQuery()
 
-  if (session.isPending) return <BootSplash />
+  if (session.isPending || (session.isError && session.data === undefined)) return <BootSplash />
   if (session.data) return <Redirect href="/(tabs)" />
 
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />

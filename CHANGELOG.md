@@ -4,6 +4,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+### Fixed
+- Mobile session checks preserve credentials and the last known session during network failures and timeouts; cold-start failures offer retry instead of signing out.
+
 ## [1.0.0-rc.4]
 
 ### Added

@@ -1,6 +1,7 @@
 import { errorStatus } from '../../domain/shared/log-diagnostic.js'
 import { Platform } from 'react-native'
 import { File } from 'expo-file-system'
+import { queryClient } from '../../application/shared/query-client.js'
 import { authClient } from '../auth/auth-client.js'
 import { apiFetch, apiFetchMultipart } from './http-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
@@ -35,7 +36,8 @@ import type { InstanceInfo } from '../../domain/instance/instance-info.js'
 function toSession(
   data: { user: { id: string; email: string; name: string; image?: string | null } } | null | undefined,
 ): Session | null {
-  if (!data?.user) return null
+  if (!data?.user || typeof data.user.id !== 'string' || !data.user.id
+    || typeof data.user.email !== 'string' || typeof data.user.name !== 'string') return null
   return {
     user: {
       id: data.user.id,
@@ -88,19 +90,6 @@ async function appendImagePart(
 
 const SESSION_TIMEOUT_MS = 5000
 
-/**
- * A session check that fails (unreachable server, timeout, error response) is
- * treated as a closed session: the stored cookie is dropped and `null` sends
- * the gates to sign-in, rather than leaving a half-alive session behind.
- */
-function closeSession(
-  action: string, error: unknown, span?: ReturnType<typeof telemetry.startClientSpan>, requestId?: string,
-): null {
-  telemetry.recordError(`${action} failed`, { error, ...(span ? { span } : {}), attributes: { 'app.operation': action, 'error.code': errorStatus(error) ? `session_http_${errorStatus(error)}` : 'session_fetch_failed', request_id: requestId } })
-  authClient.signOut().catch(() => {})
-  return null
-}
-
 export class HttpFridgeConnector implements FridgeConnector {
   /** Raw `fetch`, not `apiFetch`: `url` is a candidate server, not necessarily the one currently configured — this must never read `getServerUrl()`. */
   async getInstanceInfo(url: string): Promise<InstanceInfo | null> {
@@ -117,10 +106,8 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async getSession(): Promise<Session | null> {
-    // Aborted rather than left to the OS: an unreachable server otherwise
-    // holds the launch gates (which render nothing while this is pending)
-    // on a blank screen for the length of the TCP timeout. `null` falls through
-    // to the sign-in gate, which is where a dead server now shows up.
+    // A bounded check must not turn a temporary outage into a sign-out.
+    // Rejecting preserves TanStack's last session; null is authoritative absence.
     const span = telemetry.startClientSpan('identity.get_session', { 'app.operation': 'identity.get_session' })
     let requestId: string | undefined
     const controller = new AbortController()
@@ -131,21 +118,33 @@ export class HttpFridgeConnector implements FridgeConnector {
         onResponse({ response }) { requestId = response.headers.get('x-request-id') ?? undefined },
         ...(span ? { headers: { traceparent: span.traceparent } } : {}),
       } })
-      if (error) {
-        const diagnostic = controller.signal.aborted
-          ? { name: 'TimeoutError', code: 'session_timeout', message: 'Session request timed out', cause: error }
-          : error
-        span?.end({ error: diagnostic, attributes: { request_id: requestId } })
-        return closeSession('identity.get_session', diagnostic, span, requestId)
+      if (error && !controller.signal.aborted && errorStatus(error) === 401) {
+        span?.end({ attributes: { request_id: requestId, 'event.outcome': 'session_invalid' } })
+        authClient.signOut().catch(() => {})
+        return null
       }
-      span?.end({ attributes: { request_id: requestId } })
-      return toSession(data)
+      if (error) throw error
+      const session = toSession(data)
+      // Only an explicit null response confirms absence. Malformed responses
+      // must leave credentials intact, just like transport failures.
+      if (!session && data !== null) throw new Error('Invalid session response')
+      span?.end({ attributes: { request_id: requestId, 'event.outcome': session ? 'session_valid' : 'session_absent' } })
+      if (!session) authClient.signOut().catch(() => {})
+      return session
     } catch (error) {
       const diagnostic = controller.signal.aborted
         ? { name: 'TimeoutError', code: 'session_timeout', message: 'Session request timed out', cause: error }
         : error
-      span?.end({ error: diagnostic, attributes: { request_id: requestId } })
-      return closeSession('identity.get_session', diagnostic, span, requestId)
+      span?.end({ error: diagnostic, attributes: { request_id: requestId, 'event.outcome': 'session_revalidation_failed' } })
+      telemetry.recordError('identity.get_session failed', {
+        error: diagnostic, ...(span ? { span } : {}),
+        attributes: {
+          'app.operation': 'identity.get_session',
+          'error.code': controller.signal.aborted ? 'session_timeout' : errorStatus(error) ? `session_http_${errorStatus(error)}` : 'session_fetch_failed',
+          request_id: requestId,
+        },
+      })
+      throw new Error('Impossible de vérifier la session. Réessaie lorsque la connexion revient.')
     } finally {
       clearTimeout(timer)
     }
@@ -298,18 +297,17 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
   }
 
-  /**
-   * Swallows on purpose, like every other identity method here — a failed
-   * sign-out must not strand a screen mid-navigation. Whatever went wrong
-   * server-side, every caller clears its own local session state and
-   * navigates to `/(auth)/sign-in` right after this resolves, so "best
-   * effort, continue anyway" is the same trade `getSession` already makes.
-   */
+  /** Explicit sign-out always clears local account state, even if the server cannot be reached. */
   async signOut(): Promise<void> {
     try {
       await authClient.signOut()
     } catch (error) {
       reportFailure('identity.sign_out', error)
+    } finally {
+      // Explicit sign-out wins over in-flight reads, including when offline.
+      await queryClient.cancelQueries()
+      queryClient.clear()
+      queryClient.setQueryData(['session'], null)
     }
   }
 
