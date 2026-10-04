@@ -1,7 +1,7 @@
-import { useDomainQuery } from '../shared/use-domain-query.js'
+import { useHouseholdDomainQuery } from '../shared/use-household-domain-query.js'
 
 export function useProductQuery(productId: string) {
-  return useDomainQuery(['product', productId], (connector) => connector.getProduct(productId), {
+  return useHouseholdDomainQuery(['product', productId], (connector) => connector.getProduct(productId), {
     enabled: productId.length > 0,
   })
 }

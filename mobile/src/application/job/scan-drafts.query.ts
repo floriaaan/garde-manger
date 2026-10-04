@@ -1,16 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { defineQuery } from '../shared/define-query.js'
+import { defineHouseholdQuery, useHouseholdDomainQuery } from '../shared/use-household-domain-query.js'
 import { useDomainMutation } from '../shared/use-domain-mutation.js'
-import { useDomainQuery } from '../shared/use-domain-query.js'
 import { useJobsQuery } from './jobs.query.js'
 import type { ScanDraft } from '../../domain/job/job.js'
 
 export const SCAN_DRAFTS_KEY = ['scan-drafts']
 
-export const useScanDraftsQuery = defineQuery(SCAN_DRAFTS_KEY, (connector) => connector.getScanDrafts())
+export const useScanDraftsQuery = defineHouseholdQuery(SCAN_DRAFTS_KEY, (connector) => connector.getScanDrafts())
 
 export function useScanDraftQuery(draftId: string | undefined) {
-  return useDomainQuery<ScanDraft | null>(
+  return useHouseholdDomainQuery<ScanDraft | null>(
     ['scan-drafts', draftId],
     (connector) => (draftId ? connector.getScanDraft(draftId) : Promise.resolve(null)),
     { enabled: Boolean(draftId) },
