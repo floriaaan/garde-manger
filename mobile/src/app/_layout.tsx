@@ -107,7 +107,7 @@ export default function RootLayout() {
                   <Stack.Screen name="receipts" />
                   <Stack.Screen name="tasks" />
                   <Stack.Screen name="action-sheet" options={{
-                    presentation: 'formSheet', sheetAllowedDetents: [0.5, 0.9],
+                    presentation: 'formSheet', sheetAllowedDetents: 'fitToContents',
                     sheetGrabberVisible: true, sheetExpandsWhenScrolledToEdge: true,
                     gestureEnabled: true,
                   }} />

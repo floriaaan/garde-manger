@@ -6,8 +6,9 @@ Les sheets custom de confirmation passent par `ActionSheet`. Sur iOS et Android,
 Metro choisit `action-sheet.native.tsx`, qui présente une route Expo Router
 `formSheet` à travers le native stack et `react-native-screens` déjà installés.
 Le système gère la présentation, les detents, le voile et la fermeture gestuelle.
-Deux hauteurs (50 % et 90 %) permettent de lire les actions et les formulaires longs.
-Le contenu défile ; le clavier iOS est compensé et Android utilise le redimensionnement
+La hauteur native utilise `fitToContents`, sans conteneur étiré en `flex: 1`,
+et le contenu est plafonné à 90 % de la fenêtre pour garder les longues sheets
+défilables. Le contenu défile ; le clavier iOS est compensé et Android utilise le redimensionnement
 natif. Une safe area protège le bas. Annuler et l’échappement d’accessibilité ferment
 la sheet ; le retour Android et le geste natif réinitialisent l’état de son écran.
 Les changements d’étape gardent la même présentation. Aucun callback ni contenu
