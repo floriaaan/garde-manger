@@ -67,13 +67,10 @@ export default function TabsLayout() {
     if (hasSeenWelcome === null) return <BootSplash />
     return <Redirect href={hasSeenWelcome ? '/(auth)/sign-in' : '/welcome'} />
   }
-  if (household.isPending) return <BootSplash />
-  // Success-and-empty, never merely "no data": a failed read is not a missing
-  // foyer, and redirecting on one would answer an unreachable server by
-  // telling a member their household does not exist. On an error the tabs
-  // render, and each screen's own `isError` branch says what actually
-  // happened — the rule DESIGN.md states for every screen that reads shared
-  // household state.
+  // A failed initial read establishes neither presence nor absence. Keep
+  // the splash's retry available instead of mounting household queries.
+  // Cached household data still lets existing members open the app offline.
+  if (household.isPending || (household.isError && !household.data)) return <BootSplash />
   if (household.isSuccess && !household.data) return <Redirect href="/(onboarding)" />
 
   return (

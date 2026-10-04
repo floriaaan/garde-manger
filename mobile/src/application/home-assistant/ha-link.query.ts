@@ -1,3 +1,3 @@
-import { defineQuery } from '../shared/define-query.js'
+import { defineHouseholdQuery } from '../shared/use-household-domain-query.js'
 
-export const useHaLinkQuery = defineQuery(['ha-link'], (connector) => connector.getHaLink())
+export const useHaLinkQuery = defineHouseholdQuery(['ha-link'], (connector) => connector.getHaLink())

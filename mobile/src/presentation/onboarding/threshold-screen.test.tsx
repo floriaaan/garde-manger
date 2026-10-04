@@ -66,7 +66,7 @@ async function renderThreshold(overrides: { prefillCode?: string | null; intent?
   // synchronous `getByTestId` right after `render` races the first paint.
   await waitFor(() => expect(screen.getByTestId('threshold-choose-create')).toBeTruthy())
   if (overrides.intent) await fireEvent.press(screen.getByTestId(`threshold-choose-${overrides.intent}`))
-  return { connector, onEnteredHousehold }
+  return { connector, queryClient, onEnteredHousehold }
 }
 
 test('a clipboard read failure records telemetry and shows the empty-clipboard hint', async () => {
@@ -113,7 +113,7 @@ test('neither action is answerable until its field is', async () => {
 })
 
 test('naming a foyer creates it and hands the account over to the gate', async () => {
-  const { connector, onEnteredHousehold } = await renderThreshold()
+  const { connector, queryClient, onEnteredHousehold } = await renderThreshold()
   const createSpy = jest.spyOn(connector, 'createHousehold')
 
   await fireEvent.changeText(screen.getByTestId('threshold-household-name'), 'Coloc du 3e')
@@ -122,6 +122,7 @@ test('naming a foyer creates it and hands the account over to the gate', async (
 
   await waitFor(() => expect(createSpy).toHaveBeenCalledWith('Coloc du 3e'))
   await waitFor(() => expect(onEnteredHousehold).toHaveBeenCalled())
+  expect(queryClient.getQueryData(['household'])).toMatchObject({ name: 'Coloc du 3e' })
   expect(showToast).toHaveBeenCalledWith('Bienvenue dans Coloc du 3e.', 'success')
 })
 
@@ -141,7 +142,7 @@ test('a lowercase code typed one-handed is the same code', async () => {
 })
 
 test('joining with the real code enters the foyer', async () => {
-  const { connector, onEnteredHousehold } = await renderThreshold({ intent: 'join' })
+  const { connector, queryClient, onEnteredHousehold } = await renderThreshold({ intent: 'join' })
   const joinSpy = jest.spyOn(connector, 'joinHousehold')
 
   await fireEvent.changeText(screen.getByTestId('threshold-invite-code'), 'K4Q2M7XP')
@@ -150,6 +151,7 @@ test('joining with the real code enters the foyer', async () => {
 
   await waitFor(() => expect(joinSpy).toHaveBeenCalledWith('K4Q2M7XP'))
   await waitFor(() => expect(onEnteredHousehold).toHaveBeenCalled())
+  expect(queryClient.getQueryData(['household'])).toMatchObject({ role: 'member' })
 })
 
 test('the mandatory step is not a trap — there is always a way back to sign-in', async () => {

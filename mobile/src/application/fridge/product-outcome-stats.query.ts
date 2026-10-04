@@ -1,5 +1,5 @@
-import { useDomainQuery } from '../shared/use-domain-query.js'
+import { useHouseholdDomainQuery } from '../shared/use-household-domain-query.js'
 
 export function useProductOutcomeStatsQuery(days?: number) {
-  return useDomainQuery(['product-outcome-stats', days ?? 'all'], (connector) => connector.getProductOutcomeStats(days))
+  return useHouseholdDomainQuery(['product-outcome-stats', days ?? 'all'], (connector) => connector.getProductOutcomeStats(days))
 }

@@ -1,3 +1,3 @@
-import { defineQuery } from '../shared/define-query.js'
+import { defineHouseholdQuery } from '../shared/use-household-domain-query.js'
 
-export const useShoppingItemsQuery = defineQuery(['shopping-items'], (connector) => connector.getShoppingItems())
+export const useShoppingItemsQuery = defineHouseholdQuery(['shopping-items'], (connector) => connector.getShoppingItems())
