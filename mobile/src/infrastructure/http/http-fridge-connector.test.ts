@@ -1,6 +1,7 @@
 import { Platform } from 'react-native'
 import { authClient } from '../auth/auth-client.js'
 import { HttpFridgeConnector } from './http-fridge-connector.js'
+import { queryClient } from '../../application/shared/query-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
 
 jest.mock('../auth/auth-client.js', () => ({
@@ -38,6 +39,8 @@ const originalFetch = globalThis.fetch
 
 afterEach(() => {
   signInEmailMock.mockReset()
+  jest.mocked(authClient.signOut).mockClear()
+  queryClient.clear()
 })
 
 test('signInEmail() maps an authClient error to Result.err using error.code/message', async () => {
@@ -496,7 +499,7 @@ test('session retrieval propagates traceparent and keeps a structured auth failu
     fetchOptions.onResponse({ response: { headers: new Headers({ 'x-request-id': 'session-request-123' }) } })
     return { error: { code: 'SERVICE_UNAVAILABLE', status: 503 } }
   })
-  expect(await new HttpFridgeConnector().getSession()).toBeNull()
+  await expect(new HttpFridgeConnector().getSession()).rejects.toThrow('Impossible de vérifier la session')
   expect(authClient.getSession).toHaveBeenLastCalledWith(expect.objectContaining({ fetchOptions: expect.objectContaining({
     headers: { traceparent: span.traceparent }, signal: expect.any(AbortSignal),
   }) }))
@@ -514,12 +517,70 @@ test('session timeout has its own code and retains the aborted request as cause'
   ;(authClient.getSession as jest.Mock).mockImplementationOnce(({ fetchOptions }) => new Promise((resolve) => {
     fetchOptions.signal.addEventListener('abort', () => resolve({ error: { name: 'AbortError' } }))
   }))
-  const request = new HttpFridgeConnector().getSession()
+  const request = expect(new HttpFridgeConnector().getSession()).rejects.toThrow('Impossible de vérifier la session')
   await jest.advanceTimersByTimeAsync(5000)
-  expect(await request).toBeNull()
+  await request
+  expect(authClient.signOut).not.toHaveBeenCalled()
   expect(report).toHaveBeenLastCalledWith('identity.get_session failed', expect.objectContaining({
     error: expect.objectContaining({ code: 'session_timeout', cause: { name: 'AbortError' } }),
   }))
   report.mockRestore()
   jest.useRealTimers()
+})
+
+
+describe('session lifecycle on native platforms', () => {
+  const originalOS = Platform.OS
+  const data = { user: { id: 'u1', email: 'alice@example.com', name: 'Alice' } }
+
+  afterEach(() => {
+    Platform.OS = originalOS
+  })
+
+  test.each(['ios', 'android'] as const)('%s keeps credentials on repeated checks and after a connector restart', async (os) => {
+    Platform.OS = os
+    ;(authClient.getSession as jest.Mock).mockResolvedValue({ data })
+    const connector = new HttpFridgeConnector()
+    for (let i = 0; i < 3; i++) {
+      expect(await connector.getSession()).toEqual({ user: { ...data.user, image: null } })
+    }
+    expect(await new HttpFridgeConnector().getSession()).toEqual({ user: { ...data.user, image: null } })
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test.each(['ios', 'android'] as const)('%s preserves credentials on a transport error and can recover', async (os) => {
+    Platform.OS = os
+    ;(authClient.getSession as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed')).mockResolvedValueOnce({ data })
+    const connector = new HttpFridgeConnector()
+    await expect(connector.getSession()).rejects.toThrow('Impossible de vérifier la session')
+    expect(authClient.signOut).not.toHaveBeenCalled()
+    expect(await connector.getSession()).toEqual({ user: { ...data.user, image: null } })
+  })
+
+  test.each([403, 429, 500, 503])('HTTP %s remains a retryable session read', async (status) => {
+    ;(authClient.getSession as jest.Mock).mockResolvedValueOnce({ error: { status } })
+    await expect(new HttpFridgeConnector().getSession()).rejects.toThrow()
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test.each([{ data: null }, { error: { status: 401, code: 'UNAUTHORIZED' } }])('confirmed absence/refusal clears credentials: %j', async (response) => {
+    ;(authClient.getSession as jest.Mock).mockResolvedValueOnce(response)
+    expect(await new HttpFridgeConnector().getSession()).toBeNull()
+    expect(authClient.signOut).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([{}, { data: { user: {} } }])('a malformed successful response does not clear credentials: %j', async (response) => {
+    ;(authClient.getSession as jest.Mock).mockResolvedValueOnce(response)
+    await expect(new HttpFridgeConnector().getSession()).rejects.toThrow()
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test('explicit offline sign-out clears cached account data and session', async () => {
+    queryClient.setQueryData(['session'], data)
+    queryClient.setQueryData(['shopping-items'], [{ id: 'private-item' }])
+    ;(authClient.signOut as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'))
+    await new HttpFridgeConnector().signOut()
+    expect(queryClient.getQueryData(['session'])).toBeNull()
+    expect(queryClient.getQueryData(['shopping-items'])).toBeUndefined()
+  })
 })

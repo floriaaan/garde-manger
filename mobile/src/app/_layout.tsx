@@ -15,6 +15,7 @@ import { queryClient } from '../application/shared/query-client.js'
 import { createConnector } from '../../providers/create-connector.js'
 import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
+import { wireFocusManager } from '../application/shared/wire-focus-manager.js'
 import { loadStoredServerUrl } from '../application/shared/server-config.js'
 
 // Module load, not an effect: this only assigns a reference (see
@@ -35,6 +36,9 @@ export default function RootLayout() {
   // EXPO_PUBLIC_TELEMETRY_ENABLED is "true", and it opens no connection —
   // the first export happens 15s later, batched.
   useEffect(() => startTelemetry(), [])
+
+  // Session restoration must also retry on foreground before tabs mount.
+  useEffect(() => wireFocusManager(), [])
 
   // The SPA's manifest lets iOS offer Web Push when installed on the home screen.
   useEffect(() => {

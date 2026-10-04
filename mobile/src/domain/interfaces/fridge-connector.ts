@@ -38,6 +38,7 @@ export interface FridgeConnector {
    * `null` means the URL didn't answer like a Garde-manger server.
    */
   getInstanceInfo(url: string): Promise<InstanceInfo | null>
+  /** null confirms absence; unavailable or failed revalidation rejects without clearing credentials. */
   getSession(): Promise<Session | null>
   getAuthMethods(): Promise<AuthMethod[]>
   signInEmail(email: string, password: string): Promise<Result<Session, ApiError>>

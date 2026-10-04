@@ -21,7 +21,7 @@ export default function OnboardingLayout() {
   const session = useSessionQuery()
   const household = useHouseholdQuery()
 
-  if (session.isPending) return <BootSplash />
+  if (session.isPending || (session.isError && session.data === undefined)) return <BootSplash />
   if (!session.data) return <Redirect href="/(auth)/sign-in" />
   if (household.isPending) return <BootSplash />
   if (household.data) return <Redirect href="/(tabs)" />

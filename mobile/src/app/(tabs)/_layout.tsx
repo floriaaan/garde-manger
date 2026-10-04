@@ -62,7 +62,7 @@ export default function TabsLayout() {
   const session = useSessionQuery()
   const household = useHouseholdQuery()
 
-  if (session.isPending) return <BootSplash />
+  if (session.isPending || (session.isError && session.data === undefined)) return <BootSplash />
   if (!session.data) {
     if (hasSeenWelcome === null) return <BootSplash />
     return <Redirect href={hasSeenWelcome ? '/(auth)/sign-in' : '/welcome'} />

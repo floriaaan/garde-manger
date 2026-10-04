@@ -3,7 +3,6 @@ import { router } from 'expo-router'
 import { useJobsQuery } from '../../application/job/jobs.query.js'
 import { findFinishedTransitions } from '../../application/job/job-transitions.js'
 import { isJobWatched } from '../../application/job/watched-jobs.js'
-import { wireFocusManager } from '../../application/shared/wire-focus-manager.js'
 import { celebrate } from '../../application/shared/confetti.js'
 import { showToast } from '../../application/shared/toast.js'
 import { hasPartialFailure } from '../../domain/job/job.js'
@@ -29,8 +28,6 @@ function announce(job: Job): void {
 export function JobHost() {
   const jobs = useJobsQuery().data
   const previous = useRef<Map<string, Job>>(new Map())
-
-  useEffect(() => wireFocusManager(), [])
 
   useEffect(() => {
     if (!jobs) return

@@ -28,31 +28,11 @@ export interface ActionContext {
   attributes?: Record<string, string | number | boolean>
 }
 
-/**
- * The backend revoking a session mid-visit (cookie expired, signed out
- * elsewhere, server restarted with in-memory sessions) used to leave the app
- * stuck between two states forever: every protected call now 401s, but
- * nothing ever told the `(tabs)`/`(auth)` gates — both read `useSessionQuery`
- * off TanStack's cache, which nothing here refetches on its own (no
- * `AppState`/`focusManager` wiring, and the screens that hold it never
- * remount) — so `session.data` stayed the last *truthy* answer from cold
- * start and the app went on rendering protected screens against a session
- * the server had already thrown away. Not signed in, not signed out either.
- *
- * `requireAuthenticatedUser` on the backend (see `auth-context.ts`) throws
- * exactly one shape for this — `{ type: 'unauthenticated' }` — deliberately
- * distinct from `invalid_credentials` (a rejected sign-in attempt, which
- * never reaches here: it goes through `authClient.signIn.email`, not this
- * module), so this only fires for a session that *was* valid and just died.
- */
+/** Only a confirmed authentication refusal invalidates the local session. */
 function handleUnauthenticated() {
-  // Flips every gate and query reading `useSessionQuery()` to "signed out"
-  // immediately — no need to re-ask the backend to confirm what it just
-  // said. `(tabs)/_layout.tsx` redirects to `/(auth)/sign-in` on its next
-  // render once `session.data` is `null`.
+  // Cancel an older session read before it can restore a revoked session.
+  void queryClient.cancelQueries({ queryKey: ['session'] })
   queryClient.setQueryData(['session'], null)
-  // Best-effort: also drops the now-dead cookie from SecureStore, so later
-  // requests stop sending it. The gate flip above doesn't depend on this.
   authClient.signOut().catch(() => {})
 }
 
@@ -169,7 +149,7 @@ export async function apiFetch<T>(
         attributes: { 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
-      if (error.type === 'unauthenticated') handleUnauthenticated()
+      if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)
@@ -205,7 +185,7 @@ export async function apiFetchMultipart<T>(
         attributes: { 'error.type': error.type, action: context?.action ?? `POST ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
-      if (error.type === 'unauthenticated') handleUnauthenticated()
+      if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)

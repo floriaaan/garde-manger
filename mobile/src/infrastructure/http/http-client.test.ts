@@ -1,3 +1,4 @@
+import { authClient } from '../auth/auth-client.js'
 import { apiFetch, apiFetchMultipart } from './http-client.js'
 import { queryClient } from '../../application/shared/query-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
@@ -203,4 +204,26 @@ test('transport failures emit once and malformed JSON keeps response correlation
     attributes: expect.objectContaining({ 'error.code': 'invalid_response', request_id: 'request-123' }),
   }))
   spy.mockRestore()
+})
+
+
+test.each([apiFetch, (path: string) => apiFetchMultipart(path, new FormData())])('a transport failure preserves the session and credentials', async (request) => {
+  jest.mocked(authClient.signOut).mockClear()
+  queryClient.setQueryData(['session'], { userId: 'u1' })
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed'))
+  await request('/api/products')
+  expect(queryClient.getQueryData(['session'])).toEqual({ userId: 'u1' })
+  expect(authClient.signOut).not.toHaveBeenCalled()
+})
+
+test('an unauthenticated-shaped 503 is not confirmation of session revocation', async () => {
+  jest.mocked(authClient.signOut).mockClear()
+  queryClient.setQueryData(['session'], { userId: 'u1' })
+  globalThis.fetch = jest.fn().mockResolvedValue({
+    status: 503, ok: false,
+    json: () => Promise.resolve({ error: { type: 'unauthenticated', message: 'Unavailable' } }),
+  }) as unknown as typeof fetch
+  await apiFetch('/api/products')
+  expect(queryClient.getQueryData(['session'])).toEqual({ userId: 'u1' })
+  expect(authClient.signOut).not.toHaveBeenCalled()
 })
