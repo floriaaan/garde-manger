@@ -10,7 +10,7 @@ import { ChipGroupSeparator } from '../shared/chip-group-separator.js'
 import { PillButton } from '../shared/pill-button.js'
 import { pointerCursor, pressAreaSlop } from '../shared/hover.js'
 import { ripple, rippleClip } from '../shared/material.js'
-import { ActionSheet } from '../shared/action-sheet.js'
+import { RecipeActionsSheet } from './recipe-actions-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { pullToRefreshControl, usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { goToScan } from '../shared/scan-sheet.js'
@@ -18,7 +18,7 @@ import { SkeletonCard, SkeletonGroup } from '../shared/skeleton.js'
 import { EmptyStateLottie } from '../shared/empty-state-lottie.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { BanIcon, ChefHatIcon, ClockIcon, SearchIcon, SparklesIcon, TagIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ChefHatIcon, ClockIcon, SearchIcon, SparklesIcon, TagIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
 import { CORNER_ROTATION, RecipeCard } from './recipe-card.js'
 import { TonightRail } from './tonight-rail.js'
@@ -53,6 +53,7 @@ export function RecipeListScreen() {
   const palette = useSoftPalette()
   const [hint, showHint] = useHint()
   const [search, setSearch] = useState('')
+  const [collection, setCollection] = useState<'active' | 'favorites' | 'archived'>('active')
   const [budget, setBudget] = useState<TimeBudget | null>(null)
   const [tag, setTag] = useState<string | null>(null)
   const [pendingDeletion, setPendingDeletion] = useState<Recipe | null>(null)
@@ -85,7 +86,7 @@ export function RecipeListScreen() {
   // ScrollView pushes rather than clips.
   const { isWide, hasMobileNav, contentWidth } = useAppShellLayout(nav)
 
-  const tonight = useMemo(() => pickTonight(recipes, products), [recipes, products])
+  const tonight = useMemo(() => collection !== 'active' ? [] : pickTonight(recipes, products), [recipes, products, collection])
   const leadWidth = tonight.length > 1 ? Math.max(240, contentWidth - RAIL_PEEK) : contentWidth
 
   /**
@@ -104,16 +105,18 @@ export function RecipeListScreen() {
       .map(([value]) => value)
   }, [recipes])
 
-  const filtering = search.trim().length > 0 || budget !== null || tag !== null
+  const filtering = collection !== 'active' || search.trim().length > 0 || budget !== null || tag !== null
 
   const library = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return recipes
+      .filter((recipe) => collection === 'archived' ? !!recipe.isArchived : !recipe.isArchived)
+      .filter((recipe) => collection !== 'favorites' || recipe.isFavorite)
       .filter((recipe) => (budget === null ? true : recipe.preparationTime !== null && recipe.preparationTime <= budget))
       .filter((recipe) => (tag === null ? true : recipe.tags.includes(tag)))
       .filter((recipe) => (needle.length === 0 ? true : matchesSearch(recipe, needle)))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [recipes, search, budget, tag])
+      .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite) || b.createdAt.localeCompare(a.createdAt))
+  }, [recipes, search, budget, tag, collection])
 
   /**
    * `null` rather than a zeroed match while the garde-manger is unknown: a row
@@ -221,6 +224,13 @@ export function RecipeListScreen() {
                 />
               }
             />
+            <XStack gap="$2" paddingBottom="$2" flexWrap="wrap">
+              {(['active', 'favorites', 'archived'] as const).map((value) => <Chip
+                key={value} testID={`recipes-collection-${value}`}
+                label={value === 'active' ? 'Recettes' : value === 'favorites' ? 'Favoris' : 'Archives'}
+                selected={collection === value} onPress={() => setCollection(value)} palette={palette}
+              />)}
+            </XStack>
             {/*
               The filter *state* is pinned; the filter *controls* are not.
               The garde-manger pins its whole search-and-chips block, and the
@@ -243,7 +253,7 @@ export function RecipeListScreen() {
                 onClearSearch={() => setSearch('')}
                 onClearBudget={() => setBudget(null)}
                 onClearTag={() => setTag(null)}
-                onClearAll={() => clearFilters(setSearch, setBudget, setTag)}
+                onClearAll={() => { clearFilters(setSearch, setBudget, setTag); setCollection('active') }}
               />
             ) : null}
           </YStack>
@@ -319,6 +329,7 @@ export function RecipeListScreen() {
 
                 {recipes.length > 0 ? (
                   <LibraryControls
+                    heading={collection === 'archived' ? 'Archives' : collection === 'favorites' ? 'Favoris' : 'Toutes les recettes'}
                     palette={palette}
                     search={search}
                     onSearchChange={setSearch}
@@ -345,6 +356,17 @@ export function RecipeListScreen() {
               // library, and telling a foyer it has no recipes because the
               // server did not answer is a confident false claim.
               <RecipesError palette={palette} onRetry={() => recipesQuery.refetch()} />
+            ) : !search.trim() && budget === null && tag === null && (collection !== 'active' || recipes.some((recipe) => recipe.isArchived)) ? (
+              <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
+                <Text fontSize={15} fontWeight="700" color={palette.ink} textAlign="center">
+                  {collection === 'archived' ? 'Aucune recette archivée' : collection === 'favorites' ? 'Aucune recette favorite' : 'Tes recettes sont dans les archives'}
+                </Text>
+                <Text fontSize={13} color={palette.inkSecondary} textAlign="center">
+                  {collection === 'favorites' ? 'Ajoute un favori depuis le menu d’une recette pour l’épingler ici.' : collection === 'archived' ? 'Les recettes que tu archives restent disponibles ici pour les désarchiver.' : 'Ouvre Archives pour les retrouver et les désarchiver.'}
+                </Text>
+                <PillButton centered label={collection === 'active' ? 'Voir les archives' : 'Voir les recettes'}
+                  onPress={() => setCollection(collection === 'active' ? 'archived' : 'active')} palette={palette} />
+              </YStack>
             ) : filtering ? (
               <NoMatches palette={palette} />
             ) : (
@@ -354,20 +376,12 @@ export function RecipeListScreen() {
         />
       </AppShell>
 
-      <ActionSheet
+      <RecipeActionsSheet
         visible={pendingDeletion !== null}
-        title={pendingDeletion ? `Supprimer « ${pendingDeletion.title} » ?` : ''}
-        description="Elle disparaît aussi pour les autres membres du foyer, et c’est définitif."
-        options={[
-          {
-            testID: 'recipe-delete-confirm',
-            label: 'Supprimer la recette',
-            icon: (color) => <BanIcon size={18} color={color} />,
-            tint: palette.expiredBg,
-            destructive: true,
-            onPress: confirmDeletion,
-          },
-        ]}
+        recipe={pendingDeletion}
+        onDelete={confirmDeletion}
+        deleteTestID="recipe-delete-confirm"
+        onFeedback={showHint}
         onClose={() => setPendingDeletion(null)}
       />
     </>
@@ -506,6 +520,7 @@ function matchesSearch(recipe: Recipe, needle: string): boolean {
  * is not something you search — it is the answer the screen already gave.
  */
 function LibraryControls({
+  heading,
   palette,
   search,
   onSearchChange,
@@ -525,6 +540,7 @@ function LibraryControls({
   onTagChange: (value: string | null) => void
   tagFilters: readonly string[]
   pantryEstimated: boolean
+  heading: string
 }) {
   return (
     <YStack>
@@ -584,7 +600,7 @@ function LibraryControls({
           lives in the pinned filter bar now, where it can be acted on. */}
       <YStack gap="$1" marginBottom="$3">
         <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
-          Toutes les recettes
+          {heading}
         </Text>
         {/* Only when the band above is absent. Printed in both places the two
             sentences sat ~200pt apart in near-identical wording, which trains

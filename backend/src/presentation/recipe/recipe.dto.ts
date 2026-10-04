@@ -10,6 +10,8 @@ export interface RecipeIngredientDto {
 }
 
 export interface RecipeDto {
+  isArchived: boolean
+  isFavorite: boolean
   id: string
   /**
    * The member who put it in the library, and what the foyer has done with it
@@ -53,6 +55,8 @@ export interface RecipeDraftDto {
 export function toRecipeDto(recipe: Recipe): RecipeDto {
   return {
     id: recipe.id,
+    isArchived: recipe.isArchived,
+    isFavorite: recipe.isFavorite,
     createdBy: recipe.createdBy,
     cookCount: recipe.cookCount,
     lastCookedAt: recipe.lastCook?.at.toISOString() ?? null,

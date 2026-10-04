@@ -500,6 +500,16 @@ export class FakeFridgeConnector implements FridgeConnector {
     return Result.err({ type: 'not_found', message: 'Recette introuvable.' })
   }
 
+  async updateRecipeState(recipeId: string, state: { isArchived?: boolean; isFavorite?: boolean }): Promise<Result<Recipe, ApiError>> {
+    for (const list of [this.generatedRecipes, this.recipes]) {
+      const index = list.findIndex((recipe) => recipe.id === recipeId)
+      if (index < 0) continue
+      list[index] = { ...list[index], ...state }
+      return Result.ok(list[index])
+    }
+    return Result.err({ type: 'not_found', message: 'Recette introuvable' })
+  }
+
   async deleteRecipe(recipeId: string): Promise<Result<void, ApiError>> {
     for (const list of [this.generatedRecipes, this.recipes]) {
       const index = list.findIndex((r) => r.id === recipeId)

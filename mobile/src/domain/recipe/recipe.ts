@@ -8,6 +8,9 @@ export interface RecipeIngredient {
 }
 
 export interface Recipe {
+  /** Shared household state; absent only on older servers. */
+  isArchived?: boolean
+  isFavorite?: boolean
   id: string
   /**
    * Who put it in the library, and what the foyer has done with it since.

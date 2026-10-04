@@ -32,6 +32,8 @@ export function toDomain(row: RecipeModel, stats: RecipeCookStats = NEVER_COOKED
 
   return Recipe.reconstruct(row.id, {
     householdId: row.householdId,
+    isArchived: row.isArchived,
+    isFavorite: row.isFavorite,
     createdBy: row.createdBy,
     title: row.title,
     description: row.description,

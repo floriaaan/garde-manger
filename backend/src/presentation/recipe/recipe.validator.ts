@@ -1,5 +1,9 @@
 import vine from '@vinejs/vine'
 
+export const updateRecipeStateValidator = vine.compile(
+  vine.object({ isArchived: vine.boolean().optional(), isFavorite: vine.boolean().optional() }),
+)
+
 const recipeSourceSchema = vine.enum(['ai', 'user'] as const)
 const ingredientSchema = vine.object({
   label: vine.string().trim().minLength(1),

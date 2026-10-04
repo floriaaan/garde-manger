@@ -89,6 +89,7 @@ export function ProductExitSheet({
           },
           {
             testID: 'product-exit-discarded',
+            keepOpen: true,
             label: plural ? 'Jetés' : 'Jeté',
             icon: (color) => <BanIcon size={18} color={color} />,
             tint: palette.soonText,

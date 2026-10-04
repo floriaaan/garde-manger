@@ -14,6 +14,7 @@ router
     router.get('/recipes/suggestions', [RecipeController, 'suggestions'])
     router.get('/recipes/:id', [RecipeController, 'show'])
     router.post('/recipes/:id/cooked', [RecipeController, 'cooked'])
+    router.patch('/recipes/:id/state', [RecipeController, 'updateState'])
     router.delete('/recipes/:id', [RecipeController, 'destroy'])
   })
   .prefix('/api')

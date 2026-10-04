@@ -86,6 +86,7 @@ export interface FridgeConnector {
    * backend saves the recipes when the job succeeds, so the recipe list is stale then.
    */
   enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>>
+  updateRecipeState(recipeId: string, state: { isArchived?: boolean; isFavorite?: boolean }): Promise<Result<Recipe, ApiError>>
   deleteRecipe(recipeId: string): Promise<Result<void, ApiError>>
   /**
    * "J'ai cuisiné." `productIds` are the garde-manger products this meal used
