@@ -14,7 +14,7 @@ import type { ProductLookupResult } from '../fridge/product-lookup-result.js'
 import type { Receipt, ImportReceiptInput } from '../receipt/receipt.js'
 import type { ImportProductsItemInput } from '../fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../settings/ai-settings.js'
-import type { ReminderDays, ReminderSettings, WebPushSubscription } from '../settings/reminder-settings.js'
+import type { ReminderDays, ReminderSettings, ReminderSettingsUpdate, WebPushSubscription } from '../settings/reminder-settings.js'
 import type {
   HaLink,
   HaTodoEntity,
@@ -134,6 +134,7 @@ export interface FridgeConnector {
   registerWebPush(subscription: WebPushSubscription): Promise<Result<void, ApiError>>
   unregisterWebPush(endpoint: string): Promise<Result<void, ApiError>>
   getReminderSettings(): Promise<ReminderSettings | null>
+  setReminderSettings(update: ReminderSettingsUpdate): Promise<Result<ReminderSettings, ApiError>>
   setReminderDays(days: ReminderDays): Promise<Result<ReminderSettings, ApiError>>
   getScanDrafts(): Promise<ScanDraft[]>
   getScanDraft(draftId: string): Promise<ScanDraft | null>

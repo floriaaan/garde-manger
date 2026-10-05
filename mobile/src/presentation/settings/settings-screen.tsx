@@ -21,7 +21,6 @@ import {
   WalletIcon,
 } from '../dashboard/dashboard-icons.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
-import { NotificationsRow } from './notifications-row.js'
 import { NUDGE_RATIO } from './ai-access-cards.js'
 import { initials } from '../shared/member-avatars.js'
 import { AuthButton } from '../identity/auth-button.js'
@@ -177,7 +176,11 @@ export function SettingsScreen() {
           palette={palette}
           onPress={() => router.push('/account')}
         />
-        <NotificationsRow palette={palette} />
+        <IdentityCard testID="settings-notifications-page" bg={palette.butter}
+          labelColor={palette.butterText} chipColor={palette.chipButter}
+          icon={<BellIcon size={18} color={palette.onDark} />} label="Notifications"
+          value="Gérer les notifications" secondary="Péremption, check-up et activation générale."
+          corner="a" palette={palette} onPress={() => router.push('/notifications')} />
         <SectionLabel palette={palette} marginTop="$2">Ton foyer</SectionLabel>
         <IdentityCard
           testID="settings-household"
@@ -203,19 +206,6 @@ export function SettingsScreen() {
           // member count, the role badge and the avatars — everything the card
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
-        />
-        <IdentityCard
-          testID="settings-expiry-reminders"
-          bg={palette.butter}
-          labelColor={palette.butterText}
-          chipColor={palette.chipButter}
-          icon={<BellIcon size={18} color={palette.onDark} />}
-          label="Rappels de péremption"
-          value="Choisir le délai"
-          secondary="Un résumé quotidien pour le foyer."
-          corner="a"
-          palette={palette}
-          onPress={() => router.push('/expiry-reminders')}
         />
         {plan === 'self-hosted' || !platformCapabilities.billing ? null : (
           <IdentityCard
