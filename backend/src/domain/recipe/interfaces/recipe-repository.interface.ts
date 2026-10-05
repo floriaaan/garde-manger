@@ -16,6 +16,11 @@ export interface RecipeRepository {
   findByHousehold(householdId: string): Promise<Recipe[]>
   save(recipe: Recipe): Promise<void>
   delete(id: string): Promise<void>
+  updateState(
+    id: string,
+    householdId: string,
+    state: { isArchived?: boolean; isFavorite?: boolean },
+  ): Promise<Recipe | null>
   /**
    * Appends to the cook log. Separate from `save` because it is an event about
    * the recipe, not a new version of it: two members cooking the same dish on

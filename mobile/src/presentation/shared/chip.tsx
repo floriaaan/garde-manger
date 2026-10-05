@@ -51,6 +51,7 @@ export function Chip({
   palette,
   icon,
   size = 'default',
+  tone = 'mint',
   accessibilityLabel,
 }: {
   testID?: string
@@ -62,12 +63,16 @@ export function Chip({
   accessibilityLabel?: string
   /** Called with the label colour so the glyph always matches the text it sits beside. */
   icon?: (color: string) => ReactNode
+  /** Unselected fill; selection keeps the common lime treatment. */
+  tone?: 'mint' | 'cream' | 'lavender'
   size?: keyof typeof CHIP_HEIGHT
 }) {
   const hover = useHoverPress()
   const height = CHIP_HEIGHT[size]
   const slop = Math.ceil((44 - height) / 2)
-  const color = selected ? palette.accentLimeText : palette.mintPaleText
+  const background = tone === 'cream' ? palette.cream : tone === 'lavender' ? palette.lavender : palette.mintPale
+  const foreground = tone === 'cream' ? palette.creamText : tone === 'lavender' ? palette.lavenderText : palette.mintPaleText
+  const color = selected ? palette.accentLimeText : foreground
 
   return (
     <Pressable
@@ -81,7 +86,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={accessibilityLabel ?? label}
-      android_ripple={ripple(selected ? palette.accentLimeText : palette.mintPaleText)}
+      android_ripple={ripple(color)}
       // `hitSlop` on native, the same slop as margin/padding on web, which
       // ignores the prop — without it the chip is its drawn 32pt in a browser.
       style={[pointerCursor, pressAreaSlop(slop, 4), rippleClip(999)]}
@@ -93,7 +98,7 @@ export function Chip({
           minHeight={height}
           paddingHorizontal={size === 'dense' ? 10 : 12}
           borderRadius={999}
-          backgroundColor={selected ? palette.accentLime : palette.mintPale}
+          backgroundColor={selected ? palette.accentLime : background}
         >
           {icon ? icon(color) : null}
           <Text fontSize={12} fontWeight="700" color={color}>

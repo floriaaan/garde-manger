@@ -77,6 +77,75 @@ test.group('recipe: suggestions, save, list, detail, delete', (group) => {
     afterDelete.assertStatus(404)
   })
 
+  test('recipe states survive separate reads, are reversible, and stay scoped to the household', async ({
+    client,
+    assert,
+  }) => {
+    const cookie = await signUpWithHousehold(client, 'recipe-states@example.com')
+    const otherCookie = await signUpWithHousehold(client, 'recipe-states-other@example.com')
+    const save = await client
+      .post('/api/recipes')
+      .headers({ cookie })
+      .json({
+        title: 'Salade',
+        source: 'user',
+        instructions: 'Mélanger.',
+        ingredients: [{ label: 'Tomate' }],
+      })
+    save.assertStatus(201)
+    const id = save.body().recipe.id
+    assert.isFalse(save.body().recipe.isArchived)
+    assert.isFalse(save.body().recipe.isFavorite)
+
+    const favorite = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie })
+      .json({ isFavorite: true })
+    favorite.assertStatus(200)
+    const archive = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie })
+      .json({ isArchived: true })
+    archive.assertStatus(200)
+    const detail = await client.get(`/api/recipes/${id}`).headers({ cookie })
+    detail.assertBodyContains({ recipe: { isArchived: true, isFavorite: true, title: 'Salade' } })
+    const list = await client.get('/api/recipes').headers({ cookie })
+    assert.deepEqual(
+      list.body().recipes.map((recipe: { id: string }) => recipe.id),
+      [id],
+    )
+    assert.isTrue(list.body().recipes[0].isArchived)
+    assert.isTrue(list.body().recipes[0].isFavorite)
+
+    const forbidden = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie: otherCookie })
+      .json({ isArchived: false })
+    forbidden.assertStatus(404)
+    const empty = await client.patch(`/api/recipes/${id}/state`).headers({ cookie }).json({})
+    empty.assertStatus(422)
+    const invalid = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie })
+      .json({ isFavorite: 'invalid' })
+    invalid.assertStatus(422)
+
+    const restore = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie })
+      .json({ isArchived: false })
+    restore.assertBodyContains({ recipe: { isArchived: false, isFavorite: true } })
+    const unfavorite = await client
+      .patch(`/api/recipes/${id}/state`)
+      .headers({ cookie })
+      .json({ isFavorite: false })
+    unfavorite.assertBodyContains({ recipe: { isArchived: false, isFavorite: false } })
+    const destroy = await client.delete(`/api/recipes/${id}`).headers({ cookie })
+    destroy.assertStatus(204)
+    const deleted = await client.get(`/api/recipes/${id}`).headers({ cookie })
+    deleted.assertStatus(404)
+  })
+
   test('a recipe records who wrote it into the library', async ({ client, assert }) => {
     const cookie = await signUpWithHousehold(client, 'recipe-author@example.com')
 

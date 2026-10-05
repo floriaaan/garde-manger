@@ -16,6 +16,12 @@ export default class RecipeModel extends BaseModel {
   @column({ columnName: 'created_by' })
   declare createdBy: string | null
 
+  @column({ columnName: 'is_archived' })
+  declare isArchived: boolean
+
+  @column({ columnName: 'is_favorite' })
+  declare isFavorite: boolean
+
   @column()
   declare title: string
 

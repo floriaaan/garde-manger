@@ -2,13 +2,18 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
 import { traceAction } from '#presentation/shared/trace-action'
-import { cookRecipeValidator, saveRecipeValidator } from './recipe.validator.js'
+import {
+  cookRecipeValidator,
+  saveRecipeValidator,
+  updateRecipeStateValidator,
+} from './recipe.validator.js'
 import { toRecipeDto, toRecipeDraftDto } from './recipe.dto.js'
 import { SuggestRecipes } from '#application/recipe/suggest-recipes.use-case'
 import { SaveRecipe } from '#application/recipe/save-recipe.use-case'
 import { ListRecipes } from '#application/recipe/list-recipes.use-case'
 import { ShowRecipe } from '#application/recipe/show-recipe.use-case'
 import { DeleteRecipe } from '#application/recipe/delete-recipe.use-case'
+import { UpdateRecipeState } from '#application/recipe/update-recipe-state.use-case'
 import { CookRecipe } from '#application/recipe/cook-recipe.use-case'
 
 export default class RecipeController {
@@ -144,6 +149,36 @@ export default class RecipeController {
         return result
       },
       { isError: (r) => !r.ok },
+    )
+  }
+
+  async updateState(ctx: HttpContext) {
+    requireAuthenticatedUser(ctx)
+    return traceAction(
+      ctx,
+      'recipe',
+      UpdateRecipeState,
+      async () => {
+        const state = await ctx.request.validateUsing(updateRecipeStateValidator)
+        if (state.isArchived === undefined && state.isFavorite === undefined) {
+          ctx.response.status(422).json({ message: 'Un état de recette est requis.' })
+          return { failed: true }
+        }
+        const recipes = await ctx.containerResolver.make('recipe.recipes')
+        const result = await new UpdateRecipeState(recipes).execute({
+          householdId: ctx.household.id,
+          recipeId: ctx.params.id,
+          ...state,
+        })
+        if (!result.ok) {
+          const { status, body } = serializeError(result.error)
+          ctx.response.status(status).json(body)
+          return { failed: true }
+        }
+        ctx.response.json({ recipe: toRecipeDto(result.value) })
+        return { failed: false }
+      },
+      { isError: (r) => r.failed, action: 'recipe.update_state' },
     )
   }
 

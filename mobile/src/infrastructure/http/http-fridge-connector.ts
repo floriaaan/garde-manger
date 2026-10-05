@@ -525,6 +525,13 @@ export class HttpFridgeConnector implements FridgeConnector {
     return result.ok ? Result.ok(result.value.recipe) : Result.err(result.error)
   }
 
+  async updateRecipeState(recipeId: string, state: { isArchived?: boolean; isFavorite?: boolean }): Promise<Result<Recipe, ApiError>> {
+    const result = await apiFetch<{ recipe: Recipe }>(`/api/recipes/${recipeId}/state`,
+      { method: 'PATCH', body: JSON.stringify(state) },
+      { action: 'recipe.update_state', attributes: { 'entity.id': recipeId } })
+    return result.ok ? Result.ok(result.value.recipe) : Result.err(result.error)
+  }
+
   async deleteRecipe(recipeId: string): Promise<Result<void, ApiError>> {
     const result = await apiFetch<void>(
       `/api/recipes/${recipeId}`,

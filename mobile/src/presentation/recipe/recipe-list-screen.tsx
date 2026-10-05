@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { FlatList, Pressable, ScrollView } from 'react-native'
+import { FlatList, ScrollView } from 'react-native'
 import { router } from 'expo-router'
-import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
+import { Text, YStack } from '../shared/tamagui-typed.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
 import { Chip, CHIP_ICON_SIZE } from '../shared/chip.js'
 import { ChipGroupSeparator } from '../shared/chip-group-separator.js'
 import { PillButton } from '../shared/pill-button.js'
-import { pointerCursor, pressAreaSlop } from '../shared/hover.js'
-import { ripple, rippleClip } from '../shared/material.js'
-import { ActionSheet } from '../shared/action-sheet.js'
+import { RecipeActionsSheet } from './recipe-actions-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { pullToRefreshControl, usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { goToScan } from '../shared/scan-sheet.js'
@@ -18,7 +16,7 @@ import { SkeletonCard, SkeletonGroup } from '../shared/skeleton.js'
 import { EmptyStateLottie } from '../shared/empty-state-lottie.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { BanIcon, ChefHatIcon, ClockIcon, SearchIcon, SparklesIcon, TagIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ArchiveIcon, StarIcon, ChefHatIcon, ClockIcon, SearchIcon, SparklesIcon, TagIcon } from '../dashboard/dashboard-icons.js'
 import { FormField } from '../fridge/form-field.js'
 import { CORNER_ROTATION, RecipeCard } from './recipe-card.js'
 import { TonightRail } from './tonight-rail.js'
@@ -53,6 +51,7 @@ export function RecipeListScreen() {
   const palette = useSoftPalette()
   const [hint, showHint] = useHint()
   const [search, setSearch] = useState('')
+  const [collection, setCollection] = useState<'active' | 'favorites' | 'archived'>('active')
   const [budget, setBudget] = useState<TimeBudget | null>(null)
   const [tag, setTag] = useState<string | null>(null)
   const [pendingDeletion, setPendingDeletion] = useState<Recipe | null>(null)
@@ -85,7 +84,7 @@ export function RecipeListScreen() {
   // ScrollView pushes rather than clips.
   const { isWide, hasMobileNav, contentWidth } = useAppShellLayout(nav)
 
-  const tonight = useMemo(() => pickTonight(recipes, products), [recipes, products])
+  const tonight = useMemo(() => collection !== 'active' ? [] : pickTonight(recipes, products), [recipes, products, collection])
   const leadWidth = tonight.length > 1 ? Math.max(240, contentWidth - RAIL_PEEK) : contentWidth
 
   /**
@@ -104,16 +103,18 @@ export function RecipeListScreen() {
       .map(([value]) => value)
   }, [recipes])
 
-  const filtering = search.trim().length > 0 || budget !== null || tag !== null
+  const filtering = collection !== 'active' || search.trim().length > 0 || budget !== null || tag !== null
 
   const library = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return recipes
+      .filter((recipe) => collection === 'archived' ? !!recipe.isArchived : !recipe.isArchived)
+      .filter((recipe) => collection !== 'favorites' || recipe.isFavorite)
       .filter((recipe) => (budget === null ? true : recipe.preparationTime !== null && recipe.preparationTime <= budget))
       .filter((recipe) => (tag === null ? true : recipe.tags.includes(tag)))
       .filter((recipe) => (needle.length === 0 ? true : matchesSearch(recipe, needle)))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [recipes, search, budget, tag])
+      .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite) || b.createdAt.localeCompare(a.createdAt))
+  }, [recipes, search, budget, tag, collection])
 
   /**
    * `null` rather than a zeroed match while the garde-manger is unknown: a row
@@ -221,30 +222,20 @@ export function RecipeListScreen() {
                 />
               }
             />
-            {/*
-              The filter *state* is pinned; the filter *controls* are not.
-              The garde-manger pins its whole search-and-chips block, and the
-              argument is sound — scrolling a list must not take away how you
-              steer it. But this screen's first viewport belongs to "Ce soir",
-              and a cook at 19h must not meet a filter bar before they meet
-              their dinner. So only the cost of scrolling stays fixed: when a
-              filter is on, a compact bar names it, counts the results and
-              offers the way out, from anywhere in the list. When nothing is
-              filtered — the ordinary case, and the one the first viewport is
-              designed around — it does not exist.
-            */}
+            <LibraryFilters
+              palette={palette}
+              collection={collection}
+              onCollectionChange={setCollection}
+              search={search}
+              onSearchChange={setSearch}
+              budget={budget}
+              onBudgetChange={setBudget}
+              tag={tag}
+              onTagChange={setTag}
+              tagFilters={tagFilters}
+            />
             {filtering ? (
-              <ActiveFilters
-                palette={palette}
-                search={search}
-                budget={budget}
-                tag={tag}
-                count={library.length}
-                onClearSearch={() => setSearch('')}
-                onClearBudget={() => setBudget(null)}
-                onClearTag={() => setTag(null)}
-                onClearAll={() => clearFilters(setSearch, setBudget, setTag)}
-              />
+              <ResultsCount palette={palette} count={library.length} />
             ) : null}
           </YStack>
         }
@@ -280,7 +271,7 @@ export function RecipeListScreen() {
           // `flexGrow: 1`: lets the empty state fill and vertically center in
           // the visible list area instead of pinning to the top — a no-op
           // once the list itself is taller than the screen.
-          contentContainerStyle={{ ...shellContentStyle({ isWide, hasMobileNav }), paddingTop: 8, flexGrow: 1 }}
+          contentContainerStyle={{ ...shellContentStyle({ isWide, hasMobileNav }), paddingTop: 0, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={pullToRefreshControl(refresh, palette)}
           ListHeaderComponent={
@@ -318,17 +309,16 @@ export function RecipeListScreen() {
                 ) : null}
 
                 {recipes.length > 0 ? (
-                  <LibraryControls
-                    palette={palette}
-                    search={search}
-                    onSearchChange={setSearch}
-                    budget={budget}
-                    onBudgetChange={setBudget}
-                    tag={tag}
-                    onTagChange={setTag}
-                    tagFilters={tagFilters}
-                    pantryEstimated={showsPantryEstimate && tonight.length === 0}
-                  />
+                  <YStack gap="$1" marginBottom="$3">
+                    <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
+                      {collection === 'archived' ? 'Archives' : collection === 'favorites' ? 'Favoris' : 'Toutes les recettes'}
+                    </Text>
+                    {showsPantryEstimate && tonight.length === 0 ? (
+                      <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
+                        Disponibilité estimée d’après les noms des ingrédients.
+                      </Text>
+                    ) : null}
+                  </YStack>
                 ) : null}
               </YStack>
             )
@@ -345,6 +335,17 @@ export function RecipeListScreen() {
               // library, and telling a foyer it has no recipes because the
               // server did not answer is a confident false claim.
               <RecipesError palette={palette} onRetry={() => recipesQuery.refetch()} />
+            ) : !search.trim() && budget === null && tag === null && (collection !== 'active' || recipes.some((recipe) => recipe.isArchived)) ? (
+              <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
+                <Text fontSize={15} fontWeight="700" color={palette.ink} textAlign="center">
+                  {collection === 'archived' ? 'Aucune recette archivée' : collection === 'favorites' ? 'Aucune recette favorite' : 'Tes recettes sont dans les archives'}
+                </Text>
+                <Text fontSize={13} color={palette.inkSecondary} textAlign="center">
+                  {collection === 'favorites' ? 'Ajoute un favori depuis le menu d’une recette pour l’épingler ici.' : collection === 'archived' ? 'Les recettes que tu archives restent disponibles ici pour les désarchiver.' : 'Ouvre Archives pour les retrouver et les désarchiver.'}
+                </Text>
+                <PillButton centered label={collection === 'active' ? 'Voir les archives' : 'Voir les recettes'}
+                  onPress={() => setCollection(collection === 'active' ? 'archived' : 'active')} palette={palette} />
+              </YStack>
             ) : filtering ? (
               <NoMatches palette={palette} />
             ) : (
@@ -354,140 +355,38 @@ export function RecipeListScreen() {
         />
       </AppShell>
 
-      <ActionSheet
+      <RecipeActionsSheet
         visible={pendingDeletion !== null}
-        title={pendingDeletion ? `Supprimer « ${pendingDeletion.title} » ?` : ''}
-        description="Elle disparaît aussi pour les autres membres du foyer, et c’est définitif."
-        options={[
-          {
-            testID: 'recipe-delete-confirm',
-            label: 'Supprimer la recette',
-            icon: (color) => <BanIcon size={18} color={color} />,
-            tint: palette.expiredBg,
-            destructive: true,
-            onPress: confirmDeletion,
-          },
-        ]}
+        recipe={pendingDeletion}
+        onDelete={confirmDeletion}
+        deleteTestID="recipe-delete-confirm"
+        onFeedback={showHint}
         onClose={() => setPendingDeletion(null)}
       />
     </>
   )
 }
 
-/**
- * What is filtering the library, pinned — and every one of them removable from
- * here.
- *
- * The controls themselves stay below the shortlist, where they belong to the
- * list they steer. What could not stay below is the *evidence*: twelve rows
- * down with "poulet" typed and a tag on, the library was short and nothing on
- * screen said why, and clearing one meant scrolling all the way back. This bar
- * costs nothing when nothing is filtered, which is most of the time.
- */
-function ActiveFilters({
-  palette,
-  search,
-  budget,
-  tag,
-  count,
-  onClearSearch,
-  onClearBudget,
-  onClearTag,
-  onClearAll,
-}: {
-  palette: SoftPalette
-  search: string
-  budget: TimeBudget | null
-  tag: string | null
-  count: number
-  onClearSearch: () => void
-  onClearBudget: () => void
-  onClearTag: () => void
-  onClearAll: () => void
-}) {
-  const trimmed = search.trim()
+/** The result count stays below the horizontal filters. */
+function ResultsCount({ palette, count }: { palette: SoftPalette; count: number }) {
   return (
-    <XStack alignItems="center" gap="$2" flexWrap="wrap" paddingBottom="$2">
-      <Text
-        fontSize={12}
-        fontWeight="700"
-        color={palette.inkSecondary}
-        accessibilityLiveRegion="polite"
-        accessibilityLabel={`${count} recette${count > 1 ? 's' : ''} après filtrage`}
-      >
-        {count} résultat{count > 1 ? 's' : ''}
-      </Text>
-      {trimmed.length > 0 ? (
-        <FilterToken testID="recipes-active-search" label={`« ${trimmed} »`} onClear={onClearSearch} palette={palette} />
-      ) : null}
-      {budget !== null ? (
-        <FilterToken testID="recipes-active-budget" label={`${budget} min ou moins`} onClear={onClearBudget} palette={palette} />
-      ) : null}
-      {tag !== null ? <FilterToken testID="recipes-active-tag" label={tag} onClear={onClearTag} palette={palette} /> : null}
-      <PillButton
-        testID="recipes-clear-all"
-        label="Tout afficher"
-        accessibilityLabel="Retirer tous les filtres"
-        onPress={onClearAll}
-        palette={palette}
-        tone="quiet"
-      />
-    </XStack>
-  )
-}
-
-/** One active filter, with its own way out — a chip whose action is removal, not selection. */
-function FilterToken({
-  testID,
-  label,
-  onClear,
-  palette,
-}: {
-  testID: string
-  label: string
-  onClear: () => void
-  palette: SoftPalette
-}) {
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onClear}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={`Retirer le filtre ${label}`}
-      android_ripple={ripple(palette.ink)}
-      style={[pointerCursor, pressAreaSlop(8, 4), rippleClip(999)]}
+    <Text
+      marginTop="$3"
+      paddingBottom="$2"
+      fontSize={12}
+      fontWeight="700"
+      color={palette.inkSecondary}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={`${count} recette${count > 1 ? 's' : ''} après filtrage`}
     >
-      <XStack
-        alignItems="center"
-        gap="$1.5"
-        minHeight={28}
-        paddingHorizontal="$2.5"
-        borderRadius={999}
-        backgroundColor={palette.mintPale}
-      >
-        <Text fontSize={11} fontWeight="700" color={palette.mintPaleText} numberOfLines={1}>
-          {label}
-        </Text>
-        <XIcon size={11} color={palette.mintPaleText} />
-      </XStack>
-    </Pressable>
+      {count} résultat{count > 1 ? 's' : ''}
+    </Text>
   )
 }
 
 /** The rhythm between library rows — `$3`, as a separator rather than a wrapper per row. */
 function RowGap() {
   return <YStack height={12} />
-}
-
-function clearFilters(
-  setSearch: (value: string) => void,
-  setBudget: (value: TimeBudget | null) => void,
-  setTag: (value: string | null) => void,
-) {
-  setSearch('')
-  setBudget(null)
-  setTag(null)
 }
 
 /** A cook searching for "poulet" means the ingredient as often as the title. */
@@ -500,12 +399,10 @@ function matchesSearch(recipe: Recipe, needle: string): boolean {
   )
 }
 
-/**
- * The controls that steer the library, below the shortlist rather than pinned
- * with the title: they belong to the list they filter, and the shortlist above
- * is not something you search — it is the answer the screen already gave.
- */
-function LibraryControls({
+/** Search stays above one horizontal strip, with the collection first and the other filters separated. */
+function LibraryFilters({
+  collection,
+  onCollectionChange,
   palette,
   search,
   onSearchChange,
@@ -514,7 +411,6 @@ function LibraryControls({
   tag,
   onTagChange,
   tagFilters,
-  pantryEstimated,
 }: {
   palette: SoftPalette
   search: string
@@ -524,10 +420,11 @@ function LibraryControls({
   tag: string | null
   onTagChange: (value: string | null) => void
   tagFilters: readonly string[]
-  pantryEstimated: boolean
+  collection: 'active' | 'favorites' | 'archived'
+  onCollectionChange: (value: 'active' | 'favorites' | 'archived') => void
 }) {
   return (
-    <YStack>
+    <YStack marginTop="$3">
       <FormField
         testID="recipes-search"
         label="Rechercher"
@@ -539,15 +436,24 @@ function LibraryControls({
         icon={(color) => <SearchIcon size={13} color={color} />}
       />
 
-      {/* Two axes on one scrolling line — a time budget and a tag — separated
-          by a hairline so they do not read as one set of exclusive options.
-          Each chip is a toggle: pressing the selected one clears it, which is
-          why neither group needs a "Tout" of its own. */}
+      {/* Collection, duration and tags are independent groups in the same strip. */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 12, paddingVertical: 12, alignItems: 'center' }}
+        contentContainerStyle={{ gap: 12, paddingTop: 12, paddingBottom: 6, alignItems: 'center' }}
       >
+        {(['active', 'favorites', 'archived'] as const).map((value) => <Chip
+          key={value} testID={`recipes-collection-${value}`}
+          label={value === 'active' ? 'Recettes' : value === 'favorites' ? 'Favoris' : 'Archives'}
+          selected={collection === value} onPress={() => onCollectionChange(value)} palette={palette}
+          tone={value === 'favorites' ? 'cream' : value === 'archived' ? 'lavender' : 'mint'}
+          icon={(color) => value === 'favorites'
+            ? <StarIcon size={CHIP_ICON_SIZE} color={color} />
+            : value === 'archived' ? <ArchiveIcon size={CHIP_ICON_SIZE} color={color} />
+            : <ChefHatIcon size={CHIP_ICON_SIZE} color={color} />}
+        />)}
+        <ChipGroupSeparator palette={palette} />
+
         {TIME_BUDGETS.map((minutes) => (
           <Chip
             key={minutes}
@@ -576,26 +482,6 @@ function LibraryControls({
           />
         ))}
       </ScrollView>
-
-      {/* 20/800 — DESIGN.md's Title step, so the library announces itself
-          instead of matching the 15/800 of the rows underneath it. The heading
-          used to flip to "N résultats" in this same slot at the same weight,
-          which turned a place into a readout the eye had to re-parse; the count
-          lives in the pinned filter bar now, where it can be acted on. */}
-      <YStack gap="$1" marginBottom="$3">
-        <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
-          Toutes les recettes
-        </Text>
-        {/* Only when the band above is absent. Printed in both places the two
-            sentences sat ~200pt apart in near-identical wording, which trains
-            the eye to skip both — and the band's copy already says it for the
-            whole screen. */}
-        {pantryEstimated ? (
-          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-            Disponibilité estimée d’après les noms des ingrédients.
-          </Text>
-        ) : null}
-      </YStack>
     </YStack>
   )
 }
@@ -628,12 +514,7 @@ function RecipesError({ palette, onRetry }: { palette: SoftPalette; onRetry: () 
   )
 }
 
-/**
- * "Tout afficher" is not repeated here: it is pinned in the filter bar above,
- * visible from anywhere in the list, and printing it twice a few lines apart
- * would say the same thing to the same thumb. What this state adds is the other
- * way out — the one the filters cannot give you.
- */
+/** Empty filtered results retain a way to generate another recipe. */
 function NoMatches({ palette }: { palette: SoftPalette }) {
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" gap="$3" paddingHorizontal="$4">

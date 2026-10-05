@@ -138,6 +138,8 @@ test('a long press offers to delete the recipe, and confirming removes it for th
 
   fireEvent(screen.getByTestId('recipe-card-fake-recipe-1'), 'longPress')
 
+  await waitFor(() => expect(screen.getByTestId('recipe-delete-action')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipe-delete-action'))
   await waitFor(() => expect(screen.getByText('Supprimer « Poêlée poulet-épinards » ?')).toBeTruthy())
 
   fireEvent.press(screen.getByTestId('recipe-delete-confirm'))
@@ -152,6 +154,8 @@ test('the visible row control offers the same deletion, without knowing the gest
 
   fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-1'))
 
+  await waitFor(() => expect(screen.getByTestId('recipe-delete-action')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipe-delete-action'))
   await waitFor(() => expect(screen.getByText('Supprimer « Poêlée poulet-épinards » ?')).toBeTruthy())
 
   fireEvent.press(screen.getByTestId('recipe-delete-confirm'))
@@ -212,4 +216,47 @@ test('a failed read says so instead of claiming the foyer has no recipes', async
 
   await waitFor(() => expect(screen.getByTestId('recipes-retry')).toBeTruthy())
   expect(screen.queryByText('Aucune recette pour l’instant')).toBeNull()
+})
+
+
+test('archiving hides a recipe, Archives retrieves it, and restoring puts it back', async () => {
+  const connector = renderList()
+  await waitFor(() => expect(screen.getByTestId('recipe-actions-fake-recipe-1')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-1'))
+  await fireEvent.press(screen.getByTestId('recipe-archive-toggle'))
+  await waitFor(() => expect(screen.queryByTestId('recipe-card-fake-recipe-1')).toBeNull())
+  expect((await connector.getRecipe('fake-recipe-1'))?.isArchived).toBe(true)
+  await fireEvent.press(screen.getByTestId('recipes-collection-archived'))
+  await waitFor(() => expect(screen.getByTestId('recipe-card-fake-recipe-1')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-1'))
+  await fireEvent.press(screen.getByTestId('recipe-archive-toggle'))
+  await waitFor(() => expect(screen.queryByTestId('recipe-card-fake-recipe-1')).toBeNull())
+  await fireEvent.press(screen.getByTestId('recipes-collection-active'))
+  await waitFor(() => expect(screen.getByTestId('recipe-card-fake-recipe-1')).toBeTruthy())
+  expect((await connector.getRecipe('fake-recipe-1'))?.isArchived).toBe(false)
+})
+
+test('favorites are pinned first and can be removed from the Favorites collection', async () => {
+  const connector = renderList()
+  await waitFor(() => expect(screen.getByTestId('recipe-actions-fake-recipe-2')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-2'))
+  await fireEvent.press(screen.getByTestId('recipe-favorite-toggle'))
+  await waitFor(() => expect(screen.getByText('Favorite · épinglée')).toBeTruthy())
+  expect(screen.getAllByTestId(/^recipe-card-/)[0].props.testID).toBe('recipe-card-fake-recipe-2')
+  await fireEvent.press(screen.getByTestId('recipes-collection-favorites'))
+  expect(screen.queryByTestId('recipe-card-fake-recipe-1')).toBeNull()
+  await fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-2'))
+  await fireEvent.press(screen.getByTestId('recipe-favorite-toggle'))
+  await waitFor(() => expect(screen.queryByTestId('recipe-card-fake-recipe-2')).toBeNull())
+  expect((await connector.getRecipe('fake-recipe-2'))?.isFavorite).toBe(false)
+})
+
+test('a failed archive leaves the recipe visible and reports the failure', async () => {
+  const connector = renderList()
+  jest.spyOn(connector, 'updateRecipeState').mockResolvedValue({ ok: false, error: { type: 'offline', message: 'Offline' } })
+  await waitFor(() => expect(screen.getByTestId('recipe-actions-fake-recipe-1')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('recipe-actions-fake-recipe-1'))
+  await fireEvent.press(screen.getByTestId('recipe-archive-toggle'))
+  await waitFor(() => expect(screen.getByText('Modification impossible. Réessaie depuis le menu de la recette.')).toBeTruthy())
+  expect(screen.getByTestId('recipe-card-fake-recipe-1')).toBeTruthy()
 })

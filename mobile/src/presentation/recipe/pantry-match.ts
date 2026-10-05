@@ -169,6 +169,7 @@ export function pickTonight(
   { now, limit = 3 }: { now?: Date; limit?: number } = {},
 ): TonightCandidate[] {
   return recipes
+    .filter((recipe) => !recipe.isArchived)
     .flatMap((recipe) => {
       const match = matchPantry(recipe, products, now)
       if (!match.rescue) return []

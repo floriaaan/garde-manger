@@ -26,7 +26,8 @@ import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { Skeleton, SkeletonGroup, SkeletonRow } from '../shared/skeleton.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { useSoftPalette, type SoftPalette } from '../dashboard/soft-palette.js'
-import { BanIcon, ChefHatIcon, ChevronRightIcon, CircleCheckIcon, EllipsisIcon, ShoppingCartIcon } from '../dashboard/dashboard-icons.js'
+import { ChefHatIcon, ChevronRightIcon, CircleCheckIcon, EllipsisIcon, ShoppingCartIcon } from '../dashboard/dashboard-icons.js'
+import { RecipeActionsSheet } from './recipe-actions-sheet.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { useDeleteRecipeMutation } from '../../application/recipe/delete-recipe.mutation.js'
 import { useRecipeQuery } from '../../application/recipe/recipe.query.js'
@@ -138,20 +139,12 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
   }
 
   const deletionSheet = (
-    <ActionSheet
+    <RecipeActionsSheet
       visible={confirmingDeletion}
-      title={recipe.data ? `Supprimer « ${recipe.data.title} » ?` : ''}
-      description="Elle disparaît aussi pour les autres membres du foyer, et c’est définitif."
-      options={[
-        {
-          testID: 'recipe-detail-delete-confirm',
-          label: 'Supprimer la recette',
-          icon: (color) => <BanIcon size={18} color={color} />,
-          tint: palette.expiredBg,
-          destructive: true,
-          onPress: confirmDeletion,
-        },
-      ]}
+      recipe={recipe.data}
+      onDelete={confirmDeletion}
+      deleteTestID="recipe-detail-delete-confirm"
+      onFeedback={showHint}
       onClose={() => setConfirmingDeletion(false)}
     />
   )
@@ -340,6 +333,9 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
         <Text fontSize={24} fontWeight="800" color={palette.brandDeepText} lineHeight={30}>
           {data.title}
         </Text>
+        {data.isArchived || data.isFavorite ? <Text testID="recipe-detail-state" fontSize={13} fontWeight="600" color={palette.brandDeepTextSecondary}>
+          {[data.isArchived ? 'Archivée' : null, data.isFavorite ? 'Favorite · épinglée' : null].filter(Boolean).join(' · ')}
+        </Text> : null}
         {data.description ? (
           <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary} lineHeight={19}>
             {data.description}

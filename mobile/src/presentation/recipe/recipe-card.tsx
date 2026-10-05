@@ -110,6 +110,8 @@ export function RecipeCard({
           // silent.
           accessibilityLabel={[
             recipe.title,
+            recipe.isArchived ? 'archivée' : null,
+            recipe.isFavorite ? 'favorite, épinglée' : null,
             deleting ? 'suppression en cours' : null,
             provenance,
             spokenPantry,
@@ -135,6 +137,8 @@ export function RecipeCard({
               </Text>
             ) : null}
             <XStack gap="$1.5" flexWrap="wrap" marginTop="$0.5">
+              {recipe.isArchived ? <MetaChip label="Archivée" tone="muted" palette={palette} /> : null}
+              {recipe.isFavorite ? <MetaChip label="Favorite · épinglée" tone="tag" palette={palette} /> : null}
               {pantry ? (
                 <MetaChip label={pantry} tone={match && match.owned > 0 ? 'pantry' : 'muted'} palette={palette} />
               ) : null}

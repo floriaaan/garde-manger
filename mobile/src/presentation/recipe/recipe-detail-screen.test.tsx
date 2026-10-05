@@ -93,6 +93,8 @@ test('a recipe can be dropped from the screen where you decide you are done with
   fireEvent.press(screen.getByTestId('recipe-detail-actions'))
 
   // Same sheet, same consequence named, as the list's own entrance.
+  await waitFor(() => expect(screen.getByTestId('recipe-delete-action')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('recipe-delete-action'))
   await waitFor(() => expect(screen.getByText('Supprimer « Poêlée poulet-épinards » ?')).toBeTruthy())
   expect(screen.getByText('Elle disparaît aussi pour les autres membres du foyer, et c’est définitif.')).toBeTruthy()
 

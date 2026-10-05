@@ -110,6 +110,11 @@ export default function RootLayout() {
                   <Stack.Screen name="household" />
                   <Stack.Screen name="receipts" />
                   <Stack.Screen name="tasks" />
+                  <Stack.Screen name="action-sheet" options={{
+                    presentation: 'formSheet', sheetAllowedDetents: 'fitToContents',
+                    sheetGrabberVisible: true, sheetExpandsWhenScrolledToEdge: true,
+                    gestureEnabled: true,
+                  }} />
                   <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="debug" options={{ presentation: 'modal' }} />

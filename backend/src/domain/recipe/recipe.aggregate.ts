@@ -14,6 +14,8 @@ export interface RecipeCook {
 }
 
 interface RecipeProps {
+  isArchived?: boolean
+  isFavorite?: boolean
   householdId: string
   createdBy: string | null
   title: string
@@ -97,6 +99,14 @@ export class Recipe extends AggregateRoot<string> {
   /** Rehydrates an aggregate from persisted state — used by the mapper (Task 6). */
   static reconstruct(id: string, props: RecipeProps): Recipe {
     return new Recipe(id, props)
+  }
+
+  get isArchived(): boolean {
+    return this.props.isArchived ?? false
+  }
+
+  get isFavorite(): boolean {
+    return this.props.isFavorite ?? false
   }
 
   get householdId(): string {

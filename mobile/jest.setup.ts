@@ -43,3 +43,8 @@ jest.mock('@react-native-community/datetimepicker', () => {
 })
 
 export {}
+
+// Screens render sheet content inline in unit tests. Native navigation (which
+// mounts a separate route on devices) is covered by native-sheet-store.test.ts.
+jest.mock('./src/presentation/shared/action-sheet.js', () =>
+  jest.requireActual('./src/presentation/shared/action-sheet.web.js'))

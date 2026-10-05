@@ -419,7 +419,9 @@ Every screen that reads shared household state can be pulled down to re-read it.
 - The spinner is `accent-lime`: it is a progress indicator, which is exactly what the accent is reserved for.
 
 ### Action sheet (`ActionSheet`)
-The app's one modal. Options are separate card-buttons on a `layoutSurface` sheet; a `title` (and optional `description`) names what is being decided, a `destructive` option carries `expired-bg`/`expired-text`, and every sheet ends with an "Annuler" row. Any irreversible action on shared household state — deleting a product or a shopping item, removing a member, leaving a foyer, discarding an unsaved form — goes through one, and its copy names the consequence for the rest of the foyer.
+The shared confirmation surface. On iOS and Android, `ActionSheet` presents an Expo Router native `formSheet` with a grabber, height fitted to content, scrollable content and system dismissal gestures; the web retains its modal fallback. Inline second steps retain the same native presentation. Options are separate card-buttons on a `layoutSurface` sheet; a `title` (and optional `description`) names what is being decided, a `destructive` option carries `expired-bg`/`expired-text`, and every sheet ends with an "Annuler" row. Any irreversible action on shared household state — deleting a product or a shopping item, removing a member, leaving a foyer, discarding an unsaved form — goes through one, and its copy names the consequence for the rest of the foyer.
+
+Recipe actions expose one shared household favorite/pin toggle (favorites first, then newest), a reversible archive toggle with access through Archives, and a separate two-step permanent deletion. Archived recipes keep their favorite and cooking history, appear in Archives and their detail, and are excluded from the active library and “Ce soir”.
 
 ### Scan (`useScanSheet`, `ScanScreen`)
 The lime FAB means one thing on every tab: scan a product, or scan a receipt. `useScanSheet` owns both the sheet and the two destinations, and iOS's native "search"-role tab renders the same two choices as a real screen. Nothing in the app opens a different scan affordance per screen.
