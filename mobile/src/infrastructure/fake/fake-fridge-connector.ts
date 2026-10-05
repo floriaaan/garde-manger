@@ -48,6 +48,7 @@ import type { InstanceInfo } from '../../domain/instance/instance-info.js'
  * constant: nothing in production reads it.
  */
 const DEFAULT_AI_LATENCY_MS = 2200
+const DEFAULT_REQUEST_LATENCY_MS = 800
 
 /** Matches `GetProductOutcomeStats.BUCKET_COUNT` server-side. */
 const STATS_BUCKET_COUNT = 6
@@ -156,18 +157,23 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
   private haLink: HaLink = { ...fakeUnconfiguredHaLink }
   private readonly aiLatencyMs: number
+  private readonly latencyMs: number
 
   /**
    * `aiLatencyMs: 0` for tests that want the generated data and not the wait.
+   * `latencyMs` simulates network latency for every public call; tests default
+   * to zero and can opt into a delay to exercise pending states.
    * `fixtureHousehold` for a test that needs the connector to start signed
    * into (and sign back into) the foyer as a member rather than the owner —
    * pass `fakeHouseholdAsMember`.
    */
   constructor({
     aiLatencyMs = DEFAULT_AI_LATENCY_MS,
+    latencyMs = process.env.NODE_ENV === 'test' ? 0 : DEFAULT_REQUEST_LATENCY_MS,
     fixtureHousehold = fakeHousehold,
-  }: { aiLatencyMs?: number; fixtureHousehold?: Household } = {}) {
+  }: { aiLatencyMs?: number; latencyMs?: number; fixtureHousehold?: Household } = {}) {
     this.aiLatencyMs = aiLatencyMs
+    this.latencyMs = latencyMs
     this.fixtureHousehold = fixtureHousehold
     this.household = { ...fixtureHousehold, members: fixtureHousehold.members.map((m) => ({ ...m })) }
   }
@@ -177,17 +183,25 @@ export class FakeFridgeConnector implements FridgeConnector {
     return new Promise((resolve) => setTimeout(resolve, this.aiLatencyMs))
   }
 
+  private pretendNetworkLatency(): Promise<void> {
+    if (this.latencyMs <= 0) return Promise.resolve()
+    return new Promise((resolve) => setTimeout(resolve, this.latencyMs))
+  }
+
   /** Fixture answers for a URL ending in `/valid`, `null` (server not recognized) for anything else — see server-choice-screen.test.tsx. */
   async getInstanceInfo(url: string): Promise<InstanceInfo | null> {
+    await this.pretendNetworkLatency()
     if (!url.includes('valid')) return null
     return { mode: 'hosted', name: 'Garde-manger de test', version: '0.0.0' }
   }
 
   async getSession(): Promise<Session | null> {
+    await this.pretendNetworkLatency()
     return this.session
   }
 
   async getAuthMethods(): Promise<AuthMethod[]> {
+    await this.pretendNetworkLatency()
     return [
       { id: 'password', enabled: true, label: 'Email et mot de passe', resetAvailable: true },
       { id: 'pocketid', enabled: true, label: 'PocketID' },
@@ -203,6 +217,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async signInEmail(email: string, password: string): Promise<Result<Session, ApiError>> {
+    await this.pretendNetworkLatency()
     if (!email || !password) {
       return Result.err({ type: 'invalid_credentials', message: 'Email ou mot de passe invalide.' })
     }
@@ -212,6 +227,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async signUpEmail(email: string, _password: string, name: string): Promise<Result<Session, ApiError>> {
+    await this.pretendNetworkLatency()
     this.session = { user: { ...fakeSession.user, email, name } }
     this.linkedProviders = new Set<LinkedAccount['provider']>(['password'])
     // A new account has no foyer. This is what makes `(onboarding)` reachable.
@@ -220,16 +236,19 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async requestPasswordReset(_email: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok(undefined)
   }
 
   async resetPassword(token: string, _newPassword: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     return token
       ? Result.ok(undefined)
       : Result.err({ type: 'invalid_token', message: 'Ce lien ne fonctionne plus.' })
   }
 
   async signInSocial(provider?: 'pocketid' | 'google'): Promise<Result<Session, ApiError>> {
+    await this.pretendNetworkLatency()
     this.session = fakeSession
     if (provider) this.linkedProviders.add(provider)
     this.restoreFixtureHousehold()
@@ -249,30 +268,40 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async addPasskey(): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.linkedProviders.add('passkey')
     return Result.ok(undefined)
   }
 
   async linkSocial(provider?: 'pocketid' | 'google'): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     if (provider) this.linkedProviders.add(provider)
     return Result.ok(undefined)
   }
 
   async linkApple(_identityToken: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.linkedProviders.add('apple')
     return Result.ok(undefined)
   }
 
   async signOut(): Promise<void> {
+    await this.pretendNetworkLatency()
     this.session = null
   }
 
   async getHousehold(): Promise<Household | null> {
+    await this.pretendNetworkLatency()
+    return this.householdSnapshot()
+  }
+
+  private householdSnapshot(): Household | null {
     if (!this.household) return null
     return { ...this.household, members: this.household.members.map((m) => ({ ...m })) }
   }
 
   async createHousehold(name: string): Promise<Result<Household, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household) {
       return Result.err({ type: 'already_in_household', message: 'Vous appartenez déjà à un foyer.' })
     }
@@ -295,10 +324,11 @@ export class FakeFridgeConnector implements FridgeConnector {
         },
       ],
     }
-    return Result.ok((await this.getHousehold()) as Household)
+    return Result.ok(this.householdSnapshot() as Household)
   }
 
   async joinHousehold(inviteCode: string): Promise<Result<Household, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household) {
       return Result.err({ type: 'already_in_household', message: 'Vous appartenez déjà à un foyer.' })
     }
@@ -320,7 +350,7 @@ export class FakeFridgeConnector implements FridgeConnector {
       role: 'member',
       joinedAt: new Date().toISOString(),
     })
-    return Result.ok((await this.getHousehold()) as Household)
+    return Result.ok(this.householdSnapshot() as Household)
   }
 
   private nextFakeInviteCode(): string {
@@ -328,6 +358,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async renameHousehold(name: string): Promise<Result<Household, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household?.role !== 'owner') {
       return Result.err({ type: 'forbidden', message: 'Seul le propriétaire du foyer peut le renommer.' })
     }
@@ -340,6 +371,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async regenerateInviteCode(): Promise<Result<string, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household?.role !== 'owner') {
       return Result.err({ type: 'forbidden', message: 'Seul le propriétaire du foyer peut régénérer le code.' })
     }
@@ -348,6 +380,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async removeHouseholdMember(userId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household?.role !== 'owner') {
       return Result.err({ type: 'forbidden', message: 'Seul le propriétaire du foyer peut retirer un membre.' })
     }
@@ -358,6 +391,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async leaveHousehold(): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     // Null, not "the same household minus me". Either branch of the real
     // backend — an owner deleting the foyer, a member being removed from it —
     // leaves `GET /households/mine` answering null for this account, and the
@@ -367,6 +401,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async transferHouseholdOwnership(newOwnerId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household?.role !== 'owner') {
       return Result.err({ type: 'not_owner', message: 'Seul le propriétaire du foyer peut faire cette action.' })
     }
@@ -385,6 +420,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async updateAccountName(name: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     const trimmed = name.trim()
     if (trimmed.length === 0) {
       return Result.err({ type: 'validation_failed', message: 'Le nom ne peut pas être vide.' })
@@ -394,6 +430,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async changeAccountPassword(currentPassword: string, newPassword: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     if (!currentPassword || !newPassword) {
       return Result.err({ type: 'invalid_credentials', message: 'Email ou mot de passe invalide.' })
     }
@@ -401,10 +438,12 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getLinkedAccounts(): Promise<LinkedAccount[]> {
+    await this.pretendNetworkLatency()
     return [...this.linkedProviders].map((provider) => ({ provider, createdAt: new Date().toISOString() }))
   }
 
   async deleteAccount(_password?: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     if (this.household?.role === 'owner' && this.household.members.length > 1) {
       return Result.err({
         type: 'ownership_transfer_required',
@@ -417,10 +456,12 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getShoppingItems(): Promise<ShoppingItem[]> {
+    await this.pretendNetworkLatency()
     return [...this.shoppingItems]
   }
 
   async createShoppingItem(input: CreateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {
+    await this.pretendNetworkLatency()
     const now = new Date().toISOString()
     // Same "don't duplicate the same product" rule the backend's
     // `CreateShoppingItem` use-case enforces: a checked item is a closed
@@ -457,6 +498,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async updateShoppingItem(itemId: string, patch: UpdateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {
+    await this.pretendNetworkLatency()
     const item = this.shoppingItems.find((i) => i.id === itemId)
     if (!item) return Result.err({ type: 'not_found', message: 'Article introuvable.' })
     Object.assign(item, patch, { updatedAt: new Date().toISOString() })
@@ -464,6 +506,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async deleteShoppingItem(itemId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     const index = this.shoppingItems.findIndex((i) => i.id === itemId)
     if (index === -1) return Result.err({ type: 'not_found', message: 'Article introuvable.' })
     this.shoppingItems.splice(index, 1)
@@ -471,10 +514,12 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getRecipes(): Promise<Recipe[]> {
+    await this.pretendNetworkLatency()
     return [...this.generatedRecipes, ...this.recipes]
   }
 
   async getRecipe(recipeId: string): Promise<Recipe | null> {
+    await this.pretendNetworkLatency()
     return [...this.generatedRecipes, ...this.recipes].find((r) => r.id === recipeId) ?? null
   }
 
@@ -484,6 +529,7 @@ export class FakeFridgeConnector implements FridgeConnector {
    * whole point of the action and the dashboard reads the same list.
    */
   async cookRecipe(recipeId: string, productIds: string[]): Promise<Result<Recipe, ApiError>> {
+    await this.pretendNetworkLatency()
     for (const list of [this.generatedRecipes, this.recipes]) {
       const recipe = list.find((r) => r.id === recipeId)
       if (!recipe) continue
@@ -501,6 +547,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async updateRecipeState(recipeId: string, state: { isArchived?: boolean; isFavorite?: boolean }): Promise<Result<Recipe, ApiError>> {
+    await this.pretendNetworkLatency()
     for (const list of [this.generatedRecipes, this.recipes]) {
       const index = list.findIndex((recipe) => recipe.id === recipeId)
       if (index < 0) continue
@@ -511,6 +558,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async deleteRecipe(recipeId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     for (const list of [this.generatedRecipes, this.recipes]) {
       const index = list.findIndex((r) => r.id === recipeId)
       if (index === -1) continue
@@ -643,27 +691,33 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ ...this.startJob('receipt_scan', [imageUri]) })
   }
 
   async enqueueFridgeScan(imageUris: string[]): Promise<Result<Job, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ ...this.startJob('fridge_scan', imageUris) })
   }
 
   async enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ ...this.startJob('recipe_generation', [prompt ?? '']) })
   }
 
   async getJobs(): Promise<Job[]> {
+    await this.pretendNetworkLatency()
     return this.jobs.map((job) => ({ ...job }))
   }
 
   async getJob(jobId: string): Promise<Job | null> {
+    await this.pretendNetworkLatency()
     const job = this.jobs.find((j) => j.id === jobId)
     return job ? { ...job } : null
   }
 
   async retryJob(jobId: string): Promise<Result<Job, ApiError>> {
+    await this.pretendNetworkLatency()
     const job = this.jobs.find((j) => j.id === jobId)
     if (!job) return Result.err({ type: 'job_not_found', message: 'Tâche introuvable.' })
     job.status = 'queued'
@@ -675,6 +729,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async dismissJob(jobId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     const job = this.jobs.find((j) => j.id === jobId)
     // Mirrors the server: dismissing hides, dismissing a hidden job deletes.
     if (job && !job.dismissedAt && job.status !== 'queued') job.dismissedAt = new Date().toISOString()
@@ -683,6 +738,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async restoreJob(jobId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     const job = this.jobs.find((j) => j.id === jobId)
     if (job) job.dismissedAt = null
     return Result.ok(undefined)
@@ -694,20 +750,24 @@ export class FakeFridgeConnector implements FridgeConnector {
   private notificationPreferences = { enabled: true, checkupEnabled: true, checkupDay: 1 }
 
   async getWebPushPublicKey(): Promise<string | null> {
+    await this.pretendNetworkLatency()
     return null
   }
 
   async registerWebPush(subscription: WebPushSubscription): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.webPushSubscriptions.set(subscription.endpoint, subscription)
     return Result.ok(undefined)
   }
 
   async unregisterWebPush(endpoint: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.webPushSubscriptions.delete(endpoint)
     return Result.ok(undefined)
   }
 
   async getReminderSettings(): Promise<ReminderSettings> {
+    await this.pretendNetworkLatency()
     return { days: this.reminderDays, ...this.notificationPreferences, hour: 9, timeZone: 'Europe/Paris' }
   }
 
@@ -716,6 +776,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async setReminderSettings(update: ReminderSettingsUpdate): Promise<Result<ReminderSettings, ApiError>> {
+    await this.pretendNetworkLatency()
     const { days, ...preferences } = update
     if (days !== undefined) this.reminderDays = days
     this.notificationPreferences = { ...this.notificationPreferences, ...preferences }
@@ -723,29 +784,35 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async registerPushToken(token: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.pushTokens.add(token)
     return Result.ok(undefined)
   }
 
   async unregisterPushToken(token: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.pushTokens.delete(token)
     return Result.ok(undefined)
   }
 
   async getScanDrafts(): Promise<ScanDraft[]> {
+    await this.pretendNetworkLatency()
     return this.scanDrafts
   }
 
   async getScanDraft(draftId: string): Promise<ScanDraft | null> {
+    await this.pretendNetworkLatency()
     return this.scanDrafts.find((d) => d.id === draftId) ?? null
   }
 
   async discardScanDraft(draftId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.scanDrafts = this.scanDrafts.filter((d) => d.id !== draftId)
     return Result.ok(undefined)
   }
 
   async getProducts(params?: { location?: LocationValue; expiringWithinDays?: number }): Promise<Product[]> {
+    await this.pretendNetworkLatency()
     let result = this.products
     if (params?.location) result = result.filter((p) => p.location === params.location)
     if (params?.expiringWithinDays) {
@@ -756,10 +823,12 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getProduct(productId: string): Promise<Product | null> {
+    await this.pretendNetworkLatency()
     return this.products.find((p) => p.id === productId) ?? null
   }
 
   async createProduct(input: CreateProductInput): Promise<Result<Product, ApiError>> {
+    await this.pretendNetworkLatency()
     const now = new Date().toISOString()
     const product: Product = {
       id: `fake-product-new-${this.nextProductId++}`,
@@ -782,6 +851,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async updateProduct(productId: string, patch: UpdateProductInput): Promise<Result<Product, ApiError>> {
+    await this.pretendNetworkLatency()
     const product = this.products.find((p) => p.id === productId)
     if (!product) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
     Object.assign(product, patch, { updatedAt: new Date().toISOString() })
@@ -789,6 +859,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async deleteProduct(productId: string): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     const index = this.products.findIndex((p) => p.id === productId)
     if (index === -1) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
     this.products.splice(index, 1)
@@ -799,6 +870,7 @@ export class FakeFridgeConnector implements FridgeConnector {
     productId: string,
     input: RecordProductOutcomeInput,
   ): Promise<Result<RecordedProductOutcome, ApiError>> {
+    await this.pretendNetworkLatency()
     const index = this.products.findIndex((p) => p.id === productId)
     if (index === -1) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
     const product = this.products[index]
@@ -851,6 +923,7 @@ export class FakeFridgeConnector implements FridgeConnector {
    * SQL here, just the same arithmetic over the in-memory `outcomes` array.
    */
   async getProductOutcomeStats(days?: number): Promise<ProductOutcomeStats> {
+    await this.pretendNetworkLatency()
     const toMs = Date.now()
     const fromMs = days ? toMs - days * 24 * 60 * 60 * 1000 : this.earliestOutcomeMs() ?? toMs
 
@@ -884,6 +957,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async lookupProductByBarcode(barcode: string): Promise<ProductLookupResult | null> {
+    await this.pretendNetworkLatency()
     return fakeProductLookup[barcode] ?? null
   }
 
@@ -905,6 +979,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async importProducts(items: ImportProductsItemInput[], draftId?: string): Promise<Result<{ products: Product[] }, ApiError>> {
+    await this.pretendNetworkLatency()
     if (draftId) this.scanDrafts = this.scanDrafts.filter((d) => d.id !== draftId)
     const now = new Date().toISOString()
     const products: Product[] = items.map((item) => {
@@ -931,6 +1006,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async importReceipt(input: ImportReceiptInput): Promise<Result<{ receipt: Receipt; products: Product[] }, ApiError>> {
+    await this.pretendNetworkLatency()
     if (input.draftId) this.scanDrafts = this.scanDrafts.filter((d) => d.id !== input.draftId)
     const now = new Date().toISOString()
     const receipt: Receipt = {
@@ -969,20 +1045,24 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async getReceipts(): Promise<Receipt[]> {
+    await this.pretendNetworkLatency()
     return this.receipts
   }
 
   async getReceipt(receiptId: string): Promise<{ receipt: Receipt; products: Product[] } | null> {
+    await this.pretendNetworkLatency()
     const receipt = this.receipts.find((r) => r.id === receiptId)
     if (!receipt) return null
     return { receipt, products: this.products.filter((p) => p.receiptId === receiptId) }
   }
 
   async getAiSettings(): Promise<AiSettings | null> {
+    await this.pretendNetworkLatency()
     return this.aiSettings
   }
 
   async setActiveAiProvider(provider: AiProvider): Promise<Result<AiSettings, ApiError>> {
+    await this.pretendNetworkLatency()
     if (!this.aiSettings.availableProviders.includes(provider)) {
       return Result.err({ type: 'provider_not_available', message: "Ce fournisseur n'est pas configuré." })
     }
@@ -991,18 +1071,22 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ url: 'https://checkout.stripe.com/fake' })
   }
 
   async openBillingPortal(): Promise<Result<{ url: string }, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ url: 'https://billing.stripe.com/fake' })
   }
 
   async getHaLink(): Promise<HaLink | null> {
+    await this.pretendNetworkLatency()
     return this.haLink
   }
 
   async saveHaConnection(input: SaveHaConnectionInput): Promise<Result<HaLink, ApiError>> {
+    await this.pretendNetworkLatency()
     if (!input.token && !this.haLink.tokenSet) {
       return Result.err({ type: 'token_required', message: 'Un jeton est requis pour la première connexion.' })
     }
@@ -1011,6 +1095,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async discoverHaTodoEntities(): Promise<Result<HaTodoEntity[], ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok([
       { entityId: 'todo.courses', friendlyName: 'Courses' },
       { entityId: 'todo.taches', friendlyName: 'Tâches' },
@@ -1018,6 +1103,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async bindHaList(input: BindHaListInput): Promise<Result<HaLink, ApiError>> {
+    await this.pretendNetworkLatency()
     this.haLink = {
       ...this.haLink,
       todoEntityId: input.todoEntityId ?? this.haLink.todoEntityId,
@@ -1029,11 +1115,13 @@ export class FakeFridgeConnector implements FridgeConnector {
   }
 
   async unlinkHa(): Promise<Result<void, ApiError>> {
+    await this.pretendNetworkLatency()
     this.haLink = { ...fakeUnconfiguredHaLink }
     return Result.ok(undefined)
   }
 
   async syncShoppingListWithHa(): Promise<Result<{ synced: boolean }, ApiError>> {
+    await this.pretendNetworkLatency()
     return Result.ok({ synced: this.haLink.configured && Boolean(this.haLink.todoEntityId) })
   }
 }

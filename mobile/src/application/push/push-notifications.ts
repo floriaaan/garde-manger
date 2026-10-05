@@ -17,7 +17,7 @@ import type { WebPushSubscription } from '../../domain/settings/reminder-setting
 const ENABLED_KEY = 'push_enabled'
 const TOKEN_KEY = 'push_token'
 
-export type EnablePushResult = 'enabled' | 'denied' | 'unavailable'
+export type EnablePushResult = 'enabled' | 'denied' | 'unavailable' | 'failed'
 
 let lastHandled: string | null = null
 
@@ -63,16 +63,16 @@ async function registerWeb(connector: FridgeConnector, prompt: boolean, readyKey
     const subscription = (await registration.pushManager.getSubscription()) ??
       (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKeyBytes(publicKey) }))
     const json = subscription.toJSON()
-    if (!json.keys?.p256dh || !json.keys.auth) return 'unavailable'
+    if (!json.keys?.p256dh || !json.keys.auth) return 'failed'
     const payload: WebPushSubscription = {
       endpoint: subscription.endpoint,
       keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
     }
-    if (!(await connector.registerWebPush(payload)).ok) return 'unavailable'
+    if (!(await connector.registerWebPush(payload)).ok) return 'failed'
     await writeSetting(ENABLED_KEY, '1')
     return 'enabled'
   } catch {
-    return 'unavailable'
+    return 'failed'
   }
 }
 
@@ -131,11 +131,12 @@ export async function pushPermissionMessage(): Promise<string | null> {
 export async function enablePush(connector: FridgeConnector, webPublicKey?: string): Promise<EnablePushResult> {
   if (Platform.OS === 'web') return registerWeb(connector, true, webPublicKey)
   if (!isSupported) return 'unavailable'
+  if (!(Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId)) return 'unavailable'
   const Notifications = await import('expo-notifications')
   let { granted } = await Notifications.getPermissionsAsync()
   if (!granted) ({ granted } = await Notifications.requestPermissionsAsync())
   if (!granted) return 'denied'
-  if (!(await register(connector))) return 'unavailable'
+  if (!(await register(connector))) return 'failed'
   await writeSetting(ENABLED_KEY, '1')
   return 'enabled'
 }
@@ -148,14 +149,18 @@ export async function disablePush(
   if (Platform.OS === 'web') {
     const subscription = await webSubscription()
     if (subscription) {
-      await connector.unregisterWebPush(subscription.endpoint)
-      await subscription.unsubscribe()
+      if (!(await connector.unregisterWebPush(subscription.endpoint)).ok) {
+        throw new Error('Unable to unregister web push')
+      }
+      if (!(await subscription.unsubscribe())) throw new Error('Unable to unsubscribe web push')
     }
     if (!keepPreference) await writeSetting(ENABLED_KEY, '0')
     return
   }
   const token = await readSetting(TOKEN_KEY)
-  if (token) await connector.unregisterPushToken(token)
+  if (token && !(await connector.unregisterPushToken(token)).ok) {
+    throw new Error('Unable to unregister push token')
+  }
   if (!keepPreference) await writeSetting(ENABLED_KEY, '0')
 }
 

@@ -33,18 +33,19 @@ export function ExpiryReminderScreen() {
           <NotificationPreferenceRow testID="expiry-reminder-enabled"
             label="Activer le rappel pour le foyer" enabled={settings.data.enabled}
             pending={editor.pending} palette={palette} onChange={(enabled) => void editor.save({ enabled })} />
+          <ReminderSaveFeedback editor={editor} palette={palette} />
           {settings.data.enabled ? <YStack gap="$3">
             <Text fontSize={15} fontWeight="700" color={palette.ink}>
-              Quand veux-tu être prévenu ?
+              Quand prévenir le foyer ?
             </Text>
             <Text fontSize={13} color={palette.inkSecondary}>
               Ce choix vaut pour tout le foyer. Chaque appareil ayant activé les notifications reçoit un résumé quotidien à {settings.data.hour} h ({settings.data.timeZone}).
             </Text>
-            <YStack gap="$2" accessibilityRole="radiogroup">
+            <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Délai du rappel de péremption">
               {REMINDER_DAYS.map((days) => (
                 <RadioCard key={days} testID={`reminder-days-${days}`} label={label(days)}
                   description={days === 2 ? 'Choix par défaut' : undefined}
-                  selected={settings.data?.days === days} disabled={editor.pending}
+                  selected={settings.data?.days === days} disabled={editor.pending} busy={editor.pending}
                   onPress={() => void editor.save({ days })} palette={palette} />
               ))}
             </YStack>
@@ -61,7 +62,6 @@ export function ExpiryReminderScreen() {
               tone="quiet" disabled={settings.isFetching} onPress={() => { void settings.refetch() }} /> : null}
           </YStack>
         )}
-        <ReminderSaveFeedback editor={editor} palette={palette} />
       </YStack>
     </AppShell>
   )

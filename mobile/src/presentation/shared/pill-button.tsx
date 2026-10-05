@@ -20,7 +20,7 @@
  * submit of the auth screens, a different control with a different job.
  */
 import type { ReactNode } from 'react'
-import { Animated } from 'react-native'
+import { Animated, Platform } from 'react-native'
 import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
@@ -29,8 +29,9 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 /** Drawn height/type per `size` — `dense` is `Chip`'s own compact recipe
  * (32pt, 12px label), for a row of 3+ pills that needs to hold one line
  * (the invite card's Partager/Copier/QR trio, 2026-09-09 ask) without
- * shrinking the touch target below 44 — `hitSlop` pads it back, same as `Chip`. */
-const PILL_HEIGHT = { default: 44, dense: 32 } as const
+ * shrinking the touch target below 44pt (48dp on Android) — `hitSlop` pads it back. */
+const MIN_TARGET_HEIGHT = Platform.OS === 'android' ? 48 : 44
+const PILL_HEIGHT = { default: MIN_TARGET_HEIGHT, dense: 32 } as const
 
 export function PillButton({
   testID,
@@ -61,7 +62,7 @@ export function PillButton({
 }) {
   const hover = useHoverPress()
   const height = PILL_HEIGHT[size]
-  const slop = Math.max(0, Math.ceil((44 - height) / 2))
+  const slop = Math.max(0, Math.ceil((MIN_TARGET_HEIGHT - height) / 2))
   return (
     <Pressable
       testID={testID}

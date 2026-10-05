@@ -32,15 +32,17 @@ export function PantryCheckupScreen() {
           <NotificationPreferenceRow testID="checkup-enabled" label="Activer le check-up pour le foyer"
             enabled={settings.data.checkupEnabled} pending={editor.pending} palette={palette}
             onChange={(checkupEnabled) => void editor.save({ checkupEnabled })} />
+          <ReminderSaveFeedback editor={editor} palette={palette} />
           {settings.data.checkupEnabled ? <YStack gap="$3">
             <Text fontSize={15} fontWeight="700" color={palette.ink}>Quel jour de la semaine ?</Text>
             <Text fontSize={13} color={palette.inkSecondary}>
               Pour tout le foyer, à {settings.data.hour} h ({settings.data.timeZone}). Le lundi par défaut.
             </Text>
-            <YStack gap="$2" accessibilityRole="radiogroup">
-              {CHECKUP_DAYS.map((day, checkupDay) => <RadioCard key={day}
-                testID={`checkup-day-${checkupDay}`} label={day[0].toUpperCase() + day.slice(1)}
-                selected={settings.data?.checkupDay === checkupDay} disabled={editor.pending}
+            <YStack gap={0} borderRadius={12} overflow="hidden" accessibilityRole="radiogroup"
+              accessibilityLabel="Jour du check-up du garde-manger">
+              {[1, 2, 3, 4, 5, 6, 0].map((checkupDay) => <RadioCard key={checkupDay} compact
+                testID={`checkup-day-${checkupDay}`} label={CHECKUP_DAYS[checkupDay][0].toUpperCase() + CHECKUP_DAYS[checkupDay].slice(1)}
+                selected={settings.data?.checkupDay === checkupDay} disabled={editor.pending} busy={editor.pending}
                 onPress={() => void editor.save({ checkupDay })} palette={palette} />)}
             </YStack>
             <Text fontSize={12} color={palette.inkSecondary}>
@@ -54,7 +56,6 @@ export function PantryCheckupScreen() {
           {!settings.isPending ? <PillButton testID="reminder-load-retry" label="Réessayer" palette={palette}
             tone="quiet" disabled={settings.isFetching} onPress={() => { void settings.refetch() }} /> : null}
         </YStack>}
-        <ReminderSaveFeedback editor={editor} palette={palette} />
       </YStack>
     </AppShell>
   )

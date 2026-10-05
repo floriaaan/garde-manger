@@ -23,12 +23,9 @@ export function ReminderSaveFeedback({ editor, palette }: {
   editor: ReturnType<typeof useReminderSettingsEditor>
   palette: SoftPalette
 }) {
-  return <YStack gap="$2">
-    <NotificationFeedback message={editor.feedback} error={editor.failed} palette={palette} />
-    {editor.failed ? <PillButton testID="reminder-save-retry" label="Réessayer"
+  return editor.failed ? <PillButton testID="reminder-save-retry" label="Réessayer"
       accessibilityLabel="Réessayer d’enregistrer le rappel" palette={palette}
-      tone="quiet" disabled={editor.pending} onPress={editor.retry} /> : null}
-  </YStack>
+      tone="quiet" disabled={editor.pending} onPress={editor.retry} /> : null
 }
 
 export function DeviceNotificationStatus({ palette }: { palette: SoftPalette }) {

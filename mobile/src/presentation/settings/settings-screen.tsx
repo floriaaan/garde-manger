@@ -27,6 +27,7 @@ import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
 import { useConnector } from '../../application/shared/connector-context.js'
 import { disablePush } from '../../application/push/push-notifications.js'
+import { showToast } from '../../application/shared/toast.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
@@ -105,10 +106,11 @@ export function SettingsScreen() {
     setConfirmingSignOut(false)
     // Before the session goes: the call is authenticated, and this device must
     // stop receiving the previous account's pushes.
-    await disablePush(connector, { keepPreference: true })
     try {
+      await disablePush(connector, { keepPreference: true })
       await signOut.mutateAsync(undefined)
     } catch {
+      showToast('Impossible de terminer la déconnexion. Réessaie.', 'error')
       return
     }
     await session.refetch()

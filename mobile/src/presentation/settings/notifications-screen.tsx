@@ -23,6 +23,9 @@ export function NotificationsScreen() {
     : `${preferences.days} jour${preferences.days > 1 ? 's' : ''} avant la péremption.` : 'Choisir le délai avant la péremption.'
   const checkupSchedule = preferences ? `Une fois par semaine, le ${CHECKUP_DAYS[preferences.checkupDay]}.`
     : 'Un rappel pour garder ton inventaire à jour.'
+  const expirySummary = preferences && !preferences.enabled ? `Délai conservé : ${expirySchedule}` : expirySchedule
+  const checkupSummary = preferences && !preferences.checkupEnabled
+    ? `Jour conservé : ${CHECKUP_DAYS[preferences.checkupDay]}.` : checkupSchedule
   return (
     <AppShell nav={{ kind: 'stack' }} refresh={refresh} header={
       <ScreenHeader palette={palette} icon={(color) => <BellIcon size={19} color={color} />}
@@ -37,15 +40,15 @@ export function NotificationsScreen() {
           labelColor={palette.butterText} chipColor={palette.chipButter}
           icon={<BellIcon size={18} color={palette.onDark} />} label="Rappel de péremption"
           value={expiryState} emphasizeLabel
-          accessibilityLabel={`Rappel de péremption. ${expiryState}. ${expirySchedule} Modifier ce rappel.`}
-          secondary={expirySchedule} corner="a" palette={palette}
+          accessibilityLabel={`Rappel de péremption. ${expiryState}. ${expirySummary} Modifier ce rappel.`}
+          secondary={expirySummary} corner="a" palette={palette}
           onPress={() => router.push('/expiry-reminders')} />
         <IdentityCard testID="notifications-pantry-checkup" bg={palette.mintPale}
           labelColor={palette.mintPaleText} chipColor={palette.chipTeal}
           icon={<BellIcon size={18} color={palette.onDark} />} label="Check-up du garde-manger"
           value={checkupState} emphasizeLabel
-          accessibilityLabel={`Check-up du garde-manger. ${checkupState}. ${checkupSchedule} Modifier ce rappel.`}
-          secondary={checkupSchedule}
+          accessibilityLabel={`Check-up du garde-manger. ${checkupState}. ${checkupSummary} Modifier ce rappel.`}
+          secondary={checkupSummary}
           corner="b" palette={palette} onPress={() => router.push('/pantry-checkup')} />
         {!preferences ? <YStack gap="$2">
           <Text color={settings.isPending ? palette.inkSecondary : palette.expiredText} accessibilityLiveRegion="polite">

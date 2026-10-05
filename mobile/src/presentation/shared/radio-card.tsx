@@ -25,6 +25,8 @@ export function RadioCard({
   icon,
   iconTint,
   disabled,
+  busy = false,
+  compact = false,
   palette,
 }: {
   testID: string
@@ -36,6 +38,9 @@ export function RadioCard({
   icon?: (color: string) => ReactNode
   iconTint?: string
   disabled?: boolean
+  busy?: boolean
+  /** Plain, compact rows for short ordered lists such as weekdays. */
+  compact?: boolean
   palette: SoftPalette
 }) {
   const hover = useHoverPress()
@@ -61,21 +66,21 @@ export function RadioCard({
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="radio"
-      accessibilityState={{ selected, disabled }}
-      accessibilityLabel={label}
+      accessibilityState={{ checked: selected, selected, disabled, busy }}
+      accessibilityLabel={[label, description].filter(Boolean).join('. ')}
       android_ripple={ripple(palette.ink)}
-      style={[pointerCursor, disabled ? { opacity: 0.5 } : null, rippleClip(16)]}
+      style={[pointerCursor, disabled && !busy ? { opacity: 0.5 } : null, rippleClip(compact ? 0 : 16)]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
         <XStack
           alignItems="center"
           gap="$3"
-          paddingVertical="$3"
+          paddingVertical={compact ? '$2' : '$3'}
           paddingHorizontal="$3"
-          minHeight={56}
-          borderRadius={16}
+          minHeight={compact ? 48 : 56}
+          borderRadius={compact ? 0 : 16}
           backgroundColor={bg}
-          style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 1 }}
+          style={compact ? undefined : { shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 1 }}
         >
           {icon ? (
             <YStack width={36} height={36} borderRadius={12} backgroundColor={iconTint ?? palette.chipViolet} alignItems="center" justifyContent="center">
