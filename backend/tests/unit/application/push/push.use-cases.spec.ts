@@ -6,7 +6,11 @@ import type { PushMessage, PushSender } from '#domain/push/interfaces/push-sende
 import type { PushTokenRepository } from '#domain/push/interfaces/push-token-repository.interface'
 import type { DigestTarget } from '#domain/push/push-token'
 import type { ProductRepository } from '#domain/fridge/interfaces/product-repository.interface'
-import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type ReminderSettingsRepository } from '#domain/push/reminder-settings'
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  type NotificationPreferences,
+  type ReminderSettingsRepository,
+} from '#domain/push/reminder-settings'
 import type { WebPushSender } from '#domain/push/interfaces/web-push-sender.interface'
 
 class FakeSender implements PushSender {
@@ -54,7 +58,10 @@ const products = (
     },
   }) as unknown as ProductRepository
 
-const settings = (days = 2, preferences: Partial<NotificationPreferences> = {}): ReminderSettingsRepository => ({
+const settings = (
+  days = 2,
+  preferences: Partial<NotificationPreferences> = {},
+): ReminderSettingsRepository => ({
   getPreferences: async () => ({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...preferences }),
   setPreferences: async () => {},
   getDays: async () => days as 0 | 1 | 2 | 3 | 7,
@@ -144,12 +151,16 @@ test.group('SendExpiryDigest', () => {
     assert.sameMembers(tokens.digested, ['t1', 't2'])
   })
 
-  test('sends the weekly check-up without expiry reminders or expiring products', async ({ assert }) => {
+  test('sends the weekly check-up without expiry reminders or expiring products', async ({
+    assert,
+  }) => {
     const sender = new FakeSender()
     const queried: string[] = []
     const tokens = new FakeTokens([], [due[0]!])
     const result = await new SendExpiryDigest(
-      tokens, products({}, (householdId) => queried.push(householdId)), sender,
+      tokens,
+      products({}, (householdId) => queried.push(householdId)),
+      sender,
       settings(2, { enabled: false }),
     ).execute({ today: '2026-09-21' })
     assert.equal(result.sent, 1)
@@ -161,34 +172,64 @@ test.group('SendExpiryDigest', () => {
 
   test('respects a disabled check-up and keeps the expiry summary', async ({ assert }) => {
     const sender = new FakeSender()
-    await new SendExpiryDigest(new FakeTokens([], [due[0]!]), products({ h1: ['Lait'] }),
-      sender, settings(2, { checkupEnabled: false }),
+    await new SendExpiryDigest(
+      new FakeTokens([], [due[0]!]),
+      products({ h1: ['Lait'] }),
+      sender,
+      settings(2, { checkupEnabled: false }),
     ).execute({ today: '2026-09-21' })
     assert.lengthOf(sender.sent, 1)
     assert.equal(sender.sent[0]!.title, 'Un produit à sauver 🥕')
   })
 
-  test('uses the selected weekday, sending both reminders to native and web devices', async ({ assert }) => {
+  test('uses the selected weekday, sending both reminders to native and web devices', async ({
+    assert,
+  }) => {
     const sender = new FakeSender()
     const webMessages: PushMessage[] = []
     const web: WebPushSender = {
-      send: async (messages) => { webMessages.push(...messages); return { invalidTokens: [] } },
+      send: async (messages) => {
+        webMessages.push(...messages)
+        return { invalidTokens: [] }
+      },
     }
-    const tokens = new FakeTokens([], [due[0]!, {
-      token: 'https://push.example/checkup', userId: 'u1', householdId: 'h1', platform: 'web',
-      keys: { p256dh: 'key', auth: 'secret' },
-    }])
-    const result = await new SendExpiryDigest(tokens, products({ h1: ['Lait'] }), sender,
-      settings(2, { checkupDay: 0 }), web,
+    const tokens = new FakeTokens(
+      [],
+      [
+        due[0]!,
+        {
+          token: 'https://push.example/checkup',
+          userId: 'u1',
+          householdId: 'h1',
+          platform: 'web',
+          keys: { p256dh: 'key', auth: 'secret' },
+        },
+      ],
+    )
+    const result = await new SendExpiryDigest(
+      tokens,
+      products({ h1: ['Lait'] }),
+      sender,
+      settings(2, { checkupDay: 0 }),
+      web,
     ).execute({ today: '2026-09-20' })
     assert.equal(result.sent, 4)
-    assert.deepEqual(sender.sent.map((message) => message.title), ['Un produit à sauver 🥕', 'Check-up du garde-manger'])
-    assert.deepEqual(webMessages.map((message) => message.title), ['Un produit à sauver 🥕', 'Check-up du garde-manger'])
+    assert.deepEqual(
+      sender.sent.map((message) => message.title),
+      ['Un produit à sauver 🥕', 'Check-up du garde-manger'],
+    )
+    assert.deepEqual(
+      webMessages.map((message) => message.title),
+      ['Un produit à sauver 🥕', 'Check-up du garde-manger'],
+    )
   })
 
   test('sends neither reminder when both are disabled', async ({ assert }) => {
     const sender = new FakeSender()
-    await new SendExpiryDigest(new FakeTokens([], due), products({ h1: ['Lait'] }), sender,
+    await new SendExpiryDigest(
+      new FakeTokens([], due),
+      products({ h1: ['Lait'] }),
+      sender,
       settings(2, { enabled: false, checkupEnabled: false }),
     ).execute({ today: '2026-09-21' })
     assert.lengthOf(sender.sent, 0)
@@ -198,8 +239,9 @@ test.group('SendExpiryDigest', () => {
     const tokens = new FakeTokens([], due)
     tokens.claimDigest = async () => []
     const sender = new FakeSender()
-    await new SendExpiryDigest(tokens, products({ h1: ['Lait'] }), sender, settings())
-      .execute({ today: '2026-09-21' })
+    await new SendExpiryDigest(tokens, products({ h1: ['Lait'] }), sender, settings()).execute({
+      today: '2026-09-21',
+    })
     assert.lengthOf(sender.sent, 0)
   })
 

@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 
 async function signUp(client: import('@japa/api-client').ApiClient, email: string) {
-  const response = await client.post('/api/auth/sign-up/email')
+  const response = await client
+    .post('/api/auth/sign-up/email')
     .json({ email, password: 'correct-horse-battery-staple', name: 'Test' })
   const cookie = response.headers()['set-cookie']
   if (!cookie) throw new Error('set-cookie header missing')
@@ -12,10 +13,14 @@ async function signUp(client: import('@japa/api-client').ApiClient, email: strin
 const endpoint = '/api/settings/expiry-reminders'
 
 test.group('notification preferences', (group) => {
-  group.each.setup(() => db.beginGlobalTransaction())
+  group.each.setup(async () => {
+    await db.beginGlobalTransaction()
+  })
   group.each.teardown(() => db.rollbackGlobalTransaction())
 
-  test('defaults to enabled expiry reminders and an enabled weekly Monday check-up', async ({ client }) => {
+  test('defaults to enabled expiry reminders and an enabled weekly Monday check-up', async ({
+    client,
+  }) => {
     const cookie = await signUp(client, 'reminders-default@example.com')
     await client.post('/api/households').headers({ cookie }).json({ name: 'Foyer' })
     const response = await client.get(endpoint).headers({ cookie })
@@ -23,7 +28,9 @@ test.group('notification preferences', (group) => {
     response.assertBodyContains({ days: 2, enabled: true, checkupEnabled: true, checkupDay: 1 })
   })
 
-  test('partial updates persist independently and preserve the existing delay', async ({ client }) => {
+  test('partial updates persist independently and preserve the existing delay', async ({
+    client,
+  }) => {
     const cookie = await signUp(client, 'reminders-update@example.com')
     await client.post('/api/households').headers({ cookie }).json({ name: 'Foyer' })
     const delay = await client.patch(endpoint).headers({ cookie }).json({ days: 7 })
@@ -31,17 +38,23 @@ test.group('notification preferences', (group) => {
     const expiry = await client.patch(endpoint).headers({ cookie }).json({ enabled: false })
     expiry.assertStatus(200)
     expiry.assertBodyContains({ days: 7, enabled: false, checkupEnabled: true })
-    const checkup = await client.patch(endpoint).headers({ cookie })
+    const checkup = await client
+      .patch(endpoint)
+      .headers({ cookie })
       .json({ checkupEnabled: false, checkupDay: 5 })
     checkup.assertStatus(200)
     const read = await client.get(endpoint).headers({ cookie })
     read.assertBodyContains({ days: 7, enabled: false, checkupEnabled: false, checkupDay: 5 })
   })
 
-  test('creating preferences first preserves them when the delay is later changed', async ({ client }) => {
+  test('creating preferences first preserves them when the delay is later changed', async ({
+    client,
+  }) => {
     const cookie = await signUp(client, 'reminders-preferences-first@example.com')
     await client.post('/api/households').headers({ cookie }).json({ name: 'Foyer' })
-    const preferences = await client.patch(endpoint).headers({ cookie })
+    const preferences = await client
+      .patch(endpoint)
+      .headers({ cookie })
       .json({ checkupEnabled: false, checkupDay: 0 })
     preferences.assertStatus(200)
     const delay = await client.patch(endpoint).headers({ cookie }).json({ days: 0 })

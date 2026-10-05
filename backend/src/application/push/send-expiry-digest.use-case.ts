@@ -45,31 +45,35 @@ export class SendExpiryDigest implements UseCase<{ today: string }, { sent: numb
       if (expiring.length > 0) {
         const names = expiring.slice(0, NAMES_SHOWN).map((product) => product.name)
         const rest = expiring.length - names.length
-        messages.push(...claimed.map(({ token }) => ({
-          to: token,
-          title:
-            expiring.length === 1
-              ? 'Un produit à sauver 🥕'
-              : `${expiring.length} produits à sauver 🥕`,
-          body:
-            names.join(', ') +
-            (rest > 0 ? ` et ${rest} autre${rest > 1 ? 's' : ''}` : '') +
-            (expiring.length === 1
-              ? ' approche de sa date. Une idée de repas ?'
-              : ' approchent de leur date. À cuisiner bientôt !'),
-          data: { route: '/fridge' },
-        })))
+        messages.push(
+          ...claimed.map(({ token }) => ({
+            to: token,
+            title:
+              expiring.length === 1
+                ? 'Un produit à sauver 🥕'
+                : `${expiring.length} produits à sauver 🥕`,
+            body:
+              names.join(', ') +
+              (rest > 0 ? ` et ${rest} autre${rest > 1 ? 's' : ''}` : '') +
+              (expiring.length === 1
+                ? ' approche de sa date. Une idée de repas ?'
+                : ' approchent de leur date. À cuisiner bientôt !'),
+            data: { route: '/fridge' },
+          })),
+        )
       }
       if (
         preferences.checkupEnabled &&
         new Date(`${input.today}T00:00:00Z`).getUTCDay() === preferences.checkupDay
       ) {
-        messages.push(...claimed.map(({ token }) => ({
-          to: token,
-          title: 'Check-up du garde-manger',
-          body: 'Quelques minutes pour mettre à jour les quantités et retirer les produits consommés : ton inventaire reste à jour !',
-          data: { route: '/fridge' },
-        })))
+        messages.push(
+          ...claimed.map(({ token }) => ({
+            to: token,
+            title: 'Check-up du garde-manger',
+            body: 'Quelques minutes pour mettre à jour les quantités et retirer les produits consommés : ton inventaire reste à jour !',
+            data: { route: '/fridge' },
+          })),
+        )
       }
       if (messages.length > 0) {
         const byToken = new Map(claimed.map((target) => [target.token, target]))

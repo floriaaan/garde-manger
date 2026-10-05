@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { focusManager, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { focusManager, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Linking, Platform, Pressable, Switch } from 'react-native'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -20,40 +20,38 @@ export function NotificationsRow({ palette }: { palette: SoftPalette }) {
   const enabled = status.data === true
   const [pending, setPending] = useState(false)
   const toggling = useRef(false)
-  const [loading, setLoading] = useState(true)
   const [note, setNote] = useState<string | null>(null)
   const [needsSettings, setNeedsSettings] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
   const [toggleFailed, setToggleFailed] = useState(false)
-  const [webKey, setWebKey] = useState<string | null>(null)
 
-  const loadDetails = useCallback(async () => {
-    setLoading(true)
-    setLoadFailed(false)
-    setNote(null)
-    setNeedsSettings(false)
-    try {
+  const details = useQuery({
+    queryKey: ['device-notification-permissions'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    queryFn: async () => {
       const [message, key] = await Promise.all([
         pushPermissionMessage(),
         Platform.OS === 'web' ? connector.getWebPushPublicKey() : Promise.resolve(null),
       ])
-      setWebKey(key)
-      setNote(Platform.OS === 'web' && !key ? 'Push Web non configuré sur ce serveur.' : message)
-      setNeedsSettings(Platform.OS !== 'web' && !!message?.startsWith('Notifications bloquées'))
-    } catch {
-      setLoadFailed(true)
-      showToast('Impossible de préparer les notifications.', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [connector])
+      return {
+        key,
+        note: Platform.OS === 'web' && !key ? 'Push Web non configuré sur ce serveur.' : message,
+        needsSettings: Platform.OS !== 'web' && !!message?.startsWith('Notifications bloquées'),
+      }
+    },
+  })
+  const loading = details.isPending
+  const loadFailed = details.isError
+  const webKey = details.data?.key ?? null
 
   useEffect(() => {
-    void loadDetails()
     return focusManager.subscribe((focused) => {
-      if (focused) void loadDetails()
+      if (focused) {
+        setNote(null)
+        setNeedsSettings(false)
+      }
     })
-  }, [loadDetails])
+  }, [])
 
   async function toggle() {
     if (toggling.current) return
@@ -67,6 +65,7 @@ export function NotificationsRow({ palette }: { palette: SoftPalette }) {
       if (enabled) {
         await disablePush(connector)
         queryClient.setQueryData(DEVICE_NOTIFICATIONS_KEY, false)
+        void details.refetch()
         showToast('Notifications désactivées sur cet appareil.', 'success')
         return
       }
@@ -84,7 +83,10 @@ export function NotificationsRow({ palette }: { palette: SoftPalette }) {
         return
       }
       queryClient.setQueryData(DEVICE_NOTIFICATIONS_KEY, result === 'enabled')
-      if (result === 'enabled') showToast('Notifications activées sur cet appareil.', 'success')
+      if (result === 'enabled') {
+        void details.refetch()
+        showToast('Notifications activées sur cet appareil.', 'success')
+      }
       if (result === 'denied') {
         showToast('Notifications non autorisées.', 'error')
         setNeedsSettings(Platform.OS !== 'web')
@@ -137,14 +139,14 @@ export function NotificationsRow({ palette }: { palette: SoftPalette }) {
         </XStack>
       </Pressable>
       <NotificationFeedback message={deviceMessage} error={status.isError} palette={palette} />
-      <NotificationFeedback message={note} error palette={palette} />
+      <NotificationFeedback message={note ?? (loadFailed ? 'Impossible de préparer les notifications. Réessaie.' : details.data?.note ?? null)} error palette={palette} />
       {status.isError || loadFailed || toggleFailed ? <PillButton testID="notifications-retry"
-        label="Réessayer" palette={palette} tone="quiet" disabled={pending || loading || status.isFetching}
+        label="Réessayer" palette={palette} tone="quiet" disabled={pending || loading || status.isFetching || details.isFetching}
         onPress={() => {
-          if (status.isError || loadFailed) { void status.refetch(); void loadDetails() }
+          if (status.isError || loadFailed) { void status.refetch(); void details.refetch() }
           else void toggle()
         }} /> : null}
-      {needsSettings ? <PillButton testID="notifications-system-settings" label="Ouvrir les réglages"
+      {!pending && (needsSettings || details.data?.needsSettings) ? <PillButton testID="notifications-system-settings" label="Ouvrir les réglages"
         palette={palette} tone="quiet" onPress={() => {
           void Linking.openSettings().catch(() => showToast('Impossible d’ouvrir les réglages. Ouvre-les depuis ton téléphone.', 'error'))
         }} /> : null}

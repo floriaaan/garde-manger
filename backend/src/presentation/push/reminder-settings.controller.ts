@@ -13,7 +13,7 @@ export default class ReminderSettingsController {
     const { default: env } = await import('#start/env')
     return ctx.response.json({
       days: await settings.getDays(household.id),
-      ...await settings.getPreferences(household.id),
+      ...(await settings.getPreferences(household.id)),
       hour: env.get('PUSH_DIGEST_HOUR', 9),
       timeZone: env.get('PUSH_TIMEZONE', 'Europe/Paris'),
     })
@@ -32,7 +32,7 @@ export default class ReminderSettingsController {
     const { default: env } = await import('#start/env')
     return ctx.response.json({
       days: await settings.getDays(household.id),
-      ...await settings.getPreferences(household.id),
+      ...(await settings.getPreferences(household.id)),
       hour: env.get('PUSH_DIGEST_HOUR', 9),
       timeZone: env.get('PUSH_TIMEZONE', 'Europe/Paris'),
     })
