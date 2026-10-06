@@ -1,8 +1,9 @@
+import { aiLanguageInstruction } from '#domain/shared/ai-language'
 import type { RecipeGenerationContext } from './interfaces/recipe-generation-port.interface.js'
 
 const BASE_INSTRUCTIONS = `Tu es un assistant culinaire. Les produits fournis sont une réserve où piocher, pas une liste à épuiser : retiens ceux qui vont bien ensemble, ignore les autres, et complète librement avec des ingrédients courants (huile, sel, épices, farine, œufs, etc.). Une recette cohérente autour de deux ou trois de ces produits vaut mieux qu'une recette qui les case tous. Retourne UNIQUEMENT un JSON de la forme :
 [{"title": string, "description": string | null, "instructions": string, "preparationTime": number | null, "tags": string[], "ingredients": [{"label": string, "quantity": number | null, "unit": string | null}]}]
-"instructions" doit contenir une étape par ligne, chaque ligne préfixée par son numéro suivi d'un point (ex. "1. Émincer l'oignon.\\n2. Faire chauffer l'huile."). "tags" : des mots simples en français correctement orthographiés (ex. "dessert", "végétarien", "rapide"), jamais tronqués ni abrégés. Pas de texte hors du JSON. Propose entre 1 et 3 recettes. Si tu ne peux proposer aucune recette cohérente, retourne le tableau vide [] : n'invente jamais une recette dont le titre, la description ou les instructions servent à dire que c'est impossible.`
+"instructions" doit contenir une étape par ligne, chaque ligne préfixée par son numéro suivi d'un point (ex. "1. Émincer l'oignon.\\n2. Faire chauffer l'huile."). "tags" : des mots simples correctement orthographiés dans la langue de sortie (ex. "dessert", "végétarien", "rapide"), jamais tronqués ni abrégés. Pas de texte hors du JSON. Propose entre 1 et 3 recettes. Si tu ne peux proposer aucune recette cohérente, retourne le tableau vide [] : n'invente jamais une recette dont le titre, la description ou les instructions servent à dire que c'est impossible.`
 
 /**
  * Shared by all three `RecipeGenerationPort` adapters (Task 5) — one place
@@ -31,5 +32,11 @@ export function buildRecipeGenerationPrompt(context: RecipeGenerationContext): s
     parts.push(`Demande spécifique de l'utilisateur : ${context.prompt}`)
   }
 
+  parts.push(
+    aiLanguageInstruction(
+      'title, description, instructions, tags, ingredient labels and spelled-out units',
+      context.language,
+    ),
+  )
   return parts.join('\n\n')
 }

@@ -96,7 +96,7 @@
     "welcome_seen": "Welcome seen",
     "language": "Language",
     "system_language": "System",
-    "language_session_only": "For this session only. Household data stays in its original language."
+    "language_session_only": "For this session only. New AI results use this language."
   },
   "fridge": {
     "camera_access_is_required_to_scan_a_barcode": "Camera access is required to scan a barcode.",

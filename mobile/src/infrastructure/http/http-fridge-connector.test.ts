@@ -1,3 +1,4 @@
+import { setLocaleOverride } from '../../i18n/index.js'
 import { Platform } from 'react-native'
 import { authClient } from '../auth/auth-client.js'
 import { HttpFridgeConnector } from './http-fridge-connector.js'
@@ -38,6 +39,7 @@ const signInEmailMock = authClient.signIn.email as jest.Mock
 const originalFetch = globalThis.fetch
 
 afterEach(() => {
+  setLocaleOverride(null)
   signInEmailMock.mockReset()
   jest.mocked(authClient.signOut).mockClear()
   queryClient.clear()
@@ -289,11 +291,15 @@ test('enqueueReceiptScan() on web fetches the blob: URI and posts a real Blob pa
   const originalOS = Platform.OS
   Platform.OS = 'web'
   try {
+    setLocaleOverride('en')
     const blob = new Blob(['fake-image-bytes'], { type: 'image/jpeg' })
     const fetchMock = jest
       .fn()
       // First call: the connector's own `fetch(imageUri)` to read the blob: URI back out.
-      .mockResolvedValueOnce({ blob: () => Promise.resolve(blob) })
+      .mockResolvedValueOnce({ blob: () => {
+        setLocaleOverride('fr')
+        return Promise.resolve(blob)
+      } })
       // Second call: apiFetchMultipart's request to the backend.
       .mockResolvedValueOnce({ status: 202, ok: true, json: () => Promise.resolve({ job: queuedJob }) })
     globalThis.fetch = fetchMock as unknown as typeof fetch
@@ -307,6 +313,7 @@ test('enqueueReceiptScan() on web fetches the blob: URI and posts a real Blob pa
     const [url, init] = fetchMock.mock.calls[1] ?? []
     expect(url).toContain('/api/jobs/receipt-scan')
     expect(init.body).toBeInstanceOf(FormData)
+    expect(init.body.get('language')).toBe('en')
   } finally {
     Platform.OS = originalOS
     globalThis.fetch = originalFetch
@@ -490,7 +497,6 @@ describe('authentication integrations', () => {
   })
 })
 
-
 test('session retrieval propagates traceparent and keeps a structured auth failure code', async () => {
   const span = { traceId: 'a'.repeat(32), spanId: 'b'.repeat(16), traceparent: `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`, end: jest.fn() }
   const start = jest.spyOn(telemetry, 'startClientSpan').mockReturnValue(span)
@@ -583,4 +589,29 @@ describe('session lifecycle on native platforms', () => {
     expect(queryClient.getQueryData(['session'])).toBeNull()
     expect(queryClient.getQueryData(['shopping-items'])).toBeUndefined()
   })
+})
+
+test('AI job payloads capture the selected locale after live switches', async () => {
+  const fetchMock = jest.fn().mockResolvedValue({
+    status: 202, ok: true, json: () => Promise.resolve({ job: queuedJob }),
+  })
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  try {
+    const connector = new HttpFridgeConnector()
+    for (const language of ['en', 'fr'] as const) {
+      setLocaleOverride(language)
+      await connector.enqueueRecipeGeneration('Avec du lait')
+      expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toEqual({
+        prompt: 'Avec du lait', language,
+      })
+      await connector.enqueueRecipeGeneration()
+      expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toEqual({ language })
+      await connector.enqueueReceiptScan('file://receipt.pdf')
+      expect(fetchMock.mock.calls.at(-1)![1].body.get('language')).toBe(language)
+      await connector.enqueueFridgeScan(['file://fridge.jpg'])
+      expect(fetchMock.mock.calls.at(-1)![1].body.get('language')).toBe(language)
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })

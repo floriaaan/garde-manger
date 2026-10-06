@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type {
   ReceiptExtractionPort,
   ReceiptFile,
@@ -8,7 +9,7 @@ import {
   ReceiptExtractionUnavailableError,
   ReceiptExtractionUnsupportedFormatError,
 } from '#domain/receipt/receipt-extraction.errors'
-import { RECEIPT_EXTRACTION_PROMPT } from '#domain/receipt/receipt-extraction-prompt'
+import { buildReceiptExtractionPrompt } from '#domain/receipt/receipt-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 import { fetchWithRetry } from './fetch-with-retry.js'
 
@@ -18,7 +19,10 @@ export class OllamaReceiptExtractionAdapter implements ReceiptExtractionPort {
     private readonly model: string,
   ) {}
 
-  async extract({ buffer, contentType }: ReceiptFile): Promise<ReceiptDraft> {
+  async extract(
+    { buffer, contentType }: ReceiptFile,
+    language: AiLanguage = 'fr',
+  ): Promise<ReceiptDraft> {
     if (!this.model) throw new ReceiptExtractionUnavailableError('ollama')
     // Ollama's `/api/generate` `images` field is a raster-image slot — a
     // local vision model reads pixels, not a PDF's page/text structure, and
@@ -34,7 +38,7 @@ export class OllamaReceiptExtractionAdapter implements ReceiptExtractionPort {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.model,
-          prompt: RECEIPT_EXTRACTION_PROMPT,
+          prompt: buildReceiptExtractionPrompt(language),
           images: [buffer.toString('base64')],
           stream: false,
         }),

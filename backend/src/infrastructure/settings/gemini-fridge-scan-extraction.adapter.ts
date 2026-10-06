@@ -1,15 +1,16 @@
 import { GoogleGenAI } from '@google/genai'
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { FridgeScanExtractionPort } from '#domain/fridge/interfaces/fridge-scan-extraction-port.interface'
 import type { FridgeScanDraft } from '#domain/fridge/fridge-scan-draft'
 import { parseFridgeScanDraftJson } from '#domain/fridge/fridge-scan-draft-parser'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
-import { FRIDGE_SCAN_EXTRACTION_PROMPT } from '#domain/fridge/fridge-scan-extraction-prompt'
+import { buildFridgeScanExtractionPrompt } from '#domain/fridge/fridge-scan-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 
 export class GeminiFridgeScanExtractionAdapter implements FridgeScanExtractionPort {
   constructor(private readonly apiKey: string) {}
 
-  async extract(image: Buffer): Promise<FridgeScanDraft> {
+  async extract(image: Buffer, language: AiLanguage = 'fr'): Promise<FridgeScanDraft> {
     if (!this.apiKey) throw new ReceiptExtractionUnavailableError('gemini')
 
     const client = new GoogleGenAI({ apiKey: this.apiKey })
@@ -21,7 +22,7 @@ export class GeminiFridgeScanExtractionAdapter implements FridgeScanExtractionPo
           {
             role: 'user',
             parts: [
-              { text: FRIDGE_SCAN_EXTRACTION_PROMPT },
+              { text: buildFridgeScanExtractionPrompt(language) },
               { inlineData: { mimeType: 'image/jpeg', data: image.toString('base64') } },
             ],
           },

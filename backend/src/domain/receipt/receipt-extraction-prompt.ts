@@ -1,3 +1,6 @@
+import { aiLanguageInstruction } from '#domain/shared/ai-language'
+import type { AiLanguage } from '#domain/shared/ai-language'
+
 /**
  * Shared by all three `ReceiptExtractionPort` adapters (Task 9) — one place
  * owns the prompt's contract, the same role `recipe-generation-prompt.ts`
@@ -19,7 +22,7 @@
  * its own source of drift). The estimate is still just a starting point —
  * the field stays editable, exactly like every other extracted value.
  */
-export const RECEIPT_EXTRACTION_PROMPT = `Analyse ce ticket de caisse (photo ou PDF scanné) et retourne UNIQUEMENT un JSON de la forme :
+const RECEIPT_EXTRACTION_PROMPT = `Analyse ce ticket de caisse (photo ou PDF scanné) et retourne UNIQUEMENT un JSON de la forme :
 {"storeName": string, "scannedAt": string (ISO 8601), "totalAmount": number, "items": [{"name": string, "quantity": number, "unit": string, "category": string | null, "price": number | null, "expiresInDays": number | null}]}
 
 Règles pour "items" :
@@ -29,3 +32,7 @@ Règles pour "items" :
 - "expiresInDays" : ta meilleure estimation du nombre de jours de conservation typique de ce produit à partir de la date d'achat (ex. 7 pour un yaourt, 3 pour de la viande fraîche non transformée, 300 pour des pâtes sèches). Mets null si tu n'as aucune estimation raisonnable à faire — ne devine jamais au hasard.
 
 Pas de texte hors du JSON.`
+
+export function buildReceiptExtractionPrompt(language: AiLanguage = 'fr'): string {
+  return `${RECEIPT_EXTRACTION_PROMPT}\n\n${aiLanguageInstruction('item names, categories and spelled-out units', language)}`
+}

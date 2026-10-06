@@ -5,6 +5,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 ## [Unreleased]
 
 ### Added
+- AI-generated recipes and receipt/fridge scan results follow the requesting user's selected language across Gemini, OpenAI and Ollama, including background jobs and retries.
 - French and English mobile translations with system-language detection, French fallback, native locale configuration, and a live language selector in the debug menu. The first integration requires a new native build.
 
 ### Fixed

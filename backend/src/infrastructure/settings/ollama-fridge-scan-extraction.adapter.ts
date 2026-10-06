@@ -1,8 +1,9 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { FridgeScanExtractionPort } from '#domain/fridge/interfaces/fridge-scan-extraction-port.interface'
 import type { FridgeScanDraft } from '#domain/fridge/fridge-scan-draft'
 import { parseFridgeScanDraftJson } from '#domain/fridge/fridge-scan-draft-parser'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
-import { FRIDGE_SCAN_EXTRACTION_PROMPT } from '#domain/fridge/fridge-scan-extraction-prompt'
+import { buildFridgeScanExtractionPrompt } from '#domain/fridge/fridge-scan-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 import { fetchWithRetry } from './fetch-with-retry.js'
 
@@ -12,7 +13,7 @@ export class OllamaFridgeScanExtractionAdapter implements FridgeScanExtractionPo
     private readonly model: string,
   ) {}
 
-  async extract(image: Buffer): Promise<FridgeScanDraft> {
+  async extract(image: Buffer, language: AiLanguage = 'fr'): Promise<FridgeScanDraft> {
     if (!this.model) throw new ReceiptExtractionUnavailableError('ollama')
 
     let response: Response
@@ -22,7 +23,7 @@ export class OllamaFridgeScanExtractionAdapter implements FridgeScanExtractionPo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.model,
-          prompt: FRIDGE_SCAN_EXTRACTION_PROMPT,
+          prompt: buildFridgeScanExtractionPrompt(language),
           images: [image.toString('base64')],
           stream: false,
         }),

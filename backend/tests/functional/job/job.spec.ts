@@ -38,9 +38,49 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
     response.assertBodyContains({
       job: { kind: 'receipt_scan', status: 'queued', progress: { total: 1, done: 0 } },
     })
+    const stored = await db.from('ai_job').where('id', response.body().job.id).firstOrFail()
+    assert.equal(stored.input.language, 'fr')
     const list = await client.get('/api/jobs').headers({ cookie })
     assert.lengthOf(list.body().jobs, 1)
   })
+
+  for (const kind of ['receipt-scan', 'fridge-scan', 'recipe-generation'] as const) {
+    test(`${kind} validates and persists the requested language`, async ({ client, assert }) => {
+      const cookie = await signUpWithHousehold(client, `job-language-${kind}@example.com`)
+      for (const language of ['en', 'fr'] as const) {
+        const request = client.post(`/api/jobs/${kind}`).headers({ cookie })
+        if (kind === 'recipe-generation') request.json({ language, prompt: 'Avec du lait' })
+        else {
+          request.fields({ language }).file(
+            kind === 'receipt-scan' ? 'image' : 'images',
+            fakePngBytes,
+            { filename: 'scan.png' },
+          )
+        }
+        const response = await request
+        response.assertStatus(202)
+        const row = await db.from('ai_job').where('id', response.body().job.id).firstOrFail()
+        assert.equal(row.input.language, language)
+      }
+    })
+
+    test(`${kind} rejects an unsupported language before enqueueing`, async ({ client, assert }) => {
+      const cookie = await signUpWithHousehold(client, `job-invalid-language-${kind}@example.com`)
+      const request = client.post(`/api/jobs/${kind}`).headers({ cookie })
+      if (kind === 'recipe-generation') request.json({ language: 'de' })
+      else {
+        request.fields({ language: 'de' }).file(
+          kind === 'receipt-scan' ? 'image' : 'images',
+          fakePngBytes,
+          { filename: 'scan.png' },
+        )
+      }
+      const response = await request
+      response.assertStatus(422)
+      const list = await client.get('/api/jobs').headers({ cookie })
+      assert.lengthOf(list.body().jobs, 0)
+    })
+  }
 
   test('enqueueing without a file answers 422 and creates no job', async ({ client, assert }) => {
     const cookie = await signUpWithHousehold(client, 'job-nofile@example.com')

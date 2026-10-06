@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type {
   ReceiptExtractionPort,
   ReceiptFile,
@@ -6,13 +7,16 @@ import type {
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import { parseReceiptDraftJson } from '#domain/receipt/receipt-draft-parser'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
-import { RECEIPT_EXTRACTION_PROMPT } from '#domain/receipt/receipt-extraction-prompt'
+import { buildReceiptExtractionPrompt } from '#domain/receipt/receipt-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 
 export class GeminiReceiptExtractionAdapter implements ReceiptExtractionPort {
   constructor(private readonly apiKey: string) {}
 
-  async extract({ buffer, contentType }: ReceiptFile): Promise<ReceiptDraft> {
+  async extract(
+    { buffer, contentType }: ReceiptFile,
+    language: AiLanguage = 'fr',
+  ): Promise<ReceiptDraft> {
     if (!this.apiKey) throw new ReceiptExtractionUnavailableError('gemini')
 
     const client = new GoogleGenAI({ apiKey: this.apiKey })
@@ -24,7 +28,7 @@ export class GeminiReceiptExtractionAdapter implements ReceiptExtractionPort {
           {
             role: 'user',
             parts: [
-              { text: RECEIPT_EXTRACTION_PROMPT },
+              { text: buildReceiptExtractionPrompt(language) },
               // Gemini reads a PDF the same way it reads a photo — no separate
               // API, just the real mime type instead of a hardcoded JPEG one.
               { inlineData: { mimeType: contentType, data: buffer.toString('base64') } },

@@ -26,7 +26,7 @@ the first screen renders. The first supported preferred language (`fr` or `en`, 
 regional variants) is used; unsupported languages and missing translations fall back to French.
 Android language changes are picked up when the app returns to the foreground. The debug menu
 offers **System / Français / English** to change language immediately for the current session;
-System restores device detection. It does not persist the override or change household data.
+System restores device detection. The override is not persisted. Existing household data is preserved.
 
 Use `useTranslation()` in components and `t()` from `src/i18n/index.ts` in non-component helpers.
 Keep complete messages in `src/i18n/locales/fr.json` and `en.json`, with interpolation values
@@ -34,7 +34,14 @@ and `_one` / `_other` plural forms (`_many` where French needs it). Avoid assemb
 words with French suffixes. Shared labels must be translated at render/call time, rather than
 cached at module load, so the debug selector updates mounted screens. Dates and weekdays use
 the active locale; API dates, day indices and identifiers keep their existing format.
-Product names, user content, generated recipes and server-provided error messages are not translated.
+Existing saved product names, user content and server-provided error messages are not translated.
+New AI requests send the active `language` (`fr` or `en`) in the JSON or multipart body. The backend
+validates and persists it in the job input, so background execution and full/partial retries use
+the language selected when the task was submitted. Older clients/jobs default to French.
+All three providers (Gemini, OpenAI and Ollama) request recipes (including tags and ingredients)
+and receipt/fridge extraction results (names, categories and spelled-out units) in that language,
+regardless of the source language. Proper names, JSON keys and storage-location enum values are
+preserved. Deploy the backend change before the mobile release to enable these AI instructions.
 
 The `expo-localization` plugin declares `fr` and `en` on both iOS and Android for per-app language
 settings. `locales/*.json` supplies iOS camera, photo-library and local-network permission text;
@@ -56,6 +63,7 @@ Release validation (pending; no native build or device validation was performed 
 | Android: change system/app language, return to foreground | Language updates unless the debug override is active |
 | OS per-app language settings | French and English are available in the new binary |
 | iOS camera, photo library and local network prompts | Permission explanations use the selected language |
+| AI: generate recipes and scan receipts/photos in French and English | New results use the requesting language, even with sources in the other language; retries retain that language |
 | Scan/review, plurals 0/1/2, dates and reminder weekdays | Translated copy and locale formatting; data and entered values remain intact |
 
 Focused automated checks, when explicitly requested:

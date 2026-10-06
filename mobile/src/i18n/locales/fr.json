@@ -100,7 +100,7 @@
     "welcome_seen": "Accueil vu",
     "language": "Langue",
     "system_language": "Système",
-    "language_session_only": "Pour cette session uniquement. Les données du foyer restent dans leur langue d’origine."
+    "language_session_only": "Pour cette session uniquement. Les nouveaux résultats IA suivent cette langue."
   },
   "fridge": {
     "camera_access_is_required_to_scan_a_barcode": "L'accès à la caméra est nécessaire pour scanner un code-barres.",

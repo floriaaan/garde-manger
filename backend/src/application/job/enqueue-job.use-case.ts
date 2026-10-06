@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { UseCase } from '#application/shared/use-case'
 import type { JobRepository } from '#domain/job/interfaces/job-repository.interface'
 import type { StorageService } from '#domain/shared/interfaces/storage.interface'
@@ -13,6 +14,7 @@ export interface EnqueueJobInput {
   /** Scans only — the worker runs after the HTTP response, so the photos must outlive the request. */
   images?: { buffer: Buffer; contentType: string }[]
   prompt?: string
+  language?: AiLanguage
   traceparent: string | null
 }
 
@@ -40,7 +42,10 @@ export class EnqueueJob implements UseCase<EnqueueJobInput, Job> {
       householdId: input.householdId,
       createdBy: input.createdBy,
       kind: input.kind,
-      input: input.kind === 'recipe_generation' ? { prompt: input.prompt } : { imageKeys },
+      input: {
+        ...(input.kind === 'recipe_generation' ? { prompt: input.prompt } : { imageKeys }),
+        language: input.language ?? 'fr',
+      },
       total: input.kind === 'recipe_generation' ? 1 : imageKeys.length,
       traceparent: input.traceparent,
       now: this.clock.now(),
