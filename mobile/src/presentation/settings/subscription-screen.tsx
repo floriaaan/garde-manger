@@ -3,8 +3,7 @@
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
  * Without billing (iOS, ADR 0019) there is no in-app paywall or portal, only
- * the quota and a link to manage the subscription on the web (App Store rule
- * 3.1.3(b)). Réglages hides the entry; this guards a stray deep link.
+ * the quota and an action opening the corresponding subscription page on the web.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -34,7 +33,7 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title={subscription.billing ? 'Abonnement' : 'Quota IA'}
+          title="Abonnement"
           onBack={() => router.back()}
         />
       }
@@ -70,8 +69,6 @@ export function SubscriptionScreen() {
           />
         ) : null}
 
-        {access?.plan === 'free' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
-
         {access?.plan === 'subscriber' && subscription.billing ? (
           <SubscriptionActiveCard
             palette={palette}
@@ -83,7 +80,17 @@ export function SubscriptionScreen() {
           />
         ) : null}
 
-        {access?.plan === 'subscriber' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
+        {access && access.plan !== 'self-hosted' && !subscription.billing ? (
+          <ExternalSubscriptionNotice
+            palette={palette}
+            subscribed={access.plan === 'subscriber'}
+            cancelled={access.cancelsAtPeriodEnd}
+            until={access.expiresAt}
+            onOpen={access.plan === 'subscriber' ? subscription.manage : subscription.subscribe}
+            pending={subscription.pending}
+            error={subscription.error}
+          />
+        ) : null}
 
         {access && access.plan !== 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 

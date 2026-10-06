@@ -19,25 +19,46 @@ import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
-const WEB_APP_URL = 'https://gardemanger.floriaaan.fr'
 
 /**
- * iOS cannot sell the subscription in-app (ADR 0019), but a household that
- * subscribed on the web keeps using it there and must still be told where —
- * App Store rule 3.1.3(b) allows pointing to an outside way to manage a
- * multi-platform subscription, as long as it is not a purchase button.
+ * iOS delegates subscription and billing management to the web app (#59).
  */
-export function ExternalSubscriptionNotice({ palette }: { palette: SoftPalette }) {
+export function ExternalSubscriptionNotice({ palette, subscribed, cancelled, until, onOpen, pending, error }: {
+  palette: SoftPalette
+  subscribed: boolean
+  cancelled?: boolean
+  until?: string | null
+  onOpen: () => void
+  pending: boolean
+  error: string | null
+}) {
   return (
     <YStack gap="$1.5" padding="$3" borderRadius="$4" backgroundColor={palette.cream}>
-      <Text fontSize={13} color={palette.inkSecondary}>
-        L’abonnement se gère depuis un navigateur, sur le site du serveur.
+      <Text fontSize={16} fontWeight="800" color={palette.ink}>
+        {subscribed ? cancelled ? 'Abonnement résilié' : 'Abonnement actif' : 'Abonnement sur le web'}
       </Text>
-      <Pressable onPress={() => Linking.openURL(WEB_APP_URL)} testID="subscription-web-link">
+      {subscribed && cancelled && until ? (
+        <Text fontSize={13} color={palette.inkSecondary}>
+          L’IA reste débloquée jusqu’au {new Date(until).toLocaleDateString('fr-FR')}.
+        </Text>
+      ) : null}
+      <Text fontSize={13} color={palette.inkSecondary}>
+        La souscription et la facturation se font dans ton navigateur. Connecte-toi avec le même compte,
+        puis reviens dans l’application : ton abonnement et ton quota seront actualisés.
+      </Text>
+      <Pressable
+        onPress={onOpen}
+        disabled={pending}
+        testID="subscription-web-link"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: pending, busy: pending }}
+        style={{ minHeight: 48, justifyContent: 'center', opacity: pending ? 0.7 : 1 }}
+      >
         <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
-          Ouvrir gardemanger.floriaaan.fr
+          {pending ? 'Ouverture…' : subscribed ? 'Gérer l’abonnement sur le web' : 'Souscrire sur le web'}
         </Text>
       </Pressable>
+      {error ? <Text fontSize={13} color={palette.expiredText} accessibilityLiveRegion="polite">{error}</Text> : null}
     </YStack>
   )
 }

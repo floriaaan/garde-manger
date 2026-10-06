@@ -26,9 +26,10 @@ Reste la liste ci-dessous, dans l'ordre.
 - [x] **Auto-hébergement en HTTP public documenté.** ATS bloque le HTTP simple hors
       réseau local sur iOS ; `README.fr.md` (section HTTPS) explique la limite et
       renvoie au reverse proxy déjà documenté juste au-dessus.
-- [x] **Règle 3.1.3(b).** Un foyer abonné (ou libre) sur iOS n'a ni paywall ni portail de
-      gestion in-app, mais un texte et un lien (non intrusif) vers
-      `gardemanger.floriaaan.fr` pour s'abonner ou gérer l'abonnement dans un navigateur
+- [x] **Parcours abonnement (#59).** La page reste accessible dans Réglages sur iOS,
+      sans paywall ni portail de gestion in-app. Ses actions ouvrent
+      `https://app.gardemander.floriaaan.fr/subscription` pour souscrire ou gérer
+      l’abonnement dans un navigateur, avec connexion au même compte et retour expliqué
       (`mobile/src/presentation/settings/ai-access-cards.tsx`,
       `ExternalSubscriptionNotice`).
 - [x] **Passage sur iPad** : l'app est proposée sur iPad, avec la barre latérale au lieu

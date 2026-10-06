@@ -1,6 +1,6 @@
 import { capabilitiesFor } from './platform-capabilities.js'
 
-test('iOS offers neither the Stripe subscription nor Google sign-in', () => {
+test('iOS disables direct Stripe billing and Google sign-in by default', () => {
   expect(capabilitiesFor('ios')).toEqual({ billing: false, googleSignIn: false })
 })
 
