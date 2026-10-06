@@ -9,6 +9,8 @@
       "distribution": "internal"
     },
     "preview": {
+      "channel": "staging",
+      "environment": "preview",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -22,6 +24,8 @@
       }
     },
     "production": {
+      "channel": "main",
+      "environment": "production",
       "node": "24.18.0",
       "pnpm": "11.17.0",
       "autoIncrement": true,
@@ -36,6 +40,10 @@
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed"
+      },
       "ios": {
         "ascAppId": "6816469647"
       }

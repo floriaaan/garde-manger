@@ -90,6 +90,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/67dc1735-bcfd-4ccc-a8af-a84df72877b2"
+    },
     "owner": "floriaaan",
     "extra": {
       "router": {},

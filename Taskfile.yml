@@ -128,6 +128,42 @@ tasks:
     cmds:
       - pnpm run start
 
+  mobile:build-publish:
+    desc: Build production iOS and Android; submit configured platforms (production confirmation required).
+    summary: |
+      Internal profiles produce an install link; store profiles auto-submit both platforms.
+      Defaults: PROFILE=production PLATFORM=all SUBMIT=auto. Store submission settings are required for every selected platform.
+      task mobile:build-publish
+      Override PROFILE/PLATFORM if needed; use CONFIRM=production to skip the interactive confirmation.
+      iOS submits to TestFlight; Android uses the track and release status in eas.json.
+    dir: mobile
+    interactive: true
+    env:
+      PROFILE: '{{.PROFILE | default ""}}'
+      PLATFORM: '{{.PLATFORM | default ""}}'
+      SUBMIT: '{{.SUBMIT | default "auto"}}'
+      CONFIRM: '{{.CONFIRM | default ""}}'
+    cmds:
+      - node ../dev/mobile-eas.mjs build
+
+  mobile:update:
+    desc: Publish an OTA to main on iOS and Android (MESSAGE and production confirmation required).
+    summary: |
+      Resolves the channel's profile/environment from eas.json and checks remote variables against build env.
+      Native changes require a new app version and binary. Validate on staging before main.
+      task mobile:update CHANNEL=staging MESSAGE="Fix session persistence"
+      Defaults to the production profile's channel (main), on both platforms. MESSAGE is required.
+      task mobile:update MESSAGE="Fix session persistence"
+      Use CONFIRM=production to skip the interactive confirmation.
+    dir: mobile
+    interactive: true
+    env:
+      CHANNEL: '{{.CHANNEL | default ""}}'
+      MESSAGE: '{{.MESSAGE | default ""}}'
+      CONFIRM: '{{.CONFIRM | default ""}}'
+    cmds:
+      - node ../dev/mobile-eas.mjs update
+
   mobile:lint:
     desc: Lint the mobile app.
     cmds:
