@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
+import { fakeHousehold, fakeHouseholdAsMember } from '../../infrastructure/fake/fixtures/household.fixture.js'
+import { router } from 'expo-router'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { HouseholdScreen } from './household-screen.js'
 
@@ -73,15 +75,62 @@ test('removing a member asks first, then removes', async () => {
   await waitFor(() => expect(removeSpy).toHaveBeenCalledWith('fake-user-2'))
 })
 
-test('an owner is told that leaving deletes the whole household', async () => {
-  await renderHousehold()
+test('a sole owner cannot open the leave or delete action', async () => {
+  const connector = new FakeFridgeConnector({
+    fixtureHousehold: { ...fakeHousehold, members: [fakeHousehold.members[0]!] },
+  })
+  const leaveSpy = jest.spyOn(connector, 'leaveHousehold')
+  await renderHousehold(connector)
+
+  await waitFor(() => expect(screen.getByTestId('household-name')).toBeTruthy())
+  expect(screen.queryByTestId('household-leave')).toBeNull()
+  expect(screen.queryByTestId('household-leave-confirm')).toBeNull()
+  expect(screen.queryByTestId('household-transfer-ownership')).toBeNull()
+  expect(leaveSpy).not.toHaveBeenCalled()
+  expect(await connector.getHousehold()).toEqual({ ...fakeHousehold, members: [fakeHousehold.members[0]!] })
+})
+
+test('an owner can leave only after transferring ownership', async () => {
+  const connector = await renderHousehold()
+  const leaveSpy = jest.spyOn(connector, 'leaveHousehold')
+
+  await waitFor(() => expect(screen.getByTestId('household-transfer-ownership')).toBeTruthy())
+  expect(screen.queryByTestId('household-leave')).toBeNull()
+  expect(screen.queryByTestId('household-leave-confirm')).toBeNull()
+  expect(leaveSpy).not.toHaveBeenCalled()
+
+  await fireEvent.press(screen.getByTestId('household-transfer-ownership'))
+  await fireEvent.press(screen.getByTestId('household-transfer-target-fake-user-2'))
 
   await waitFor(() => expect(screen.getByTestId('household-leave')).toBeTruthy())
+  expect(screen.queryByTestId('household-transfer-ownership')).toBeNull()
+  expect(await connector.getHousehold()).toMatchObject({
+    id: fakeHousehold.id,
+    role: 'member',
+    members: [
+      { userId: 'fake-user-1', role: 'member' },
+      { userId: 'fake-user-2', role: 'owner' },
+    ],
+  })
+})
 
+test('a member confirms leaving before returning to onboarding', async () => {
+  const connector = new FakeFridgeConnector({ fixtureHousehold: fakeHouseholdAsMember })
+  const leaveSpy = jest.spyOn(connector, 'leaveHousehold')
+  jest.mocked(router.replace).mockClear()
+  await renderHousehold(connector)
+
+  await waitFor(() => expect(screen.getByTestId('household-leave')).toBeTruthy())
   await fireEvent.press(screen.getByTestId('household-leave'))
 
-  expect(screen.getByText(/supprime le foyer et tout son contenu/)).toBeTruthy()
-  expect(screen.getByTestId('household-leave-confirm')).toBeTruthy()
+  expect(screen.getByText('Tu perdras l’accès au garde-manger, aux courses et aux recettes du foyer.')).toBeTruthy()
+  expect(screen.queryByText('Supprimer le foyer')).toBeNull()
+  expect(leaveSpy).not.toHaveBeenCalled()
+  await fireEvent.press(screen.getByTestId('household-leave-confirm'))
+
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(onboarding)'))
+  expect(leaveSpy).toHaveBeenCalledTimes(1)
+  expect(await connector.getHousehold()).toBeNull()
 })
 
 test('shows the Home Assistant row for a foyer owner', async () => {

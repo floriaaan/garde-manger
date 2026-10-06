@@ -104,6 +104,7 @@ export function HouseholdScreen() {
 
   async function handleLeave() {
     setConfirmLeave(false)
+    if (isOwner) return
     const result = await leave.mutateAsync(undefined)
     if (!result.ok) {
       showHint(result.error.message, 'error')
@@ -252,15 +253,17 @@ export function HouseholdScreen() {
         </YStack>
       ) : null}
 
-      <YStack marginTop="$4">
-        <AuthButton
-          testID="household-leave"
-          label={t('identity.leave_household')}
-          variant="secondary"
-          icon={<LogOutIcon size={16} color={palette.ink} />}
-          onPress={() => setConfirmLeave(true)}
-        />
-      </YStack>
+      {!isOwner ? (
+        <YStack marginTop="$4">
+          <AuthButton
+            testID="household-leave"
+            label={t('identity.leave_household')}
+            variant="secondary"
+            icon={<LogOutIcon size={16} color={palette.ink} />}
+            onPress={() => setConfirmLeave(true)}
+          />
+        </YStack>
+      ) : null}
     </AppShell>
 
     <ActionSheet
@@ -322,18 +325,14 @@ export function HouseholdScreen() {
     </ActionSheet>
 
     <ActionSheet
-      visible={confirmLeave}
+      visible={confirmLeave && !isOwner}
       onClose={() => setConfirmLeave(false)}
       title={t('identity.leave_household_2')}
-      description={
-        isOwner
-          ? t('identity.you_own_this_household_leaving_deletes_it_and_all_its')
-          : t('identity.you_ll_lose_access_to_the_household_s_pantry_shopping')
-      }
+      description={t('identity.you_ll_lose_access_to_the_household_s_pantry_shopping')}
       options={[
         {
           testID: 'household-leave-confirm',
-          label: isOwner ? t('identity.delete_household') : t('identity.leave_household'),
+          label: t('identity.leave_household'),
           icon: (color) => <LogOutIcon size={18} color={color} />,
           tint: palette.expired,
           destructive: true,
