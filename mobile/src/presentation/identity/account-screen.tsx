@@ -15,7 +15,7 @@ import { AuthPasswordField } from './auth-password-field.js'
 import { AuthButton } from './auth-button.js'
 import { PocketIdIcon } from './pocket-id-icon.js'
 import { GoogleIcon } from './google-icon.js'
-import { initials } from '../shared/member-avatars.js'
+import { Avatar } from '../shared/avatar.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useUpdateAccountNameMutation } from '../../application/identity/update-account-name.mutation.js'
 import { useChangeAccountPasswordMutation } from '../../application/identity/change-account-password.mutation.js'
@@ -162,11 +162,7 @@ export function AccountScreen() {
         }
       >
         <YStack marginTop="$5" alignItems="center" gap="$2">
-          <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.chipOrange} alignItems="center" justifyContent="center">
-            <Text fontSize={22} fontWeight="800" color={palette.onDark}>
-              {initials(session.data?.user.name || '?')}
-            </Text>
-          </YStack>
+          <Avatar name={session.data?.user.name ?? ''} image={session.data?.user.image} size={64} palette={palette} backgroundColor={palette.chipOrange} color={palette.accentWarmText} />
           <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
             {session.data?.user.email}
           </Text>

@@ -213,10 +213,10 @@ test('the foyer is on the foyer\'s home screen — its members, and the way in',
 
   await waitFor(() => expect(screen.getByText('Appartement des loulous')).toBeTruthy())
 
-  // Two fixture members: overlapping initials, next to the name, on the one
+  // Two fixture members: overlapping avatars, next to the name, on the one
   // screen everybody opens.
-  expect(screen.getByText('TC')).toBeTruthy()
-  expect(screen.getByText('C')).toBeTruthy()
+  expect(screen.getByLabelText('Avatar de Thomas C.')).toBeTruthy()
+  expect(screen.getByLabelText('Avatar de Camille')).toBeTruthy()
 
   fireEvent.press(screen.getByTestId('dashboard-household'))
 

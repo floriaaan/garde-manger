@@ -1,9 +1,10 @@
-/** Structurally identical to the backend's `HouseholdDto` (`household.dto.ts`) — no re-mapping on this side. */
+/** Backend `HouseholdDto` shape; image is optional for older servers. */
 export type HouseholdRole = 'owner' | 'member'
 
 export interface HouseholdMember {
   userId: string
   name: string
+  image?: string | null
   role: HouseholdRole
   joinedAt: string
 }

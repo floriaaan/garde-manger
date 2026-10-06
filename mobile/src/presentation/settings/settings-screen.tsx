@@ -22,7 +22,7 @@ import {
 } from '../dashboard/dashboard-icons.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
 import { NUDGE_RATIO } from './ai-access-cards.js'
-import { initials } from '../shared/member-avatars.js'
+import { Avatar } from '../shared/avatar.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
 import { useConnector } from '../../application/shared/connector-context.js'
@@ -166,11 +166,7 @@ export function SettingsScreen() {
           bg={palette.cream}
           labelColor={palette.creamText}
           chipColor={palette.chipOrange}
-          icon={
-            <Text fontSize={14} fontWeight="800" color={palette.onDark}>
-              {initials(session.data?.user.name || '?')}
-            </Text>
-          }
+          avatar={<Avatar name={session.data?.user.name ?? ''} image={session.data?.user.image} palette={palette} backgroundColor={palette.chipOrange} color={palette.accentWarmText} />}
           label="Compte"
           value={session.data?.user.name || '—'}
           secondary={session.data?.user.email}

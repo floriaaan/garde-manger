@@ -33,6 +33,7 @@ export function IdentityCard({
   labelColor,
   chipColor,
   icon,
+  avatar,
   label,
   value,
   valueBadge,
@@ -49,7 +50,8 @@ export function IdentityCard({
   bg: string
   labelColor: string
   chipColor: string
-  icon: ReactNode
+  icon?: ReactNode
+  avatar?: ReactNode
   label: string
   value: string
   /** Inline right after the value — e.g. the official instance's certified badge. */
@@ -105,7 +107,7 @@ export function IdentityCard({
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '65%' }}
       />
       <XStack alignItems="center" gap="$3">
-        <YStack
+        {avatar ?? <YStack
           width={36}
           height={36}
           borderRadius={12}
@@ -115,7 +117,7 @@ export function IdentityCard({
           style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 6, elevation: 4 }}
         >
           {icon}
-        </YStack>
+        </YStack>}
         <YStack flex={1} minWidth={0}>
           <Text fontSize={emphasizeLabel ? 18 : 12} fontWeight={emphasizeLabel ? '800' : '500'} color={emphasizeLabel ? palette.ink : labelColor}>
             {label}

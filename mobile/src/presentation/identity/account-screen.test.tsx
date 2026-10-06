@@ -29,6 +29,7 @@ test('shows the signed-in user identity', async () => {
 
   await waitFor(() => expect(screen.getByText('demo@example.com')).toBeTruthy())
   expect(screen.getByDisplayValue('Thomas')).toBeTruthy()
+  expect(screen.getByLabelText('Avatar de Thomas')).toBeTruthy()
 })
 
 test('lists the linked connection methods', async () => {

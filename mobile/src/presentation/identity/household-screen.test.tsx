@@ -31,6 +31,8 @@ test('names the household and lists its members', async () => {
   await waitFor(() => expect(screen.getByTestId('household-name')).toHaveTextContent('Appartement des loulous'))
   expect(screen.getByTestId('household-member-fake-user-1')).toBeTruthy()
   expect(screen.getByTestId('household-member-fake-user-2')).toBeTruthy()
+  expect(screen.getByLabelText('Avatar de Thomas C.')).toBeTruthy()
+  expect(screen.getByLabelText('Avatar de Camille')).toBeTruthy()
 })
 
 test('an owner sees the invite code and can rotate it', async () => {
