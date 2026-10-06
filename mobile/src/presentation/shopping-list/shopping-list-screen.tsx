@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * DIRECTION CONTRACT — shopping list screen (2026-08-28; a legal-pad
  * notepad, committed to rather than hinted at, per a second round of
@@ -80,6 +81,7 @@ import { useSyncShoppingListWithHaMutation } from '../../application/home-assist
 import type { ShoppingItem } from '../../domain/shopping-list/shopping-item.js'
 
 export function ShoppingListScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const itemsQuery = useShoppingItemsQuery()
@@ -107,7 +109,7 @@ export function ShoppingListScreen() {
     onError: (_error, _variables, context) => {
       const previous = (context as { previous?: ShoppingItem[] } | undefined)?.previous
       if (previous) queryClient.setQueryData(['shopping-items'], previous)
-      showHint('Impossible de cocher cet article.')
+      showHint(t('shopping-list.couldn_t_check_off_this_item'))
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['shopping-items'] }),
   })
@@ -153,7 +155,7 @@ export function ShoppingListScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ShoppingCartIcon size={19} color={color} />}
-          title="Liste de courses"
+          title={t('shopping-list.shopping_list')}
           subtitle={
             itemsQuery.isPending
               ? undefined
@@ -165,7 +167,7 @@ export function ShoppingListScreen() {
               onPress={() => router.push('/(tabs)/shopping-list/new')}
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
               accessibilityRole="button"
-              accessibilityLabel="Ajouter un article"
+              accessibilityLabel={t('shopping-list.add_an_item')}
               style={pointerCursor}
             >
               <XStack
@@ -178,9 +180,7 @@ export function ShoppingListScreen() {
                 alignItems="center"
               >
                 <PlusIcon size={15} color={palette.accentLimeText} />
-                <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>
-                  Ajouter
-                </Text>
+                <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>{t('fridge.add')}</Text>
               </XStack>
             </Pressable>
           }
@@ -189,20 +189,16 @@ export function ShoppingListScreen() {
     >
       {itemsQuery.isError ? (
         <XStack alignItems="center" gap="$3" backgroundColor={palette.expiredBg} borderRadius={14} padding="$3" marginTop="$4">
-          <Text fontSize={13} fontWeight="600" color={palette.expiredText} flex={1}>
-            Impossible de charger la liste de courses.
-          </Text>
+          <Text fontSize={13} fontWeight="600" color={palette.expiredText} flex={1}>{t('shopping-list.couldn_t_load_the_shopping_list')}</Text>
           <Pressable
             testID="shopping-list-retry"
             onPress={() => itemsQuery.refetch()}
             accessibilityRole="button"
-            accessibilityLabel="Réessayer"
+            accessibilityLabel={t('dashboard.try_again')}
             style={pointerCursor}
           >
             <XStack alignItems="center" minHeight={44} paddingHorizontal="$3">
-              <Text fontSize={13} fontWeight="800" color={palette.expiredText}>
-                Réessayer
-              </Text>
+              <Text fontSize={13} fontWeight="800" color={palette.expiredText}>{t('dashboard.try_again')}</Text>
             </XStack>
           </Pressable>
         </XStack>
@@ -211,15 +207,11 @@ export function ShoppingListScreen() {
       {!itemsQuery.isPending && !itemsQuery.isError && items.length === 0 ? (
         <YStack flex={1} justifyContent="center" alignItems="center" gap="$3" paddingHorizontal="$4">
           <EmptyStateLottie animation="shopping-list" size={256} />
-          <Text fontSize={15} fontWeight="700" color={palette.ink}>
-            Liste de courses vide
-          </Text>
-          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-            Ajoute ce qui manque, ou pars d’une recette pour la remplir d’un coup.
-          </Text>
+          <Text fontSize={15} fontWeight="700" color={palette.ink}>{t('shopping-list.shopping_list_empty')}</Text>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('shopping-list.add_what_s_missing_or_use_a_recipe_to_fill')}</Text>
           <PillButton
             testID="shopping-list-empty-add"
-            label="Ajouter un article"
+            label={t('shopping-list.add_an_item')}
             icon={(color) => <PlusIcon size={14} color={color} />}
             onPress={() => router.push('/(tabs)/shopping-list/new')}
             palette={palette}
@@ -253,7 +245,7 @@ export function ShoppingListScreen() {
           <YStack paddingHorizontal="$2">
             {itemsQuery.isPending ? (
               <YStack paddingVertical="$2">
-                <SkeletonList rows={4} label="Chargement de la liste" palette={palette} />
+                <SkeletonList rows={4} label={t('shopping-list.loading_list')} palette={palette} />
               </YStack>
             ) : null}
             {unchecked.map((item, index) => (
@@ -273,9 +265,7 @@ export function ShoppingListScreen() {
 
       {checked.length > 0 ? (
         <YStack marginTop="$6">
-          <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>
-            Déjà pris ({checked.length})
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>{t('shopping-list.already_picked_up', { value1: checked.length })}</Text>
           <YStack
             marginTop="$3"
             backgroundColor={palette.paperCard}
@@ -314,13 +304,13 @@ export function ShoppingListScreen() {
       visible={sheetItem !== null}
       onClose={() => setSheetItem(null)}
       title={sheetItem?.name}
-      description="Supprimer retire l’article de la liste du foyer."
+      description={t('shopping-list.deleting_removes_the_item_from_the_household_s_list')}
       options={
         sheetItem
           ? [
               {
                 testID: 'shopping-list-edit-confirm',
-                label: 'Modifier',
+                label: t('fridge.edit'),
                 icon: (color) => <ChevronRightIcon size={18} color={color} />,
                 tint: palette.chipTeal,
                 onPress: () => {
@@ -331,7 +321,7 @@ export function ShoppingListScreen() {
               },
               {
                 testID: 'shopping-list-delete-confirm',
-                label: 'Supprimer',
+                label: t('job.delete'),
                 icon: (color) => <XIcon size={18} color={color} />,
                 tint: palette.expired,
                 destructive: true,

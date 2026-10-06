@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { router } from 'expo-router'
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -5,6 +6,7 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { Pressable } from './pressable.js'
 
 export function NotFoundScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const insets = useSafeAreaInsets()
 
@@ -15,18 +17,14 @@ export function NotFoundScreen() {
     >
       <View style={styles.content}>
         <Image source={require('../../../assets/mascot.png')} accessible={false} style={styles.mascot} />
-        <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
-          Page introuvable
-        </Text>
-        <Text style={[styles.description, { color: palette.creamText }]}>
-          On dirait que ce lien s’est égaré. Retrouvons l’accueil de Garde-manger pour continuer.
-        </Text>
+        <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>{t('shared.page_not_found')}</Text>
+        <Text style={[styles.description, { color: palette.creamText }]}>{t('shared.this_link_seems_to_have_gone_astray_return_to_garde')}</Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.replace('/')}
           style={[styles.button, { backgroundColor: palette.accentLime }]}
         >
-          <Text style={[styles.buttonLabel, { color: palette.accentLimeText }]}>Revenir à l’accueil</Text>
+          <Text style={[styles.buttonLabel, { color: palette.accentLimeText }]}>{t('shared.return_home')}</Text>
         </Pressable>
       </View>
     </ScrollView>

@@ -1,4 +1,5 @@
 import '../presentation/shared/fonts.css'
+import { watchSystemLanguage } from '../i18n/index.js'
 import { Stack, router } from 'expo-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -25,6 +26,7 @@ import { loadStoredServerUrl } from '../application/shared/server-config.js'
 wireTelemetry()
 
 export default function RootLayout() {
+  useEffect(() => watchSystemLanguage(), [])
   // Module-level singleton, not `useState(() => new QueryClient())` — see
   // `query-client.ts`: `http-client.ts` needs the same instance to flip the
   // cached session on a 401, and a client built inside this component would

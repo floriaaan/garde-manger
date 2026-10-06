@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 /**
  * The link an owner shares, and the code a new member arrives holding.
  *
@@ -20,7 +21,7 @@ export function buildJoinLink(inviteCode: string): string {
 export function buildShareMessage(householdName: string, inviteCode: string): string {
   const code = normalizeInviteCode(inviteCode)
   return [
-    `Rejoins « ${householdName} » sur Garde-manger.`,
+    t('onboarding.join_on_garde_manger', { value1: householdName }),
     `Code : ${code}`,
     buildJoinLink(code),
   ].join('\n')

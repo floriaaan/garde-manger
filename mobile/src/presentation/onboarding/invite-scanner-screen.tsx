@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * The QR half of "on m'a donné un code".
  *
@@ -30,6 +31,7 @@ export function InviteScannerScreen({
   onScanned: (code: string) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [permission, requestPermission] = useCameraPermissions()
   const handledRef = useRef(false)
@@ -48,7 +50,7 @@ export function InviteScannerScreen({
     return (
       <CameraPermissionModal
         palette={palette}
-        message="L’accès à la caméra est nécessaire pour scanner le QR code d’invitation."
+        message={t('onboarding.camera_access_is_required_to_scan_the_invite_qr_code')}
         canAskAgain={permission?.canAskAgain ?? true}
         onRequestPermission={requestPermission}
         onClose={onClose}
@@ -71,7 +73,7 @@ export function InviteScannerScreen({
           testID="invite-scanner-close"
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Fermer le scanner"
+          accessibilityLabel={t('onboarding.close_scanner')}
           style={[pointerCursor, { padding: 12 }]}
         >
           <YStack
@@ -91,9 +93,7 @@ export function InviteScannerScreen({
             frame is the one surface in this app whose background is unknown. */}
         <YStack alignItems="center" padding="$4">
           <YStack backgroundColor={palette.cameraScrim} borderRadius={999} paddingVertical="$2" paddingHorizontal="$4">
-            <Text fontSize={13} fontWeight="600" color={palette.onDark}>
-              Vise le QR code de l’écran Foyer
-            </Text>
+            <Text fontSize={13} fontWeight="600" color={palette.onDark}>{t('onboarding.point_at_the_qr_code_on_the_household_screen')}</Text>
           </YStack>
         </YStack>
       </SafeAreaView>

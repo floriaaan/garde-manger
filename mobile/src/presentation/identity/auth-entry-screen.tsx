@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Redirect, router } from 'expo-router'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useIsMutating } from '@tanstack/react-query'
@@ -22,6 +23,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs
   initialMode?: AuthMode
   successHref?: '/(tabs)' | '/subscription'
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const pendingMutations = useIsMutating()
   const [nativeBusy, setNativeBusy] = useState(false)
@@ -49,36 +51,36 @@ export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs
   }
 
   const footer = (
-    <Pressable testID="auth-change-server" accessibilityRole="button" accessibilityLabel="Modifier le serveur" accessibilityState={{ disabled: authBusy }} disabled={authBusy} onPress={() => { if (!authBusy) router.push({ pathname: '/server-choice', params: { next: mode } }) }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: authBusy ? 0.6 : 1 }]}>
+    <Pressable testID="auth-change-server" accessibilityRole="button" accessibilityLabel={t('identity.change_server')} accessibilityState={{ disabled: authBusy }} disabled={authBusy} onPress={() => { if (!authBusy) router.push({ pathname: '/server-choice', params: { next: mode } }) }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: authBusy ? 0.6 : 1 }]}>
       <Text fontSize={12} color={palette.inkSecondary}>
-        {server === OFFICIAL_SERVER_URL ? 'Serveur officiel' : server}
+        {server === OFFICIAL_SERVER_URL ? t('debug.official_server') : server}
         {' · '}
-        <Text fontSize={12} color={palette.inkSecondary} textDecorationLine="underline">Modifier</Text>
+        <Text fontSize={12} color={palette.inkSecondary} textDecorationLine="underline">{t('fridge.edit')}</Text>
       </Text>
     </Pressable>
   )
 
   if (session.data) return <Redirect href={successHref} />
 
-  const title = mode === 'sign-up' ? 'Créer mon compte' : 'Se connecter'
-  const subtitle = mode === 'sign-up' ? 'Ton compte d’abord, ton foyer juste après.' : 'Retrouve ton foyer et ce qu’il reste à la maison.'
+  const title = mode === 'sign-up' ? t('identity.create_my_account') : t('identity.sign_in')
+  const subtitle = mode === 'sign-up' ? t('identity.your_account_first_your_household_next') : t('identity.find_your_household_and_what_s_left_at_home')
   if (methods.isPending) return (
     <AuthShell title={title} subtitle={subtitle} footer={footer}>
       <ActivityIndicator color={palette.ink} />
-      <Text accessibilityLiveRegion="polite" color={palette.inkSecondary}>Recherche des méthodes de connexion…</Text>
+      <Text accessibilityLiveRegion="polite" color={palette.inkSecondary}>{t('identity.looking_for_sign_in_methods')}</Text>
     </AuthShell>
   )
   if (methods.isError || !methods.data?.some((method) => method.enabled)) return (
     <AuthShell title={title} subtitle={subtitle} footer={footer}>
-      <AuthError message={methods.isError ? 'Impossible de joindre ce serveur. Réessaie ou modifie le serveur ci-dessous.' : 'Aucune méthode de connexion n’est disponible sur ce serveur.'} />
-      <AuthButton testID="auth-method-retry" label="Réessayer" onPress={() => { void methods.refetch() }} />
+      <AuthError message={methods.isError ? t('identity.we_couldn_t_reach_this_server_try_again_or_change') : t('identity.no_sign_in_methods_are_available_on_this_server')} />
+      <AuthButton testID="auth-method-retry" label={t('dashboard.try_again')} onPress={() => { void methods.refetch() }} />
     </AuthShell>
   )
 
   const hasPassword = methods.data.some((method) => method.id === 'password' && method.enabled)
   if (!hasPassword) return (
-    <AuthShell title="Bienvenue chez toi" subtitle="Choisis comment accéder à ton garde-manger." garden footer={footer}>
-      <AuthMethodFooter key={server} emailLabel="Continuer avec e-mail" emailForm={null} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} />
+    <AuthShell title={t('identity.welcome_home')} subtitle={t('identity.choose_how_to_access_your_pantry')} garden footer={footer}>
+      <AuthMethodFooter key={server} emailLabel={t('common.continue_with_email')} emailForm={null} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} />
     </AuthShell>
   )
 
@@ -92,14 +94,14 @@ export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs
       footer={footer}
       pages={{
         signIn: {
-          title: 'Se connecter',
-          subtitle: 'Retrouve ton foyer et ce qu’il reste à la maison.',
-          content: <AuthMethodFooter emailLabel="Continuer avec e-mail" emailForm={<LoginForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-in': active }))} />,
+          title: t('identity.sign_in'),
+          subtitle: t('identity.find_your_household_and_what_s_left_at_home'),
+          content: <AuthMethodFooter emailLabel={t('common.continue_with_email')} emailForm={<LoginForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-in': active }))} />,
         },
         signUp: {
-          title: 'Créer mon compte',
-          subtitle: 'Ton compte d’abord, ton foyer juste après.',
-          content: <AuthMethodFooter emailLabel="Continuer avec e-mail" allowPasskey={false} emailForm={<SignupForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-up': active }))} />,
+          title: t('identity.create_my_account'),
+          subtitle: t('identity.your_account_first_your_household_next'),
+          content: <AuthMethodFooter emailLabel={t('common.continue_with_email')} allowPasskey={false} emailForm={<SignupForm onSuccess={handleSuccess} />} onSuccess={handleSuccess} disabled={authBusy} onNativeBusyChange={setNativeBusy} onEmailModeChange={(active) => setEmailModes((current) => ({ ...current, 'sign-up': active }))} />,
         },
       }}
     />

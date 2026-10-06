@@ -1,3 +1,4 @@
+import { t, useTranslation, getLocale } from '../../i18n/index.js'
 /**
  * The three things the AI provider screen can show instead of a picker,
  * depending on `AiSettings.access.plan` and `canChooseProvider`:
@@ -20,22 +21,16 @@ import type { AiAccess } from '../../domain/settings/ai-settings.js'
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
 
-const WEB_SUBSCRIPTION_NOTICE = 'L’abonnement se gère sur la version web. Connecte-toi avec le même compte, puis reviens dans l’application : ton abonnement et ton quota seront actualisés.'
+const WEB_SUBSCRIPTION_NOTICE = () => t('settings.manage_your_subscription_on_the_web_sign_in_with_the')
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
+  const { t } = useTranslation()
   return (
     <YStack gap="$1.5" padding="$3" borderRadius="$4" backgroundColor={palette.cream}>
-      <Text fontSize={14} fontWeight="700" color={palette.ink}>
-        Aucun fournisseur IA configuré
-      </Text>
-      <Text fontSize={13} color={palette.inkSecondary}>
-        Le scan de tickets et les recettes ont besoin d’une clé (Gemini, OpenAI) ou d’un modèle Ollama local sur ce
-        serveur.
-      </Text>
+      <Text fontSize={14} fontWeight="700" color={palette.ink}>{t('settings.no_ai_provider_configured')}</Text>
+      <Text fontSize={13} color={palette.inkSecondary}>{t('settings.receipt_scanning_and_recipes_need_an_api_key_gemini_openai')}</Text>
       <Pressable onPress={() => Linking.openURL(SETUP_GUIDE_URL)} testID="ai-setup-guide-link">
-        <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
-          Voir le guide de configuration
-        </Text>
+        <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>{t('settings.view_setup_guide')}</Text>
       </Pressable>
     </YStack>
   )
@@ -43,7 +38,7 @@ export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
 
 const mascotGold = require('../../../assets/mascot-gold.png')
 
-const PAYWALL_BENEFITS = ['Scan de tickets et de frigo', 'Recettes générées à volonté', 'Partagé avec tout le foyer']
+const PAYWALL_BENEFITS = () => [t('settings.receipt_and_fridge_scanning'), t('settings.unlimited_generated_recipes'), t('settings.shared_with_the_entire_household')]
 
 const MASCOT_GUTTER = 96
 
@@ -105,6 +100,7 @@ export function SubscriptionActiveCard({
   pending?: boolean
   error?: string | null
 }) {
+  const { t } = useTranslation()
   return (
     <DarkSurface testID="subscription-active" palette={palette}>
       <YStack padding="$5" gap="$4">
@@ -120,23 +116,23 @@ export function SubscriptionActiveCard({
           >
             <BadgeCheckIcon size={14} color={palette.onDark} />
             <Text fontSize={12} fontWeight="700" color={palette.onDark}>
-              {cancelled ? 'Résilié' : until ? `Renouvelé le ${new Date(until).toLocaleDateString('fr-FR')}` : 'En cours'}
+              {cancelled ? t('settings.cancelled') : until ? t('settings.renews_on', { value1: new Date(until).toLocaleDateString(getLocale()) }) : t('job.in_progress')}
             </Text>
           </XStack>
           <Text fontSize={36} fontWeight="900" lineHeight={38} letterSpacing={-1} color={palette.onDark}>
-            {cancelled ? 'Résilié' : 'Abonnement actif'}
+            {cancelled ? t('settings.cancelled') : t('dashboard.subscription_active')}
           </Text>
           <Text fontSize={14} fontWeight="600" color={palette.onDarkSecondary}>
             {cancelled && until
-              ? `L’IA reste débloquée jusqu’au ${new Date(until).toLocaleDateString('fr-FR')}, puis repasse à l’offre gratuite.`
-              : 'L’IA est débloquée pour tout le foyer.'}
+              ? t('settings.ai_stays_unlocked_until_then_returns_to_the_free_plan', { value1: new Date(until).toLocaleDateString(getLocale()) })
+              : t('settings.ai_is_unlocked_for_the_entire_household')}
           </Text>
         </YStack>
 
         <YStack height={0} borderTopWidth={1.5} borderStyle="dashed" borderColor={palette.onDarkSecondary} opacity={0.4} />
 
         <YStack gap="$2">
-          {PAYWALL_BENEFITS.map((benefit) => (
+          {PAYWALL_BENEFITS().map((benefit) => (
             <XStack key={benefit} alignItems="center" gap="$2.5">
               <CircleCheckIcon size={18} color={palette.accentLime} />
               <Text flex={1} fontSize={14} fontWeight="600" color={palette.onDark}>
@@ -146,9 +142,7 @@ export function SubscriptionActiveCard({
           ))}
         </YStack>
 
-        <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-          Seule la personne qui a souscrit peut modifier ou résilier l’abonnement.
-        </Text>
+        <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.only_the_subscriber_can_change_or_cancel_the_subscription')}</Text>
         <Pressable
           onPress={onManage}
           disabled={pending}
@@ -158,11 +152,11 @@ export function SubscriptionActiveCard({
         >
           <XStack backgroundColor={palette.cream} borderRadius={999} alignItems="center" justifyContent="center" minHeight={52}>
             <Text fontSize={16} fontWeight="900" color={palette.ink}>
-              {pending ? 'Un instant…' : webOnly ? 'Gérer l’abonnement sur le web' : cancelled ? 'Reprendre l’abonnement' : 'Gérer l’abonnement'}
+              {pending ? t('settings.one_moment') : webOnly ? t('settings.manage_subscription_on_the_web') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
             </Text>
           </XStack>
         </Pressable>
-        {webOnly ? <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE}</Text> : null}
+        {webOnly ? <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text> : null}
         {error ? (
           <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
             {error}
@@ -197,6 +191,7 @@ export function SubscriptionPaywall({
   reason?: string
   error?: string | null
 }) {
+  const { t } = useTranslation()
   return (
     <DarkSurface testID="subscription-paywall" palette={palette}>
       <YStack padding="$5" gap="$4">
@@ -217,9 +212,7 @@ export function SubscriptionPaywall({
               </Text>
             </XStack>
           ) : null}
-          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>
-            Abonnement Garde-manger
-          </Text>
+          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{t('settings.garde_manger_subscription')}</Text>
         </YStack>
 
         {!webOnly ? (
@@ -227,16 +220,14 @@ export function SubscriptionPaywall({
             <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
               0,99€
             </Text>
-            <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>
-              par mois,{'\n'}pour tout le foyer
-            </Text>
+            <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
           </XStack>
         ) : null}
 
         <YStack height={0} borderTopWidth={1.5} borderStyle="dashed" borderColor={palette.onDarkSecondary} opacity={0.4} />
 
         <YStack gap="$2">
-          {PAYWALL_BENEFITS.map((benefit) => (
+          {PAYWALL_BENEFITS().map((benefit) => (
             <XStack key={benefit} alignItems="center" gap="$2.5">
               <CircleCheckIcon size={18} color={palette.onDarkSecondary} />
               <Text flex={1} fontSize={14} fontWeight="600" color={palette.onDark}>
@@ -251,7 +242,7 @@ export function SubscriptionPaywall({
           disabled={pending}
           testID={webOnly ? 'subscription-web-link' : 'subscription-paywall-cta'}
           accessibilityRole="button"
-          accessibilityLabel={webOnly ? 'Souscrire sur le web' : 'S’abonner pour 0,99 euro par mois'}
+          accessibilityLabel={webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe_for_0_99_per_month')}
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack
@@ -264,7 +255,7 @@ export function SubscriptionPaywall({
           >
             <SparklesIcon size={18} color={palette.accentLimeText} />
             <Text fontSize={16} fontWeight="900" color={palette.accentLimeText}>
-              {pending ? 'Un instant…' : webOnly ? 'Souscrire sur le web' : 'S’abonner'}
+              {pending ? t('settings.one_moment') : webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe')}
             </Text>
           </XStack>
         </Pressable>
@@ -274,15 +265,12 @@ export function SubscriptionPaywall({
           </Text>
         ) : null}
         {webOnly ? (
-          <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE}</Text>
+          <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text>
         ) : (
           <>
-            <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-              Paiement sécurisé par Stripe. Résiliable à tout moment depuis l’application.
-            </Text>
+            <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
             <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-              En t’abonnant, tu demandes l’accès immédiat au service et tu renonces à ton droit de rétractation une fois le
-              service pleinement exécuté.{' '}
+              {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
               <Text
                 fontSize={12}
                 fontWeight="700"
@@ -290,9 +278,7 @@ export function SubscriptionPaywall({
                 textDecorationLine="underline"
                 accessibilityRole="link"
                 onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
-              >
-                Voir les CGV
-              </Text>
+              >{t('settings.view_terms_of_sale')}</Text>
             </Text>
           </>
         )}
@@ -312,10 +298,11 @@ export function ConnectedPaywall({ palette, reason }: { palette: SoftPalette; re
 export const NUDGE_RATIO = 0.6
 
 export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAccess; palette: SoftPalette; showCta?: boolean }) {
+  const { t } = useTranslation()
   if (access.limit === null) return null
   const ratio = Math.min(access.used / access.limit, 1)
   // Without billing (iOS) the plan is never named: a free tier implies a paid one.
-  const label = !platformCapabilities.billing ? 'IA du foyer' : access.plan === 'free' ? 'Offre gratuite' : 'Abonnement'
+  const label = !platformCapabilities.billing ? t('settings.household_ai') : access.plan === 'free' ? t('settings.free_plan') : t('settings.subscription')
   const spent = ratio >= 1
   return (
     <YStack testID="ai-quota-hint" gap="$1.5" marginTop="$2">
@@ -323,10 +310,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
         <Text fontSize={12} fontWeight="700" color={palette.ink}>
           {label}
         </Text>
-        <Text fontSize={12} fontWeight="600" color={spent ? palette.expiredText : palette.inkSecondary}>
-          {spent ? 'Quota atteint · ' : ''}
-          {access.used}/{access.limit} appels IA ce mois-ci
-        </Text>
+        <Text fontSize={12} fontWeight="600" color={spent ? palette.expiredText : palette.inkSecondary}>{t('settings.ai_calls_this_month', { value1: spent ? t('settings.quota_reached') : '', value2: access.used, value3: access.limit })}</Text>
       </XStack>
       {/* Its own track (an empty 0/N bar drew nothing on `gradientBottom`), tinted
           from `ink` so it holds on every pastel surface in both themes; the fill
@@ -354,7 +338,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
         >
           <Text fontSize={13} fontWeight="700" color={palette.lavenderText} textDecorationLine="underline">
-            {spent ? 'S’abonner pour continuer' : 'Plus d’appels avec l’abonnement'}
+            {spent ? t('settings.subscribe_to_continue') : t('settings.more_calls_with_a_subscription')}
           </Text>
         </Pressable>
       ) : null}

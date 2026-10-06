@@ -1,3 +1,4 @@
+import { t, useTranslation, getLocale } from '../../i18n/index.js'
 /*
  * One product, and the two things a foyer member does with it: say what
  * became of it, or correct a mistake.
@@ -37,17 +38,18 @@ import { useDeleteProductMutation } from '../../application/fridge/delete-produc
 import { useRecordProductOutcomeMutation } from '../../application/fridge/record-product-outcome.mutation.js'
 import type { DiscardReason, RecordProductOutcomeInput } from '../../domain/fridge/product-outcome.js'
 
-const LOCATION_LABEL = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' } as const
+const LOCATION_LABEL = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } } as const
 
 type Gone = 'consumed' | 'discarded' | 'deleted'
 
 const GONE_COPY: Record<Gone, string> = {
-  consumed: 'Produit terminé',
-  discarded: 'Produit jeté',
-  deleted: 'Produit supprimé',
+  get consumed() { return t('fridge.product_finished') },
+  get discarded() { return t('fridge.product_discarded') },
+  get deleted() { return t('fridge.product_deleted') },
 }
 
 export function FridgeDetailScreen({ productId }: { productId: string }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const product = useProductQuery(productId)
@@ -80,7 +82,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
     }
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['product', productId] })
-    showHint(`Il en reste ${remaining.quantity.amount} ${remaining.quantity.unit}`)
+    showHint(t('fridge.left', { value1: remaining.quantity.amount, value2: remaining.quantity.unit }))
   }
 
   async function handleCorrection() {
@@ -103,7 +105,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
       palette={palette}
       tint={palette.cabinetEnamel}
       icon={(color) => <PackageIcon size={19} color={color} />}
-      title="Produit"
+      title={t('fridge.product_2')}
       onBack={() => goBack('/(tabs)/fridge')}
     />
   )
@@ -118,9 +120,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
           <Text testID="fridge-detail-gone" fontSize={15} fontWeight="700" color={palette.ink}>
             {GONE_COPY[gone]}
           </Text>
-          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
-            Il a disparu du garde-manger de tout le foyer.
-          </Text>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>{t('fridge.it_has_been_removed_from_the_entire_household_s_pantry')}</Text>
         </YStack>
       </AppShell>
     )
@@ -129,7 +129,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
   if (product.isPending) {
     return (
       <AppShell nav={{ kind: 'stack' }} refresh={refresh} header={header}>
-        <SkeletonGroup label="Chargement du produit">
+        <SkeletonGroup label={t('fridge.loading_product')}>
           <Skeleton width="64%" height={22} />
           <Skeleton width="36%" height={13} />
           <YStack marginTop="$4" gap="$1">
@@ -145,7 +145,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
     return (
       <AppShell nav={{ kind: 'stack' }} refresh={refresh} header={header}>
         <YStack marginTop="$5">
-          <Text color={palette.inkSecondary}>Produit introuvable.</Text>
+          <Text color={palette.inkSecondary}>{t('fridge.product_not_found')}</Text>
         </YStack>
       </AppShell>
     )
@@ -159,7 +159,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
   // "Consommer un" only means something for a countable unit (pièce) —
   // a weight/volume unit (g/mL/kg/L) has no discrete "one" to decrement,
   // so the whole product leaves in one go.
-  const isPieceUnit = p.quantity.unit.startsWith('pièce')
+  const isPieceUnit = p.quantity.unit.startsWith(t('fridge.item'))
   const lastUnit = !isPieceUnit || p.quantity.amount <= 1
 
   return (
@@ -178,11 +178,11 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
         </XStack>
 
         <YStack gap="$2" marginTop="$2">
-          <DetailRow label="Quantité" value={`${p.quantity.amount} ${p.quantity.unit}`} palette={palette} />
-          <DetailRow label="Emplacement" value={LOCATION_LABEL[p.location]} palette={palette} />
-          <DetailRow label="Catégorie" value={p.category} palette={palette} />
+          <DetailRow label={t('fridge.quantity')} value={`${p.quantity.amount} ${p.quantity.unit}`} palette={palette} />
+          <DetailRow label={t('fridge.location')} value={LOCATION_LABEL[p.location]} palette={palette} />
+          <DetailRow label={t('fridge.category')} value={p.category} palette={palette} />
           {p.expiresAt ? (
-            <DetailRow label="Date de péremption" value={new Date(p.expiresAt).toLocaleDateString('fr-FR')} palette={palette} />
+            <DetailRow label={t('fridge.expiry_date')} value={new Date(p.expiresAt).toLocaleDateString(getLocale())} palette={palette} />
           ) : null}
         </YStack>
 
@@ -191,8 +191,8 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
               a product meant opening the edit form and retyping a quantity. */}
           <AuthButton
             testID="fridge-detail-consume"
-            label={lastUnit ? 'J’ai fini ce produit' : 'J’en ai consommé un'}
-            pendingLabel="Mise à jour..."
+            label={lastUnit ? t('fridge.i_ve_finished_this_product') : t('fridge.i_ve_used_one')}
+            pendingLabel={t('fridge.updating')}
             pending={recordOutcome.isPending}
             icon={<CircleCheckIcon size={16} color={palette.accentLimeText} />}
             onPress={() => (isPieceUnit ? record({ kind: 'consumed', amount: 1 }) : record({ kind: 'consumed' }))}
@@ -200,14 +200,14 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
 
           <AuthButton
             testID="fridge-detail-edit"
-            label="Modifier"
+            label={t('fridge.edit')}
             variant="secondary"
             onPress={() => router.push({ pathname: '/(tabs)/fridge/[id]/edit', params: { id: productId } })}
           />
 
           <AuthButton
             testID="fridge-detail-remove"
-            label="Retirer du garde-manger"
+            label={t('fridge.remove_from_pantry')}
             variant="secondary"
             onPress={() => setExiting(true)}
           />

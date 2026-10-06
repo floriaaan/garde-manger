@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /**
  * Up to 5 photos of the fridge, one at a time, reviewed together on the next
  * screen. Mirrors `receipt-scanner-screen.tsx`'s camera/gallery pattern —
@@ -21,12 +22,13 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 const MAX_PHOTOS = 5
 
 function hintFor(count: number) {
-  if (count === 0) return 'Une photo par étagère, porte comprise'
-  if (count >= MAX_PHOTOS) return `${MAX_PHOTOS} photos, c’est le maximum — lance l’analyse`
-  return `${count}/${MAX_PHOTOS} — continue ou lance l’analyse`
+  if (count === 0) return t('fridge.one_photo_per_shelf_including_the_door')
+  if (count >= MAX_PHOTOS) return t('fridge.photos_is_the_limit_start_the_analysis', { value1: MAX_PHOTOS })
+  return t('fridge.continue_or_start_the_analysis', { value1: count, value2: MAX_PHOTOS })
 }
 
 export function FridgeScanCameraScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [permission, requestPermission] = useCameraPermissions()
   const cameraRef = useRef<CameraView>(null)
@@ -69,7 +71,7 @@ export function FridgeScanCameraScreen() {
     return (
       <CameraPermissionModal
         palette={palette}
-        message="L'accès à la caméra est nécessaire pour photographier ton frigo."
+        message={t('fridge.camera_access_is_required_to_photograph_your_fridge')}
         canAskAgain={permission?.canAskAgain ?? true}
         onRequestPermission={requestPermission}
         onClose={() => goBack('/(tabs)/scan')}
@@ -80,12 +82,10 @@ export function FridgeScanCameraScreen() {
           testID="fridge-scan-camera-gallery-fallback"
           onPress={handlePickFromGallery}
           accessibilityRole="button"
-          accessibilityLabel="Choisir des photos dans la galerie"
+          accessibilityLabel={t('fridge.choose_photos_from_the_gallery')}
           style={pointerCursor}
         >
-          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">
-            Choisir des photos dans la galerie
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">{t('fridge.choose_photos_from_the_gallery')}</Text>
         </Pressable>
       </CameraPermissionModal>
     )
@@ -109,7 +109,7 @@ export function FridgeScanCameraScreen() {
                   onPress={() => removePhoto(uri)}
                   hitSlop={4}
                   accessibilityRole="button"
-                  accessibilityLabel={`Retirer la photo ${index + 1}`}
+                  accessibilityLabel={t('fridge.remove_photo', { value1: index + 1 })}
                   style={pointerCursor}
                 >
                   <YStack>
@@ -139,8 +139,8 @@ export function FridgeScanCameraScreen() {
               palette={palette}
               testID="fridge-scan-camera-gallery"
               icon={(color) => <ImageIcon size={22} color={color} />}
-              label="Galerie"
-              accessibilityLabel="Choisir des photos dans la galerie"
+              label={t('fridge.gallery')}
+              accessibilityLabel={t('fridge.choose_photos_from_the_gallery')}
               onPress={handlePickFromGallery}
             />
           )
@@ -152,8 +152,8 @@ export function FridgeScanCameraScreen() {
             <PillButton
               testID="fridge-scan-camera-analyze"
               palette={palette}
-              label={`Analyser (${photos.length})`}
-              accessibilityLabel={`Analyser ${photos.length} photo${photos.length > 1 ? 's' : ''}`}
+              label={t('fridge.analyse', { value1: photos.length })}
+              accessibilityLabel={t('fridge.analyse_photo', { count: photos.length })}
               onPress={goToReview}
             />
           ) : null

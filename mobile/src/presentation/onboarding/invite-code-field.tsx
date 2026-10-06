@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * Eight cells, not a text field.
  *
@@ -105,6 +106,7 @@ export function InviteCodeField({
   disabled?: boolean
   testID?: string
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   const inputRef = useRef<TextInput>(null)
@@ -174,8 +176,8 @@ export function InviteCodeField({
         // rewriting what was typed. iOS/web ignore it and keep the default.
         keyboardType={Platform.OS === 'android' ? 'visible-password' : 'default'}
         maxLength={INVITE_CODE_LENGTH}
-        accessibilityLabel="Code d’invitation"
-        accessibilityHint="Huit lettres ou chiffres, donnés par un membre du foyer"
+        accessibilityLabel={t('identity.invite_code')}
+        accessibilityHint={t('onboarding.eight_letters_or_numbers_given_by_a_household_member')}
         style={HIDDEN_INPUT_STYLE}
       />
     </YStack>

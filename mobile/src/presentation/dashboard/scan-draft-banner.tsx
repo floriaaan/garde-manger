@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -10,13 +11,14 @@ import type { SoftPalette } from './soft-palette.js'
 
 /** An AI scan finished and nobody reviewed it yet — the case a toast cannot carry once it is gone. */
 export function ScanDraftBanner({ palette }: { palette: SoftPalette }) {
+  const { t } = useTranslation()
   const drafts = useReviewableDraftsQuery()
   const latest = drafts[0]
   if (!latest) return null
 
   const receipt = latest.kind === 'receipt'
   const Icon = receipt ? ReceiptIcon : ScanLineIcon
-  const what = receipt ? 'ticket' : 'frigo'
+  const what = receipt ? t('dashboard.receipt') : 'frigo'
   const pathname = receipt ? '/receipts/review' : '/fridge-scan/review'
   const open = () => router.push({ pathname, params: { draftId: latest.id } })
 
@@ -33,7 +35,7 @@ export function ScanDraftBanner({ palette }: { palette: SoftPalette }) {
       <Pressable
         onPress={open}
         accessibilityRole="button"
-        accessibilityLabel={`Brouillon à relire : ${what}`}
+        accessibilityLabel={t('dashboard.draft_to_review', { value1: what })}
         style={[pointerCursor, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }]}
       >
         <YStack width={40} height={40} borderRadius={14} backgroundColor={palette.soonBg} alignItems="center" justifyContent="center">
@@ -41,15 +43,13 @@ export function ScanDraftBanner({ palette }: { palette: SoftPalette }) {
         </YStack>
         <YStack flex={1}>
           <Text fontSize={15} fontWeight="800" color={palette.ink} numberOfLines={1}>
-            {receipt ? 'Ticket à relire' : 'Frigo à relire'}
+            {receipt ? t('dashboard.receipt_to_review') : t('dashboard.fridge_to_review')}
             {drafts.length > 1 ? ` · +${drafts.length - 1}` : ''}
           </Text>
-          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} numberOfLines={1}>
-            Analysé {taskAge(latest.createdAt)}
-          </Text>
+          <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} numberOfLines={1}>{t('dashboard.analysed', { value1: taskAge(latest.createdAt) })}</Text>
         </YStack>
       </Pressable>
-      <PillButton label="Relire" palette={palette} onPress={open} icon={(color) => <PencilIcon size={16} color={color} />} />
+      <PillButton label={t('dashboard.review')} palette={palette} onPress={open} icon={(color) => <PencilIcon size={16} color={color} />} />
     </XStack>
   )
 }

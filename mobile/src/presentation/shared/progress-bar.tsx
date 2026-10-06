@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * The app's "working on it" bar, for the AI tasks that run on the server.
  *
@@ -28,7 +29,7 @@ export function ProgressBar({
   value,
   total,
   testID,
-  label = 'Chargement',
+  label: providedLabel,
 }: {
   palette: SoftPalette
   /** Units done. Omit (with `total`) for the indeterminate sweep. */
@@ -38,6 +39,8 @@ export function ProgressBar({
   /** Announced by screen readers; the determinate bar appends its own "x sur y". */
   label?: string
 }) {
+  const { t } = useTranslation()
+  const label = providedLabel ?? t('shared.loading')
   const reduceMotion = useReduceMotion()
   const [width, setWidth] = useState(0)
   const [sweep] = useState(() => new Animated.Value(0))
@@ -77,7 +80,7 @@ export function ProgressBar({
       onLayout={(event: { nativeEvent: { layout: { width: number } } }) => setWidth(event.nativeEvent.layout.width)}
       accessible
       role="progressbar"
-      accessibilityLabel={determinate ? `${label} : ${value} sur ${total}` : label}
+      accessibilityLabel={determinate ? t('shared.of', { value1: label, value2: value, value3: total }) : label}
       accessibilityValue={determinate ? { min: 0, max: total, now: value } : undefined}
     >
       {determinate ? (

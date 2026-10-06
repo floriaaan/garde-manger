@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import { useMemo, useState } from 'react'
 import { ScrollView, SectionList } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
@@ -47,7 +48,7 @@ import type { LocationValue } from '../../domain/fridge/location.js'
 import type { Product } from '../../domain/fridge/product.js'
 import type { DiscardReason } from '../../domain/fridge/product-outcome.js'
 
-const FILTER_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
+const FILTER_LABELS: Record<LocationValue, string> = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } }
 
 /** One glyph per compartment, shared by the filter chips and the shelf headers. */
 const LOCATION_ICONS: Record<LocationValue, (size: number, color: string) => React.ReactNode> = {
@@ -88,6 +89,7 @@ function ProductRow({
   onToggleSelect: () => void
   onStartSelecting: () => void
 }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   return (
     <Pressable
@@ -140,15 +142,11 @@ function ProductRow({
         </YStack>
         {isExpired(product) ? (
           <XStack backgroundColor={palette.expiredBg} borderRadius={999} paddingVertical="$1" paddingHorizontal="$2.5">
-            <Text fontSize={11} fontWeight="700" color={palette.expiredText}>
-              Dépassé
-            </Text>
+            <Text fontSize={11} fontWeight="700" color={palette.expiredText}>{t('dashboard.past_expiry_2')}</Text>
           </XStack>
         ) : isExpiringSoon(product) ? (
           <XStack backgroundColor={palette.soonBg} borderRadius={999} paddingVertical="$1" paddingHorizontal="$2.5">
-            <Text fontSize={11} fontWeight="700" color={palette.soonText}>
-              À consommer vite
-            </Text>
+            <Text fontSize={11} fontWeight="700" color={palette.soonText}>{t('fridge.use_soon')}</Text>
           </XStack>
         ) : null}
       </XStack>
@@ -158,11 +156,12 @@ function ProductRow({
 
 /** The "+ Ajouter" pill, with a drawn plus rather than a typed `+`. */
 function AddProductButton({ palette, testID }: { palette: SoftPalette; testID: string }) {
+  const { t } = useTranslation()
   return (
     <PillButton
       testID={testID}
-      label="Ajouter"
-      accessibilityLabel="Ajouter un produit"
+      label={t('fridge.add')}
+      accessibilityLabel={t('dashboard.add_a_product')}
       onPress={() => router.push('/(tabs)/fridge/new')}
       palette={palette}
       icon={(color) => <PlusIcon size={15} color={color} />}
@@ -201,28 +200,27 @@ function SelectionBar({
   onRemove: () => void
   palette: SoftPalette
 }) {
+  const { t } = useTranslation()
   return (
     <XStack alignItems="center" gap="$3" minHeight={44}>
       <Pressable
         testID="fridge-selection-cancel"
         onPress={onCancel}
         accessibilityRole="button"
-        accessibilityLabel="Quitter la sélection"
+        accessibilityLabel={t('fridge.exit_selection')}
         style={pointerCursor}
       >
         <YStack width={44} height={44} borderRadius={999} backgroundColor={palette.cream} alignItems="center" justifyContent="center">
           <XIcon size={18} color={palette.ink} />
         </YStack>
       </Pressable>
-      <Text fontSize={16} fontWeight="800" color={palette.ink} flex={1} numberOfLines={1}>
-        {count} produit{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}
-      </Text>
+      <Text fontSize={16} fontWeight="800" color={palette.ink} flex={1} numberOfLines={1}>{t('fridge.product_selected', { count: count })}</Text>
       <Pressable
         testID="fridge-selection-remove"
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
         accessibilityRole="button"
-        accessibilityLabel={`Retirer ${count} produit${count > 1 ? 's' : ''}`}
+        accessibilityLabel={t('fridge.remove_product', { count: count })}
         style={pointerCursor}
       >
         <XStack
@@ -233,9 +231,7 @@ function SelectionBar({
           borderRadius={999}
           backgroundColor={palette.expiredBg}
         >
-          <Text fontSize={13} fontWeight="800" color={palette.expiredText}>
-            Retirer
-          </Text>
+          <Text fontSize={13} fontWeight="800" color={palette.expiredText}>{t('fridge.remove')}</Text>
         </XStack>
       </Pressable>
     </XStack>
@@ -266,6 +262,7 @@ function FridgeListHeader({
   expiryWindow: ExpiryWindow | null
   onExpiryWindowChange: (window: ExpiryWindow | null) => void
 }) {
+  const { t } = useTranslation()
   return (
     <YStack>
       <ScreenHeader
@@ -273,11 +270,11 @@ function FridgeListHeader({
         // The enamel tint, not cream: the header's glyph is the cabinet it sits above.
         tint={palette.cabinetEnamel}
         icon={(color) => <RefrigeratorIcon size={19} color={color} />}
-        title="Garde-manger"
+        title={t('fridge.pantry')}
         subtitle={
           expiryWindow
-            ? `${count} produit${count > 1 ? 's' : ''} · ${EXPIRY_WINDOW_LABELS[expiryWindow].toLowerCase()}`
-            : `${count} produit${count > 1 ? 's' : ''} · rangés par emplacement`
+            ? t('fridge.product_3', { count: count, value2: EXPIRY_WINDOW_LABELS[expiryWindow].toLowerCase() })
+            : t('fridge.product_grouped_by_location', { count: count })
         }
         trailing={<AddProductButton palette={palette} testID="fridge-add" />}
       />
@@ -285,11 +282,11 @@ function FridgeListHeader({
       <YStack marginTop="$3">
         <FormField
           testID="fridge-search"
-          label="Rechercher"
+          label={t('fridge.search')}
           value={search}
           onChangeText={onSearchChange}
           palette={palette}
-          placeholder="Un nom de produit"
+          placeholder={t('fridge.a_product_name')}
           autoCapitalize="none"
           icon={(color) => <SearchIcon size={13} color={color} />}
         />
@@ -326,7 +323,7 @@ function FridgeListHeader({
 
         <Chip
           testID="fridge-filter-all"
-          label="Tout"
+          label={t('fridge.all')}
           selected={locationFilter === null}
           onPress={() => onFilterChange(null)}
           palette={palette}
@@ -362,6 +359,7 @@ export function FridgeListScreen({
   expiryWindow?: ExpiryWindow | null
   onExpiryWindowChange?: (window: ExpiryWindow | null) => void
 } = {}) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [locationFilter, setLocationFilter] = useState<LocationValue | null>(null)
   const [search, setSearch] = useState('')
@@ -434,7 +432,7 @@ export function FridgeListScreen({
     }
     await products.refetch()
     if (failures.length > 0) {
-      showHint(`${failures.length} produit${failures.length > 1 ? 's n’ont' : ' n’a'} pas pu être retiré${failures.length > 1 ? 's' : ''}.`, 'error')
+      showHint(t('fridge.product_couldn_t_be_removed', { count: failures.length }), 'error')
     }
   }
 
@@ -523,7 +521,7 @@ export function FridgeListScreen({
               ListEmptyComponent={
                 products.isPending ? (
                   <YStack padding="$3">
-                    <SkeletonList rows={4} label="Chargement du garde-manger" palette={palette} />
+                    <SkeletonList rows={4} label={t('dashboard.loading_pantry')} palette={palette} />
                   </YStack>
                 ) : products.isError ? (
                   // Before `isEmpty`, and this order is the whole fix: a failed
@@ -561,19 +559,16 @@ export function FridgeListScreen({
  * add a product the app cannot save either.
  */
 function CabinetError({ palette, onRetry }: { palette: SoftPalette; onRetry: () => void }) {
+  const { t } = useTranslation()
   return (
     <YStack gap="$3" marginTop="$8" paddingHorizontal="$4" alignItems="center">
       <RefrigeratorIcon size={30} color={palette.expiredText} />
-      <Text fontSize={15} fontWeight="700" color={palette.cabinetInk}>
-        Garde-manger indisponible
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.cabinetInkSecondary} textAlign="center">
-        On n’a pas pu lire le garde-manger du foyer. Vérifie ta connexion.
-      </Text>
+      <Text fontSize={15} fontWeight="700" color={palette.cabinetInk}>{t('dashboard.pantry_unavailable')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.cabinetInkSecondary} textAlign="center">{t('fridge.we_couldn_t_load_the_household_s_pantry_check_your')}</Text>
       <PillButton
         testID="fridge-retry"
-        label="Réessayer"
-        accessibilityLabel="Réessayer de charger le garde-manger"
+        label={t('dashboard.try_again')}
+        accessibilityLabel={t('dashboard.try_loading_the_pantry_again')}
         onPress={onRetry}
         palette={palette}
         centered
@@ -583,25 +578,20 @@ function CabinetError({ palette, onRetry }: { palette: SoftPalette; onRetry: () 
 }
 
 function EmptyFridge({ search, palette }: { search: string; palette: SoftPalette }) {
+  const { t } = useTranslation()
   if (search.trim().length > 0) {
     return (
-      <Text fontSize={13} color={palette.cabinetInkSecondary} margin="$4">
-        Aucun produit ne correspond à « {search.trim()} ».
-      </Text>
+      <Text fontSize={13} color={palette.cabinetInkSecondary} margin="$4">{t('fridge.no_product_matches', { value1: search.trim() })}</Text>
     )
   }
   return (
     <YStack gap="$3" marginTop="$8" paddingHorizontal="$4" alignItems="center">
       <RefrigeratorIcon size={30} color={palette.cabinetInkSecondary} />
-      <Text fontSize={15} fontWeight="700" color={palette.cabinetInk}>
-        Les étagères sont vides
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.cabinetInkSecondary} textAlign="center">
-        Scanne un code-barres ou un ticket de caisse pour remplir le garde-manger sans rien taper.
-      </Text>
+      <Text fontSize={15} fontWeight="700" color={palette.cabinetInk}>{t('fridge.the_shelves_are_empty')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.cabinetInkSecondary} textAlign="center">{t('fridge.scan_a_barcode_or_receipt_to_fill_your_pantry_without')}</Text>
       <PillButton
         testID="fridge-empty-add"
-        label="Ajouter un produit"
+        label={t('dashboard.add_a_product')}
         onPress={() => router.push('/(tabs)/fridge/new')}
         palette={palette}
         icon={(color) => <PlusIcon size={15} color={color} />}

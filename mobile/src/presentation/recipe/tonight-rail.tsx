@@ -1,3 +1,4 @@
+import { useTranslation, t } from '../../i18n/index.js'
 /**
  * "Ce soir" — the top half of the Recettes screen.
  *
@@ -104,9 +105,9 @@ function CoverageGauge({
 function spokenLabel({ recipe, match, rescue, rescueDays }: TonightCandidate): string {
   return [
     recipe.title,
-    `Utilise ${rescue.name}, ${expiryLabel(rescueDays).toLowerCase()}`,
-    recipe.preparationTime ? `${recipe.preparationTime} minutes` : null,
-    match.total > 0 ? `${pantrySentence(match)}${match.estimated ? ', estimation' : ''}` : null,
+    t('recipe.uses', { value1: rescue.name, value2: expiryLabel(rescueDays).toLowerCase() }),
+    recipe.preparationTime ? t('recipe.minutes', { value1: recipe.preparationTime }) : null,
+    match.total > 0 ? `${pantrySentence(match)}${match.estimated ? t('common.estimated_hint_suffix') : ''}` : null,
   ]
     .filter(Boolean)
     .join('. ')
@@ -123,6 +124,7 @@ function TonightHero({
   width: number
   onPress: () => void
 }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   const { recipe, match, rescue, rescueDays } = candidate
 
@@ -188,9 +190,7 @@ function TonightHero({
                   borderRadius={999}
                 >
                   <ClockIcon size={13} color={palette.brandDeepText} />
-                  <Text fontSize={12} fontWeight="700" color={palette.brandDeepText}>
-                    {recipe.preparationTime} min
-                  </Text>
+                  <Text fontSize={12} fontWeight="700" color={palette.brandDeepText}>{t('recipe.min', { value1: recipe.preparationTime })}</Text>
                 </XStack>
               ) : null}
             </XStack>
@@ -348,6 +348,7 @@ export function TonightRail({
   leadWidth: number
   onOpen: (recipeId: string) => void
 }) {
+  const { t } = useTranslation()
   const reduceMotion = useReduceMotion()
   const [entrance] = useState(() => new Animated.Value(0))
   useEffect(() => {
@@ -373,15 +374,11 @@ export function TonightRail({
             draws it, tracking included (there is none). At 15 it was the same
             size and weight as a library row's title, so the screen's two halves
             had no break between them. */}
-        <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
-          Ce soir
-        </Text>
+        <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">{t('recipe.tonight')}</Text>
         {/* The disclosure sits here, once, rather than on every card: the
             rapprochement between an ingredient and a product is a name match
             made on this device, and it is allowed to be wrong. */}
-        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          Ce qui utilise ce qu’il faut finir — disponibilité estimée d’après les noms.
-        </Text>
+        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>{t('recipe.uses_what_needs_finishing_availability_estimated_from_names')}</Text>
       </YStack>
 
       <ScrollView

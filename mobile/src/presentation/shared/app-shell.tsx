@@ -1,3 +1,4 @@
+import { useTranslation, t } from '../../i18n/index.js'
 /**
  * The one shared chrome for every screen — extracted after an audit found
  * BlobBackground + SafeAreaView + ScrollView + isWide/Sidebar wiring
@@ -57,10 +58,10 @@ import { PillButton } from './pill-button.js'
 export const TABLET_BREAKPOINT = 768
 
 const TAB_LABELS: Record<SidebarSection, string> = {
-  accueil: 'Accueil',
-  frigo: 'Garde-manger',
-  recettes: 'Recettes',
-  courses: 'Courses',
+  get accueil() { return t('shared.home') },
+  get frigo() { return t('fridge.pantry') },
+  get recettes() { return t('dashboard.recipes') },
+  get courses() { return t('dashboard.shopping') },
 }
 
 const TAB_ROUTES: Record<SidebarSection, string> = {
@@ -229,6 +230,7 @@ export function shellContentStyle({
 
 /** Exported: also rendered inside iOS's `NativeTabs.BottomAccessory` (see `(tabs)/_layout.tsx`). */
 export function Fab({ onScan }: { onScan: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   const [scale] = useState(() => new Animated.Value(1))
@@ -261,7 +263,7 @@ export function Fab({ onScan }: { onScan: () => void }) {
       accessibilityRole="button"
       // The button opens a two-choice sheet; naming only one of them stated an
       // outcome the control does not deliver.
-      accessibilityLabel="Scanner un produit ou un ticket de caisse"
+      accessibilityLabel={t('shared.scan_a_product_or_receipt')}
       style={pointerCursor}
     >
       <Animated.View
@@ -498,12 +500,13 @@ function WebNavItem({ section, active }: { section: SidebarSection; active: bool
 
 /** An integrated web footer using the navigation cards' asymmetric corners. */
 function WebTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   return (
     <YStack
       testID="web-tab-nav"
       role="navigation"
-      aria-label="Navigation principale"
+      aria-label={t('common.main_navigation')}
       flexShrink={0}
       backgroundColor={palette.gradientBottom}
     >
@@ -543,8 +546,8 @@ function WebTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => void })
             <TourAnchor id="fab">
               <PillButton
                 testID="scan-fab"
-                label="Scanner"
-                accessibilityLabel="Scanner le frigo, un produit ou un ticket de caisse"
+                label={t('dashboard.scan')}
+                accessibilityLabel={t('shared.scan_the_fridge_a_product_or_a_receipt')}
                 icon={(color) => <ScanLineIcon size={20} color={color} />}
                 onPress={onScan}
                 palette={palette}

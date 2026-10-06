@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useCallback, useState, type ReactNode } from 'react'
 import { Image } from 'react-native'
 import { SvgUri } from 'react-native-svg'
@@ -19,6 +20,7 @@ export function Avatar({
   backgroundColor?: string
   color?: string
 }) {
+  const { t } = useTranslation()
   return (
     <YStack
       width={size}
@@ -31,7 +33,7 @@ export function Avatar({
       overflow="hidden"
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Avatar de ${name || '?'}`}
+      accessibilityLabel={t('shared.avatar_of', { value1: name || '?' })}
     >
       {/* A new URL retries the image after a previous loading failure. */}
       <AvatarImage key={image ?? ''} image={image} size={size}>

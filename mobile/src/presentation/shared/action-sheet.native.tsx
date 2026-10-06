@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { Pressable } from './pressable.js'
 import { Text, YStack } from './tamagui-typed.js'
@@ -16,6 +17,7 @@ export function ActionSheet({ visible, onClose, options, title, description, chi
   description?: string
   children?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [owner] = useState(() => Symbol('sheet'))
   const close = () => nativeSheetStore.close(owner)
@@ -38,9 +40,9 @@ export function ActionSheet({ visible, onClose, options, title, description, chi
             option.onPress()
           },
         }} />)}
-        <Pressable testID="action-sheet-cancel" accessibilityRole="button" accessibilityLabel="Annuler" onPress={close}>
+        <Pressable testID="action-sheet-cancel" accessibilityRole="button" accessibilityLabel={t('shared.cancel')} onPress={close}>
           <YStack minHeight={44} alignItems="center" justifyContent="center">
-            <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>Annuler</Text>
+            <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{t('shared.cancel')}</Text>
           </YStack>
         </Pressable>
       </YStack>

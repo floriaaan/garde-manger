@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * A recipe in the library — the lower half of the Recettes screen.
  *
@@ -67,6 +68,7 @@ export function RecipeCard({
   onPress: () => void
   onOpenActions: () => void
 }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   const pantry = match && match.total > 0 ? pantrySentence(match, { short: true }) : null
   /**
@@ -75,7 +77,7 @@ export function RecipeCard({
    * name match made on this device. A screen reader that hears "2 sur 3 chez
    * toi" and nothing else has been told a fact the app cannot know.
    */
-  const spokenPantry = pantry && match?.estimated ? `${pantry}, estimation` : pantry
+  const spokenPantry = pantry && match?.estimated ? t('recipe.estimated', { value1: pantry }) : pantry
 
   return (
     <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: deleting ? 0.45 : 1 }}>
@@ -110,12 +112,12 @@ export function RecipeCard({
           // silent.
           accessibilityLabel={[
             recipe.title,
-            recipe.isArchived ? 'archivée' : null,
-            recipe.isFavorite ? 'favorite, épinglée' : null,
-            deleting ? 'suppression en cours' : null,
+            recipe.isArchived ? t('recipe.archived') : null,
+            recipe.isFavorite ? t('recipe.favourite_pinned') : null,
+            deleting ? t('recipe.deleting') : null,
             provenance,
             spokenPantry,
-            recipe.preparationTime ? `${recipe.preparationTime} minutes` : null,
+            recipe.preparationTime ? t('recipe.minutes', { value1: recipe.preparationTime }) : null,
           ]
             .filter(Boolean)
             .join(', ')}
@@ -137,8 +139,8 @@ export function RecipeCard({
               </Text>
             ) : null}
             <XStack gap="$1.5" flexWrap="wrap" marginTop="$0.5">
-              {recipe.isArchived ? <MetaChip label="Archivée" tone="muted" palette={palette} /> : null}
-              {recipe.isFavorite ? <MetaChip label="Favorite · épinglée" tone="tag" palette={palette} /> : null}
+              {recipe.isArchived ? <MetaChip label={t('recipe.archived_2')} tone="muted" palette={palette} /> : null}
+              {recipe.isFavorite ? <MetaChip label={t('recipe.favourite_pinned_2')} tone="tag" palette={palette} /> : null}
               {pantry ? (
                 <MetaChip label={pantry} tone={match && match.owned > 0 ? 'pantry' : 'muted'} palette={palette} />
               ) : null}
@@ -169,7 +171,7 @@ export function RecipeCard({
           disabled={deleting}
           onPress={onOpenActions}
           accessibilityRole="button"
-          accessibilityLabel={`Actions pour « ${recipe.title} »`}
+          accessibilityLabel={t('recipe.actions_for', { value1: recipe.title })}
           android_ripple={ripple(palette.ink, { borderless: true, radius: 20 })}
           style={[pointerCursor, { position: 'absolute', top: 0, right: 0, padding: 10 }]}
         >

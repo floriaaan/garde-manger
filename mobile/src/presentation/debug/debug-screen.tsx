@@ -1,3 +1,4 @@
+import { t, useTranslation, getLocaleOverride, setLocaleOverride, type LocaleOverride } from '../../i18n/index.js'
 /**
  * Debug modal — opened by triple-tapping the logo on the auth screens.
  * Read-only diagnostics plus "clear app state" for a device stuck on a stale
@@ -7,7 +8,8 @@
 import { useState } from 'react'
 import { Platform } from 'react-native'
 import { router } from 'expo-router'
-import { Text, YStack } from '../shared/tamagui-typed.js'
+import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
+import { Chip } from '../shared/chip.js'
 import { ActionSheet } from '../shared/action-sheet.js'
 import { SettingsIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
 import { AppShell } from '../shared/app-shell.js'
@@ -30,34 +32,36 @@ import { resetWelcomeSeen, useHasSeenWelcome } from '../welcome/use-welcome-seen
 const SIGN_OUT_TIMEOUT_MS = 2000
 
 /** Screens that only appear after an action (a scan, a job), so they are hard to reach by hand. */
-const SCREENS: [string, string][] = [
-  ['Tâches', '/tasks'],
-  ['Scanner un ticket', '/receipts/scan'],
-  ['Scanner le frigo', '/fridge-scan/scan'],
-  ['Générer des recettes', '/(tabs)/recipes/generate'],
-  ['Relecture ticket (sans brouillon)', '/receipts/review'],
-  ['Relecture frigo (sans brouillon)', '/fridge-scan/review'],
+const debugScreens = (): [string, string][] => [
+  [t('dashboard.tasks'), '/tasks'],
+  [t('debug.scan_a_receipt'), '/receipts/scan'],
+  [t('debug.scan_the_fridge'), '/fridge-scan/scan'],
+  [t('debug.generate_recipes'), '/(tabs)/recipes/generate'],
+  [t('debug.review_receipt_no_draft'), '/receipts/review'],
+  [t('debug.review_fridge_no_draft'), '/fridge-scan/review'],
 ]
 
 export function DebugScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const session = useSessionQuery()
   const signOut = useSignOutMutation()
   const hasSeenWelcome = useHasSeenWelcome()
   const [confirming, setConfirming] = useState(false)
+  const [localeOverride, setOverride] = useState<LocaleOverride>(getLocaleOverride)
   // Previewing the splash has no way back on purpose: reload the app to leave it.
   const [showSplash, setShowSplash] = useState(false)
 
   const rows: [string, string][] = [
-    ['Version', APP_VERSION],
-    ['Plateforme', `${Platform.OS} ${Platform.Version}`],
-    ['Mode', __DEV__ ? 'dev' : 'release'],
-    ['Connecteur', process.env.EXPO_PUBLIC_CONNECTOR ?? 'http'],
-    ['Serveur actuel', getServerUrl()],
-    ['Serveur par défaut', getDefaultServerUrl()],
-    ['Serveur officiel', OFFICIAL_SERVER_URL],
-    ['Session', session.isPending ? 'en attente' : session.data ? `connecté (${session.data.user.email})` : 'aucune'],
-    ['Accueil vu', hasSeenWelcome === null ? '?' : String(hasSeenWelcome)],
+    [t('debug.version'), APP_VERSION],
+    [t('debug.platform'), `${Platform.OS} ${Platform.Version}`],
+    [t('debug.mode'), __DEV__ ? 'dev' : 'release'],
+    [t('debug.connector'), process.env.EXPO_PUBLIC_CONNECTOR ?? 'http'],
+    [t('debug.current_server'), getServerUrl()],
+    [t('debug.default_server'), getDefaultServerUrl()],
+    [t('debug.official_server'), OFFICIAL_SERVER_URL],
+    [t('debug.session'), session.isPending ? t('debug.waiting') : session.data ? t('debug.signed_in', { value1: session.data.user.email }) : t('debug.none')],
+    [t('debug.welcome_seen'), hasSeenWelcome === null ? '?' : String(hasSeenWelcome)],
   ]
 
   // Best-effort sign-out, capped: an unreachable server (the usual reason to
@@ -69,6 +73,7 @@ export function DebugScreen() {
     ])
     await resetWelcomeSeen()
     await clearServerUrl()
+    setLocaleOverride(null)
     router.replace('/welcome')
     // After navigating: clearing first would flip the gates below to their splash mid-transition.
     queryClient.clear()
@@ -79,9 +84,28 @@ export function DebugScreen() {
   return (
     <AppShell
       nav={{ kind: 'modal' }}
-      header={<ScreenHeader palette={palette} icon={(color) => <SettingsIcon size={19} color={color} />} title="Debug" onBack={() => router.back()} />}
+      header={<ScreenHeader palette={palette} icon={(color) => <SettingsIcon size={19} color={color} />} title={t('debug.debug')} onBack={() => router.back()} />}
     >
       <YStack testID="debug-info" gap="$2" marginTop="$5">
+        <YStack gap="$2" padding="$3" borderRadius="$3" backgroundColor={palette.gradientBottom}>
+          <Text fontSize={12} color={palette.inkSecondary}>{t('debug.language')}</Text>
+          <XStack gap="$3" flexWrap="wrap">
+            {([null, 'fr', 'en'] as const).map((language) => (
+              <Chip
+                key={language ?? 'system'}
+                testID={`debug-locale-${language ?? 'system'}`}
+                label={language === null ? t('debug.system_language') : language === 'fr' ? 'Français' : 'English'}
+                selected={localeOverride === language}
+                palette={palette}
+                onPress={() => {
+                  setOverride(language)
+                  setLocaleOverride(language)
+                }}
+              />
+            ))}
+          </XStack>
+          <Text fontSize={12} color={palette.inkSecondary}>{t('debug.language_session_only')}</Text>
+        </YStack>
         {rows.map(([label, value]) => (
           <YStack key={label} padding="$3" borderRadius="$3" backgroundColor={palette.gradientBottom}>
             <Text fontSize={12} color={palette.inkSecondary}>
@@ -92,10 +116,8 @@ export function DebugScreen() {
             </Text>
           </YStack>
         ))}
-        <Text fontSize={12} fontWeight="800" color={palette.inkSecondary} marginTop="$3">
-          Écrans à action
-        </Text>
-        {SCREENS.map(([label, href]) => (
+        <Text fontSize={12} fontWeight="800" color={palette.inkSecondary} marginTop="$3">{t('debug.action_screens')}</Text>
+        {debugScreens().map(([label, href]) => (
           <PillButton
             key={href}
             testID={`debug-open-${href}`}
@@ -108,26 +130,26 @@ export function DebugScreen() {
         <PillButton
           testID="debug-show-splash"
           tone="quiet"
-          label="Voir le splash"
+          label={t('debug.view_splash')}
           palette={palette}
           onPress={() => setShowSplash(true)}
         />
         <PillButton
           testID="debug-clear-state"
           tone="quiet"
-          label="Réinitialiser l’application"
+          label={t('debug.reset_the_app')}
           palette={palette}
           onPress={() => setConfirming(true)}
         />
       </YStack>
       <ActionSheet
         visible={confirming}
-        title="Réinitialiser l’application ?"
-        description="Tu seras déconnecté, l’adresse du serveur et l’accueil seront remis à zéro sur cet appareil."
+        title={t('debug.reset_the_app_2')}
+        description={t('debug.you_ll_be_signed_out_the_server_address_and_welcome')}
         options={[
           {
             testID: 'debug-clear-state-confirm',
-            label: 'Réinitialiser',
+            label: t('debug.reset'),
             icon: (color) => <TriangleAlertIcon size={18} color={color} />,
             tint: palette.expiredBg,
             destructive: true,

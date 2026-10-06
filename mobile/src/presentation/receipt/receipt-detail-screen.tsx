@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -12,6 +13,7 @@ import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { SkeletonGroup, SkeletonRow, Skeleton } from '../shared/skeleton.js'
 
 export function ReceiptDetailScreen({ receiptId }: { receiptId: string }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const query = useReceiptQuery(receiptId)
   const refresh = usePullToRefresh(() => query.refetch())
@@ -20,7 +22,7 @@ export function ReceiptDetailScreen({ receiptId }: { receiptId: string }) {
     <ScreenHeader
       palette={palette}
       icon={(color) => <ReceiptIcon size={19} color={color} />}
-      title="Ticket"
+      title={t('receipt.receipt')}
       onBack={() => goBack('/receipts')}
     />
   )
@@ -32,7 +34,7 @@ export function ReceiptDetailScreen({ receiptId }: { receiptId: string }) {
       <AppShell nav={{ kind: 'stack' }} header={header}>
         {/* The shape of the ticket that is coming — a total, then its rows —
             so the layout does not jump under the thumb when it lands. */}
-        <SkeletonGroup label="Chargement du ticket">
+        <SkeletonGroup label={t('receipt.loading_receipt')}>
           <Skeleton width="46%" height={18} />
           <Skeleton width="30%" height={12} />
           <YStack marginTop="$4" gap="$1">
@@ -49,9 +51,7 @@ export function ReceiptDetailScreen({ receiptId }: { receiptId: string }) {
     return (
       <AppShell nav={{ kind: 'stack' }} header={header}>
         <YStack alignItems="center" justifyContent="center" marginTop="$8">
-          <Text fontSize={14} color={palette.ink}>
-            Ticket introuvable.
-          </Text>
+          <Text fontSize={14} color={palette.ink}>{t('receipt.receipt_not_found')}</Text>
         </YStack>
       </AppShell>
     )
@@ -74,9 +74,7 @@ export function ReceiptDetailScreen({ receiptId }: { receiptId: string }) {
       }
     >
       <YStack marginTop="$4" gap="$2">
-        <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>
-          {products.length} produit{products.length > 1 ? 's' : ''} importé{products.length > 1 ? 's' : ''}
-        </Text>
+        <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>{t('receipt.product_imported', { count: products.length })}</Text>
         {/* These rows used to be inert: the ticket listed the products it
             created with no route back to any of them. */}
         {products.map((product) => (

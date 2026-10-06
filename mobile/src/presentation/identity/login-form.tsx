@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useEffect, useRef, useState } from 'react'
 import { Platform, View, useWindowDimensions, type TextInput } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
@@ -17,6 +18,7 @@ import { isFakeConnector } from '../../application/shared/connector-mode.js'
 import { router } from 'expo-router'
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const { keyboardOpen, availableHeight } = useAuthEntryLayout()
   const { fontScale } = useWindowDimensions()
@@ -55,32 +57,30 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     if (result.ok) setRecovery('sent')
   }
 
-  const error = authErrorMessage(signIn.error, signIn.data, 'Une erreur est survenue lors de la connexion.')
-  const requestError = authErrorMessage(requestReset.error, requestReset.data, 'Impossible d’envoyer le lien pour le moment.')
+  const error = authErrorMessage(signIn.error, signIn.data, t('identity.an_error_occurred_while_signing_in'))
+  const requestError = authErrorMessage(requestReset.error, requestReset.data, t('identity.couldn_t_send_the_link_right_now'))
 
   if (recovery !== 'login') return (
     <YStack gap={keyboardOpen ? 8 : '$3'}>
       {recovery === 'unavailable' ? (
-        <Text fontSize={14} color={palette.inkSecondary}>
-          La récupération par e-mail n’est pas encore disponible. Contacte l’administrateur de ton serveur pour retrouver ton accès.
-        </Text>
+        <Text fontSize={14} color={palette.inkSecondary}>{t('identity.email_recovery_isn_t_available_yet_contact_your_server_administrator')}</Text>
       ) : recovery === 'sent' ? (
         <YStack gap={keyboardOpen ? 8 : '$3'}>
           <Text fontSize={14} color={palette.inkSecondary} accessibilityLiveRegion="polite">
-            {isFakeConnector ? 'Mode démo : aucun e-mail n’est envoyé.' : 'Si un compte correspond à cette adresse, un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes spams.'}
+            {isFakeConnector ? t('identity.demo_mode_no_email_is_sent') : t('identity.if_an_account_matches_this_address_a_reset_link_has')}
           </Text>
-          {isFakeConnector ? <AuthButton label="Ouvrir le lien de démo" variant="secondary" onPress={() => router.push('/reset-password?token=demo')} testID="reset-demo-link" /> : null}
+          {isFakeConnector ? <AuthButton label={t('identity.open_demo_link')} variant="secondary" onPress={() => router.push('/reset-password?token=demo')} testID="reset-demo-link" /> : null}
         </YStack>
       ) : (
         <>
-          <Text fontSize={14} color={palette.inkSecondary}>Saisis ton e-mail pour recevoir un lien de réinitialisation.</Text>
-          <AuthField label="Email" labelColor={palette.inkSecondary} placeholder="toi@exemple.com" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" testID="reset-email" />
+          <Text fontSize={14} color={palette.inkSecondary}>{t('identity.enter_your_email_to_receive_a_reset_link')}</Text>
+          <AuthField label={t('identity.email')} labelColor={palette.inkSecondary} placeholder={t('identity.you_example_com')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" testID="reset-email" />
           {requestError ? <AuthError message={requestError} /> : null}
-          <AuthButton label="Recevoir un lien" pendingLabel="Envoi..." pending={requestReset.isPending} disabled={!trimmedEmail} onPress={handleRequestReset} testID="reset-request-submit" />
+          <AuthButton label={t('identity.send_me_a_link')} pendingLabel={t('identity.sending')} pending={requestReset.isPending} disabled={!trimmedEmail} onPress={handleRequestReset} testID="reset-request-submit" />
         </>
       )}
-      <Pressable onPress={() => setRecovery('login')} accessibilityRole="button" accessibilityLabel="Retour à la connexion" style={[pointerCursor, { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}>
-        <Text fontSize={13} fontWeight="700" color={palette.ink}>Retour à la connexion</Text>
+      <Pressable onPress={() => setRecovery('login')} accessibilityRole="button" accessibilityLabel={t('identity.back_to_sign_in')} style={[pointerCursor, { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('identity.back_to_sign_in')}</Text>
       </Pressable>
     </YStack>
   )
@@ -91,9 +91,9 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthField
         ref={emailRef}
         onFocus={() => setField('email')}
-        label="Email"
+        label={t('identity.email')}
         labelColor={palette.inkSecondary}
-        placeholder="toi@exemple.com"
+        placeholder={t('identity.you_example_com')}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -110,7 +110,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthPasswordField
         onFocus={() => setField('password')}
         ref={passwordRef}
-        label="Mot de passe"
+        label={t('identity.password')}
         labelColor={palette.inkSecondary}
         placeholder="••••••••"
         value={password}
@@ -124,22 +124,22 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthKeyboardAccessory><Pressable
         onPress={() => setRecovery(resetAvailable ? 'request' : 'unavailable')}
         accessibilityRole="button"
-        accessibilityLabel="Mot de passe oublié ?"
+        accessibilityLabel={t('identity.forgot_password')}
         style={[pointerCursor, { alignSelf: 'flex-end', minHeight: 48, justifyContent: 'center', paddingVertical: 8 }]}
       >
-        <Text fontSize={13} fontWeight="700" color={palette.ink}>Mot de passe oublié ?</Text>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('identity.forgot_password')}</Text>
       </Pressable></AuthKeyboardAccessory>
       {error ? <AuthError message={error} /> : null}
       <AuthButton
-        label={compactForm && field === 'email' ? 'Continuer' : 'Se connecter'}
-        pendingLabel="Connexion..."
+        label={compactForm && field === 'email' ? t('identity.continue') : t('identity.sign_in')}
+        pendingLabel={t('identity.signing_in')}
         pending={signIn.isPending}
         disabled={signIn.isPending || (compactForm && field === 'email' ? !trimmedEmail : !canSubmit)}
         onPress={() => { if (compactForm && field === 'email') setField('password'); else void handleSubmit() }}
         testID="login-submit"
       />
-      {compactForm && field === 'password' ? <Pressable testID="login-previous-field" accessibilityRole="button" accessibilityLabel="Revenir à l’e-mail" disabled={signIn.isPending} onPress={() => setField('email')} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }]}>
-        <Text fontSize={13} fontWeight="700" color={palette.ink}>Retour à l’e-mail</Text>
+      {compactForm && field === 'password' ? <Pressable testID="login-previous-field" accessibilityRole="button" accessibilityLabel={t('identity.go_back_to_email')} disabled={signIn.isPending} onPress={() => setField('email')} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }]}>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('identity.back_to_email')}</Text>
       </Pressable> : null}
     </YStack>
   )

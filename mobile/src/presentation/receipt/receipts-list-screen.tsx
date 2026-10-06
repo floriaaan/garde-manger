@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { FlatList, Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { XStack, YStack, Text } from '../shared/tamagui-typed.js'
@@ -15,6 +16,7 @@ import { useReceiptsQuery } from '../../application/receipt/receipts.query.js'
 import type { Receipt } from '../../domain/receipt/receipt.js'
 
 function ReceiptRow({ receipt, palette }: { receipt: Receipt; palette: ReturnType<typeof useSoftPalette> }) {
+  const { t } = useTranslation()
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/receipts/[id]', params: { id: receipt.id } })}
@@ -27,9 +29,7 @@ function ReceiptRow({ receipt, palette }: { receipt: Receipt; palette: ReturnTyp
           <Text fontSize={14} fontWeight="700" color={palette.ink}>
             {receipt.storeName}
           </Text>
-          <Text fontSize={12} color={palette.inkSecondary}>
-            {receipt.scannedAt.slice(0, 10)} · {receipt.itemsCount} article{receipt.itemsCount > 1 ? 's' : ''}
-          </Text>
+          <Text fontSize={12} color={palette.inkSecondary}>{t('receipt.item', { value1: receipt.scannedAt.slice(0, 10), count: receipt.itemsCount })}</Text>
         </YStack>
         <Text fontSize={14} fontWeight="700" color={palette.ink}>
           {receipt.totalAmount.toFixed(2)} €
@@ -43,6 +43,7 @@ function ReceiptRow({ receipt, palette }: { receipt: Receipt; palette: ReturnTyp
 // AppShell nav — BackButton in the header, full shell everywhere else. An
 // audit found this screen previously had no shell at all.
 export function ReceiptsListScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const receipts = useReceiptsQuery()
   const nav = { kind: 'stack' as const }
@@ -57,7 +58,7 @@ export function ReceiptsListScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ReceiptIcon size={19} color={color} />}
-          title="Historique des tickets"
+          title={t('receipt.receipt_history')}
           onBack={() => goBack('/settings')}
         />
       }
@@ -71,7 +72,7 @@ export function ReceiptsListScreen() {
         refreshControl={pullToRefreshControl(refresh, palette)}
         ListEmptyComponent={
           receipts.isPending ? (
-            <SkeletonList rows={5} label="Chargement des tickets" palette={palette} />
+            <SkeletonList rows={5} label={t('receipt.loading_receipts')} palette={palette} />
           ) : receipts.isError ? (
             // Before the empty branch: a failed read used to render "Aucun
             // ticket importé", which tells a foyer its history is empty when
@@ -79,16 +80,12 @@ export function ReceiptsListScreen() {
             // cannot save either.
             <YStack alignItems="center" gap="$3" marginTop="$8">
               <ReceiptIcon size={32} color={palette.expiredText} />
-              <Text fontSize={15} fontWeight="700" color={palette.ink}>
-                Tickets indisponibles
-              </Text>
-              <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-                On n&apos;a pas pu lire l&apos;historique du foyer. Vérifie ta connexion.
-              </Text>
+              <Text fontSize={15} fontWeight="700" color={palette.ink}>{t('receipt.receipts_unavailable')}</Text>
+              <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('receipt.we_couldn_t_load_the_household_s_receipt_history_check')}</Text>
               <PillButton
                 testID="receipts-retry"
-                label="Réessayer"
-                accessibilityLabel="Réessayer de charger les tickets"
+                label={t('dashboard.try_again')}
+                accessibilityLabel={t('receipt.try_loading_receipts_again')}
                 onPress={() => receipts.refetch()}
                 palette={palette}
               />
@@ -100,15 +97,11 @@ export function ReceiptsListScreen() {
             // that fills it has to be here.
             <YStack alignItems="center" gap="$3" marginTop="$8">
               <ReceiptIcon size={32} color={palette.inkSecondary} />
-              <Text fontSize={15} fontWeight="700" color={palette.ink}>
-                Aucun ticket pour l&apos;instant
-              </Text>
-              <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-                Scanne un ticket de caisse pour remplir ton garde-manger d&apos;un coup.
-              </Text>
+              <Text fontSize={15} fontWeight="700" color={palette.ink}>{t('receipt.no_receipts_yet')}</Text>
+              <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('receipt.scan_a_receipt_to_fill_your_pantry_in_one_go')}</Text>
               <PillButton
                 testID="receipts-empty-scan"
-                label="Scanner"
+                label={t('dashboard.scan')}
                 onPress={goToScan}
                 palette={palette}
               />

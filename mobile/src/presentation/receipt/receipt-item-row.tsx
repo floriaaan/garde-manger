@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import { Animated } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
@@ -34,7 +35,7 @@ export interface EditableReceiptItem {
 
 export type ReceiptItemErrors = Partial<Record<'name' | 'quantity' | 'price' | 'expiresAt', string>>
 
-const LOCATION_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
+const LOCATION_LABELS: Record<LocationValue, string> = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } }
 
 /**
  * Collapsed by default: one summary line per item, tap to open.
@@ -65,6 +66,7 @@ export function ReceiptItemRow({
   /** The fridge-scan flow has no price to show or edit — see `fridge-scan-review-screen.tsx`. */
   showPrice?: boolean
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const hover = useHoverPress()
   const hasError = Boolean(errors && Object.keys(errors).length > 0)
@@ -116,15 +118,15 @@ export function ReceiptItemRow({
           onPressOut={hover.onPressOut}
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          accessibilityLabel={`${item.name || 'Article sans nom'} — ${summary}`}
-          accessibilityHint={expanded ? 'Replier cet article' : 'Modifier cet article'}
+          accessibilityLabel={t('fridge.summary_3', { value1: item.name || t('receipt.unnamed_item'), value2: summary })}
+          accessibilityHint={expanded ? t('receipt.collapse_this_item') : t('receipt.edit_this_item')}
           style={[pointerCursor, { flex: 1 }]}
         >
           <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
             <XStack alignItems="center" gap="$3" minHeight={44} paddingHorizontal="$2">
               <YStack flex={1}>
                 <Text fontSize={14} fontWeight="700" color={hasError ? palette.expiredText : palette.ink} numberOfLines={1}>
-                  {item.name || 'Article sans nom'}
+                  {item.name || t('receipt.unnamed_item')}
                 </Text>
                 <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} numberOfLines={1}>
                   {summary}
@@ -143,7 +145,7 @@ export function ReceiptItemRow({
           testID={`receipt-item-${index}-remove`}
           onPress={onRemove}
           accessibilityRole="button"
-          accessibilityLabel={`Retirer ${item.name || 'cet article'} du ticket`}
+          accessibilityLabel={t('receipt.remove_from_receipt', { value1: item.name || t('receipt.this_item') })}
           style={pointerCursor}
         >
           <YStack width={44} height={44} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={palette.expiredBg}>
@@ -156,7 +158,7 @@ export function ReceiptItemRow({
         <YStack gap="$2" paddingHorizontal="$2" paddingBottom="$2">
           <FormField
             testID={`receipt-item-${index}-name`}
-            label="Nom"
+            label={t('fridge.name')}
             value={item.name}
             onChangeText={(v) => set('name', v)}
             palette={palette}
@@ -167,7 +169,7 @@ export function ReceiptItemRow({
             <YStack flex={1}>
               <FormField
                 testID={`receipt-item-${index}-quantity`}
-                label="Quantité"
+                label={t('fridge.quantity')}
                 value={item.quantity}
                 onChangeText={(v) => set('quantity', v)}
                 palette={palette}
@@ -179,7 +181,7 @@ export function ReceiptItemRow({
             <YStack flex={1}>
               <FormField
                 testID={`receipt-item-${index}-unit`}
-                label="Unité"
+                label={t('fridge.unit')}
                 value={item.unit}
                 onChangeText={(v) => set('unit', v)}
                 palette={palette}
@@ -191,7 +193,7 @@ export function ReceiptItemRow({
             <YStack flex={1}>
               <FormField
                 testID={`receipt-item-${index}-category`}
-                label="Catégorie"
+                label={t('fridge.category')}
                 value={item.category}
                 onChangeText={(v) => set('category', v)}
                 palette={palette}
@@ -202,7 +204,7 @@ export function ReceiptItemRow({
               <YStack flex={1}>
                 <FormField
                   testID={`receipt-item-${index}-price`}
-                  label="Prix (€)"
+                  label={t('receipt.price')}
                   value={item.price}
                   onChangeText={(v) => set('price', v)}
                   palette={palette}
@@ -215,22 +217,20 @@ export function ReceiptItemRow({
           </XStack>
           <DateField
             testID={`receipt-item-${index}-expires-at`}
-            label="Date de péremption"
+            label={t('fridge.expiry_date')}
             value={item.expiresAt}
             onChange={(v) => set('expiresAt', v)}
             palette={palette}
             hint={
               item.expiresAtEstimated
-                ? 'Estimée par l’IA à partir du produit — vérifie si besoin.'
-                : 'Laisse vide si le produit se garde longtemps.'
+                ? t('receipt.estimated_by_ai_from_the_product_check_if_needed')
+                : t('receipt.leave_blank_for_products_that_keep_for_a_long_time')
             }
             error={errors?.expiresAt}
           />
 
           <YStack gap="$1">
-            <Text fontSize={12} fontWeight="700" color={palette.ink}>
-              Emplacement
-            </Text>
+            <Text fontSize={12} fontWeight="700" color={palette.ink}>{t('fridge.location')}</Text>
             <XStack gap="$2" flexWrap="wrap">
               {LOCATIONS.map((loc) => (
                 <Pressable

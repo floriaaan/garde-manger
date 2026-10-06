@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { FlatList, ScrollView } from 'react-native'
@@ -48,6 +49,7 @@ const MAX_TAG_FILTERS = 4
 const RAIL_PEEK = 44
 
 export function RecipeListScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [hint, showHint] = useHint()
   const [search, setSearch] = useState('')
@@ -189,13 +191,13 @@ export function RecipeListScreen() {
     const result = await deleteRecipe.mutateAsync(recipe.id)
     setDeletingId(null)
     if (result.ok) {
-      showHint('Recette supprimée', 'success', { description: `« ${recipe.title} »` })
+      showHint(t('recipe.recipe_deleted'), 'success', { description: `« ${recipe.title} »` })
       return
     }
     // Put it back exactly where it was, then say so.
     if (previous) queryClient.setQueryData<Recipe[]>(['recipes'], previous)
     else await recipesQuery.refetch()
-    showHint('Suppression impossible', 'error', { description: `« ${recipe.title} » est toujours là.` })
+    showHint(t('recipe.couldn_t_delete'), 'error', { description: t('recipe.is_still_here', { value1: recipe.title }) })
   }
 
   return (
@@ -209,13 +211,13 @@ export function RecipeListScreen() {
             <ScreenHeader
               palette={palette}
               icon={(color) => <ChefHatIcon size={19} color={color} />}
-              title="Recettes"
+              title={t('dashboard.recipes')}
               subtitle={recipesQuery.isPending ? undefined : `${recipes.length} recette${recipes.length > 1 ? 's' : ''}`}
               trailing={
                 <PillButton
                   testID="recipes-generate"
-                  label="Générer"
-                  accessibilityLabel="Générer une recette"
+                  label={t('recipe.generate')}
+                  accessibilityLabel={t('recipe.generate_a_recipe')}
                   onPress={() => router.push('/(tabs)/recipes/generate')}
                   palette={palette}
                   icon={(color) => <SparklesIcon size={15} color={color} />}
@@ -290,17 +292,12 @@ export function RecipeListScreen() {
                     from a foyer with nothing due. */}
                 {productsQuery.isError ? (
                   <YStack marginBottom="$4" gap="$2" backgroundColor={palette.cream} padding="$4" borderRadius={18}>
-                    <Text fontSize={13} fontWeight="700" color={palette.ink}>
-                      Garde-manger indisponible
-                    </Text>
-                    <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} lineHeight={17}>
-                      On ne peut pas dire ce que tu as sous la main — « Ce soir » et les compteurs d’ingrédients
-                      attendent le garde-manger.
-                    </Text>
+                    <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('dashboard.pantry_unavailable')}</Text>
+                    <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} lineHeight={17}>{t('recipe.we_can_t_see_what_you_have_tonight_and_ingredient')}</Text>
                     <PillButton
                       testID="recipes-retry-products"
-                      label="Réessayer"
-                      accessibilityLabel="Réessayer de charger le garde-manger"
+                      label={t('dashboard.try_again')}
+                      accessibilityLabel={t('dashboard.try_loading_the_pantry_again')}
                       onPress={() => productsQuery.refetch()}
                       palette={palette}
                       tone="quiet"
@@ -311,12 +308,10 @@ export function RecipeListScreen() {
                 {recipes.length > 0 ? (
                   <YStack gap="$1" marginBottom="$3">
                     <Text fontSize={20} fontWeight="800" color={palette.ink} role="heading">
-                      {collection === 'archived' ? 'Archives' : collection === 'favorites' ? 'Favoris' : 'Toutes les recettes'}
+                      {collection === 'archived' ? t('recipe.archives') : collection === 'favorites' ? t('recipe.favourites') : t('recipe.all_recipes')}
                     </Text>
                     {showsPantryEstimate && tonight.length === 0 ? (
-                      <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-                        Disponibilité estimée d’après les noms des ingrédients.
-                      </Text>
+                      <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>{t('recipe.availability_estimated_from_ingredient_names')}</Text>
                     ) : null}
                   </YStack>
                 ) : null}
@@ -325,7 +320,7 @@ export function RecipeListScreen() {
           }
           ListEmptyComponent={
             recipesQuery.isPending ? (
-              <SkeletonGroup label="Chargement des recettes">
+              <SkeletonGroup label={t('recipe.loading_recipes')}>
                 <SkeletonCard height={190} />
                 <SkeletonCard height={96} />
                 <SkeletonCard height={96} />
@@ -338,12 +333,12 @@ export function RecipeListScreen() {
             ) : !search.trim() && budget === null && tag === null && (collection !== 'active' || recipes.some((recipe) => recipe.isArchived)) ? (
               <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
                 <Text fontSize={15} fontWeight="700" color={palette.ink} textAlign="center">
-                  {collection === 'archived' ? 'Aucune recette archivée' : collection === 'favorites' ? 'Aucune recette favorite' : 'Tes recettes sont dans les archives'}
+                  {collection === 'archived' ? t('recipe.no_archived_recipes') : collection === 'favorites' ? t('recipe.no_favourite_recipes') : t('recipe.your_recipes_are_in_the_archives')}
                 </Text>
                 <Text fontSize={13} color={palette.inkSecondary} textAlign="center">
-                  {collection === 'favorites' ? 'Ajoute un favori depuis le menu d’une recette pour l’épingler ici.' : collection === 'archived' ? 'Les recettes que tu archives restent disponibles ici pour les désarchiver.' : 'Ouvre Archives pour les retrouver et les désarchiver.'}
+                  {collection === 'favorites' ? t('recipe.add_a_favourite_from_a_recipe_s_menu_to_pin') : collection === 'archived' ? t('recipe.recipes_you_archive_remain_available_here_to_unarchive') : t('recipe.open_archives_to_find_and_unarchive_them')}
                 </Text>
-                <PillButton centered label={collection === 'active' ? 'Voir les archives' : 'Voir les recettes'}
+                <PillButton centered label={collection === 'active' ? t('recipe.view_archives') : t('job.view_recipes')}
                   onPress={() => setCollection(collection === 'active' ? 'archived' : 'active')} palette={palette} />
               </YStack>
             ) : filtering ? (
@@ -369,6 +364,7 @@ export function RecipeListScreen() {
 
 /** The result count stays below the horizontal filters. */
 function ResultsCount({ palette, count }: { palette: SoftPalette; count: number }) {
+  const { t } = useTranslation()
   return (
     <Text
       marginTop="$3"
@@ -377,10 +373,8 @@ function ResultsCount({ palette, count }: { palette: SoftPalette; count: number 
       fontWeight="700"
       color={palette.inkSecondary}
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`${count} recette${count > 1 ? 's' : ''} après filtrage`}
-    >
-      {count} résultat{count > 1 ? 's' : ''}
-    </Text>
+      accessibilityLabel={t('recipe.recipe_after_filtering', { count: count })}
+    >{t('recipe.result', { count: count })}</Text>
   )
 }
 
@@ -423,15 +417,16 @@ function LibraryFilters({
   collection: 'active' | 'favorites' | 'archived'
   onCollectionChange: (value: 'active' | 'favorites' | 'archived') => void
 }) {
+  const { t } = useTranslation()
   return (
     <YStack marginTop="$3">
       <FormField
         testID="recipes-search"
-        label="Rechercher"
+        label={t('fridge.search')}
         value={search}
         onChangeText={onSearchChange}
         palette={palette}
-        placeholder="Un titre ou un ingrédient"
+        placeholder={t('recipe.a_title_or_ingredient')}
         autoCapitalize="none"
         icon={(color) => <SearchIcon size={13} color={color} />}
       />
@@ -444,7 +439,7 @@ function LibraryFilters({
       >
         {(['active', 'favorites', 'archived'] as const).map((value) => <Chip
           key={value} testID={`recipes-collection-${value}`}
-          label={value === 'active' ? 'Recettes' : value === 'favorites' ? 'Favoris' : 'Archives'}
+          label={value === 'active' ? t('dashboard.recipes') : value === 'favorites' ? t('recipe.favourites') : t('recipe.archives')}
           selected={collection === value} onPress={() => onCollectionChange(value)} palette={palette}
           tone={value === 'favorites' ? 'cream' : value === 'archived' ? 'lavender' : 'mint'}
           icon={(color) => value === 'favorites'
@@ -458,8 +453,8 @@ function LibraryFilters({
           <Chip
             key={minutes}
             testID={`recipes-budget-${minutes}`}
-            label={`${minutes} min ou moins`}
-            accessibilityLabel={`Temps de préparation : ${minutes} minutes ou moins`}
+            label={t('recipe.min_or_less', { value1: minutes })}
+            accessibilityLabel={t('recipe.preparation_time_minutes_or_less', { value1: minutes })}
             selected={budget === minutes}
             onPress={() => onBudgetChange(budget === minutes ? null : minutes)}
             palette={palette}
@@ -474,7 +469,7 @@ function LibraryFilters({
             key={value}
             testID={`recipes-tag-${value}`}
             label={value}
-            accessibilityLabel={`Étiquette : ${value}`}
+            accessibilityLabel={t('recipe.tag', { value1: value })}
             selected={tag === value}
             onPress={() => onTagChange(tag === value ? null : value)}
             palette={palette}
@@ -493,19 +488,16 @@ function LibraryFilters({
  * fail against the same server.
  */
 function RecipesError({ palette, onRetry }: { palette: SoftPalette; onRetry: () => void }) {
+  const { t } = useTranslation()
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" gap="$3" paddingHorizontal="$4">
       <ChefHatIcon size={30} color={palette.expiredText} />
-      <Text fontSize={15} fontWeight="700" color={palette.ink}>
-        Recettes indisponibles
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-        On n’a pas pu lire les recettes du foyer. Vérifie ta connexion.
-      </Text>
+      <Text fontSize={15} fontWeight="700" color={palette.ink}>{t('recipe.recipes_unavailable')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('recipe.we_couldn_t_load_the_household_s_recipes_check_your')}</Text>
       <PillButton
         testID="recipes-retry"
-        label="Réessayer"
-        accessibilityLabel="Réessayer de charger les recettes"
+        label={t('dashboard.try_again')}
+        accessibilityLabel={t('recipe.try_loading_recipes_again')}
         onPress={onRetry}
         palette={palette}
         centered
@@ -516,17 +508,14 @@ function RecipesError({ palette, onRetry }: { palette: SoftPalette; onRetry: () 
 
 /** Empty filtered results retain a way to generate another recipe. */
 function NoMatches({ palette }: { palette: SoftPalette }) {
+  const { t } = useTranslation()
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" gap="$3" paddingHorizontal="$4">
-      <Text fontSize={14} fontWeight="700" color={palette.ink} textAlign="center">
-        Aucune recette ne correspond
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-        Élargis la recherche depuis les filtres en haut, ou demande-en une nouvelle à partir de ce qu’il te reste.
-      </Text>
+      <Text fontSize={14} fontWeight="700" color={palette.ink} textAlign="center">{t('recipe.no_matching_recipes')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('recipe.widen_your_search_using_the_filters_above_or_request_a')}</Text>
       <PillButton
         testID="recipes-empty-generate"
-        label="Générer une recette"
+        label={t('recipe.generate_a_recipe')}
         onPress={() => router.push('/(tabs)/recipes/generate')}
         palette={palette}
         icon={(color) => <SparklesIcon size={15} color={color} />}
@@ -537,25 +526,24 @@ function NoMatches({ palette }: { palette: SoftPalette }) {
 }
 
 function EmptyRecipes({ palette, rescue }: { palette: SoftPalette; rescue: Product | null }) {
+  const { t } = useTranslation()
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" gap="$3" paddingHorizontal="$4">
       <EmptyStateLottie animation="recipes" size={256} />
-      <Text fontSize={15} fontWeight="700" color={palette.ink}>
-        Aucune recette pour l’instant
-      </Text>
+      <Text fontSize={15} fontWeight="700" color={palette.ink}>{t('recipe.no_recipes_yet')}</Text>
       {/* Naming the product is the whole difference between this app's empty
           state and a recipe app's. It is only ever printed from a garde-manger
           that answered — never from a fixture, never as a guess. */}
       <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
         {rescue
-          ? `Tu as des ${rescue.name.toLowerCase()} à finir — ${expiryLabel(daysUntilExpiry(rescue)).toLowerCase()}. Demande une recette autour, ça prend quelques secondes.`
-          : 'Demande-en une à partir de ce qu’il faut finir en premier — ça prend quelques secondes.'}
+          ? t('recipe.you_have_to_use_up_request_a_recipe_using_them', { value1: rescue.name.toLowerCase(), value2: expiryLabel(daysUntilExpiry(rescue)).toLowerCase() })
+          : t('recipe.request_one_using_what_needs_finishing_first_it_takes_a')}
       </Text>
       {/* The action inside the empty state, not only in the header the user has
           already read past. */}
       <PillButton
         testID="recipes-empty-generate"
-        label="Générer une recette"
+        label={t('recipe.generate_a_recipe')}
         onPress={() => router.push('/(tabs)/recipes/generate')}
         palette={palette}
         icon={(color) => <SparklesIcon size={15} color={color} />}

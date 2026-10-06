@@ -1,3 +1,4 @@
+import { t, useTranslation, formatCurrency } from '../../i18n/index.js'
 /**
  * Waste stats — a stack screen reached from the dashboard, not a bottom
  * tab (see `docs/superpowers/specs/2026-09-14-waste-stats-design.md`).
@@ -31,13 +32,13 @@ const mascotIllustration = require('../../../assets/mascot.png') as ImageSourceP
 type PeriodOption = { label: string; days: number | undefined; testID: string }
 
 const PERIODS: PeriodOption[] = [
-  { label: '7 j', days: 7, testID: 'stats-period-7' },
-  { label: '30 j', days: 30, testID: 'stats-period-30' },
-  { label: 'Tout', days: undefined, testID: 'stats-period-all' },
+  { get label() { return t('fridge.7_days') }, days: 7, testID: 'stats-period-7' },
+  { get label() { return t('fridge.30_days') }, days: 30, testID: 'stats-period-30' },
+  { get label() { return t('fridge.all') }, days: undefined, testID: 'stats-period-all' },
 ]
 
 function formatEuros(value: number): string {
-  return `${value.toFixed(2).replace('.', ',')} €`
+  return formatCurrency(value)
 }
 
 function MascotCoachCard({
@@ -49,26 +50,27 @@ function MascotCoachCard({
   discardedCount: number
   palette: SoftPalette
 }) {
+  const { t } = useTranslation()
   const isZeroWaste = discardedCount === 0 && consumedCount > 0
   const isGoodRatio = consumedCount >= discardedCount
 
   const badge = isZeroWaste
-    ? '🏆 Frigo étoilé'
+    ? t('fridge.star_fridge')
     : isGoodRatio
-      ? '🌱 Super élan'
-      : '🎯 Mission sauvetage'
+      ? t('fridge.great_momentum')
+      : t('common.rescue_mission')
 
   const title = isZeroWaste
-    ? 'Zéro gaspi ! Quel talent !'
+    ? t('fridge.zero_waste_what_a_talent')
     : isGoodRatio
-      ? 'La balance penche du bon côté !'
-      : 'Objectif sauvetage en cuisine !'
+      ? t('fridge.the_balance_is_tipping_the_right_way')
+      : t('fridge.time_for_a_kitchen_rescue')
 
   const subtitle = isZeroWaste
-    ? `${consumedCount} produit${consumedCount > 1 ? 's savourés' : ' savouré'} sans aucune perte sur cette période.`
+    ? t('fridge.product_enjoyed_with_no_waste_over_this_period', { count: consumedCount })
     : isGoodRatio
-      ? `${consumedCount} produit${consumedCount > 1 ? 's sauvés' : ' sauvé'} pour ${discardedCount} jeté${discardedCount > 1 ? 's' : ''}. Bien joué !`
-      : 'Pense à consulter les recettes suggérées pour transformer tes ingrédients à temps.'
+      ? t('fridge.product_saved_discarded_well_done', { count: consumedCount, value2: discardedCount, value3: discardedCount > 1 ? 's' : '' })
+      : t('fridge.check_the_suggested_recipes_to_use_your_ingredients_in_time')
 
   return (
     <XStack
@@ -97,7 +99,7 @@ function MascotCoachCard({
           source={mascotIllustration}
           style={{ width: 44, height: 44 }}
           resizeMode="contain"
-          accessibilityLabel="Mascotte Frigo"
+          accessibilityLabel={t('fridge.fridge_mascot')}
         />
       </YStack>
 
@@ -126,6 +128,7 @@ function MascotCoachCard({
 }
 
 export function StatsScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [days, setDays] = useState<number | undefined>(30)
   const statsQuery = useProductOutcomeStatsQuery(days)
@@ -140,17 +143,17 @@ export function StatsScreen() {
     <ScreenHeader
       palette={palette}
       icon={(color) => <TrendingUpIcon size={19} color={color} />}
-      title="Statistiques"
+      title={t('fridge.statistics')}
       onBack={() => goBack('/(tabs)')}
     />
   )
 
   const recipeShareBadge =
     data && data.recipeSharePercent >= 50
-      ? '⭐ Chef Anti-gaspi'
+      ? t('common.anti_waste_chef')
       : data && data.recipeSharePercent > 0
-        ? '🍳 Recettes à la rescousse'
-        : '💡 Pense aux recettes !'
+        ? t('fridge.recipes_to_the_rescue')
+        : t('fridge.try_the_recipes')
 
   return (
     <AppShell nav={{ kind: 'stack' }} refresh={refresh} header={header}>
@@ -164,7 +167,7 @@ export function StatsScreen() {
               selected={days === period.days}
               onPress={() => setDays(period.days)}
               palette={palette}
-              accessibilityLabel={`Période : ${period.label}`}
+              accessibilityLabel={t('fridge.period', { value1: period.label })}
             />
           ))}
         </XStack>
@@ -184,13 +187,11 @@ export function StatsScreen() {
 
         {failed ? (
           <YStack gap="$3" alignItems="flex-start">
-            <Text fontSize={14} fontWeight="500" color={palette.expiredText}>
-              On n’a pas pu lire les statistiques. Vérifie ta connexion.
-            </Text>
+            <Text fontSize={14} fontWeight="500" color={palette.expiredText}>{t('fridge.we_couldn_t_load_the_statistics_check_your_connection')}</Text>
             <PillButton
               testID="stats-retry"
-              label="Réessayer"
-              accessibilityLabel="Réessayer de charger les statistiques"
+              label={t('dashboard.try_again')}
+              accessibilityLabel={t('fridge.try_loading_the_statistics_again')}
               onPress={() => statsQuery.refetch()}
               palette={palette}
             />
@@ -224,12 +225,10 @@ export function StatsScreen() {
                 source={mascotIllustration}
                 style={{ width: 50, height: 50 }}
                 resizeMode="contain"
-                accessibilityLabel="Mascotte en repos"
+                accessibilityLabel={t('fridge.resting_mascot')}
               />
             </YStack>
-            <Text fontSize={16} fontWeight="800" color={palette.ink} textAlign="center">
-              Ton frigo fait la sieste 💤
-            </Text>
+            <Text fontSize={16} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.your_fridge_is_taking_a_nap')}</Text>
             <Text
               testID="stats-empty"
               fontSize={13}
@@ -237,9 +236,7 @@ export function StatsScreen() {
               color={palette.inkSecondary}
               textAlign="center"
               lineHeight={18}
-            >
-              Rien à signaler sur cette période — pas de sortie de produit enregistrée.
-            </Text>
+            >{t('fridge.nothing_to_report_over_this_period_no_products_used_or')}</Text>
           </YStack>
         ) : null}
 
@@ -259,11 +256,11 @@ export function StatsScreen() {
                 valueColor={palette.ink}
                 chipColor={palette.chipTeal}
                 icon={<ChefHatIcon size={18} color={palette.onDark} />}
-                label="Savourés"
+                label={t('fridge.enjoyed')}
                 value={String(data.consumed.count)}
                 corner="a"
                 palette={palette}
-                accessibilityLabel={`Produits savourés, ${data.consumed.count}`}
+                accessibilityLabel={t('fridge.products_enjoyed', { value1: data.consumed.count })}
               />
               <StatCard
                 testID="stats-discarded-count"
@@ -272,11 +269,11 @@ export function StatsScreen() {
                 valueColor={palette.ink}
                 chipColor={palette.chipOrange}
                 icon={<CircleXIcon size={18} color={palette.onDark} />}
-                label="Jetés"
+                label={t('fridge.discarded')}
                 value={String(data.discarded.count)}
                 corner="b"
                 palette={palette}
-                accessibilityLabel={`Produits jetés, ${data.discarded.count}`}
+                accessibilityLabel={t('fridge.products_discarded', { value1: data.discarded.count })}
               />
               <StatCard
                 testID="stats-discarded-value"
@@ -285,31 +282,25 @@ export function StatsScreen() {
                 valueColor={palette.ink}
                 chipColor={palette.chipViolet}
                 icon={<WalletIcon size={18} color={palette.onDark} />}
-                label="Valeur jetée"
+                label={t('fridge.discarded_value')}
                 value={formatEuros(data.discarded.value)}
                 corner="c"
                 palette={palette}
-                accessibilityLabel={`Valeur jetée, ${formatEuros(data.discarded.value)}`}
+                accessibilityLabel={t('fridge.discarded_value_2', { value1: formatEuros(data.discarded.value) })}
               />
             </XStack>
 
             <YStack gap="$3" marginTop="$2">
               <XStack justifyContent="space-between" alignItems="center">
-                <Text fontSize={15} fontWeight="800" color={palette.ink}>
-                  Jeté vs consommé
-                </Text>
-                <Text fontSize={11} fontWeight="600" color={palette.inkSecondary}>
-                  Par semaine
-                </Text>
+                <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('fridge.discarded_vs_used')}</Text>
+                <Text fontSize={11} fontWeight="600" color={palette.inkSecondary}>{t('fridge.by_week')}</Text>
               </XStack>
               <WasteTrendChart testID="stats-trend-chart" buckets={data.buckets} palette={palette} />
             </YStack>
 
             <YStack gap="$2.5" marginTop="$2">
               <XStack justifyContent="space-between" alignItems="center">
-                <Text fontSize={15} fontWeight="800" color={palette.ink}>
-                  Impact des recettes
-                </Text>
+                <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('fridge.recipe_impact')}</Text>
                 <XStack
                   alignItems="center"
                   gap="$1"
@@ -326,7 +317,7 @@ export function StatsScreen() {
               </XStack>
               <Meter
                 testID="stats-recipe-share"
-                label="Repas cuisinés à partir d’une recette"
+                label={t('fridge.meals_cooked_from_a_recipe')}
                 percent={data.recipeSharePercent}
                 palette={palette}
               />

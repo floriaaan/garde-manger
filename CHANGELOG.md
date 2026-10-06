@@ -4,6 +4,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+### Added
+- French and English mobile translations with system-language detection, French fallback, native locale configuration, and a live language selector in the debug menu. The first integration requires a new native build.
+
 ### Fixed
 - Mobile session checks preserve credentials and the last known session during network failures and timeouts; cold-start failures offer retry instead of signing out.
 

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 import { CircleCheckIcon, CircleXIcon, TriangleAlertIcon } from './dashboard-icons.js'
 import { Text, XStack } from '../shared/tamagui-typed.js'
 import type { ProductStatus } from './product-status.js'
@@ -9,7 +10,7 @@ function StatusIcon({ status, size, color }: { status: ProductStatus; size: numb
 }
 
 function statusLabel(status: ProductStatus): string {
-  return status === 'expired' ? 'Dépassé' : status === 'soon' ? 'En premier' : 'Frais'
+  return status === 'expired' ? t('dashboard.past_expiry_2') : status === 'soon' ? t('dashboard.first') : t('dashboard.fresh')
 }
 
 /** A small colored pill carrying the product's status as icon + word, not color alone. */

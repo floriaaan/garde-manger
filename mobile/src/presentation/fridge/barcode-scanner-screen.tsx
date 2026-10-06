@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useRef } from 'react'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { router } from 'expo-router'
@@ -17,6 +18,7 @@ type BarcodeScannerMode = ({ mode: 'create' } | { mode: 'edit'; productId: strin
 }
 
 export function BarcodeScannerScreen(props: BarcodeScannerMode) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [permission, requestPermission] = useCameraPermissions()
   // A ref, not state: `onBarcodeScanned` can fire multiple times before a state update
@@ -65,7 +67,7 @@ export function BarcodeScannerScreen(props: BarcodeScannerMode) {
     return (
       <CameraPermissionModal
         palette={palette}
-        message="L'accès à la caméra est nécessaire pour scanner un code-barres."
+        message={t('fridge.camera_access_is_required_to_scan_a_barcode')}
         canAskAgain={permission?.canAskAgain ?? true}
         onRequestPermission={requestPermission}
         onClose={() => goBack('/(tabs)/fridge')}
@@ -86,7 +88,7 @@ export function BarcodeScannerScreen(props: BarcodeScannerMode) {
       <CameraChrome
         palette={palette}
         guide="barcode"
-        hint="Vise le code-barres, il se lit tout seul"
+        hint={t('fridge.point_at_the_barcode_it_scans_automatically')}
         onClose={() => goBack('/(tabs)/fridge')}
         closeTestID="barcode-scanner-close"
       />

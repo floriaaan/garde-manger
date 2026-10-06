@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { LayoutAnimation, Pressable } from 'react-native'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor, useReduceMotion } from '../shared/hover.js'
@@ -34,13 +35,14 @@ export function FridgeScanItemRow({
   onRemove: () => void
   errors?: ReceiptItemErrors
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   const hasError = Boolean(errors && Object.keys(errors).length > 0)
   const expiryDays = item.expiresAt.trim().length > 0 ? daysUntilExpiry({ expiresAt: item.expiresAt.trim() }) : null
   const summary = [
     item.quantity.trim().length > 0 ? `${item.quantity} ${item.unit}`.trim() : null,
-    expiryDays !== null ? `${expiryLabel(expiryDays)}${item.expiresAtEstimated ? ' · estimée' : ''}` : null,
+    expiryDays !== null ? t('fridge.summary', { value1: expiryLabel(expiryDays), value2: item.expiresAtEstimated ? t('common.estimated_suffix') : '' }) : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -77,7 +79,7 @@ export function FridgeScanItemRow({
           onPress={() => onChange({ ...item, included: !item.included })}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: item.included }}
-          accessibilityLabel={`${item.included ? 'Ne pas ajouter' : 'Ajouter'} ${item.name || 'ce produit'}`}
+          accessibilityLabel={t('fridge.summary_2', { value1: item.included ? t('fridge.don_t_add') : t('fridge.add'), value2: item.name || t('common.this_product') })}
           style={[pointerCursor, { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }]}
         >
           <YStack
@@ -102,17 +104,17 @@ export function FridgeScanItemRow({
           }}
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          accessibilityLabel={`${item.name || 'Produit sans nom'} — ${summary}`}
-          accessibilityHint={expanded ? 'Replier ce produit' : 'Modifier ce produit'}
+          accessibilityLabel={t('fridge.summary_3', { value1: item.name || t('fridge.unnamed_product'), value2: summary })}
+          accessibilityHint={expanded ? t('fridge.collapse_this_product') : t('fridge.edit_this_product')}
           style={[pointerCursor, { flex: 1 }]}
         >
           <XStack alignItems="center" gap="$2" minHeight={44}>
             <YStack flex={1} opacity={item.included ? 1 : 0.6}>
               <Text fontSize={15} fontWeight="700" textDecorationLine={item.included ? 'none' : 'line-through'} color={hasError ? palette.expiredText : palette.ink} numberOfLines={1}>
-                {item.name || 'Produit sans nom'}
+                {item.name || t('fridge.unnamed_product')}
               </Text>
               <Text fontSize={13} fontWeight="500" color={item.duplicate ? palette.soonText : palette.inkSecondary} numberOfLines={1}>
-                {item.duplicate ? `Déjà au frigo${summary ? ` · ${summary}` : ''}` : summary}
+                {item.duplicate ? t('fridge.already_in_the_fridge', { value1: summary ? ` · ${summary}` : '' }) : summary}
               </Text>
             </YStack>
             <YStack style={{ transform: [{ rotate: expanded ? '90deg' : '0deg' }] }}>
@@ -136,14 +138,12 @@ export function FridgeScanItemRow({
             testID={`fridge-scan-item-${index}-remove`}
             onPress={onRemove}
             accessibilityRole="button"
-            accessibilityLabel={`Retirer ${item.name || 'ce produit'} de la liste`}
+            accessibilityLabel={t('fridge.remove_from_the_list', { value1: item.name || t('common.this_product') })}
             style={[pointerCursor, { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }]}
           >
             <XStack alignItems="center" gap="$1.5">
               <XIcon size={15} color={palette.expiredText} />
-              <Text fontSize={13} fontWeight="700" color={palette.expiredText}>
-                Retirer de la liste
-              </Text>
+              <Text fontSize={13} fontWeight="700" color={palette.expiredText}>{t('fridge.remove_from_list')}</Text>
             </XStack>
           </Pressable>
         </YStack>

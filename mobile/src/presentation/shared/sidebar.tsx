@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Tablet/desktop-only persistent nav — extracted from household-dashboard
  * so Recettes/Courses can share the exact same sidebar (and stay
@@ -85,6 +86,7 @@ export function Sidebar({
   onOpenReglages: () => void
   onScan: () => void
 }) {
+  const { t } = useTranslation()
   const scanHover = useHoverPress()
   return (
     // No radius/shadow of its own on purpose: this is the left region of
@@ -95,44 +97,42 @@ export function Sidebar({
     <YStack width={220} alignSelf="stretch" padding="$4" gap="$5" backgroundColor={palette.layoutSurface}>
       <XStack alignItems="center" gap="$2">
         <Image source={mascotIllustration} style={{ width: 28, height: 28 }} resizeMode="contain" accessibilityLabel="" />
-        <Text fontSize={14} fontWeight="800" letterSpacing={1} color={palette.ink}>
-          GARDE-MANGER
-        </Text>
+        <Text fontSize={14} fontWeight="800" letterSpacing={1} color={palette.ink}>{t('identity.garde_manger')}</Text>
       </XStack>
 
       <YStack gap="$1.5">
         <SidebarItem
           active={active === 'accueil'}
           icon={<HomeIcon size={17} color={active === 'accueil' ? palette.accentLimeText : palette.inkSecondary} />}
-          label="Accueil"
+          label={t('shared.home')}
           onPress={onOpenAccueil}
           palette={palette}
         />
         <SidebarItem
           active={active === 'frigo'}
           icon={<PackageIcon size={17} color={active === 'frigo' ? palette.accentLimeText : palette.inkSecondary} />}
-          label="Garde-manger"
+          label={t('fridge.pantry')}
           onPress={onOpenFrigo}
           palette={palette}
         />
         <SidebarItem
           active={active === 'recettes'}
           icon={<ChefHatIcon size={17} color={active === 'recettes' ? palette.accentLimeText : palette.inkSecondary} />}
-          label="Recettes"
+          label={t('dashboard.recipes')}
           onPress={onOpenRecettes}
           palette={palette}
         />
         <SidebarItem
           active={active === 'courses'}
           icon={<ShoppingCartIcon size={17} color={active === 'courses' ? palette.accentLimeText : palette.inkSecondary} />}
-          label="Courses"
+          label={t('dashboard.shopping')}
           onPress={onOpenCourses}
           palette={palette}
         />
         <SidebarItem
           active={false}
           icon={<SettingsIcon size={17} color={palette.inkSecondary} />}
-          label="Réglages"
+          label={t('dashboard.settings')}
           onPress={onOpenReglages}
           palette={palette}
         />
@@ -147,7 +147,7 @@ export function Sidebar({
         onPressIn={scanHover.onPressIn}
         onPressOut={scanHover.onPressOut}
         accessibilityRole="button"
-        accessibilityLabel="Scanner un produit"
+        accessibilityLabel={t('shared.scan_a_product')}
         style={pointerCursor}
       >
         <Animated.View style={{ transform: [{ scale: scanHover.scale }] }}>
@@ -160,9 +160,7 @@ export function Sidebar({
             borderRadius={999}
           >
             <ScanLineIcon size={16} color={palette.accentLimeText} />
-            <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>
-              Scanner
-            </Text>
+            <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>{t('dashboard.scan')}</Text>
           </XStack>
         </Animated.View>
       </Pressable>

@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useRef, useState } from 'react'
 import { Pressable } from 'react-native'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -13,6 +14,7 @@ import { CameraChrome, CameraRoundButton, ShutterButton } from '../shared/camera
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 
 export function ReceiptScannerScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [permission, requestPermission] = useCameraPermissions()
   const cameraRef = useRef<CameraView>(null)
@@ -52,7 +54,7 @@ export function ReceiptScannerScreen() {
     return (
       <CameraPermissionModal
         palette={palette}
-        message="L'accès à la caméra est nécessaire pour scanner un ticket de caisse."
+        message={t('receipt.camera_access_is_required_to_scan_a_receipt')}
         canAskAgain={permission?.canAskAgain ?? true}
         onRequestPermission={requestPermission}
         onClose={() => goBack('/receipts')}
@@ -63,23 +65,19 @@ export function ReceiptScannerScreen() {
           testID="receipt-scanner-gallery-fallback"
           onPress={handlePickFromGallery}
           accessibilityRole="button"
-          accessibilityLabel="Choisir une photo dans la galerie"
+          accessibilityLabel={t('receipt.choose_a_photo_from_the_gallery')}
           style={pointerCursor}
         >
-          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">
-            Choisir une photo dans la galerie
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">{t('receipt.choose_a_photo_from_the_gallery')}</Text>
         </Pressable>
         <Pressable
           testID="receipt-scanner-pdf-fallback"
           onPress={handlePickPdf}
           accessibilityRole="button"
-          accessibilityLabel="Importer un ticket au format PDF"
+          accessibilityLabel={t('receipt.import_a_receipt_as_a_pdf')}
           style={pointerCursor}
         >
-          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">
-            Importer un PDF
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.mintPaleText} textAlign="center">{t('receipt.import_a_pdf')}</Text>
         </Pressable>
       </CameraPermissionModal>
     )
@@ -93,7 +91,7 @@ export function ReceiptScannerScreen() {
       <CameraChrome
         palette={palette}
         guide="receipt"
-        hint="Cadre le ticket entier, bien à plat"
+        hint={t('receipt.frame_the_entire_receipt_lying_flat')}
         onClose={() => goBack('/receipts')}
         closeTestID="receipt-scanner-close"
         start={
@@ -101,8 +99,8 @@ export function ReceiptScannerScreen() {
             palette={palette}
             testID="receipt-scanner-gallery"
             icon={(color) => <ImageIcon size={22} color={color} />}
-            label="Galerie"
-            accessibilityLabel="Choisir une photo dans la galerie"
+            label={t('fridge.gallery')}
+            accessibilityLabel={t('receipt.choose_a_photo_from_the_gallery')}
             onPress={handlePickFromGallery}
           />
         }
@@ -112,8 +110,8 @@ export function ReceiptScannerScreen() {
             palette={palette}
             testID="receipt-scanner-pdf"
             icon={(color) => <FileTextIcon size={22} color={color} />}
-            label="PDF"
-            accessibilityLabel="Importer un ticket au format PDF"
+            label={t('receipt.pdf')}
+            accessibilityLabel={t('receipt.import_a_receipt_as_a_pdf')}
             onPress={handlePickPdf}
           />
         }

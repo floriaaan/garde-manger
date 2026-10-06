@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { Text, YStack } from './tamagui-typed.js'
@@ -50,6 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   return (
     <YStack
@@ -61,13 +63,9 @@ function ErrorFallback({ onRetry }: { onRetry: () => void }) {
       backgroundColor={palette.gradientBottom}
     >
       <TriangleAlertIcon size={40} color={palette.expiredText} />
-      <Text fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">
-        Oups, un problème est survenu.
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-        Réessaie — si ça persiste, vérifie ta connexion.
-      </Text>
-      <PillButton label="Réessayer" accessibilityLabel="Réessayer" onPress={onRetry} palette={palette} centered />
+      <Text fontSize={17} fontWeight="800" color={palette.ink} textAlign="center">{t('shared.oops_something_went_wrong')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('shared.try_again_if_it_persists_check_your_connection')}</Text>
+      <PillButton label={t('dashboard.try_again')} accessibilityLabel={t('dashboard.try_again')} onPress={onRetry} palette={palette} centered />
     </YStack>
   )
 }

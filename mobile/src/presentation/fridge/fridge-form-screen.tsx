@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * The form a user fills standing at an open fridge, holding groceries.
  *
@@ -38,6 +39,7 @@ type FridgeFormMode = { mode: 'create' } | { mode: 'edit'; productId: string }
 const DEFAULT_CATEGORY = 'Autre'
 
 export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => void; prefillBarcode?: string }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
 
@@ -119,7 +121,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
     appliedLookupRef.current = true
     // A real, expected outcome (barcode not in OpenFoodFacts) — not an ApiError, so it
     // gets an informational hint rather than the `error` state used for form validation.
-    setLookupHint('Produit non trouvé, remplis les champs à la main.')
+    setLookupHint(t('fridge.product_not_found_fill_in_the_fields_manually'))
   }, [lookup.isFetched, lookup.data, lookup.isError, props.prefillBarcode])
 
   const createProduct = useCreateProductMutation()
@@ -140,14 +142,14 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
 
     const nextErrors: { name?: string; amount?: string; expiresAt?: string } = {}
 
-    if (name.trim().length === 0) nextErrors.name = 'Le nom est requis.'
+    if (name.trim().length === 0) nextErrors.name = t('fridge.a_name_is_required')
 
     const quantity = Quantity.create(Number(amount), unit)
     if (!quantity.ok) nextErrors.amount = quantity.error.message
 
     const trimmedExpiresAt = expiresAt.trim()
     if (trimmedExpiresAt.length > 0 && Number.isNaN(new Date(trimmedExpiresAt).getTime())) {
-      nextErrors.expiresAt = 'Date invalide (AAAA-MM-JJ).'
+      nextErrors.expiresAt = t('fridge.invalid_date_yyyy_mm_dd')
     }
 
     if (Object.keys(nextErrors).length > 0 || !quantity.ok) {
@@ -202,7 +204,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
               <PackageIcon size={19} color={palette.ink} />
             </YStack>
             <Text fontSize={20} fontWeight="800" color={palette.ink} flex={1}>
-              {props.mode === 'create' ? 'Ajouter un produit' : 'Modifier le produit'}
+              {props.mode === 'create' ? t('dashboard.add_a_product') : t('fridge.edit_product')}
             </Text>
           </XStack>
 
@@ -220,9 +222,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
           />
 
           {lookup.isError ? (
-            <Text fontSize={12} fontWeight="600" color={palette.expiredText} marginTop="$2">
-              La recherche du produit a échoué. Vérifie ta connexion, ou remplis les champs à la main.
-            </Text>
+            <Text fontSize={12} fontWeight="600" color={palette.expiredText} marginTop="$2">{t('fridge.product_lookup_failed_check_your_connection_or_fill_in_the')}</Text>
           ) : lookupHint ? (
             <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} marginTop="$2">
               {lookupHint}
@@ -252,7 +252,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
                 </Text>
               ) : null}
 
-              <AuthButton testID="fridge-form-submit" label="Enregistrer" pendingLabel="Enregistrement..." pending={pending} onPress={handleSubmit} />
+              <AuthButton testID="fridge-form-submit" label={t('fridge.save')} pendingLabel={t('fridge.saving')} pending={pending} onPress={handleSubmit} />
             </FormCard>
           </YStack>
         </ScrollView>
@@ -261,12 +261,12 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
     <ActionSheet
       visible={confirmDiscard}
       onClose={() => setConfirmDiscard(false)}
-      title="Abandonner les modifications ?"
-      description="Ce que tu as saisi ne sera pas enregistré."
+      title={t('fridge.discard_changes')}
+      description={t('fridge.your_changes_won_t_be_saved')}
       options={[
         {
           testID: 'fridge-form-discard',
-          label: 'Abandonner',
+          label: t('fridge.discard'),
           icon: (color) => <XIcon size={18} color={color} />,
           tint: palette.expired,
           destructive: true,
@@ -282,6 +282,7 @@ export function FridgeFormScreen(props: FridgeFormMode & { onSuccess?: () => voi
 }
 
 function ScanAction({ palette, onPress }: { palette: SoftPalette; onPress: () => void }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   return (
     <Pressable
@@ -292,7 +293,7 @@ function ScanAction({ palette, onPress }: { palette: SoftPalette; onPress: () =>
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel="Scanner un code-barres"
+      accessibilityLabel={t('fridge.scan_a_barcode')}
       style={pointerCursor}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], marginTop: 20 }}>
@@ -311,12 +312,8 @@ function ScanAction({ palette, onPress }: { palette: SoftPalette; onPress: () =>
         >
           <ScanLineIcon size={20} color={palette.accentLimeText} />
           <YStack flex={1}>
-            <Text fontSize={14} fontWeight="800" color={palette.accentLimeText}>
-              Scanner le code-barres
-            </Text>
-            <Text fontSize={12} fontWeight="500" color={palette.accentLimeText} opacity={0.8}>
-              Remplit le nom et la catégorie pour toi.
-            </Text>
+            <Text fontSize={14} fontWeight="800" color={palette.accentLimeText}>{t('fridge.scan_the_barcode')}</Text>
+            <Text fontSize={12} fontWeight="500" color={palette.accentLimeText} opacity={0.8}>{t('fridge.fills_in_the_name_and_category_for_you')}</Text>
           </YStack>
         </XStack>
       </Animated.View>

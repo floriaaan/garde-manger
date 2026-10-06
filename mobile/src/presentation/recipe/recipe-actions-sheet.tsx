@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Recipe } from '../../domain/recipe/recipe.js'
@@ -14,6 +15,7 @@ export function RecipeActionsSheet({ visible, recipe, onClose, onDelete, deleteT
   deleteTestID: string
   onFeedback: (message: string, tone: 'success' | 'error') => void
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const update = useUpdateRecipeStateMutation()
@@ -31,42 +33,42 @@ export function RecipeActionsSheet({ visible, recipe, onClose, onDelete, deleteT
     try {
       const result = await update.mutateAsync({ recipeId: current.id, state })
       if (!result.ok) {
-        onFeedback('Modification impossible. Réessaie depuis le menu de la recette.', 'error')
+        onFeedback(t('recipe.couldn_t_update_try_again_from_the_recipe_menu'), 'error')
         return
       }
       queryClient.setQueryData(['recipe', current.id], result.value)
       queryClient.setQueryData<Recipe[]>(['recipes'], (recipes) =>
         recipes?.map((item) => item.id === current.id ? result.value : item))
       onFeedback(state.isArchived !== undefined
-        ? state.isArchived ? 'Recette archivée' : 'Recette désarchivée'
-        : state.isFavorite ? 'Recette ajoutée aux favoris' : 'Recette retirée des favoris', 'success')
+        ? state.isArchived ? t('recipe.recipe_archived') : t('recipe.recipe_unarchived')
+        : state.isFavorite ? t('recipe.recipe_added_to_favourites') : t('recipe.recipe_removed_from_favourites'), 'success')
     } catch {
-      onFeedback('Modification impossible. Vérifie ta connexion et réessaie.', 'error')
+      onFeedback(t('recipe.couldn_t_update_check_your_connection_and_try_again'), 'error')
     }
   }
 
   return <ActionSheet
     visible={visible && !!recipe}
     onClose={onClose}
-    title={recipe ? confirmingDelete ? `Supprimer « ${recipe.title} » ?` : `« ${recipe.title} »` : ''}
+    title={recipe ? confirmingDelete ? t('recipe.delete', { value1: recipe.title }) : `« ${recipe.title} »` : ''}
     description={confirmingDelete
-      ? 'Elle disparaît aussi pour les autres membres du foyer, et c’est définitif.'
-      : 'Actions partagées avec le foyer. Les favoris sont épinglés en tête de liste ; les archives restent accessibles dans Archives.'}
+      ? t('recipe.it_will_also_disappear_for_the_other_household_members_this')
+      : t('recipe.actions_are_shared_with_the_household_favourites_are_pinned_to')}
     options={confirmingDelete ? [{
-      testID: deleteTestID, label: 'Supprimer définitivement',
+      testID: deleteTestID, label: t('identity.delete_permanently'),
       icon: (color) => <BanIcon size={18} color={color} />,
       tint: palette.expiredText, destructive: true, onPress: onDelete,
     }] : [{
       testID: 'recipe-favorite-toggle',
-      label: recipe?.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris · épingler',
+      label: recipe?.isFavorite ? t('recipe.remove_from_favourites') : t('recipe.add_to_favourites_pin'),
       icon: (color) => <StarIcon size={18} color={color} />,
       tint: palette.freshText, onPress: () => changeState({ isFavorite: !recipe?.isFavorite }),
     }, {
-      testID: 'recipe-archive-toggle', label: recipe?.isArchived ? 'Désarchiver la recette' : 'Archiver la recette',
+      testID: 'recipe-archive-toggle', label: recipe?.isArchived ? t('recipe.unarchive_recipe') : t('recipe.archive_recipe'),
       icon: (color) => <ArchiveIcon size={18} color={color} />,
       tint: palette.inkSecondary, onPress: () => changeState({ isArchived: !recipe?.isArchived }),
     }, {
-      testID: 'recipe-delete-action', label: 'Supprimer définitivement…',
+      testID: 'recipe-delete-action', label: t('recipe.delete_permanently'),
       icon: (color) => <BanIcon size={18} color={color} />,
       tint: palette.expiredText, destructive: true, keepOpen: true,
       onPress: () => setConfirmingDelete(true),

@@ -12,6 +12,12 @@
 // — so the config must be registered globally here instead.
 import './tamagui.config'
 
+// Keep the existing French assertions deterministic, independent of the host OS.
+// Locale-specific tests override this getter to exercise English and fallback.
+jest.mock('expo-localization', () => ({
+  getLocales: jest.fn(() => [{ languageTag: 'fr-FR', languageCode: 'fr' }]),
+}))
+
 // Remote avatars must not fetch over the network in component tests.
 jest.mock('react-native-svg', () => {
   const actual = jest.requireActual('react-native-svg')

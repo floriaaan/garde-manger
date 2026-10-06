@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Réglages > Serveur > "Changer de serveur" — its own page rather than a
  * button inline on Réglages, because switching servers is the same
@@ -21,6 +22,7 @@ import { useSignOutMutation } from '../../application/identity/sign-out.mutation
 import { getServerUrl, setServerUrl } from '../../application/shared/server-config.js'
 
 export function ServerInfoScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const signOut = useSignOutMutation()
   const queryClient = useQueryClient()
@@ -44,7 +46,7 @@ export function ServerInfoScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ServerIcon size={19} color={color} />}
-          title="Changer de serveur"
+          title={t('settings.change_server')}
           onBack={() => router.back()}
         />
       }
@@ -52,7 +54,7 @@ export function ServerInfoScreen() {
       <ServerChoiceForm
         palette={palette}
         defaultUrl={getServerUrl()}
-        saveLabel="Sauvegarder"
+        saveLabel={t('shared.save')}
         onSave={handleSave}
       />
     </AppShell>

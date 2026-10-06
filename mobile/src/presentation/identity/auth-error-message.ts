@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 import type { Result } from '../../domain/shared/result.js'
 
@@ -12,7 +13,7 @@ import type { Result } from '../../domain/shared/result.js'
  * carrying one bare literal each instead.
  */
 export function authErrorMessage(thrown: unknown, data: Result<unknown, ApiError> | undefined, fallback: string): string | null {
-  if (thrown) return `${fallback} Vérifie ta connexion.`
+  if (thrown) return t('identity.check_your_connection', { value1: fallback })
   if (data && !data.ok) return data.error.message
   return null
 }

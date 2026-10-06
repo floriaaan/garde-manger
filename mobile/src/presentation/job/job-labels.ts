@@ -1,32 +1,32 @@
+import { t } from '../../i18n/index.js'
 import type { Job, JobKind } from '../../domain/job/job.js'
 import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 
 export const JOB_TITLES: Record<JobKind, string> = {
-  receipt_scan: 'Analyse du ticket',
-  fridge_scan: 'Analyse du frigo',
-  recipe_generation: 'Idées de recettes',
+  get receipt_scan() { return t('job.receipt_analysis') },
+  get fridge_scan() { return t('job.fridge_analysis') },
+  get recipe_generation() { return t('job.recipe_ideas') },
 }
 
 /** The one line under the title while the job is not finished. */
 export function activeLabel(job: Job, behind = false): string {
   const { done, total } = job.progress
-  if (job.status === 'queued') return behind ? 'En attente de l’analyse précédente…' : 'En attente…'
-  if (job.kind === 'fridge_scan') return `Photo ${Math.min(done + 1, total)} sur ${total}`
-  return job.kind === 'recipe_generation' ? 'Cuisine en cours…' : 'Lecture en cours…'
+  if (job.status === 'queued') return behind ? t('job.waiting_for_the_previous_analysis') : t('fridge.waiting')
+  if (job.kind === 'fridge_scan') return t('job.photo_of', { value1: Math.min(done + 1, total), value2: total })
+  return job.kind === 'recipe_generation' ? t('job.cooking') : t('job.reading')
 }
 
 /** What a finished job says — also the toast copy, so the two never disagree. */
 export function outcomeMessage(job: Job, itemCount?: number): string {
-  if (job.status === 'failed') return `${JOB_TITLES[job.kind]} : échec`
-  const n = (count: number, one: string, many: string) => `${count} ${count > 1 ? many : one}`
+  if (job.status === 'failed') return t('job.failed', { value1: JOB_TITLES[job.kind] })
   switch (job.kind) {
     case 'receipt_scan':
-      return itemCount === undefined ? 'Ticket analysé' : `Ticket analysé — ${n(itemCount, 'article', 'articles')}`
+      return itemCount === undefined ? t('job.receipt_analysed') : t('job.receipt_analysed_count', { count: itemCount })
     case 'fridge_scan':
-      return itemCount === undefined ? 'Frigo analysé' : `Frigo analysé — ${n(itemCount, 'produit', 'produits')}`
+      return itemCount === undefined ? t('job.fridge_analysed') : t('job.fridge_analysed_count', { count: itemCount })
     case 'recipe_generation': {
       const count = job.result?.recipeIds?.length ?? 0
-      return `${n(count, 'recette prête', 'recettes prêtes')}`
+      return t('common.recipe_ready_count', { count })
     }
   }
 }
@@ -53,17 +53,17 @@ export function failureMessage(job: Job): string {
   switch (job.error?.type) {
     case 'ai_quota_exceeded':
       return platformCapabilities.billing
-        ? 'Quota gratuit atteint. Passe à l’offre IA pour continuer.'
-        : 'Quota du mois atteint. Il se renouvelle le 1er du mois.'
+        ? t('job.free_quota_reached_upgrade_to_the_ai_plan_to_continue')
+        : t('job.monthly_quota_reached_it_resets_on_the_first_of_the')
     case 'provider_not_configured':
-      return 'L’IA n’est pas configurée sur ce serveur. Demande à l’administrateur.'
+      return t('job.ai_isn_t_configured_on_this_server_ask_the_administrator')
     case 'unsupported_format':
-      return 'Ce fournisseur IA ne lit pas les PDF. Réessaie avec une photo, ou change de fournisseur dans les réglages.'
+      return t('job.this_ai_provider_can_t_read_pdfs_try_a_photo')
     default:
       // A recipe generation has no photo to blame — it failed on the ask.
       return job.kind === 'recipe_generation'
-        ? `${outcomeMessage(job)}. Réessaie, ou demande quelque chose de plus simple.`
-        : `${outcomeMessage(job)}. Réessaie, ou reprends la photo si elle est floue.`
+        ? t('job.try_again_or_ask_for_something_simpler', { value1: outcomeMessage(job) })
+        : t('job.try_again_or_retake_the_photo_if_it_s_blurry', { value1: outcomeMessage(job) })
   }
 }
 
@@ -80,9 +80,9 @@ export function isRetryable(job: Job): boolean {
 /** "à l’instant" / "il y a 5 min" / "il y a 3 h" / "hier" — the age of a task, which the task center is otherwise silent about. */
 export function taskAge(iso: string, now: Date = new Date()): string {
   const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000)
-  if (minutes < 1) return 'à l’instant'
-  if (minutes < 60) return `il y a ${minutes} min`
+  if (minutes < 1) return t('job.just_now')
+  if (minutes < 60) return t('job.min_ago', { value1: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `il y a ${hours} h`
-  return hours < 48 ? 'hier' : `il y a ${Math.floor(hours / 24)} j`
+  if (hours < 24) return t('job.h_ago', { value1: hours })
+  return hours < 48 ? t('job.yesterday') : t('job.days_ago', { value1: Math.floor(hours / 24) })
 }

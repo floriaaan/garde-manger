@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useId } from 'react'
 import { Image, type ImageSourcePropType } from 'react-native'
 import { Defs, RadialGradient, Rect, Stop, Svg } from 'react-native-svg'
@@ -37,6 +38,7 @@ export function IllustrationSlot({
   imageSource?: ImageSourcePropType
   tagColor: string
 }) {
+  const { t } = useTranslation()
   const gradientId = useId()
   return (
     <YStack
@@ -65,9 +67,7 @@ export function IllustrationSlot({
       </YStack>
       {imageSource ? null : (
         <XStack position="absolute" bottom={6} right={8} backgroundColor="rgba(0,0,0,0.22)" borderRadius={999} paddingVertical="$0.5" paddingHorizontal="$2">
-          <Text fontSize={9} fontWeight="700" color={tagColor}>
-            3D · bientôt
-          </Text>
+          <Text fontSize={9} fontWeight="700" color={tagColor}>{t('dashboard.3d_coming_soon')}</Text>
         </XStack>
       )}
     </YStack>

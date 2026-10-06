@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /**
  * The product form's fields, without the screen around them: name, quantity
  * and unit (with unit chips), expiry (with date shortcuts) and compartment.
@@ -17,7 +18,7 @@ import { DateField, toIsoDay } from './date-field.js'
 import { LOCATIONS } from '../../domain/fridge/location.js'
 import type { LocationValue } from '../../domain/fridge/location.js'
 
-export const LOCATION_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
+export const LOCATION_LABELS: Record<LocationValue, string> = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } }
 
 /** Same glyph per compartment as the fridge screen's filters and shelf headers. */
 const LOCATION_ICONS: Record<LocationValue, (color: string) => React.ReactNode> = {
@@ -27,13 +28,13 @@ const LOCATION_ICONS: Record<LocationValue, (color: string) => React.ReactNode> 
 }
 
 /** The units a fridge actually holds. Free text stays available beside them. */
-const UNIT_SUGGESTIONS = ['g', 'kg', 'mL', 'L', 'pièce(s)']
+const UNIT_SUGGESTIONS = () => ['g', 'kg', 'mL', 'L', t('fridge.item_s')]
 
 const DATE_SHORTCUTS: { label: string; days: number | null }[] = [
-  { label: '3 jours', days: 3 },
-  { label: '1 semaine', days: 7 },
-  { label: '1 mois', days: 30 },
-  { label: 'Sans date', days: null },
+  { get label() { return t('fridge.3_days') }, days: 3 },
+  { get label() { return t('fridge.1_week') }, days: 7 },
+  { get label() { return t('fridge.1_month') }, days: 30 },
+  { get label() { return t('dashboard.no_date') }, days: null },
 ]
 
 export function isoDay(offsetDays: number): string {
@@ -71,14 +72,15 @@ export function ProductFields({
   /** The date came from the AI's guess: say so until the member edits it. */
   expiryEstimated?: boolean
 }) {
+  const { t } = useTranslation()
   const expiryDays = values.expiresAt.trim().length > 0 ? daysUntilExpiry({ expiresAt: values.expiresAt.trim() }) : null
-  const expiryHint = expiryDays !== null ? `${expiryLabel(expiryDays)}${expiryEstimated ? ' · estimée' : ''}` : undefined
+  const expiryHint = expiryDays !== null ? t('fridge.summary', { value1: expiryLabel(expiryDays), value2: expiryEstimated ? t('common.estimated_suffix') : '' }) : undefined
 
   return (
     <YStack gap="$3">
       <FormField
         testID={`${testIDPrefix}-name`}
-        label="Nom"
+        label={t('fridge.name')}
         value={values.name}
         onChangeText={(name) => onChange({ name })}
         palette={palette}
@@ -90,12 +92,12 @@ export function ProductFields({
         <YStack flex={1}>
           <FormField
             testID={`${testIDPrefix}-amount`}
-            label="Quantité"
+            label={t('fridge.quantity')}
             value={values.amount}
             onChangeText={(amount) => onChange({ amount })}
             palette={palette}
             keyboardType="number-pad"
-            hint="Nombre entier"
+            hint={t('fridge.whole_number')}
             error={errors?.amount}
             icon={(color) => <ScaleIcon size={13} color={color} />}
           />
@@ -103,7 +105,7 @@ export function ProductFields({
         <YStack flex={1}>
           <FormField
             testID={`${testIDPrefix}-unit`}
-            label="Unité"
+            label={t('fridge.unit')}
             value={values.unit}
             onChangeText={(unit) => onChange({ unit })}
             palette={palette}
@@ -112,7 +114,7 @@ export function ProductFields({
         </YStack>
       </XStack>
       <XStack gap="$2.5" flexWrap="wrap">
-        {UNIT_SUGGESTIONS.map((suggestion) => (
+        {UNIT_SUGGESTIONS().map((suggestion) => (
           <Chip
             key={suggestion}
             testID={`${testIDPrefix}-unit-${suggestion}`}
@@ -128,7 +130,7 @@ export function ProductFields({
       <YStack gap="$2">
         <DateField
           testID={`${testIDPrefix}-expires-at`}
-          label="Date de péremption"
+          label={t('fridge.expiry_date')}
           value={values.expiresAt}
           onChange={(expiresAt) => onChange({ expiresAt })}
           palette={palette}
@@ -153,9 +155,7 @@ export function ProductFields({
       <YStack gap="$1">
         <XStack alignItems="center" gap="$1.5">
           <ArchiveIcon size={13} color={palette.inkSecondary} />
-          <Text fontSize={12} fontWeight="700" color={palette.ink}>
-            Emplacement
-          </Text>
+          <Text fontSize={12} fontWeight="700" color={palette.ink}>{t('fridge.location')}</Text>
         </XStack>
         <XStack gap="$3" flexWrap="wrap">
           {LOCATIONS.map((loc) => (

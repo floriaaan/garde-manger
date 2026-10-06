@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSetReminderSettingsMutation } from './set-reminder-settings.mutation.js'
@@ -14,16 +15,16 @@ export function useReminderSettingsEditor() {
     if (saving.current) return
     saving.current = true
     setFailedUpdate(null)
-    showToast('Enregistrement…', 'loading')
+    showToast(t('common.saving'), 'loading')
     try {
       const result = await mutation.mutateAsync(update)
       if (!result.ok) throw result.error
       queryClient.setQueryData(['reminder-settings'], result.value)
-      showToast('Réglages enregistrés.', 'success')
+      showToast(t('common.settings_saved'), 'success')
     } catch {
       setFailedUpdate(update)
-      showToast('Impossible d’enregistrer le rappel.', 'error', {
-        label: 'Réessayer', onPress: () => { void save(update) },
+      showToast(t('common.could_not_save_reminder'), 'error', {
+        label: t('dashboard.try_again'), onPress: () => { void save(update) },
       })
     } finally {
       saving.current = false

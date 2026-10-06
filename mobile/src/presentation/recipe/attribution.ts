@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 import type { Household } from '../../domain/identity/household.js'
 import type { Recipe } from '../../domain/recipe/recipe.js'
 
@@ -27,10 +28,10 @@ const DAY_MS = 24 * 60 * 60 * 1000
 /** "aujourd'hui" / "hier" / "il y a 4 j" — the register the rest of the app uses for dates. */
 export function agoLabel(iso: string, now: Date = new Date()): string {
   const days = Math.floor((now.getTime() - new Date(iso).getTime()) / DAY_MS)
-  if (days <= 0) return 'aujourd’hui'
-  if (days === 1) return 'hier'
-  if (days < 30) return `il y a ${days} j`
-  return 'il y a longtemps'
+  if (days <= 0) return t('recipe.today')
+  if (days === 1) return t('job.yesterday')
+  if (days < 30) return t('job.days_ago', { value1: days })
+  return t('recipe.a_long_time_ago')
 }
 
 /**
@@ -45,11 +46,11 @@ export function provenanceLine(
   now?: Date,
 ): string | null {
   if (recipe.cookCount > 0 && recipe.lastCookedAt) {
-    const who = isSelf(recipe.lastCookedBy, selfId) ? 'toi' : memberName(recipe.lastCookedBy, household)
-    const times = recipe.cookCount === 1 ? 'Cuisinée une fois' : `Cuisinée ${recipe.cookCount} fois`
+    const who = isSelf(recipe.lastCookedBy, selfId) ? t('recipe.you') : memberName(recipe.lastCookedBy, household)
+    const times = recipe.cookCount === 1 ? t('recipe.cooked_once') : t('recipe.cooked_times', { value1: recipe.cookCount })
     const when = agoLabel(recipe.lastCookedAt, now)
     return who ? `${times} · ${who}, ${when}` : `${times} · ${when}`
   }
-  const author = isSelf(recipe.createdBy, selfId) ? 'toi' : memberName(recipe.createdBy, household)
-  return author ? `Ajoutée par ${author}` : null
+  const author = isSelf(recipe.createdBy, selfId) ? t('recipe.you') : memberName(recipe.createdBy, household)
+  return author ? t('recipe.added_by', { value1: author }) : null
 }

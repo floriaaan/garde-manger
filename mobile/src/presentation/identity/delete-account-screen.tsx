@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -15,6 +16,7 @@ import { useLinkedAccountsQuery } from '../../application/identity/linked-accoun
 import { useDeleteAccountMutation } from '../../application/identity/delete-account.mutation.js'
 
 export function DeleteAccountScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const household = useHouseholdQuery()
@@ -39,16 +41,14 @@ export function DeleteAccountScreen() {
     <AppShell
       nav={{ kind: 'stack' }}
       hint={hint}
-      header={<ScreenHeader palette={palette} icon={(color) => <TrashIcon size={19} color={color} />} title="Supprimer mon compte" onBack={() => goBack('/account')} />}
+      header={<ScreenHeader palette={palette} icon={(color) => <TrashIcon size={19} color={color} />} title={t('identity.delete_my_account')} onBack={() => goBack('/account')} />}
     >
       <YStack marginTop="$6" gap="$4">
-        <Text fontSize={15} fontWeight="600" color={palette.ink}>
-          Cette action est définitive. Ton compte et tes données personnelles seront supprimés.
-        </Text>
+        <Text fontSize={15} fontWeight="600" color={palette.ink}>{t('identity.this_action_is_permanent_your_account_and_personal_data_will')}</Text>
         {household.isError || linkedAccounts.isError ? (
           <YStack gap="$2">
-            <Text fontSize={14} color={palette.expiredText}>Impossible de vérifier les conditions de suppression.</Text>
-            <AuthButton label="Réessayer" variant="secondary" onPress={() => {
+            <Text fontSize={14} color={palette.expiredText}>{t('identity.we_couldn_t_check_the_deletion_requirements')}</Text>
+            <AuthButton label={t('dashboard.try_again')} variant="secondary" onPress={() => {
               void household.refetch()
               void linkedAccounts.refetch()
             }} />
@@ -56,20 +56,18 @@ export function DeleteAccountScreen() {
         ) : null}
         {sharedOwner ? (
           <YStack gap="$3">
-            <Text fontSize={14} color={palette.expiredText}>
-              Tu es propriétaire d’un foyer avec d’autres membres. Transfère d’abord la propriété pour pouvoir supprimer ton compte.
-            </Text>
-            <AuthButton testID="account-go-to-household" label="Aller au foyer" onPress={() => router.push('/household')} />
+            <Text fontSize={14} color={palette.expiredText}>{t('identity.you_own_a_household_with_other_members_transfer_ownership_before')}</Text>
+            <AuthButton testID="account-go-to-household" label={t('identity.go_to_household')} onPress={() => router.push('/household')} />
           </YStack>
         ) : (
           <YStack gap="$3">
             {household.data?.role === 'owner' ? (
-              <Text fontSize={14} color={palette.expiredText}>Ton foyer et son contenu seront également supprimés.</Text>
+              <Text fontSize={14} color={palette.expiredText}>{t('identity.your_household_and_its_contents_will_also_be_deleted')}</Text>
             ) : null}
             {hasPassword ? (
               <AuthPasswordField
                 testID="account-delete-password"
-                label="Confirme avec ton mot de passe"
+                label={t('identity.confirm_with_your_password')}
                 value={password}
                 onChangeText={setPassword}
                 autoComplete="current-password"
@@ -77,7 +75,7 @@ export function DeleteAccountScreen() {
             ) : null}
             <AuthButton
               testID="account-delete-confirm"
-              label="Supprimer définitivement"
+              label={t('identity.delete_permanently')}
               variant="secondary"
               icon={<TrashIcon size={18} color={palette.expiredText} />}
               pending={deleteAccount.isPending}

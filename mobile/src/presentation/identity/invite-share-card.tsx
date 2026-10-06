@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * The owner's half of the join flow.
  *
@@ -41,6 +42,7 @@ export function InviteShareCard({
   /** Copy and share are silent by nature; the hint is the only proof they ran. */
   onFeedback: (message: string) => void
 }) {
+  const { t } = useTranslation()
   const [showQr, setShowQr] = useState(false)
 
   async function handleShare() {
@@ -51,7 +53,7 @@ export function InviteShareCard({
         error,
         attributes: { 'app.operation': 'identity.share_invite' },
       })
-      onFeedback('Le partage n’a pas pu s’ouvrir.')
+      onFeedback(t('identity.sharing_couldn_t_be_opened'))
     }
   }
 
@@ -63,7 +65,7 @@ export function InviteShareCard({
       })
       return false
     })
-    onFeedback(ok ? 'Code copié.' : 'Impossible de copier le code.')
+    onFeedback(ok ? t('identity.code_copied') : t('identity.couldn_t_copy_the_code'))
   }
 
   return (
@@ -79,9 +81,7 @@ export function InviteShareCard({
         borderBottomLeftRadius: 14,
       }}
     >
-      <Text fontSize={12} fontWeight="700" color={palette.creamText}>
-        Code d’invitation
-      </Text>
+      <Text fontSize={12} fontWeight="700" color={palette.creamText}>{t('identity.invite_code')}</Text>
       {/* Spaced by a third of an em rather than run together: eight characters
           read aloud over a kitchen table are read in pairs, and the tracking
           is what makes O/0 and I/1 separable at arm's length. */}
@@ -91,13 +91,11 @@ export function InviteShareCard({
         fontWeight="800"
         color={palette.ink}
         letterSpacing={4}
-        accessibilityLabel={`Code d’invitation : ${inviteCode.split('').join(' ')}`}
+        accessibilityLabel={t('identity.invite_code_2', { value1: inviteCode.split('').join(' ') })}
       >
         {inviteCode}
       </Text>
-      <Text fontSize={12} fontWeight="500" color={palette.creamText}>
-        Donne-le à quelqu’un du foyer : il le saisit à l’inscription et voit le même garde-manger.
-      </Text>
+      <Text fontSize={12} fontWeight="500" color={palette.creamText}>{t('identity.give_it_to_someone_in_your_household_they_enter_it')}</Text>
 
       {/* Same "one line, not a wrap" fix as the Home Assistant modal's
           Enregistrer/Délier row (2026-09-09) — `dense` (`Chip`'s own
@@ -114,26 +112,26 @@ export function InviteShareCard({
       <XStack gap="$3" rowGap="$2" flexWrap="wrap">
         <PillButton
           testID="household-invite-share"
-          label="Partager"
+          label={t('identity.share')}
           size="dense"
           icon={(color) => <ShareIcon size={13} color={color} />}
           onPress={handleShare}
-          accessibilityLabel="Partager le code d’invitation"
+          accessibilityLabel={t('identity.share_invite_code')}
           palette={palette}
         />
         <PillButton
           testID="household-invite-copy"
-          label="Copier"
+          label={t('identity.copy')}
           tone="quiet"
           size="dense"
           icon={(color) => <CopyIcon size={13} color={color} />}
           onPress={handleCopy}
-          accessibilityLabel="Copier le code d’invitation"
+          accessibilityLabel={t('identity.copy_invite_code')}
           palette={palette}
         />
         <PillButton
           testID="household-invite-qr-toggle"
-          label={showQr ? 'Masquer le QR' : 'Afficher le QR'}
+          label={showQr ? t('identity.hide_qr') : t('identity.show_qr')}
           tone="quiet"
           size="dense"
           icon={(color) => <QrCodeIcon size={13} color={color} />}
@@ -150,16 +148,14 @@ export function InviteShareCard({
           <YStack backgroundColor="#FFFFFF" padding="$3" borderRadius={18}>
             <QRCode value={buildJoinLink(inviteCode)} size={168} backgroundColor="#FFFFFF" color="#16211A" />
           </YStack>
-          <Text fontSize={12} fontWeight="500" color={palette.creamText}>
-            À scanner depuis l’écran d’accueil de l’autre téléphone.
-          </Text>
+          <Text fontSize={12} fontWeight="500" color={palette.creamText}>{t('identity.scan_it_from_the_other_phone_s_welcome_screen')}</Text>
         </YStack>
       ) : null}
 
       <AuthButton
         testID="household-regenerate"
-        label="Générer un nouveau code"
-        pendingLabel="Génération..."
+        label={t('identity.generate_a_new_code')}
+        pendingLabel={t('identity.generating')}
         pending={regenerating}
         variant="secondary"
         icon={<RefreshIcon size={16} color={palette.ink} />}

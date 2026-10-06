@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Animated } from 'react-native'
 import { Pressable } from './pressable.js'
 import { pointerCursor, useHoverPress } from './hover.js'
@@ -6,6 +7,7 @@ import { ripple } from './material.js'
 
 /** Shared across screens (recipe, shopping-list) — was duplicated verbatim in both before this file existed. */
 export function BackButton({ onPress, ink, cream }: { onPress: () => void; ink: string; cream: string }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   return (
     <Pressable
@@ -15,7 +17,7 @@ export function BackButton({ onPress, ink, cream }: { onPress: () => void; ink: 
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel="Retour"
+      accessibilityLabel={t('identity.back')}
       android_ripple={ripple(ink, { borderless: true, radius: 24 })}
       style={pointerCursor}
     >

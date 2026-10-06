@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /**
  * The way into the receipt history, on the dashboard.
  *
@@ -26,9 +27,9 @@ import type { Receipt } from '../../domain/receipt/receipt.js'
  * says what would fill it instead of counting to zero.
  */
 export function receiptsSummary(receipts: readonly Receipt[]): string {
-  if (receipts.length === 0) return 'Scanne un ticket pour remplir ton garde-manger'
+  if (receipts.length === 0) return t('dashboard.scan_a_receipt_to_fill_your_pantry')
   const latest = receipts.reduce((newest, receipt) => (receipt.scannedAt > newest.scannedAt ? receipt : newest))
-  return `${receipts.length} ticket${receipts.length > 1 ? 's' : ''} · dernier : ${latest.storeName}`
+  return t('dashboard.receipt_latest', { count: receipts.length, value2: latest.storeName })
 }
 
 export function ReceiptsRow({
@@ -42,6 +43,7 @@ export function ReceiptsRow({
   onPress: () => void
   palette: SoftPalette
 }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
 
   return (
@@ -55,7 +57,7 @@ export function ReceiptsRow({
       accessibilityRole="button"
       // The summary is the only reason to tap the row; the title alone
       // announces a category and swallows the fact.
-      accessibilityLabel={pending ? 'Tickets de caisse. Chargement' : `Tickets de caisse. ${receiptsSummary(receipts)}`}
+      accessibilityLabel={pending ? t('dashboard.receipts_loading') : t('dashboard.receipts_2', { value1: receiptsSummary(receipts) })}
       style={pointerCursor}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
@@ -80,11 +82,9 @@ export function ReceiptsRow({
             <ReceiptIcon size={18} color={palette.onDark} />
           </YStack>
           <YStack flex={1}>
-            <Text fontSize={14} fontWeight="700" color={palette.ink}>
-              Tickets de caisse
-            </Text>
+            <Text fontSize={14} fontWeight="700" color={palette.ink}>{t('dashboard.receipts')}</Text>
             <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} numberOfLines={1}>
-              {pending ? 'Chargement…' : receiptsSummary(receipts)}
+              {pending ? t('dashboard.loading_2') : receiptsSummary(receipts)}
             </Text>
           </YStack>
           <ChevronRightIcon size={18} color={palette.inkSecondary} />

@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Redirect, Tabs } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useSessionQuery } from '../../application/identity/session.query.js'
@@ -16,27 +17,28 @@ import { USES_NATIVE_TABS } from '../../presentation/shared/app-shell.js'
  * `(tabs)/scan.tsx` for why it's a route rather than a plain button.
  */
 function IosTabs() {
+  const { t } = useTranslation()
   return (
     <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} />
-        <NativeTabs.Trigger.Label>Accueil</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('shared.home')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="fridge">
         <NativeTabs.Trigger.Icon sf={{ default: 'shippingbox', selected: 'shippingbox.fill' }} />
-        <NativeTabs.Trigger.Label>Garde-manger</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('fridge.pantry')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="recipes">
         <NativeTabs.Trigger.Icon sf="fork.knife" />
-        <NativeTabs.Trigger.Label>Recettes</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('dashboard.recipes')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="shopping-list">
         <NativeTabs.Trigger.Icon sf={{ default: 'cart', selected: 'cart.fill' }} />
-        <NativeTabs.Trigger.Label>Courses</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('dashboard.shopping')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scan" role="search">
         <NativeTabs.Trigger.Icon sf="barcode.viewfinder" />
-        <NativeTabs.Trigger.Label>Scanner</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('dashboard.scan')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   )
@@ -44,12 +46,13 @@ function IosTabs() {
 
 /** Android, web and iPad: hidden native bar, AppShell draws its own Sidebar or BlurView pill instead. */
 function DefaultTabs() {
+  const { t } = useTranslation()
   return (
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
-      <Tabs.Screen name="index" options={{ title: 'Accueil' }} />
-      <Tabs.Screen name="fridge" options={{ title: 'Garde-manger' }} />
-      <Tabs.Screen name="recipes" options={{ title: 'Recettes' }} />
-      <Tabs.Screen name="shopping-list" options={{ title: 'Liste de courses' }} />
+      <Tabs.Screen name="index" options={{ title: t('shared.home') }} />
+      <Tabs.Screen name="fridge" options={{ title: t('fridge.pantry') }} />
+      <Tabs.Screen name="recipes" options={{ title: t('dashboard.recipes') }} />
+      <Tabs.Screen name="shopping-list" options={{ title: t('shopping-list.shopping_list') }} />
     </Tabs>
   )
 }

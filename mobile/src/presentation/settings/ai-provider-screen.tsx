@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /**
  * Réglages > Intelligence artificielle > provider picker — its own page
  * (2026-09-18) rather than a footer inline on the Réglages card: the model
@@ -32,15 +33,15 @@ const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 
 const PROVIDER_TINTS: Record<AiProvider, string> = { gemini: '#4C8DF6', openai: '#10A37F', ollama: '#1A1A1A' }
 
 const PROVIDER_DESCRIPTIONS: Record<AiProvider, string> = {
-  gemini: 'Modèle de Google, envoyé à leurs serveurs.',
-  openai: 'Modèle d’OpenAI, envoyé à leurs serveurs.',
-  ollama: 'Modèle exécuté sur ton propre serveur, rien n’en sort.',
+  get gemini() { return t('settings.google_s_model_sent_to_their_servers') },
+  get openai() { return t('settings.openai_s_model_sent_to_their_servers') },
+  get ollama() { return t('settings.a_model_running_on_your_own_server_nothing_leaves_it') },
 }
 
 const AI_FEATURES = [
-  { title: 'Scan de tickets', description: 'Prends ton ticket en photo : les produits arrivent dans le frigo avec leur date.', chip: (p: SoftPalette) => p.chipTeal, Icon: ReceiptIcon },
-  { title: 'Scan du frigo', description: 'Photographie ton frigo pour repérer d’un coup ce qu’il contient.', chip: (p: SoftPalette) => p.chipViolet, Icon: CameraIcon },
-  { title: 'Recettes', description: 'Des idées de repas à partir de ce qui va bientôt périmer.', chip: (p: SoftPalette) => p.chipOrange, Icon: ChefHatIcon },
+  { get title() { return t('settings.receipt_scanning') }, get description() { return t('settings.photograph_your_receipt_products_appear_in_the_fridge_with_their') }, chip: (p: SoftPalette) => p.chipTeal, Icon: ReceiptIcon },
+  { get title() { return t('settings.fridge_scanning') }, get description() { return t('settings.photograph_your_fridge_to_identify_everything_inside_at_once') }, chip: (p: SoftPalette) => p.chipViolet, Icon: CameraIcon },
+  { get title() { return t('dashboard.recipes') }, get description() { return t('settings.meal_ideas_using_what_will_expire_soon') }, chip: (p: SoftPalette) => p.chipOrange, Icon: ChefHatIcon },
 ] as const
 
 function ProviderIcon({ provider, color }: { provider: AiProvider; color: string }) {
@@ -55,6 +56,7 @@ function ProviderIcon({ provider, color }: { provider: AiProvider; color: string
 }
 
 export function AiProviderScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const settings = useAiSettingsQuery()
   const refresh = usePullToRefresh(() => settings.refetch())
@@ -86,15 +88,13 @@ export function AiProviderScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <SparklesIcon size={19} color={color} />}
-          title="Intelligence artificielle"
+          title={t('settings.artificial_intelligence')}
           onBack={() => router.back()}
         />
       }
     >
       <YStack gap="$2" marginTop="$5">
-        <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
-          Lit tes tickets de caisse et invente tes recettes.
-        </Text>
+        <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>{t('settings.reads_your_receipts_and_creates_your_recipes')}</Text>
 
         {settings.data ? <AiQuotaHint access={settings.data.access} palette={palette} /> : null}
 
@@ -119,9 +119,9 @@ export function AiProviderScreen() {
             <Text flex={1} fontSize={12} fontWeight="600" color={palette.inkSecondary}>
               {settings.data && !canChooseProvider
                 ? platformCapabilities.billing
-                  ? 'Chaque scan ou recette compte dans ton offre : le détail est dans Abonnement.'
-                  : 'Chaque scan ou recette compte dans le quota mensuel du foyer.'
-                : 'L’IA n’intervient que quand tu lances un scan ou une recette.'}
+                  ? t('settings.each_scan_or_recipe_counts_towards_your_plan_see_subscription')
+                  : t('settings.each_scan_or_recipe_counts_towards_the_household_s_monthly')
+                : t('settings.ai_only_runs_when_you_start_a_scan_or_request')}
             </Text>
           </XStack>
         </YStack>
@@ -129,9 +129,7 @@ export function AiProviderScreen() {
         {canChooseProvider ? (
           <>
             {availableProviders.length > 1 ? (
-              <Text fontSize={12} color={palette.inkSecondary}>
-                Le fournisseur choisi vaut pour tout le foyer, pas seulement toi.
-              </Text>
+              <Text fontSize={12} color={palette.inkSecondary}>{t('settings.the_selected_provider_applies_to_the_entire_household')}</Text>
             ) : null}
             {availableProviders.length > 1 ? (
               <YStack gap="$2" marginTop="$2">
@@ -178,14 +176,10 @@ export function AiProviderScreen() {
         {setProvider.isPending ? (
           // The mutation had no visible state at all: on a slow connection a
           // tap on "Ollama" produced nothing until the invalidation landed.
-          <Text fontSize={12} fontWeight="600" color={palette.lavenderText} accessibilityLiveRegion="polite">
-            Changement en cours…
-          </Text>
+          <Text fontSize={12} fontWeight="600" color={palette.lavenderText} accessibilityLiveRegion="polite">{t('settings.changing')}</Text>
         ) : null}
         {!settings.isPending && !settings.data ? (
-          <Text fontSize={13} color={palette.expiredText}>
-            Impossible de charger les réglages.
-          </Text>
+          <Text fontSize={13} color={palette.expiredText}>{t('settings.couldn_t_load_settings')}</Text>
         ) : null}
         {providerError ? (
           <Text fontSize={13} color={palette.expiredText} accessibilityLiveRegion="polite">
@@ -195,14 +189,10 @@ export function AiProviderScreen() {
         {settings.data && !canChooseProvider && availableProviders.length > 0 ? (
           // Official instance: the operator picks and may change the provider
           // at any time, so never name it — just say it is handled.
-          <Text testID="ai-provider-official" fontSize={12} fontWeight="600" color={palette.inkSecondary}>
-            IA fournie et gérée par Garde-manger
-          </Text>
+          <Text testID="ai-provider-official" fontSize={12} fontWeight="600" color={palette.inkSecondary}>{t('settings.ai_provided_and_managed_by_garde_manger')}</Text>
         ) : null}
         {canChooseProvider && settings.data?.models.vision ? (
-          <Text testID="settings-ai-models" fontSize={12} fontWeight="600" color={palette.inkSecondary}>
-            Vision : {settings.data.models.vision} · Texte : {settings.data.models.text}
-          </Text>
+          <Text testID="settings-ai-models" fontSize={12} fontWeight="600" color={palette.inkSecondary}>{t('settings.vision_text', { value1: settings.data.models.vision, value2: settings.data.models.text })}</Text>
         ) : null}
       </YStack>
     </AppShell>

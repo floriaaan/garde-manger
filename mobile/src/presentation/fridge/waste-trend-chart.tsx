@@ -1,3 +1,4 @@
+import { useTranslation, getLocale } from '../../i18n/index.js'
 /**
  * Six grouped bar-pairs — jeté vs consommé, one pair per bucket the backend
  * hands back (`GetProductOutcomeStats.BUCKET_COUNT`). Two time series,
@@ -27,7 +28,7 @@ const BAR_WIDTH = 20
 const BAR_GAP = 2
 
 function bucketDateLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short' })
 }
 
 export function WasteTrendChart({
@@ -39,6 +40,7 @@ export function WasteTrendChart({
   buckets: OutcomeBucket[]
   palette: SoftPalette
 }) {
+  const { t } = useTranslation()
   const maxCount = Math.max(1, ...buckets.map((b) => Math.max(b.discardedCount, b.consumedCount)))
 
   return (
@@ -56,8 +58,8 @@ export function WasteTrendChart({
               accessible
               accessibilityLabel={
                 total === 0
-                  ? `Semaine du ${bucketDateLabel(bucket.from)} : rien à signaler`
-                  : `Semaine du ${bucketDateLabel(bucket.from)} : ${bucket.discardedCount} jeté${bucket.discardedCount > 1 ? 's' : ''}, ${bucket.consumedCount} consommé${bucket.consumedCount > 1 ? 's' : ''}`
+                  ? t('fridge.week_of_nothing_to_report', { value1: bucketDateLabel(bucket.from) })
+                  : t('fridge.week_of_discarded_used', { value1: bucketDateLabel(bucket.from), count: bucket.discardedCount, value3: bucket.consumedCount, value4: bucket.consumedCount > 1 ? 's' : '' })
               }
             >
               <XStack alignItems="flex-end" gap={BAR_GAP} height={MAX_BAR_HEIGHT}>
@@ -87,15 +89,11 @@ export function WasteTrendChart({
       <XStack gap="$4">
         <XStack alignItems="center" gap="$1.5">
           <YStack width={10} height={10} borderRadius={3} backgroundColor={palette.expired} />
-          <Text fontSize={12} fontWeight="600" color={palette.expiredText}>
-            Jeté
-          </Text>
+          <Text fontSize={12} fontWeight="600" color={palette.expiredText}>{t('fridge.discarded_2')}</Text>
         </XStack>
         <XStack alignItems="center" gap="$1.5">
           <YStack width={10} height={10} borderRadius={3} backgroundColor={palette.fresh} />
-          <Text fontSize={12} fontWeight="600" color={palette.freshText}>
-            Consommé
-          </Text>
+          <Text fontSize={12} fontWeight="600" color={palette.freshText}>{t('fridge.used_2')}</Text>
         </XStack>
       </XStack>
     </YStack>

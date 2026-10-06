@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * DIRECTION CONTRACT — recipe detail (2026-09-05)
  *
@@ -55,6 +56,7 @@ function ingredientLine(ingredient: RecipeIngredient): string {
 }
 
 export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const recipe = useRecipeQuery(recipeId)
@@ -99,7 +101,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     <ScreenHeader
       palette={palette}
       icon={(color) => <ChefHatIcon size={19} color={color} />}
-      title="Recette"
+      title={t('recipe.recipe')}
       onBack={() => goBack('/(tabs)/recipes')}
       trailing={
         recipe.data ? (
@@ -108,7 +110,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
             disabled={deleting}
             onPress={() => setConfirmingDeletion(true)}
             accessibilityRole="button"
-            accessibilityLabel={`Actions pour « ${recipe.data.title} »`}
+            accessibilityLabel={t('recipe.actions_for', { value1: recipe.data.title })}
             style={[pointerCursor, { padding: 10 }]}
           >
             <YStack width={28} height={28} alignItems="center" justifyContent="center">
@@ -128,7 +130,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     const result = await deleteRecipe.mutateAsync(data.id)
     setDeleting(false)
     if (!result.ok) {
-      showHint(`« ${data.title} » n’a pas pu être supprimée — elle est toujours là.`, 'error')
+      showHint(t('recipe.couldn_t_be_deleted_it_s_still_here', { value1: data.title }), 'error')
       return
     }
     // The list is what the user lands back on, so it must not still show the row.
@@ -152,7 +154,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
   if (recipe.isPending) {
     return (
       <AppShell nav={nav} refresh={refresh} header={header}>
-        <SkeletonGroup label="Chargement de la recette">
+        <SkeletonGroup label={t('recipe.loading_recipe')}>
           <Skeleton width="70%" height={22} />
           <Skeleton width="40%" height={13} />
           <YStack marginTop="$4" gap="$2">
@@ -174,15 +176,13 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     return (
       <AppShell nav={nav} refresh={refresh} header={header}>
         <YStack marginTop="$5" gap="$3">
-          <Text fontSize={14} color={palette.inkSecondary}>
-            Recette introuvable.
-          </Text>
+          <Text fontSize={14} color={palette.inkSecondary}>{t('recipe.recipe_not_found')}</Text>
           {recipe.isError ? (
             <Pressable
               testID="recipe-detail-retry"
               onPress={() => recipe.refetch()}
               accessibilityRole="button"
-              accessibilityLabel="Réessayer"
+              accessibilityLabel={t('dashboard.try_again')}
               style={pointerCursor}
             >
               <XStack
@@ -193,9 +193,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
                 minHeight={44}
                 alignItems="center"
               >
-                <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>
-                  Réessayer
-                </Text>
+                <Text fontSize={13} fontWeight="800" color={palette.accentLimeText}>{t('dashboard.try_again')}</Text>
               </XStack>
             </Pressable>
           ) : null}
@@ -239,7 +237,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     const result = await cookRecipe.mutateAsync({ recipeId: data.id, productIds })
     setCooking(false)
     if (!result.ok) {
-      showHint('On n’a pas pu enregistrer — rien n’a bougé dans le garde-manger.', 'error')
+      showHint(t('recipe.we_couldn_t_save_nothing_changed_in_the_pantry'), 'error')
       return
     }
     // The garde-manger changed, so every screen that reads it is now stale:
@@ -251,8 +249,8 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     ])
     showHint(
       productIds.length > 0
-        ? `C’est noté — ${productIds.length} produit${productIds.length > 1 ? 's sortis' : ' sorti'} du garde-manger`
-        : 'C’est noté',
+        ? t('recipe.recorded_product_removed_from_the_pantry', { count: productIds.length })
+        : t('recipe.recorded'),
       'success',
     )
   }
@@ -260,16 +258,16 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
   const cookedSheet = (
     <ActionSheet
       visible={confirmingCook}
-      title={recipe.data ? `Tu as cuisiné « ${recipe.data.title} » ?` : ''}
+      title={recipe.data ? t('recipe.did_you_cook', { value1: recipe.data.title }) : ''}
       description={
         owned.length > 0
-          ? `${owned.length} produit${owned.length > 1 ? 's quitteront' : ' quittera'} le garde-manger du foyer. C’est définitif.`
-          : 'On le note dans l’historique du foyer. Rien ne quitte le garde-manger.'
+          ? t('recipe.product_will_leave_the_household_s_pantry_this_is_permanent', { count: owned.length })
+          : t('recipe.we_ll_record_it_in_the_household_history_nothing_leaves')
       }
       options={[
         {
           testID: 'recipe-cooked-confirm',
-          label: owned.length > 0 ? 'Oui, sortir les produits' : 'Oui, on l’a cuisinée',
+          label: owned.length > 0 ? t('recipe.yes_remove_products') : t('recipe.yes_we_cooked_it'),
           icon: (color) => <CircleCheckIcon size={18} color={color} />,
           tint: palette.mintPale,
           onPress: confirmCooked,
@@ -293,8 +291,8 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
         name: ingredient.label,
         quantity:
           ingredient.quantity !== null
-            ? { amount: ingredient.quantity, unit: ingredient.unit ?? 'unité' }
-            : { amount: 1, unit: 'unité' },
+            ? { amount: ingredient.quantity, unit: ingredient.unit ?? t('recipe.unit') }
+            : { amount: 1, unit: t('recipe.unit') },
         source: 'recipe',
       })
       if (!result.ok) failures.push(ingredient.label)
@@ -303,10 +301,10 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
     setAdding(false)
     showHint(
       failures.length === 0
-        ? `${missing.length} ingrédient${missing.length > 1 ? 's ajoutés' : ' ajouté'} à la liste de courses`
-        : `${failures.length} ingrédient${failures.length > 1 ? 's n’ont' : ' n’a'} pas pu être ajouté`,
+        ? t('recipe.ingredient_added_to_the_shopping_list', { count: missing.length })
+        : t('recipe.ingredient_couldn_t_be_added', { count: failures.length }),
       failures.length === 0 ? 'success' : 'error',
-      failures.length === 0 ? { action: { label: 'Voir', onPress: () => router.push('/shopping-list') } } : undefined,
+      failures.length === 0 ? { action: { label: t('job.view'), onPress: () => router.push('/shopping-list') } } : undefined,
     )
   }
 
@@ -334,7 +332,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
           {data.title}
         </Text>
         {data.isArchived || data.isFavorite ? <Text testID="recipe-detail-state" fontSize={13} fontWeight="600" color={palette.brandDeepTextSecondary}>
-          {[data.isArchived ? 'Archivée' : null, data.isFavorite ? 'Favorite · épinglée' : null].filter(Boolean).join(' · ')}
+          {[data.isArchived ? t('recipe.archived_2') : null, data.isFavorite ? t('recipe.favourite_pinned_2') : null].filter(Boolean).join(' · ')}
         </Text> : null}
         {data.description ? (
           <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary} lineHeight={19}>
@@ -351,9 +349,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
         <XStack gap="$2" flexWrap="wrap">
           {data.preparationTime ? (
             <XStack backgroundColor={palette.heroPillFill} borderRadius={999} paddingVertical="$1.5" paddingHorizontal="$3">
-              <Text fontSize={12} fontWeight="700" color={palette.brandDeepText}>
-                {data.preparationTime} min
-              </Text>
+              <Text fontSize={12} fontWeight="700" color={palette.brandDeepText}>{t('recipe.min', { value1: data.preparationTime })}</Text>
             </XStack>
           ) : null}
           {data.tags.map((tag) => (
@@ -369,10 +365,10 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
       {owned.length > 0 ? (
         <IngredientGroup
           testID="recipe-owned"
-          title="Déjà dans ton garde-manger"
+          title={t('recipe.already_in_your_pantry')}
           // The rapprochement is a name match made on this device and is
           // allowed to be wrong — said here, once, where the claim is made.
-          note={match?.estimated ? 'Estimé d’après les noms de tes produits.' : undefined}
+          note={match?.estimated ? t('recipe.estimated_from_your_product_names') : undefined}
           items={owned}
           bg={palette.mintPale}
           labelColor={palette.mintPaleText}
@@ -385,15 +381,13 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
           simply unknown, and saying either would be a claim about a shared
           garde-manger this screen cannot currently read. */}
       {!pantryKnown ? (
-        <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} marginTop="$4">
-          On n’a pas pu lire ton garde-manger — la liste ci-dessous est complète, sans distinguer ce que tu as déjà.
-        </Text>
+        <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} marginTop="$4">{t('recipe.we_couldn_t_load_your_pantry_the_list_below_includes')}</Text>
       ) : null}
 
       {missing.length > 0 ? (
         <IngredientGroup
           testID="recipe-missing"
-          title="À prévoir"
+          title={t('recipe.what_you_need')}
           items={missing}
           bg={palette.cream}
           labelColor={palette.creamText}
@@ -407,17 +401,15 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
           testID="recipe-add-missing"
           label={
             adding
-              ? 'Ajout en cours…'
-              : `Ajouter ${missing.length} ingrédient${missing.length > 1 ? 's' : ''} à la liste de courses`
+              ? t('recipe.adding')
+              : t('recipe.add_ingredient_to_the_shopping_list', { count: missing.length })
           }
           disabled={adding}
           onPress={handleAddMissing}
           palette={palette}
         />
       ) : (
-        <Text fontSize={13} fontWeight="600" color={palette.freshText} marginTop="$4">
-          Tu as tout ce qu’il faut.
-        </Text>
+        <Text fontSize={13} fontWeight="600" color={palette.freshText} marginTop="$4">{t('recipe.you_have_everything_you_need')}</Text>
       )}
 
       {/*
@@ -430,11 +422,11 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
       {pantryKnown ? (
         <CookedAction
           testID="recipe-cooked"
-          label={cooking ? 'On note…' : 'J’ai cuisiné'}
+          label={cooking ? t('recipe.recording') : t('recipe.i_cooked_this')}
           hint={
             owned.length > 0
-              ? `${owned.length} produit${owned.length > 1 ? 's' : ''} sortiront du garde-manger`
-              : 'Rien à sortir du garde-manger'
+              ? t('recipe.product_will_leave_the_pantry', { count: owned.length })
+              : t('recipe.nothing_to_remove_from_the_pantry')
           }
           disabled={cooking}
           onPress={() => setConfirmingCook(true)}
@@ -443,9 +435,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
       ) : null}
 
       <YStack marginTop="$6" gap="$3">
-        <Text fontSize={15} fontWeight="800" color={palette.ink}>
-          Préparation
-        </Text>
+        <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('recipe.preparation')}</Text>
         {preparation.map((step, index) => (
           <XStack key={`${index}-${step.slice(0, 12)}`} gap="$3" alignItems="flex-start">
             <YStack
@@ -472,7 +462,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
           testID="recipe-open-shopping-list"
           onPress={() => router.navigate('/(tabs)/shopping-list')}
           accessibilityRole="button"
-          accessibilityLabel="Ouvrir la liste de courses"
+          accessibilityLabel={t('recipe.open_shopping_list')}
           style={pointerCursor}
         >
           {/* `ChevronRightIcon`, not "→": a unicode arrow carries the platform
@@ -480,9 +470,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
               stroke, and DESIGN.md bans it by name. */}
           <XStack alignItems="center" minHeight={44} gap="$2">
             <ShoppingCartIcon size={16} color={palette.inkSecondary} />
-            <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>
-              Voir la liste de courses
-            </Text>
+            <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>{t('recipe.view_shopping_list')}</Text>
             <ChevronRightIcon size={15} color={palette.inkSecondary} />
           </XStack>
         </Pressable>

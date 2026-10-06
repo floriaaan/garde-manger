@@ -1,3 +1,4 @@
+import { useTranslation, getLocale } from '../../i18n/index.js'
 /*
  * The foyer, finally visible.
  *
@@ -46,6 +47,7 @@ import { useHaLinkQuery } from '../../application/home-assistant/ha-link.query.j
 import type { HouseholdMember } from '../../domain/identity/household.js'
 
 export function HouseholdScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const household = useHouseholdQuery()
@@ -72,12 +74,12 @@ export function HouseholdScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint('Nouveau code généré', 'success', { description: 'L’ancien code ne marche plus.' })
+    showHint(t('identity.new_code_generated'), 'success', { description: t('identity.the_old_code_no_longer_works') })
   }
 
   async function handleRename(name: string) {
     if (!name) {
-      showHint('Le nom ne peut pas être vide.', 'error')
+      showHint(t('identity.the_name_can_t_be_empty'), 'error')
       return
     }
     const result = await rename.mutateAsync(name)
@@ -86,7 +88,7 @@ export function HouseholdScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint('Foyer renommé', 'success', { description: 'Tous les membres voient le nouveau nom.' })
+    showHint(t('identity.household_renamed'), 'success', { description: t('identity.all_members_see_the_new_name') })
   }
 
   async function handleRemove(member: HouseholdMember) {
@@ -97,7 +99,7 @@ export function HouseholdScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(`${member.name} ne fait plus partie du foyer`, 'success')
+    showHint(t('identity.is_no_longer_part_of_the_household', { value1: member.name }), 'success')
   }
 
   async function handleLeave() {
@@ -124,7 +126,7 @@ export function HouseholdScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(`${member.name} est propriétaire du foyer`, 'success', { description: 'Tu restes membre.' })
+    showHint(t('identity.owns_the_household', { value1: member.name }), 'success', { description: t('identity.you_remain_a_member') })
   }
 
   const refresh = usePullToRefresh(() => household.refetch())
@@ -133,8 +135,8 @@ export function HouseholdScreen() {
     <ScreenHeader
       palette={palette}
       icon={(color) => <UsersIcon size={19} color={color} />}
-      title="Foyer"
-      subtitle={data ? `${data.members.length} membre${data.members.length > 1 ? 's' : ''}` : undefined}
+      title={t('identity.household')}
+      subtitle={data ? t('identity.member_2', { count: data.members.length }) : undefined}
       onBack={() => goBack('/settings')}
     />
   )
@@ -152,16 +154,16 @@ export function HouseholdScreen() {
             color={household.isError ? palette.expiredText : palette.inkSecondary}
           >
             {household.isPending
-              ? 'Chargement du foyer…'
+              ? t('identity.loading_household')
               : household.isError
-                ? 'On n’a pas pu lire ton foyer. Vérifie ta connexion.'
-                : 'Tu n’appartiens à aucun foyer.'}
+                ? t('identity.we_couldn_t_load_your_household_check_your_connection')
+                : t('identity.you_don_t_belong_to_a_household')}
           </Text>
           {household.isError ? (
             <PillButton
               testID="household-retry"
-              label="Réessayer"
-              accessibilityLabel="Réessayer de charger le foyer"
+              label={t('dashboard.try_again')}
+              accessibilityLabel={t('identity.try_loading_the_household_again')}
               onPress={() => household.refetch()}
               palette={palette}
             />
@@ -203,9 +205,7 @@ export function HouseholdScreen() {
       ) : null}
 
       <YStack marginTop="$6" gap="$2">
-        <Text fontSize={15} fontWeight="800" color={palette.ink}>
-          Membres
-        </Text>
+        <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.members')}</Text>
         {data.members.map((member) => (
           <MemberRow
             key={member.userId}
@@ -220,9 +220,7 @@ export function HouseholdScreen() {
 
       {isOwner ? (
         <YStack marginTop="$8" gap="$2">
-          <Text fontSize={15} fontWeight="800" color={palette.ink}>
-            Maison connectée
-          </Text>
+          <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.connected_home')}</Text>
           {/* Same card style as the Foyer button on Réglages (2026-09-09 ask):
               an `IdentityCard`, not the bespoke mintPale row this used to be. */}
           <IdentityCard
@@ -231,15 +229,13 @@ export function HouseholdScreen() {
             labelColor={palette.mintPaleText}
             chipColor={palette.chipTeal}
             icon={<HomeIcon size={18} color={palette.onDark} />}
-            label="Home Assistant"
-            value={haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : 'Non configuré'}
-            secondary="Garde ta liste de courses en phase avec Home Assistant."
+            label={t('home-assistant.home_assistant')}
+            value={haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : t('identity.not_configured')}
+            secondary={t('identity.keep_your_shopping_list_in_sync_with_home_assistant')}
             corner="b"
             palette={palette}
             onPress={() => router.push('/home-assistant')}
-            accessibilityLabel={`Home Assistant. ${
-              haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : 'Non configuré'
-            }`}
+            accessibilityLabel={t('identity.home_assistant', { value1: haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : t('identity.not_configured') })}
           />
         </YStack>
       ) : null}
@@ -248,7 +244,7 @@ export function HouseholdScreen() {
         <YStack marginTop="$8">
           <AuthButton
             testID="household-transfer-ownership"
-            label="Transférer la propriété"
+            label={t('identity.transfer_ownership')}
             variant="secondary"
             icon={<ArrowLeftRightIcon size={16} color={palette.ink} />}
             onPress={() => setTransferPickerOpen(true)}
@@ -259,7 +255,7 @@ export function HouseholdScreen() {
       <YStack marginTop="$4">
         <AuthButton
           testID="household-leave"
-          label="Quitter le foyer"
+          label={t('identity.leave_household')}
           variant="secondary"
           icon={<LogOutIcon size={16} color={palette.ink} />}
           onPress={() => setConfirmLeave(true)}
@@ -270,14 +266,14 @@ export function HouseholdScreen() {
     <ActionSheet
       visible={memberToRemove !== null}
       onClose={() => setMemberToRemove(null)}
-      title={memberToRemove ? `Retirer ${memberToRemove.name} ?` : undefined}
-      description="Cette personne perd l’accès au garde-manger, aux courses et aux recettes du foyer."
+      title={memberToRemove ? t('fridge.remove_2', { value1: memberToRemove.name }) : undefined}
+      description={t('identity.this_person_will_lose_access_to_the_household_s_pantry')}
       options={
         memberToRemove
           ? [
               {
                 testID: 'household-remove-confirm',
-                label: 'Retirer du foyer',
+                label: t('identity.remove_from_household'),
                 icon: (color) => <XIcon size={18} color={color} />,
                 tint: palette.expired,
                 destructive: true,
@@ -291,8 +287,8 @@ export function HouseholdScreen() {
     <ActionSheet
       visible={transferPickerOpen}
       onClose={() => setTransferPickerOpen(false)}
-      title="Transférer la propriété"
-      description="Choisis qui devient propriétaire du foyer. Tu resteras membre."
+      title={t('identity.transfer_ownership')}
+      description={t('identity.choose_who_will_own_the_household_you_ll_remain_a')}
       options={[]}
     >
       <YStack gap="$2">
@@ -304,7 +300,7 @@ export function HouseholdScreen() {
               testID={`household-transfer-target-${member.userId}`}
               onPress={() => handleTransfer(member)}
               accessibilityRole="button"
-              accessibilityLabel={`Transférer la propriété à ${member.name}`}
+              accessibilityLabel={t('identity.transfer_ownership_to', { value1: member.name })}
               style={pointerCursor}
             >
               <XStack
@@ -328,16 +324,16 @@ export function HouseholdScreen() {
     <ActionSheet
       visible={confirmLeave}
       onClose={() => setConfirmLeave(false)}
-      title="Quitter le foyer ?"
+      title={t('identity.leave_household_2')}
       description={
         isOwner
-          ? 'Tu en es propriétaire : partir supprime le foyer et tout son contenu — produits, tickets, courses, recettes — pour tous les membres.'
-          : 'Tu perdras l’accès au garde-manger, aux courses et aux recettes du foyer.'
+          ? t('identity.you_own_this_household_leaving_deletes_it_and_all_its')
+          : t('identity.you_ll_lose_access_to_the_household_s_pantry_shopping')
       }
       options={[
         {
           testID: 'household-leave-confirm',
-          label: isOwner ? 'Supprimer le foyer' : 'Quitter le foyer',
+          label: isOwner ? t('identity.delete_household') : t('identity.leave_household'),
           icon: (color) => <LogOutIcon size={18} color={color} />,
           tint: palette.expired,
           destructive: true,
@@ -362,6 +358,7 @@ function MemberRow({
   onRemove: () => void
   palette: SoftPalette
 }) {
+  const { t } = useTranslation()
   return (
     <XStack
       testID={`household-member-${member.userId}`}
@@ -379,22 +376,18 @@ function MemberRow({
           {member.name}
           {isSelf ? ' (toi)' : ''}
         </Text>
-        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
-          {ROLE_LABELS[member.role]} depuis le {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
-        </Text>
+        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>{t('identity.since', { value1: ROLE_LABELS[member.role], value2: new Date(member.joinedAt).toLocaleDateString(getLocale()) })}</Text>
       </YStack>
       {canRemove ? (
         <Pressable
           testID={`household-remove-${member.userId}`}
           onPress={onRemove}
           accessibilityRole="button"
-          accessibilityLabel={`Retirer ${member.name} du foyer`}
+          accessibilityLabel={t('identity.remove_from_household_2', { value1: member.name })}
           style={pointerCursor}
         >
           <XStack alignItems="center" minHeight={44} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.expiredBg}>
-            <Text fontSize={12} fontWeight="700" color={palette.expiredText}>
-              Retirer
-            </Text>
+            <Text fontSize={12} fontWeight="700" color={palette.expiredText}>{t('fridge.remove')}</Text>
           </XStack>
         </Pressable>
       ) : null}
@@ -413,13 +406,14 @@ function HouseholdNameEditor({
   pending: boolean
   onSave: (trimmed: string) => void
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   return (
     <YStack marginTop="$4" gap="$2">
-      <AuthField testID="household-rename-field" label="Nom du foyer" value={name} onChangeText={setName} autoCapitalize="words" />
+      <AuthField testID="household-rename-field" label={t('identity.household_name')} value={name} onChangeText={setName} autoCapitalize="words" />
       <AuthButton
         testID="household-rename-save"
-        label="Renommer"
+        label={t('identity.rename')}
         pending={pending}
         disabled={!name.trim() || name.trim() === initialName}
         onPress={() => onSave(name.trim())}

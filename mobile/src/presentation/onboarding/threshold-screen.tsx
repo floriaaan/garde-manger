@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import { useEffect, useState } from 'react'
 import { AccessibilityInfo, Keyboard, Platform, Switch, View } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
@@ -49,6 +50,7 @@ export function ThresholdScreen({
   onScanCode,
   onSignedOut,
 }: ThresholdScreenProps) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const garden = gardenColors(palette)
   const queryClient = useQueryClient()
@@ -111,7 +113,7 @@ export function ThresholdScreen({
     await armFirstRunTour(showTour)
     // Confirm the real household before the gate redirects; the root toast
     // follows the member onto the dashboard without delaying that transition.
-    const welcome = `Bienvenue dans ${household.name}.`
+    const welcome = t('onboarding.welcome_to', { value1: household.name })
     showToast(welcome, 'success')
     if (Platform.OS !== 'web') AccessibilityInfo.announceForAccessibility(welcome)
     haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success))
@@ -171,11 +173,11 @@ export function ThresholdScreen({
     })
     const parsed = parseInviteCode(clip ?? '')
     if (!parsed) {
-      showHint('Presse-papier vide', 'error', { description: 'Copie d’abord le code d’invitation.' })
+      showHint(t('onboarding.clipboard_empty'), 'error', { description: t('onboarding.copy_the_invite_code_first') })
       return
     }
     setCode(parsed)
-    showHint('Code collé', 'success', { description: 'Les huit caractères sont prêts. Tu peux rejoindre le foyer.' })
+    showHint(t('onboarding.code_pasted'), 'success', { description: t('onboarding.all_eight_characters_are_ready_you_can_join_the_household') })
   }
 
   async function handleSignOut() {
@@ -185,56 +187,56 @@ export function ThresholdScreen({
     onSignedOut()
   }
 
-  const createError = errorMessage(create.error, create.data, 'On n’a pas pu créer le foyer.')
-  const joinError = errorMessage(join.error, join.data, 'On n’a pas pu rejoindre ce foyer.')
+  const createError = errorMessage(create.error, create.data, t('onboarding.we_couldn_t_create_the_household'))
+  const joinError = errorMessage(join.error, join.data, t('onboarding.we_couldn_t_join_this_household'))
   // The invalid-code case belongs on the field, not only in a sentence under
   // it: the eight cells are what the user has to change.
   const codeRejected = join.data && !join.data.ok && join.data.error.type === 'invalid_invite_code'
 
   return (
-    <AuthScreenChrome maxWidth={480} hero={<AuthGardenHero compact title={userName ? `Bienvenue, ${userName}.` : 'Bienvenue chez toi.'} subtitle="Un compte pour toi. Un garde-manger partagé avec ton foyer." />} overlay={<HintBubble hint={hint} palette={palette} />}>
+    <AuthScreenChrome maxWidth={480} hero={<AuthGardenHero compact title={userName ? t('onboarding.welcome', { value1: userName }) : t('onboarding.welcome_home')} subtitle={t('onboarding.an_account_for_you_a_pantry_shared_with_your_household')} />} overlay={<HintBubble hint={hint} palette={palette} />}>
 
       <AuthKeyboardAccessory><View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 8 }}>
         {(['create', 'join'] as const).map((choice) => (
           <Pressable key={choice} testID={`threshold-choose-${choice}`} accessibilityRole="tab" accessibilityState={{ selected: intent === choice, disabled: busy }} disabled={busy} onPress={() => { Keyboard.dismiss(); setIntent(choice) }} style={[pointerCursor, { flex: 1, minHeight: 50, padding: 12, borderRadius: 11, borderWidth: 1.25, borderColor: intent === choice ? garden.leaf : palette.creamPillEdge, justifyContent: 'center', alignItems: 'center', backgroundColor: intent === choice ? garden.leaf : 'transparent' }]}>
-            <Text fontSize={15} fontWeight="700" textAlign="center" color={intent === choice ? garden.leafInk : palette.ink}>{choice === 'create' ? 'Créer mon foyer' : 'Rejoindre un foyer'}</Text>
+            <Text fontSize={15} fontWeight="700" textAlign="center" color={intent === choice ? garden.leafInk : palette.ink}>{choice === 'create' ? t('onboarding.create_my_household') : t('onboarding.join_a_household')}</Text>
           </Pressable>
         ))}
       </View></AuthKeyboardAccessory>
 
       <AuthStep testID="threshold-create-card" active={intent === 'create'} direction={-1} style={{ gap: 20 }}>
         <AuthKeyboardAccessory><YStack gap={8}>
-          <Text fontSize={22} fontWeight="800" color={palette.ink}>Tout commence chez toi.</Text>
-          <Text fontSize={15} color={palette.inkSecondary}>Donne un nom à ton foyer. Tu pourras ensuite inviter les autres avec un code.</Text>
+          <Text fontSize={22} fontWeight="800" color={palette.ink}>{t('onboarding.it_all_starts_at_home')}</Text>
+          <Text fontSize={15} color={palette.inkSecondary}>{t('onboarding.name_your_household_then_invite_others_with_a_code')}</Text>
         </YStack></AuthKeyboardAccessory>
-        <AuthField label="Nom du foyer" placeholder="Maison Bellevue" value={householdName} onChangeText={setHouseholdName} maxLength={80} editable={!busy} testID="threshold-household-name" returnKeyType="done" onSubmitEditing={handleCreate} />
+        <AuthField label={t('identity.household_name')} placeholder={t('onboarding.bellevue_house')} value={householdName} onChangeText={setHouseholdName} maxLength={80} editable={!busy} testID="threshold-household-name" returnKeyType="done" onSubmitEditing={handleCreate} />
         {createError ? <AuthError message={createError} /> : null}
-        <AuthButton testID="threshold-create-submit" label="Créer le foyer" pendingLabel="Création…" pending={create.isPending} disabled={!canCreate} onPress={handleCreate} />
+        <AuthButton testID="threshold-create-submit" label={t('onboarding.create_household')} pendingLabel={t('onboarding.creating')} pending={create.isPending} disabled={!canCreate} onPress={handleCreate} />
       </AuthStep>
 
       <AuthStep testID="threshold-join-card" active={intent === 'join'} direction={1} style={{ gap: 20 }}>
         <AuthKeyboardAccessory><YStack gap={8}>
-          <Text fontSize={22} fontWeight="800" color={palette.ink}>Une place t’attend.</Text>
-          <Text fontSize={15} color={palette.inkSecondary}>Saisis les huit caractères du code d’invitation, ou scanne le QR de ton foyer.</Text>
+          <Text fontSize={22} fontWeight="800" color={palette.ink}>{t('onboarding.there_s_a_place_for_you')}</Text>
+          <Text fontSize={15} color={palette.inkSecondary}>{t('onboarding.enter_the_eight_character_invite_code_or_scan_your_household')}</Text>
         </YStack></AuthKeyboardAccessory>
         <InviteCodeField value={code} onChangeText={setCode} onSubmit={handleJoin} invalid={Boolean(codeRejected)} disabled={busy} testID="threshold-invite-code" />
         <AuthKeyboardAccessory><XStack gap={12} flexWrap="wrap">
-          <PillButton testID="threshold-paste" label="Coller le code" disabled={busy} tone="quiet" icon={(color) => <ClipboardIcon size={16} color={color} />} onPress={handlePaste} accessibilityLabel="Coller le code depuis le presse-papier" palette={palette} />
-          <PillButton testID="threshold-scan" label="Scanner un QR" disabled={busy} tone="quiet" icon={(color) => <QrCodeIcon size={16} color={color} />} onPress={() => { if (!busy) onScanCode() }} palette={palette} />
+          <PillButton testID="threshold-paste" label={t('onboarding.paste_code')} disabled={busy} tone="quiet" icon={(color) => <ClipboardIcon size={16} color={color} />} onPress={handlePaste} accessibilityLabel={t('onboarding.paste_code_from_clipboard')} palette={palette} />
+          <PillButton testID="threshold-scan" label={t('onboarding.scan_a_qr')} disabled={busy} tone="quiet" icon={(color) => <QrCodeIcon size={16} color={color} />} onPress={() => { if (!busy) onScanCode() }} palette={palette} />
         </XStack></AuthKeyboardAccessory>
         {joinError ? <AuthError message={joinError} /> : null}
-        <AuthButton testID="threshold-join-submit" label="Rejoindre le foyer" pendingLabel="On te fait entrer…" pending={join.isPending} disabled={!canJoin} onPress={handleJoin} />
+        <AuthButton testID="threshold-join-submit" label={t('onboarding.join_household')} pendingLabel={t('onboarding.letting_you_in')} pending={join.isPending} disabled={!canJoin} onPress={handleJoin} />
       </AuthStep>
 
       <AuthKeyboardAccessory><XStack gap={16} alignItems="center" justifyContent="space-between">
         <YStack flex={1} gap={4}>
-          <Text fontSize={14} fontWeight="700" color={palette.ink}>Me faire visiter l’app</Text>
-          <Text fontSize={13} color={palette.inkSecondary}>Une courte visite, que tu peux passer.</Text>
+          <Text fontSize={14} fontWeight="700" color={palette.ink}>{t('onboarding.show_me_around_the_app')}</Text>
+          <Text fontSize={13} color={palette.inkSecondary}>{t('onboarding.a_short_tour_that_you_can_skip')}</Text>
         </YStack>
-        <Switch testID="threshold-tour" accessibilityLabel="Me faire visiter l’application" value={showTour} onValueChange={setShowTour} disabled={busy} trackColor={{ false: palette.creamPillEdge, true: garden.leaf }} />
+        <Switch testID="threshold-tour" accessibilityLabel={t('onboarding.show_me_around_the_application')} value={showTour} onValueChange={setShowTour} disabled={busy} trackColor={{ false: palette.creamPillEdge, true: garden.leaf }} />
       </XStack></AuthKeyboardAccessory>
       <AuthKeyboardAccessory><YStack alignItems="center">
-        <AuthButton testID="threshold-sign-out" label="Changer de compte" variant="secondary" disabled={busy} pending={signOut.isPending} onPress={handleSignOut} />
+        <AuthButton testID="threshold-sign-out" label={t('onboarding.switch_accounts')} variant="secondary" disabled={busy} pending={signOut.isPending} onPress={handleSignOut} />
       </YStack></AuthKeyboardAccessory>
     </AuthScreenChrome>
   )
@@ -252,7 +254,7 @@ function errorMessage(
   data: Result<Household, ApiError> | undefined,
   fallback: string,
 ): string | null {
-  if (thrown) return `${fallback} Vérifie ta connexion.`
+  if (thrown) return t('identity.check_your_connection', { value1: fallback })
   if (data && !data.ok && data.error && data.error.type !== 'already_in_household')
     return data.error.message
   return null

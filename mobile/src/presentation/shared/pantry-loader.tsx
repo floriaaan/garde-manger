@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Animated, AppState, Easing, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
@@ -6,11 +7,13 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { useReduceMotion } from './hover.js'
 
 /** Indeterminate activity: a leaf travels the pantry rail, without implying a percentage. */
-export function PantryLoader({ palette, label = 'Chargement', testID }: {
+export function PantryLoader({ palette, label: providedLabel, testID }: {
   palette: SoftPalette
   label?: string
   testID?: string
 }) {
+  const { t } = useTranslation()
+  const label = providedLabel ?? t('shared.loading')
   const reduced = useReduceMotion()
   const [progress] = useState(() => new Animated.Value(0))
   const [focused, setFocused] = useState(false)

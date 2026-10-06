@@ -22,7 +22,9 @@
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
-        "NSLocalNetworkUsageDescription": "Garde-manger se connecte à ton serveur auto-hébergé sur le réseau local (par exemple http://192.168.1.20:3333) pour synchroniser ton frigo et ta liste de courses."
+        "NSLocalNetworkUsageDescription": "Garde-manger se connecte à ton serveur auto-hébergé sur le réseau local (par exemple http://192.168.1.20:3333) pour synchroniser ton frigo et ta liste de courses.",
+        "CFBundleDevelopmentRegion": "fr",
+        "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
@@ -39,6 +41,15 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["fr", "en"],
+            "android": ["fr", "en"]
+          }
+        }
+      ],
       [
         "expo-secure-store",
         {
@@ -102,6 +113,10 @@
       "eas": {
         "projectId": "67dc1735-bcfd-4ccc-a8af-a84df72877b2"
       }
+    },
+    "locales": {
+      "fr": "./locales/fr.json",
+      "en": "./locales/en.json"
     }
   }
 }

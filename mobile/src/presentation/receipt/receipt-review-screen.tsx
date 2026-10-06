@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /*
  * The screen the whole "photographie ton ticket" promise lands on.
  *
@@ -45,7 +46,7 @@ import type { LocationValue } from '../../domain/fridge/location.js'
 import type { ReceiptDraftItem } from '../../domain/receipt/receipt-draft.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 
-const LOCATION_LABELS: Record<LocationValue, string> = { fridge: 'Frigo', freezer: 'Congélateur', pantry: 'Placard' }
+const LOCATION_LABELS: Record<LocationValue, string> = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } }
 
 function isPdfUri(uri: string): boolean {
   return uri.toLowerCase().endsWith('.pdf')
@@ -65,6 +66,7 @@ function ReceiptPreview({
   height: number
   width?: number | `${number}%`
 }) {
+  const { t } = useTranslation()
   const radius = { borderTopLeftRadius: 24, borderTopRightRadius: 14, borderBottomRightRadius: 24, borderBottomLeftRadius: 14 }
   if (isPdfUri(imageUri)) {
     return (
@@ -79,9 +81,7 @@ function ReceiptPreview({
         style={radius}
       >
         <FileTextIcon size={28} color={palette.creamText} />
-        <Text fontSize={12} fontWeight="700" color={palette.creamText}>
-          Ticket PDF
-        </Text>
+        <Text fontSize={12} fontWeight="700" color={palette.creamText}>{t('receipt.pdf_receipt')}</Text>
       </YStack>
     )
   }
@@ -90,7 +90,7 @@ function ReceiptPreview({
       testID={testID}
       source={{ uri: imageUri }}
       resizeMode="cover"
-      accessibilityLabel="Photo du ticket scanné"
+      accessibilityLabel={t('receipt.scanned_receipt_photo')}
       style={{ width, height, backgroundColor: palette.cream, ...radius }}
     />
   )
@@ -119,17 +119,17 @@ function toScanError(error: ApiError): ScanError {
   // credential — that's a `settings` change made by whoever runs the
   // instance. Offering "Réessayer" here would just repeat the same failure.
   if (error.type === 'provider_not_configured') {
-    return { title: 'Extraction indisponible', message: error.message, recovery: null }
+    return { title: t('fridge.extraction_unavailable'), message: error.message, recovery: null }
   }
   // Same reasoning as `provider_not_configured` — no retry fixes a spent
   // monthly quota, only a subscription (or next month) does.
   if (error.type === 'ai_quota_exceeded') {
-    return { title: 'Quota atteint', message: error.message, recovery: null, quota: true }
+    return { title: t('fridge.quota_reached'), message: error.message, recovery: null, quota: true }
   }
   if (error.type === 'network_error') {
-    return { title: 'Connexion impossible', message: error.message, recovery: 'retry' }
+    return { title: t('receipt.couldn_t_connect'), message: error.message, recovery: 'retry' }
   }
-  return { title: 'Extraction impossible', message: error.message, recovery: 'retry' }
+  return { title: t('receipt.extraction_failed'), message: error.message, recovery: 'retry' }
 }
 
 // Distinguishes "empty" from "invalid" from "valid" so callers can decide what
@@ -191,6 +191,7 @@ export function ReceiptReviewScreen({
   jobId?: string
   draftId?: string
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const enqueueScan = useEnqueueReceiptScanMutation()
@@ -288,19 +289,19 @@ export function ReceiptReviewScreen({
     items.forEach((item, index) => {
       const rowErrors: ReceiptItemErrors = {}
 
-      if (item.name.trim().length === 0) rowErrors.name = 'Donne un nom à cet article.'
+      if (item.name.trim().length === 0) rowErrors.name = t('fridge.give_this_item_a_name')
 
       const quantity = Number(item.quantity)
-      if (!Number.isFinite(quantity) || quantity <= 0) rowErrors.quantity = 'Quantité invalide.'
+      if (!Number.isFinite(quantity) || quantity <= 0) rowErrors.quantity = t('fridge.invalid_quantity')
 
       let price: number | null = null
       if (item.price.trim().length > 0) {
         price = Number(item.price)
-        if (!Number.isFinite(price) || price <= 0) rowErrors.price = 'Prix invalide.'
+        if (!Number.isFinite(price) || price <= 0) rowErrors.price = t('receipt.invalid_price')
       }
 
       const expiresAt = parseDateOrNull(item.expiresAt)
-      if (expiresAt === 'invalid') rowErrors.expiresAt = 'Date invalide (AAAA-MM-JJ).'
+      if (expiresAt === 'invalid') rowErrors.expiresAt = t('fridge.invalid_date_yyyy_mm_dd')
 
       if (Object.keys(rowErrors).length > 0) {
         errors[index] = rowErrors
@@ -326,19 +327,19 @@ export function ReceiptReviewScreen({
     setItemErrors({})
 
     if (items.length === 0) {
-      setSubmitError('Ajoute au moins un article avant d’importer.')
+      setSubmitError(t('receipt.add_at_least_one_item_before_importing'))
       return
     }
 
     const parsedTotalAmount = Number(totalAmount)
     if (!Number.isFinite(parsedTotalAmount) || parsedTotalAmount <= 0) {
-      setSubmitError('Le montant total doit être positif.')
+      setSubmitError(t('receipt.the_total_amount_must_be_positive'))
       return
     }
 
     const parsedScannedAt = parseDateOrNull(scannedAt)
     if (parsedScannedAt === 'invalid') {
-      setSubmitError('Date du ticket invalide (attendu AAAA-MM-JJ).')
+      setSubmitError(t('receipt.invalid_receipt_date_expected_yyyy_mm_dd'))
       return
     }
 
@@ -351,8 +352,8 @@ export function ReceiptReviewScreen({
       setExpandedIndex(badIndexes[0])
       setSubmitError(
         badIndexes.length === 1
-          ? 'Un article est à corriger.'
-          : `${badIndexes.length} articles sont à corriger.`,
+          ? t('receipt.one_item_needs_correcting')
+          : t('receipt.items_need_correcting', { value1: badIndexes.length }),
       )
       return
     }
@@ -368,7 +369,7 @@ export function ReceiptReviewScreen({
     if (!result.ok) {
       setSubmitError(
         result.error.type === 'validation_failed'
-          ? 'Certains champs sont invalides. Vérifie les articles.'
+          ? t('receipt.some_fields_are_invalid_check_the_items')
           : result.error.message,
       )
       return
@@ -384,10 +385,10 @@ export function ReceiptReviewScreen({
     <ScreenHeader
       palette={palette}
       icon={(color) => <ReceiptIcon size={19} color={color} />}
-      title="Vérifier le ticket"
+      title={t('receipt.check_receipt')}
       subtitle={
         items.length > 0 && imported === null
-          ? `${items.length} article${items.length > 1 ? 's' : ''} extrait${items.length > 1 ? 's' : ''} — corrige ce qui cloche, le reste part tel quel.`
+          ? t('receipt.item_extracted_fix_what_s_wrong_the_rest_will_be', { count: items.length })
           : undefined
       }
       onBack={() => goBack('/receipts')}
@@ -408,22 +409,18 @@ export function ReceiptReviewScreen({
             <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.freshBg} alignItems="center" justifyContent="center">
               <CircleCheckIcon size={30} color={palette.freshText} />
             </YStack>
-            <Text testID="receipt-review-success" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
-              {imported} produit{imported > 1 ? 's' : ''} ajouté{imported > 1 ? 's' : ''} au garde-manger
-            </Text>
-            <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-              Ton foyer les voit déjà.
-            </Text>
+            <Text testID="receipt-review-success" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.product_added_to_the_pantry', { count: imported })}</Text>
+            <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('receipt.your_household_can_already_see_them')}</Text>
           </YStack>
           <YStack width="100%" gap="$2" paddingBottom="$2">
             <AuthButton
               testID="receipt-review-open-fridge"
-              label="Voir le garde-manger"
+              label={t('fridge.view_pantry')}
               onPress={() => router.replace('/(tabs)/fridge')}
             />
             <AuthButton
               testID="receipt-review-scan-another"
-              label="Scanner un autre ticket"
+              label={t('receipt.scan_another_receipt')}
               variant="secondary"
               onPress={() => router.replace('/receipts/scan')}
             />
@@ -446,17 +443,15 @@ export function ReceiptReviewScreen({
             <ReceiptPreview testID="receipt-reading-photo" imageUri={imageUri} palette={palette} height={96} width={96} />
           ) : null}
           <YStack width="100%" maxWidth={280}>
-            <ProgressBar palette={palette} testID="receipt-reading-bar" label="Lecture du ticket en cours" />
+            <ProgressBar palette={palette} testID="receipt-reading-bar" label={t('receipt.reading_receipt')} />
           </YStack>
           <Text fontSize={15} fontWeight="700" color={palette.ink}>
-            {job?.status === 'queued' ? 'En attente…' : 'Lecture du ticket…'}
+            {job?.status === 'queued' ? t('fridge.waiting') : t('receipt.reading_receipt_2')}
           </Text>
-          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">
-            L’IA lit chaque ligne de ta photo. Ça prend en général une dizaine de secondes — tu peux faire autre chose, on te prévient.
-          </Text>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center">{t('receipt.ai_reads_each_line_of_your_photo_it_usually_takes')}</Text>
           <AuthButton
             testID="receipt-review-later"
-            label="Je reviens plus tard"
+            label={t('fridge.i_ll_come_back_later')}
             variant="secondary"
             onPress={() => router.replace('/(tabs)')}
           />
@@ -476,7 +471,7 @@ export function ReceiptReviewScreen({
         <YStack flex={1} minHeight={0} alignItems="center">
           {scanError.quota && canSubscribe ? (
             <YStack flex={1} width="100%" justifyContent="center" paddingTop="$6">
-              <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
+              <ConnectedPaywall palette={palette} reason={t('common.free_quota_reached')} />
             </YStack>
           ) : (
             <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" paddingTop="$6">
@@ -510,15 +505,15 @@ export function ReceiptReviewScreen({
             {scanError.recovery === 'retry' ? (
               <AuthButton
                 testID="receipt-review-retry"
-                label="Réessayer"
-                pendingLabel="Lecture..."
+                label={t('dashboard.try_again')}
+                pendingLabel={t('receipt.reading')}
                 pending={enqueueScan.isPending || retryJob.isPending}
                 onPress={retryScan}
               />
             ) : null}
             <AuthButton
               testID="receipt-review-retake"
-              label="Reprendre la photo"
+              label={t('receipt.retake_photo')}
               variant="secondary"
               onPress={() => router.replace('/receipts/scan')}
             />
@@ -536,7 +531,7 @@ export function ReceiptReviewScreen({
       <FormCard palette={palette} gap="$3">
         <FormField
           testID="receipt-review-store-name"
-          label="Magasin"
+          label={t('receipt.store')}
           value={storeName}
           onChangeText={setStoreName}
           palette={palette}
@@ -544,12 +539,12 @@ export function ReceiptReviewScreen({
         />
         <XStack gap="$2">
           <YStack flex={1}>
-            <DateField testID="receipt-review-scanned-at" label="Date du ticket" value={scannedAt} onChange={setScannedAt} palette={palette} />
+            <DateField testID="receipt-review-scanned-at" label={t('receipt.receipt_date')} value={scannedAt} onChange={setScannedAt} palette={palette} />
           </YStack>
           <YStack flex={1}>
             <FormField
               testID="receipt-review-total-amount"
-              label="Total (€)"
+              label={t('receipt.total')}
               value={totalAmount}
               onChangeText={setTotalAmount}
               palette={palette}
@@ -561,9 +556,7 @@ export function ReceiptReviewScreen({
       </FormCard>
 
       <YStack gap="$2">
-        <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
-          Tout ranger dans
-        </Text>
+        <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>{t('receipt.store_everything_in')}</Text>
         <XStack gap="$2" flexWrap="wrap">
           {LOCATIONS.map((location) => (
             <Pressable
@@ -571,7 +564,7 @@ export function ReceiptReviewScreen({
               testID={`receipt-review-all-${location}`}
               onPress={() => setAllLocations(location)}
               accessibilityRole="button"
-              accessibilityLabel={`Ranger tous les articles dans ${LOCATION_LABELS[location]}`}
+              accessibilityLabel={t('receipt.store_all_items_in', { value1: LOCATION_LABELS[location] })}
               style={pointerCursor}
             >
               <XStack alignItems="center" minHeight={44} paddingHorizontal="$4" borderRadius={999} backgroundColor={palette.cream}>
@@ -601,8 +594,8 @@ export function ReceiptReviewScreen({
       ) : null}
       <AuthButton
         testID="receipt-review-submit"
-        label={items.length > 0 ? `Importer ${items.length} article${items.length > 1 ? 's' : ''}` : 'Importer'}
-        pendingLabel="Importation..."
+        label={items.length > 0 ? t('receipt.import_item', { count: items.length }) : t('receipt.import')}
+        pendingLabel={t('fridge.importing')}
         pending={importReceipt.isPending}
         onPress={handleSubmit}
       />
@@ -644,14 +637,11 @@ export function ReceiptReviewScreen({
 }
 
 function EmptyItems({ palette }: { palette: SoftPalette }) {
+  const { t } = useTranslation()
   return (
     <YStack gap="$2" paddingVertical="$4">
-      <Text fontSize={14} fontWeight="700" color={palette.ink}>
-        Aucun article sur ce ticket
-      </Text>
-      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
-        L’IA n’a rien reconnu, ou tu as tout retiré. Reprends la photo en cadrant le ticket entier.
-      </Text>
+      <Text fontSize={14} fontWeight="700" color={palette.ink}>{t('receipt.no_items_on_this_receipt')}</Text>
+      <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>{t('receipt.ai_didn_t_recognise_anything_or_you_removed_everything_retake')}</Text>
     </YStack>
   )
 }
