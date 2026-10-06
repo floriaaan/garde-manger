@@ -43,6 +43,7 @@ export function IdentityCard({
   palette,
   onPress,
   accessibilityLabel,
+  emphasizeLabel = false,
 }: {
   testID?: string
   bg: string
@@ -62,6 +63,8 @@ export function IdentityCard({
   palette: SoftPalette
   onPress?: () => void
   accessibilityLabel?: string
+  /** Navigation cards emphasize their destination rather than a generic status. */
+  emphasizeLabel?: boolean
 }) {
   const hover = useHoverPress()
   // Wider than StatCard's sets, because these cards are wider — a 26pt
@@ -114,20 +117,20 @@ export function IdentityCard({
           {icon}
         </YStack>
         <YStack flex={1} minWidth={0}>
-          <Text fontSize={12} fontWeight="500" color={labelColor}>
+          <Text fontSize={emphasizeLabel ? 18 : 12} fontWeight={emphasizeLabel ? '800' : '500'} color={emphasizeLabel ? palette.ink : labelColor}>
             {label}
           </Text>
           {/* Two lines, not one: this card exists because "Le foyer de Florian"
               was cut to "Le foyer de F…". Buying the width and keeping the
               one-line clamp would have kept the scissors. */}
           <XStack alignItems="center" gap="$1.5" marginTop="$0.5">
-            <Text flexShrink={1} fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={2}>
+            <Text flexShrink={1} fontSize={emphasizeLabel ? 13 : 20} fontWeight={emphasizeLabel ? '500' : '800'} color={emphasizeLabel ? labelColor : palette.ink} numberOfLines={2}>
               {value}
             </Text>
             {valueBadge}
           </XStack>
           {secondary ? (
-            <Text fontSize={12} fontWeight="500" color={labelColor} marginTop="$0.5" numberOfLines={1}>
+            <Text fontSize={12} fontWeight="500" color={labelColor} marginTop="$0.5" numberOfLines={emphasizeLabel ? undefined : 1}>
               {secondary}
             </Text>
           ) : null}

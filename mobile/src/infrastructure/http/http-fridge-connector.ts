@@ -22,7 +22,7 @@ import type { ProductLookupResult } from '../../domain/fridge/product-lookup-res
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
 import type { ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
-import type { ReminderDays, ReminderSettings, WebPushSubscription } from '../../domain/settings/reminder-settings.js'
+import type { ReminderDays, ReminderSettings, ReminderSettingsUpdate, WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 import type {
   HaLink,
   HaTodoEntity,
@@ -752,8 +752,12 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async setReminderDays(days: ReminderDays): Promise<Result<ReminderSettings, ApiError>> {
+    return this.setReminderSettings({ days })
+  }
+
+  async setReminderSettings(update: ReminderSettingsUpdate): Promise<Result<ReminderSettings, ApiError>> {
     return apiFetch<ReminderSettings>('/api/settings/expiry-reminders',
-      { method: 'PATCH', body: JSON.stringify({ days }) }, { action: 'push.set_reminder_days' })
+      { method: 'PATCH', body: JSON.stringify(update) }, { action: 'push.set_reminder_settings' })
   }
 
   async getScanDrafts(): Promise<ScanDraft[]> {

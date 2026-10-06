@@ -314,3 +314,36 @@ test('the latency is a constructor knob, so a test that only wants the data pays
 
   expect(job.status).toBe('succeeded')
 })
+
+test('shared request latency delays reads and writes once, including delegated methods', async () => {
+  jest.useFakeTimers()
+  try {
+    const connector = new FakeFridgeConnector({ latencyMs: 800, aiLatencyMs: 0 })
+    const finished = jest.fn()
+    const read = connector.getProducts().then((result) => { finished(); return result })
+    const delegatedRead = connector.getExpiringSoonProducts().then((result) => { finished(); return result })
+    const write = connector.setReminderDays(7).then((result) => { finished(); return result })
+    await jest.advanceTimersByTimeAsync(799)
+    expect(finished).not.toHaveBeenCalled()
+    await jest.advanceTimersByTimeAsync(1)
+    expect(finished).toHaveBeenCalledTimes(3)
+    const [products, expiring, settings] = await Promise.all([read, delegatedRead, write])
+    expect(products.length).toBeGreaterThan(0)
+    expect(Array.isArray(expiring)).toBe(true)
+    expect(settings).toMatchObject({ ok: true, value: { days: 7 } })
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+test('request latency can be disabled without scheduling timers', async () => {
+  jest.useFakeTimers()
+  try {
+    const connector = new FakeFridgeConnector({ latencyMs: 0 })
+    await connector.getReminderSettings()
+    await connector.setReminderDays(3)
+    expect(jest.getTimerCount()).toBe(0)
+  } finally {
+    jest.useRealTimers()
+  }
+})

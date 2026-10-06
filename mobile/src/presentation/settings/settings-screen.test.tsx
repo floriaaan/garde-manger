@@ -6,8 +6,11 @@ import { ConnectorProvider } from '../../application/shared/connector-context.js
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { SettingsScreen } from './settings-screen.js'
+import * as pushNotifications from '../../application/push/push-notifications.js'
+import { showToast } from '../../application/shared/toast.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
+jest.mock('../../application/shared/toast.js', () => ({ showToast: jest.fn() }))
 
 // Only the debug menu's "Réinitialiser l'onboarding" row touches the
 // keychain (via `resetWelcomeSeen`) — nothing else on this screen does, so
@@ -93,10 +96,12 @@ test('tapping the AI card opens the provider page', async () => {
   expect(router.push).toHaveBeenCalledWith('/ai-provider')
 })
 
-test('opens the household expiry reminder settings', async () => {
+test('opens Notifications and keeps the global switch on that page', async () => {
   await renderAuthenticated()
-  fireEvent.press(screen.getByTestId('settings-expiry-reminders'))
-  expect(router.push).toHaveBeenCalledWith('/expiry-reminders')
+  fireEvent.press(screen.getByTestId('settings-notifications-page'))
+  expect(router.push).toHaveBeenCalledWith('/notifications')
+  expect(screen.queryByTestId('settings-notifications-switch')).toBeNull()
+  expect(screen.queryByTestId('settings-expiry-reminders')).toBeNull()
 })
 
 test('does not file the receipt history under settings — it is content, and it lives on the dashboard now', async () => {
@@ -121,6 +126,21 @@ test('signing out clears the session and returns to sign-in', async () => {
   await fireEvent.press(screen.getByTestId('sign-out-confirm'))
 
   await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(auth)/sign-in'))
+})
+
+test('a failed push removal reports a toast and retains the session for retry', async () => {
+  const connector = new FakeFridgeConnector()
+  const signOut = jest.spyOn(connector, 'signOut')
+  const disable = jest.spyOn(pushNotifications, 'disablePush').mockRejectedValueOnce(new Error('Offline'))
+  jest.mocked(router.replace).mockClear()
+  await renderAuthenticated(connector)
+  fireEvent.press(screen.getByTestId('sign-out'))
+  await waitFor(() => expect(screen.getByTestId('sign-out-confirm')).toBeTruthy())
+  fireEvent.press(screen.getByTestId('sign-out-confirm'))
+  await waitFor(() => expect(showToast).toHaveBeenCalledWith('Impossible de terminer la déconnexion. Réessaie.', 'error'))
+  expect(signOut).not.toHaveBeenCalled()
+  expect(router.replace).not.toHaveBeenCalled()
+  disable.mockRestore()
 })
 
 test('a foyer that could not be read is unavailable, not absent', async () => {
