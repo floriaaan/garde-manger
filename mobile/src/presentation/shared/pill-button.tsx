@@ -76,7 +76,7 @@ export function PillButton({
       hitSlop={{ top: slop, bottom: slop, left: 6, right: 6 }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      style={[pointerCursor, { alignSelf: centered ? 'center' : 'flex-start' }]}
+      style={[pointerCursor, { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: disabled ? 0.6 : 1 }}>
         <XStack

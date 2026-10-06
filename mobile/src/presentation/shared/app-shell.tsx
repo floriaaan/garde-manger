@@ -52,6 +52,7 @@ import {
 } from '../dashboard/dashboard-icons.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { TourAnchor } from '../onboarding/tour-anchors.js'
+import { PillButton } from './pill-button.js'
 
 export const TABLET_BREAKPOINT = 768
 
@@ -71,11 +72,19 @@ const TAB_ROUTES: Record<SidebarSection, string> = {
 
 const TAB_ORDER: SidebarSection[] = ['accueil', 'frigo', 'recettes', 'courses']
 
-const TAB_ICONS: Record<SidebarSection, (color: string) => React.ReactNode> = {
-  accueil: (color) => <HomeIcon size={18} color={color} />,
-  frigo: (color) => <PackageIcon size={18} color={color} />,
-  recettes: (color) => <ChefHatIcon size={18} color={color} />,
-  courses: (color) => <ShoppingCartIcon size={18} color={color} />,
+const WEB_NAV_PADDING = 8
+const WEB_NAV_CORNERS = {
+  borderTopLeftRadius: 26,
+  borderTopRightRadius: 14,
+  borderBottomRightRadius: 26,
+  borderBottomLeftRadius: 14,
+}
+
+const TAB_ICONS: Record<SidebarSection, (color: string, size?: number) => React.ReactNode> = {
+  accueil: (color, size = 18) => <HomeIcon size={size} color={color} />,
+  frigo: (color, size = 18) => <PackageIcon size={size} color={color} />,
+  recettes: (color, size = 18) => <ChefHatIcon size={size} color={color} />,
+  courses: (color, size = 18) => <ShoppingCartIcon size={size} color={color} />,
 }
 
 export type AppShellNav =
@@ -148,8 +157,8 @@ function goToTab(tab: SidebarSection) {
 /**
  * iPhone gets the real `NativeTabs` bar (see `(tabs)/_layout.tsx`) — Liquid
  * Glass on iOS 26+, standard native chrome below that — so `AppShell` must
- * not also draw its own custom pill there. Android/web keep the BlurView
- * pill built in this file.
+ * not also draw its own custom pill there. Android uses its Material bar;
+ * narrow web uses an opaque footer built in this file.
  *
  * iPad takes the Android/web path: the Sidebar when wide, this file's pill
  * when a split view makes it narrow. With NativeTabs mounted too, a wide
@@ -208,10 +217,9 @@ export function shellContentStyle({
 }) {
   return {
     paddingHorizontal: 20,
-    // Android's Material bar is 80dp of solid chrome plus its own safe-area
-    // inset, with the FAB floating above it; the iOS/web pill floats over the
-    // content and needs less.
-    paddingBottom: hasMobileNav ? (IS_ANDROID ? 168 : 140) : 40,
+    // The web footer reserves its own height in the layout. Only its floating
+    // scan action needs scroll clearance; native chrome overlays the content.
+    paddingBottom: hasMobileNav ? (Platform.OS === 'web' ? 88 : IS_ANDROID ? 168 : 140) : 40,
     paddingTop: isWide ? 32 : 20,
     maxWidth: isWide ? contentMaxWidth : undefined,
     width: isWide ? ('100%' as const) : undefined,
@@ -427,6 +435,128 @@ function MobileTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => void
   )
 }
 
+function WebNavItem({ section, active }: { section: SidebarSection; active: boolean }) {
+  const palette = useSoftPalette()
+  const color = active ? palette.ink : palette.creamText
+  // Equal padding on both axes keeps the inner and outer arcs concentric.
+  // Only the edge tabs follow the container; interior corners stay small.
+  const corners = {
+    borderRadius: WEB_NAV_PADDING,
+    ...(section === TAB_ORDER[0] ? {
+      borderTopLeftRadius: WEB_NAV_CORNERS.borderTopLeftRadius - WEB_NAV_PADDING,
+      borderBottomLeftRadius: WEB_NAV_CORNERS.borderBottomLeftRadius - WEB_NAV_PADDING,
+    } : {}),
+    ...(section === TAB_ORDER[TAB_ORDER.length - 1] ? {
+      borderTopRightRadius: WEB_NAV_CORNERS.borderTopRightRadius - WEB_NAV_PADDING,
+      borderBottomRightRadius: WEB_NAV_CORNERS.borderBottomRightRadius - WEB_NAV_PADDING,
+    } : {}),
+  }
+  return (
+    <Pressable
+      onPress={() => {
+        if (!active) goToTab(section)
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={TAB_LABELS[section]}
+      style={{ ...pointerCursor, ...corners, flex: 1, minWidth: 44 }}
+      {...{ 'aria-current': active ? 'page' as const : undefined }}
+    >
+      {({ hovered, pressed }) => (
+        <YStack
+          flex={1}
+          alignItems="center"
+          gap={6}
+          minHeight={72}
+          paddingVertical={8}
+          paddingHorizontal={2}
+          style={corners}
+          backgroundColor={hovered || pressed ? palette.creamPill : 'transparent'}
+        >
+          {TAB_ICONS[section](color, 22)}
+          {/* Labels wrap when needed, without reserving an empty second line. */}
+          <Text
+            width="100%"
+            fontSize={12}
+            lineHeight={16}
+            fontWeight={active ? '800' : '500'}
+            textAlign="center"
+            color={color}
+          >
+            {TAB_LABELS[section]}
+          </Text>
+          <YStack
+            width={32}
+            height={3}
+            style={{ marginTop: 'auto' }}
+            backgroundColor={active ? palette.accentLime : 'transparent'}
+          />
+        </YStack>
+      )}
+    </Pressable>
+  )
+}
+
+/** An integrated web footer using the navigation cards' asymmetric corners. */
+function WebTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => void }) {
+  const palette = useSoftPalette()
+  return (
+    <YStack
+      testID="web-tab-nav"
+      role="navigation"
+      aria-label="Navigation principale"
+      flexShrink={0}
+      backgroundColor={palette.gradientBottom}
+    >
+      <SafeAreaView edges={['bottom', 'left', 'right']} style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+        <XStack
+          width="100%"
+          maxWidth={640}
+          alignSelf="center"
+          alignItems="stretch"
+          gap={4}
+          padding={WEB_NAV_PADDING}
+          backgroundColor={palette.cream}
+          style={{
+            ...WEB_NAV_CORNERS,
+            shadowColor: palette.shadowCool,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.06,
+            shadowRadius: 14,
+          }}
+        >
+          {TAB_ORDER.map((section) => (
+            <WebNavItem key={section} section={section} active={section === tab} />
+          ))}
+          <YStack
+            position="absolute"
+            right={WEB_NAV_PADDING}
+            bottom="100%"
+            marginBottom={12}
+            borderRadius={999}
+            style={{
+              shadowColor: palette.shadowCool,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.14,
+              shadowRadius: 14,
+            }}
+          >
+            <TourAnchor id="fab">
+              <PillButton
+                testID="scan-fab"
+                label="Scanner"
+                accessibilityLabel="Scanner le frigo, un produit ou un ticket de caisse"
+                icon={(color) => <ScanLineIcon size={20} color={color} />}
+                onPress={onScan}
+                palette={palette}
+              />
+            </TourAnchor>
+          </YStack>
+        </XStack>
+      </SafeAreaView>
+    </YStack>
+  )
+}
+
 export function AppShell({
   nav,
   hint,
@@ -454,10 +584,11 @@ export function AppShell({
       {/* `left`/`right` too: once the orientation lock came off, a landscape
           notch would otherwise eat the header's back button.
 
-          **No `bottom` edge when a mobile nav is drawn.** Both bottom chromes
-          are absolutely positioned *outside* this SafeAreaView and carry their
-          own inset — Material's bar wraps itself in `edges={['bottom']}`, the
-          iOS/web pill sits on a fixed 18pt. Insetting the scroll surface too
+          **No `bottom` edge when a mobile nav is drawn.** Native bottom chrome
+          is absolutely positioned outside this SafeAreaView — Material's bar
+          carries its own bottom inset, the iOS pill sits on a fixed 18pt. The
+          web footer reserves its own safe area in normal flow.
+          Insetting the scroll surface too
           ended it above the home indicator, so the list stopped dead at the tab
           bar with a band of bare ground under it instead of scrolling beneath
           the floating pill, which is the whole point of a floating pill. The
@@ -491,7 +622,9 @@ export function AppShell({
         )}
       </SafeAreaView>
       {nav.kind === 'tab' && !isWide && !isNativeTabBar ? (
-        IS_ANDROID ? (
+        Platform.OS === 'web' ? (
+          <WebTabNav tab={nav.tab} onScan={nav.onScan} />
+        ) : IS_ANDROID ? (
           <MaterialTabNav tab={nav.tab} onScan={nav.onScan} />
         ) : (
           <MobileTabNav tab={nav.tab} onScan={nav.onScan} />
