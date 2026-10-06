@@ -249,8 +249,8 @@ export default class JobController {
           prompt = body.prompt
           language = body.language
         } else {
-          const body = await ctx.request.validateUsing(enqueueScanValidator)
-          language = body.language
+          const scanBody = await ctx.request.validateUsing(enqueueScanValidator)
+          language = scanBody.language
           const files =
             kind === 'receipt_scan'
               ? [ctx.request.file('image', RECEIPT_RULES)]

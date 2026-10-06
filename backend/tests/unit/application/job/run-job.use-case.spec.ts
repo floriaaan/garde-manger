@@ -276,7 +276,9 @@ test('a full retry after an unexpected error remembers the scan already counted'
 test.group('RunJob: requesting user language', () => {
   for (const kind of ['receipt_scan', 'fridge_scan', 'recipe_generation'] as const) {
     for (const language of ['en', 'fr', undefined] as const) {
-      test(`${kind} forwards ${language ?? 'legacy French'} to the provider`, async ({ assert }) => {
+      test(`${kind} forwards ${language ?? 'legacy French'} to the provider`, async ({
+        assert,
+      }) => {
         const received: (string | undefined)[] = []
         const { run } = setup([], {
           products: { findByHousehold: async () => [] } as unknown as RunJobDeps['products'],

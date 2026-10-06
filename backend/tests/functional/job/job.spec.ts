@@ -51,11 +51,11 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
         const request = client.post(`/api/jobs/${kind}`).headers({ cookie })
         if (kind === 'recipe-generation') request.json({ language, prompt: 'Avec du lait' })
         else {
-          request.fields({ language }).file(
-            kind === 'receipt-scan' ? 'image' : 'images',
-            fakePngBytes,
-            { filename: 'scan.png' },
-          )
+          request
+            .fields({ language })
+            .file(kind === 'receipt-scan' ? 'image' : 'images', fakePngBytes, {
+              filename: 'scan.png',
+            })
         }
         const response = await request
         response.assertStatus(202)
@@ -64,16 +64,19 @@ test.group('job: enqueue, read, retry, dismiss, drafts', (group) => {
       }
     })
 
-    test(`${kind} rejects an unsupported language before enqueueing`, async ({ client, assert }) => {
+    test(`${kind} rejects an unsupported language before enqueueing`, async ({
+      client,
+      assert,
+    }) => {
       const cookie = await signUpWithHousehold(client, `job-invalid-language-${kind}@example.com`)
       const request = client.post(`/api/jobs/${kind}`).headers({ cookie })
       if (kind === 'recipe-generation') request.json({ language: 'de' })
       else {
-        request.fields({ language: 'de' }).file(
-          kind === 'receipt-scan' ? 'image' : 'images',
-          fakePngBytes,
-          { filename: 'scan.png' },
-        )
+        request
+          .fields({ language: 'de' })
+          .file(kind === 'receipt-scan' ? 'image' : 'images', fakePngBytes, {
+            filename: 'scan.png',
+          })
       }
       const response = await request
       response.assertStatus(422)

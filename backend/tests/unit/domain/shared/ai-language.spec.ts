@@ -31,7 +31,11 @@ test.group('AI output language', () => {
 
   test('old clients and jobs retain French by default', ({ assert }) => {
     const recipe = buildRecipeGenerationPrompt({ products: [], prioritizeExpiringSoon: false })
-    for (const prompt of [recipe, buildReceiptExtractionPrompt(), buildFridgeScanExtractionPrompt()]) {
+    for (const prompt of [
+      recipe,
+      buildReceiptExtractionPrompt(),
+      buildFridgeScanExtractionPrompt(),
+    ]) {
       assert.include(prompt, 'Output language: French.')
     }
   })

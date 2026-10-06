@@ -94,7 +94,9 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
     )
   })
 
-  test('forwards the output language and records usage after a successful hosted call', async ({ assert }) => {
+  test('forwards the output language and records usage after a successful hosted call', async ({
+    assert,
+  }) => {
     const original = GeminiReceiptExtractionAdapter.prototype.extract
     const languages: (string | undefined)[] = []
     GeminiReceiptExtractionAdapter.prototype.extract = async (_file, language) => {
