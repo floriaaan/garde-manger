@@ -14,6 +14,11 @@ import { useReceiptsQuery } from '../receipt/receipts.query.js'
 import { useRecipesQuery } from '../recipe/recipes.query.js'
 import { useJobQuery, useJobsQuery } from '../job/jobs.query.js'
 import { useScanDraftQuery, useScanDraftsQuery } from '../job/scan-drafts.query.js'
+import { useProductOutcomeStatsQuery } from '../fridge/product-outcome-stats.query.js'
+import { useReceiptQuery } from '../receipt/receipt.query.js'
+import { useRecipeQuery } from '../recipe/recipe.query.js'
+import { useHaLinkQuery } from '../home-assistant/ha-link.query.js'
+import { useReminderSettingsQuery } from '../settings/reminder-settings.query.js'
 
 function setup(connector = new FakeFridgeConnector()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -24,6 +29,13 @@ function setup(connector = new FakeFridgeConnector()) {
     jest.spyOn(connector, 'getRecipes'),
     jest.spyOn(connector, 'getJobs'),
     jest.spyOn(connector, 'getScanDrafts'),
+    jest.spyOn(connector, 'getProductOutcomeStats'),
+    jest.spyOn(connector, 'getProduct'),
+    jest.spyOn(connector, 'getReceipt'),
+    jest.spyOn(connector, 'getRecipe'),
+    jest.spyOn(connector, 'getScanDraft'),
+    jest.spyOn(connector, 'getHaLink'),
+    jest.spyOn(connector, 'getReminderSettings'),
   ]
   function wrapper({ children }: { children: ReactNode }) {
     return (
@@ -39,10 +51,13 @@ function useObservedQueries() {
   return [
     useProductsQuery(), useShoppingItemsQuery(), useReceiptsQuery(),
     useRecipesQuery(), useJobsQuery(), useScanDraftsQuery(),
+    useProductOutcomeStatsQuery(), useProductQuery('missing'), useReceiptQuery('missing'),
+    useRecipeQuery('missing'), useScanDraftQuery('missing'), useJobQuery('missing'),
+    useHaLinkQuery(), useReminderSettingsQuery(),
   ]
 }
 
-test('all six reads wait while the household is pending and stay idle when it is absent', async () => {
+test('all household reads wait while the household is pending and stay idle when it is absent', async () => {
   const { connector, queryClient, reads, wrapper } = setup()
   let resolveHousehold!: (household: Household | null) => void
   jest.spyOn(connector, 'getHousehold').mockReturnValue(new Promise((resolve) => { resolveHousehold = resolve }))
@@ -67,7 +82,7 @@ test('a failed household read does not start the dependent requests', async () =
   reads.forEach((read) => expect(read).not.toHaveBeenCalled())
 })
 
-test.each(['create', 'join'] as const)('publishing the household after %s starts all six reads', async (action) => {
+test.each(['create', 'join'] as const)('publishing the household after %s starts all household reads', async (action) => {
   const { connector, queryClient, reads, wrapper } = setup()
   await connector.signUpEmail('new@example.com', 'password', 'Florian')
   const { result } = await renderHook(useObservedQueries, { wrapper })
@@ -85,10 +100,13 @@ test.each(['create', 'join'] as const)('publishing the household after %s starts
   reads.forEach((read) => expect(read).toHaveBeenCalled())
 })
 
-test('manual refetch cannot bypass a missing household, even with enabled: true', async () => {
+test.each([
+  ['shopping items', useShoppingItemsQuery],
+  ['reminder settings', useReminderSettingsQuery],
+] as const)('manual refetch cannot bypass a missing household for %s, even with enabled: true', async (_name, useRead) => {
   const { connector, queryClient, reads, wrapper } = setup()
   jest.spyOn(connector, 'getHousehold').mockResolvedValue(null)
-  const { result } = await renderHook(() => useShoppingItemsQuery({ enabled: true }), { wrapper })
+  const { result } = await renderHook(() => useRead({ enabled: true }), { wrapper })
   await waitFor(() => expect(queryClient.getQueryData(['household'])).toBeNull())
   // TanStack reports a missing query function for an explicit refetch of skipToken.
   const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
