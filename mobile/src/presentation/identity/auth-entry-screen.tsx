@@ -18,7 +18,10 @@ import { getServerUrl, onServerUrlChange, OFFICIAL_SERVER_URL } from '../../appl
 import { getTelemetry } from '../../application/shared/telemetry.js'
 import { markWelcomeSeen } from '../welcome/use-welcome-seen.js'
 
-export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: AuthMode }) {
+export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs)' }: {
+  initialMode?: AuthMode
+  successHref?: '/(tabs)' | '/subscription'
+}) {
   const palette = useSoftPalette()
   const pendingMutations = useIsMutating()
   const [nativeBusy, setNativeBusy] = useState(false)
@@ -42,7 +45,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
 
   async function handleSuccess() {
     await session.refetch()
-    router.replace('/(tabs)')
+    router.replace(successHref)
   }
 
   const footer = (
@@ -55,7 +58,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in' }: { initialMode?: Aut
     </Pressable>
   )
 
-  if (session.data) return <Redirect href="/(tabs)" />
+  if (session.data) return <Redirect href={successHref} />
 
   const title = mode === 'sign-up' ? 'Créer mon compte' : 'Se connecter'
   const subtitle = mode === 'sign-up' ? 'Ton compte d’abord, ton foyer juste après.' : 'Retrouve ton foyer et ce qu’il reste à la maison.'

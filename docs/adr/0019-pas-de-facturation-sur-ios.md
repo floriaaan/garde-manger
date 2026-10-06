@@ -1,5 +1,35 @@
 # ADR-0019 — Pas de facturation sur iOS
 
+> Mise à jour — issue #59 : la décision de masquer l’accès à l’abonnement est
+> remplacée par le parcours ci-dessous. Le contexte et la décision initiale
+> sont conservés pour historique.
+
+## Parcours actuel (#59)
+
+- L’entrée « Abonnement » reste accessible depuis Réglages sur iOS pour les
+  foyers de l’instance officielle. Le titre de la page est « Abonnement ».
+- La page affiche le quota et réutilise les cartes d’offre et d’abonnement actif,
+  avec leurs avantages, leur mascotte et le statut du foyer. Leur seule action
+  est « Souscrire sur le web » ou « Gérer l’abonnement sur le web ». Sur iOS,
+  la carte d’offre n’affiche ni prix, ni mentions de paiement Stripe, ni CGV ou
+  renonciation à la rétractation. Aucun paiement ou portail de facturation n’est
+  lancé par l’application iOS.
+- `platformCapabilities.billing` désigne la facturation Stripe directe. Il
+  reste `false` sur iOS : `useAiSubscribe()` ouvre à la place
+  `https://app.gardemanger.floriaaan.fr/subscription` dans le navigateur,
+  sans appeler les endpoints checkout/portal. Android et le web gardent leur
+  parcours Stripe existant.
+- La route web permet la connexion avec le même compte puis l’accès à
+  l’abonnement. Le texte explique le passage par le navigateur et le retour
+  dans l’application. Une erreur d’ouverture est affichée avec possibilité
+  de réessayer ; le gestionnaire de focus existant actualise les réglages au
+  retour au premier plan.
+- Les serveurs auto-hébergés restent sans action de facturation. Les autres
+  messages de quota et capacités de connexion ne changent pas.
+- La mascotte du header du dashboard dépend du plan du foyer sur toutes les
+  plateformes : dorée pour `subscriber`, normale sinon. La disponibilité de
+  la facturation directe ne masque plus le statut d’abonnement sur iOS.
+
 ## Contexte
 
 L'abonnement IA passe par Stripe (ADR-0015) : un paywall à 0,99 €/mois, un bouton

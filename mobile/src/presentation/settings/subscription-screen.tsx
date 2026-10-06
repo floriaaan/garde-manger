@@ -2,9 +2,8 @@
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
- * Without billing (iOS, ADR 0019) there is no in-app paywall or portal, only
- * the quota and a link to manage the subscription on the web (App Store rule
- * 3.1.3(b)). Réglages hides the entry; this guards a stray deep link.
+ * iOS reuses the subscription cards, with a single action opening the web
+ * subscription page instead of direct billing.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -15,7 +14,7 @@ import { ScreenHeader } from '../shared/screen-header.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { BadgeCheckIcon } from '../dashboard/dashboard-icons.js'
 import { SkeletonCard, SkeletonGroup } from '../shared/skeleton.js'
-import { AiQuotaHint, ExternalSubscriptionNotice, SubscriptionActiveCard, SubscriptionPaywall } from './ai-access-cards.js'
+import { AiQuotaHint, SubscriptionActiveCard, SubscriptionPaywall } from './ai-access-cards.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 
@@ -34,7 +33,7 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title={subscription.billing ? 'Abonnement' : 'Quota IA'}
+          title="Abonnement"
           onBack={() => router.back()}
         />
       }
@@ -61,29 +60,27 @@ export function SubscriptionScreen() {
         {/* Free plan: the usage comes first — the paywall answers it, it does not open the screen. */}
         {access?.plan === 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 
-        {access?.plan === 'free' && subscription.billing ? (
+        {access?.plan === 'free' ? (
           <SubscriptionPaywall
             palette={palette}
             onSubscribe={subscription.subscribe}
+            webOnly={!subscription.billing}
             pending={subscription.pending}
             error={subscription.error}
           />
         ) : null}
 
-        {access?.plan === 'free' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
-
-        {access?.plan === 'subscriber' && subscription.billing ? (
+        {access?.plan === 'subscriber' ? (
           <SubscriptionActiveCard
             palette={palette}
             until={access.expiresAt}
             cancelled={access.cancelsAtPeriodEnd}
             onManage={subscription.manage}
+            webOnly={!subscription.billing}
             pending={subscription.pending}
             error={subscription.error}
           />
         ) : null}
-
-        {access?.plan === 'subscriber' && !subscription.billing ? <ExternalSubscriptionNotice palette={palette} /> : null}
 
         {access && access.plan !== 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 

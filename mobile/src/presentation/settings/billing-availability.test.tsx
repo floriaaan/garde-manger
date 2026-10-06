@@ -1,9 +1,11 @@
 /**
- * ADR 0019: where the platform has no billing (iOS, App Store 3.1.1), no
- * screen names the subscription, a price, or a way to pay elsewhere. The
- * capability is mocked so both sides run whatever platform jest-expo picks.
+ * iOS exposes the subscription page but delegates billing to the web (#59).
+ * The capability is mocked so both sides run whatever platform jest-expo picks.
  */
-import { render, screen, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import * as Linking from 'expo-linking'
+import * as WebBrowser from 'expo-web-browser'
+import { router } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
@@ -25,6 +27,8 @@ jest.mock('../../application/shared/platform-capabilities.js', () => ({
   },
 }))
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
+jest.mock('expo-linking', () => ({ openURL: jest.fn(async () => true), createURL: jest.fn(() => 'gardemanger://subscription') }))
+jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn(async () => ({ type: 'cancel' })) }))
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),
@@ -40,13 +44,16 @@ async function renderWith(ui: React.ReactElement, access: AiAccess) {
   const settings = await connector.getAiSettings()
   jest.spyOn(connector, 'getAiSettings').mockResolvedValue({ ...settings!, canChooseProvider: false, access })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const checkout = jest.spyOn(connector, 'startSubscriptionCheckout')
+  const portal = jest.spyOn(connector, 'openBillingPortal')
+  const rendered = await render(
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <ConnectorProvider connector={connector}>{ui}</ConnectorProvider>
       </QueryClientProvider>
     </ThemeProvider>,
   )
+  return { ...rendered, checkout, portal }
 }
 
 async function renderHint(access: AiAccess) {
@@ -65,30 +72,95 @@ const quotaJob = makeJob({ status: 'failed', error: { type: 'ai_quota_exceeded',
 
 describe('without billing (iOS)', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     mockCapabilities.billing = false
   })
 
-  test('a spent free quota shows no paywall and no price, only the web link (App Store 3.1.3(b))', async () => {
+  test('a spent free quota reuses the offer card with only a web action', async () => {
     await renderWith(<SubscriptionScreen />, spentFree)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
-    expect(screen.queryByTestId('subscription-paywall')).toBeNull()
+    expect(screen.getByTestId('subscription-paywall')).toBeTruthy()
+    expect(screen.getByText('Scan de tickets et de frigo')).toBeTruthy()
+    expect(screen.getByText('Partagé avec tout le foyer')).toBeTruthy()
     expect(screen.queryByText(/€/)).toBeNull()
+    expect(screen.queryByText(/Stripe/)).toBeNull()
+    expect(screen.queryByText('Voir les CGV')).toBeNull()
+    expect(screen.queryByTestId('subscription-withdrawal-notice')).toBeNull()
+    expect(screen.queryByTestId('subscription-paywall-cta')).toBeNull()
+    expect(screen.queryByLabelText('S’abonner pour 0,99 euro par mois')).toBeNull()
     expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
-  test('a subscriber from another platform gets no Customer Portal button, only the web link', async () => {
+  test('a subscriber reuses the active card with only a web management action', async () => {
     await renderWith(<SubscriptionScreen />, subscriber)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
-    expect(screen.queryByTestId('subscription-active')).toBeNull()
+    expect(screen.getByTestId('subscription-active')).toBeTruthy()
+    expect(screen.getByText('Abonnement actif')).toBeTruthy()
+    expect(screen.getByText('L’IA est débloquée pour tout le foyer.')).toBeTruthy()
+    expect(screen.queryByTestId('subscription-paywall')).toBeNull()
+    expect(screen.queryByText('Souscrire sur le web')).toBeNull()
+    expect(screen.getByTestId('subscription-web-link')).toHaveTextContent('Gérer l’abonnement sur le web')
     expect(screen.queryByTestId('subscription-manage')).toBeNull()
     expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
-  test('Réglages has no Abonnement entry', async () => {
+  test('a cancelled subscription shows the remaining access before linking to the web', async () => {
+    await renderWith(<SubscriptionScreen />, { ...subscriber, cancelsAtPeriodEnd: true })
+    await waitFor(() => expect(screen.getByTestId('subscription-active')).toBeTruthy())
+    expect(screen.getAllByText('Résilié')).toHaveLength(2)
+    expect(screen.getByText(/L’IA reste débloquée jusqu’au/)).toBeTruthy()
+    expect(screen.queryByText('Abonnement actif')).toBeNull()
+    expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
+  })
+
+  test('Réglages opens the subscription page on iOS', async () => {
     await renderWith(<SettingsScreen />, spentFree)
 
+    await waitFor(() => expect(screen.getByText('Thomas')).toBeTruthy())
+    const entry = screen.getByTestId('settings-subscription')
+    await fireEvent.press(entry)
+    expect(router.push).toHaveBeenCalledWith('/subscription')
+  })
+
+  test.each([
+    ['subscribe', spentFree, 'Souscrire sur le web'],
+    ['manage', subscriber, 'Gérer l’abonnement sur le web'],
+  ] as const)('%s opens the web subscription route without calling Stripe', async (_action, access, label) => {
+    const { checkout, portal } = await renderWith(<SubscriptionScreen />, access)
+    await waitFor(() => expect(screen.getByTestId('subscription-web-link')).toBeTruthy())
+    expect(screen.getByTestId('subscription-web-link')).toHaveTextContent(label)
+
+    await fireEvent.press(screen.getByTestId('subscription-web-link'))
+
+    expect(Linking.openURL).toHaveBeenCalledWith('https://app.gardemanger.floriaaan.fr/subscription')
+    expect(checkout).not.toHaveBeenCalled()
+    expect(portal).not.toHaveBeenCalled()
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled()
+  })
+
+  test('a failed web opening displays an error and lets the user retry', async () => {
+    jest.mocked(Linking.openURL).mockRejectedValueOnce(new Error('Browser unavailable'))
+    const { checkout, portal } = await renderWith(<SubscriptionScreen />, spentFree)
+    await waitFor(() => expect(screen.getByTestId('subscription-web-link')).toBeTruthy())
+
+    await fireEvent.press(screen.getByTestId('subscription-web-link'))
+    await waitFor(() => expect(screen.getByText('Impossible d’ouvrir l’abonnement sur le web. Réessaie.')).toBeTruthy())
+    expect(screen.getByTestId('subscription-web-link').props.disabled).toBe(false)
+    await fireEvent.press(screen.getByTestId('subscription-web-link'))
+    await waitFor(() => expect(screen.queryByText('Impossible d’ouvrir l’abonnement sur le web. Réessaie.')).toBeNull())
+    expect(checkout).not.toHaveBeenCalled()
+    expect(portal).not.toHaveBeenCalled()
+  })
+
+  test('self-hosted instances have no billing action or settings entry', async () => {
+    const access: AiAccess = { plan: 'self-hosted', used: 0, limit: null, resetsAt: null, expiresAt: null }
+    const subscriptionView = await renderWith(<SubscriptionScreen />, access)
+    await waitFor(() => expect(screen.getByTestId('subscription-not-applicable')).toBeTruthy())
+    expect(screen.queryByTestId('subscription-web-link')).toBeNull()
+    await subscriptionView.unmount()
+    await renderWith(<SettingsScreen />, access)
     await waitFor(() => expect(screen.getByText('Thomas')).toBeTruthy())
     expect(screen.queryByTestId('settings-subscription')).toBeNull()
   })
@@ -108,6 +180,7 @@ describe('without billing (iOS)', () => {
 
 describe('with billing (Android, web)', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     mockCapabilities.billing = true
   })
 
@@ -115,6 +188,24 @@ describe('with billing (Android, web)', () => {
     await renderWith(<SubscriptionScreen />, spentFree)
 
     await waitFor(() => expect(screen.getByTestId('subscription-paywall')).toBeTruthy())
+    expect(screen.getByText('0,99€')).toBeTruthy()
+    expect(screen.getByText(/Paiement sécurisé par Stripe/)).toBeTruthy()
+    expect(screen.getByText('Voir les CGV')).toBeTruthy()
+    expect(screen.getByTestId('subscription-withdrawal-notice')).toBeTruthy()
+    expect(screen.getByTestId('subscription-paywall-cta')).toBeTruthy()
+    expect(screen.queryByTestId('subscription-web-link')).toBeNull()
+  })
+
+  test.each([
+    ['subscribe', spentFree, 'subscription-paywall-cta', 'https://checkout.stripe.com/fake'],
+    ['manage', subscriber, 'subscription-manage', 'https://billing.stripe.com/fake'],
+  ] as const)('%s keeps the direct billing flow', async (action, access, testId, url) => {
+    const { checkout, portal } = await renderWith(<SubscriptionScreen />, access)
+    await waitFor(() => expect(screen.getByTestId(testId)).toBeTruthy())
+    await fireEvent.press(screen.getByTestId(testId))
+    await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(url, 'gardemanger://subscription'))
+    expect(action === 'subscribe' ? checkout : portal).toHaveBeenCalledTimes(1)
+    expect(Linking.openURL).not.toHaveBeenCalled()
   })
 
   test('Réglages lists Abonnement', async () => {

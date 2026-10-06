@@ -6,14 +6,17 @@ import { ThemeProvider } from '../shared/theme-provider.js'
 import { HouseholdDashboard } from './household-dashboard.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
+// iOS cannot bill directly, but the household's subscription still applies.
+jest.mock('../../application/shared/platform-capabilities.js', () => ({
+  platformCapabilities: { billing: false, googleSignIn: false },
+}))
 
 // The fake fridge holds one product whose date is already in the past (milk,
 // 2026-08-30), one long-life frozen bag and one undated bag of rice — so the
 // expected counts hold on any date after that, no clock stubbing needed.
 const noop = () => {}
 
-function renderDashboard(overrides: Partial<React.ComponentProps<typeof HouseholdDashboard>> = {}) {
-  const connector = new FakeFridgeConnector()
+function renderDashboard(overrides: Partial<React.ComponentProps<typeof HouseholdDashboard>> = {}, connector = new FakeFridgeConnector()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <ThemeProvider>
@@ -39,6 +42,23 @@ function renderDashboard(overrides: Partial<React.ComponentProps<typeof Househol
   )
   return connector
 }
+
+test.each(['subscriber', 'free', 'self-hosted'] as const)('the header mascot follows the %s plan even without direct billing', async (plan) => {
+  const connector = new FakeFridgeConnector()
+  const settings = await connector.getAiSettings()
+  jest.spyOn(connector, 'getAiSettings').mockResolvedValue({ ...settings!, access: { ...settings!.access, plan } })
+  renderDashboard({}, connector)
+
+  await waitFor(() => expect(screen.getByText('Appartement des loulous')).toBeTruthy())
+  if (plan === 'subscriber') {
+    await waitFor(() => expect(screen.getByTestId('dashboard-subscriber-badge')).toBeTruthy())
+    expect(screen.getByLabelText('Abonnement actif').props.source).toEqual(require('../../../assets/mascot-gold.png'))
+    expect(screen.queryByTestId('dashboard-mascot')).toBeNull()
+  } else {
+    expect(screen.getByTestId('dashboard-mascot').props.source).toEqual(require('../../../assets/mascot.png'))
+    expect(screen.queryByTestId('dashboard-subscriber-badge')).toBeNull()
+  }
+})
 
 test('names the real household, not a hardcoded one', async () => {
   renderDashboard()
