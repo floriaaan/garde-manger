@@ -23,7 +23,7 @@ Self-hosted (Docker Compose, auth via instance PocketID perso de l'utilisateur +
 - Usage réel : dans la cuisine, souvent au moment de ranger les courses (scan ticket) ou en ouvrant le frigo (checker péremption, décider du repas).
 - Multi-device par foyer : plusieurs membres, chacun sur son téléphone, données partagées en temps quasi-réel.
 - Auth : PocketID SSO (OIDC, provider "pocketid") + email/password, méthodes découvertes dynamiquement par le front (pas de liste hardcodée).
-- Un seul foyer par utilisateur en v1 (pas de multi-foyer/switch). Un seul owner par foyer ; le quitter en tant qu'owner supprime le foyer (cascade) ; un member peut quitter librement.
+- Un seul foyer par utilisateur en v1 (pas de multi-foyer/switch). Un seul owner par foyer ; pour quitter depuis l’écran Foyer, il doit d’abord transférer la propriété à un autre membre. Un owner seul ne peut pas quitter le foyer ; un member peut quitter librement.
 - Backend AdonisJS/Postgres complet et livré pour identity/household, fridge/receipt/settings, shopping-list/recipe (phases 1-3). Le mobile a livré identity, onboarding, frigo (liste/ajout/scan code-barres/édition), scan de ticket, liste de courses et recette IA, réglages, Home Assistant, dashboard — surface produit complète end-to-end ; polish et durcissement en cours.
 
 ## Capabilities and Constraints

@@ -14,7 +14,7 @@ import { useTranslation, getLocale } from '../../i18n/index.js'
  * member (the API omits it for anyone but the owner, which is what the UI
  * gates on — never on the role string alone).
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -61,11 +61,32 @@ export function HouseholdScreen() {
   const [hint, showHint] = useHint()
   const [memberToRemove, setMemberToRemove] = useState<HouseholdMember | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leftHousehold, setLeftHousehold] = useState(false)
   const [transferPickerOpen, setTransferPickerOpen] = useState(false)
+  const [memberToTransfer, setMemberToTransfer] = useState<HouseholdMember | null>(null)
+  const [activeAction, setActiveAction] = useState<'remove' | 'leave' | 'transfer' | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const actionLocked = useRef(false)
 
   const data = household.data
   const isOwner = data?.role === 'owner'
   const currentUserId = session.data?.user.id
+  const busy = activeAction !== null
+  const haStatus = haLink.isError
+    ? t('identity.ha_unavailable')
+    : haLink.isPending
+      ? t('identity.ha_loading')
+      : haLink.data?.configured
+        ? haLink.data.todoEntityName || haLink.data.todoEntityId || t('identity.ha_choose_list')
+        : t('identity.not_configured')
+
+  useEffect(() => {
+    if (!leftHousehold) return
+    // Dismiss the native confirmation before clearing its originating screen
+    // and navigating; its layout effect owns the sheet's back navigation.
+    queryClient.clear()
+    router.replace('/(onboarding)')
+  }, [leftHousehold, queryClient])
 
   async function handleRegenerate() {
     const result = await regenerate.mutateAsync(undefined)
@@ -80,56 +101,103 @@ export function HouseholdScreen() {
   async function handleRename(name: string) {
     if (!name) {
       showHint(t('identity.the_name_can_t_be_empty'), 'error')
-      return
+      return false
     }
-    const result = await rename.mutateAsync(name)
-    if (!result.ok) {
-      showHint(result.error.message, 'error')
-      return
+    try {
+      const result = await rename.mutateAsync(name)
+      if (!result.ok) {
+        showHint(result.error.message, 'error')
+        return false
+      }
+      await queryClient.invalidateQueries({ queryKey: ['household'] })
+      showHint(t('identity.household_renamed'), 'success', { description: t('identity.all_members_see_the_new_name') })
+      return true
+    } catch {
+      showHint(t('identity.rename_failed'), 'error')
+      return false
     }
-    queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(t('identity.household_renamed'), 'success', { description: t('identity.all_members_see_the_new_name') })
   }
 
   async function handleRemove(member: HouseholdMember) {
-    setMemberToRemove(null)
-    const result = await removeMember.mutateAsync(member.userId)
-    if (!result.ok) {
-      showHint(result.error.message, 'error')
-      return
+    if (actionLocked.current || !isOwner) return
+    actionLocked.current = true
+    setActiveAction('remove')
+    setActionError(null)
+    try {
+      const result = await removeMember.mutateAsync(member.userId)
+      if (!result.ok) {
+        setActionError(result.error.message)
+        return
+      }
+      await queryClient.invalidateQueries({ queryKey: ['household'] })
+      setMemberToRemove(null)
+      showHint(t('identity.is_no_longer_part_of_the_household', { value1: member.name }), 'success')
+    } catch {
+      setActionError(t('identity.remove_failed'))
+    } finally {
+      actionLocked.current = false
+      setActiveAction(null)
     }
-    queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(t('identity.is_no_longer_part_of_the_household', { value1: member.name }), 'success')
   }
 
   async function handleLeave() {
-    setConfirmLeave(false)
-    const result = await leave.mutateAsync(undefined)
-    if (!result.ok) {
-      showHint(result.error.message, 'error')
-      return
+    if (actionLocked.current || isOwner) return
+    actionLocked.current = true
+    setActiveAction('leave')
+    setActionError(null)
+    try {
+      const result = await leave.mutateAsync(undefined)
+      if (!result.ok) {
+        setActionError(result.error.message)
+        return
+      }
+      // Not sign-in. Leaving a foyer is not leaving the account — the session
+      // is untouched, and the account is now exactly what a brand-new one is:
+      // signed in, with no foyer. That is the onboarding's state, and the
+      // `(tabs)` gate would bounce us there anyway; going straight avoids a
+      // frame of dashboard belonging to a household that no longer exists.
+      setConfirmLeave(false)
+      setLeftHousehold(true)
+    } catch {
+      setActionError(t('identity.leave_failed'))
+    } finally {
+      actionLocked.current = false
+      setActiveAction(null)
     }
-    // Not sign-in. Leaving a foyer is not leaving the account — the session
-    // is untouched, and the account is now exactly what a brand-new one is:
-    // signed in, with no foyer. That is the onboarding's state, and the
-    // `(tabs)` gate would bounce us there anyway; going straight avoids a
-    // frame of dashboard belonging to a household that no longer exists.
-    queryClient.clear()
-    router.replace('/(onboarding)')
   }
 
   async function handleTransfer(member: HouseholdMember) {
-    setTransferPickerOpen(false)
-    const result = await transferOwnership.mutateAsync(member.userId)
-    if (!result.ok) {
-      showHint(result.error.message, 'error')
-      return
+    if (actionLocked.current || !isOwner) return
+    actionLocked.current = true
+    setActiveAction('transfer')
+    setActionError(null)
+    try {
+      const result = await transferOwnership.mutateAsync(member.userId)
+      if (!result.ok) {
+        setActionError(result.error.message)
+        return
+      }
+      await queryClient.invalidateQueries({ queryKey: ['household'] })
+      setMemberToTransfer(null)
+      showHint(t('identity.owns_the_household', { value1: member.name }), 'success', { description: t('identity.can_leave_after_transfer') })
+    } catch {
+      setActionError(t('identity.transfer_failed'))
+    } finally {
+      actionLocked.current = false
+      setActiveAction(null)
     }
-    queryClient.invalidateQueries({ queryKey: ['household'] })
-    showHint(t('identity.owns_the_household', { value1: member.name }), 'success', { description: t('identity.you_remain_a_member') })
   }
 
-  const refresh = usePullToRefresh(() => household.refetch())
+  const refresh = usePullToRefresh(
+    () => household.refetch(),
+    () => isOwner ? haLink.refetch() : Promise.resolve(),
+  )
+
+  const errorMessage = actionError ? (
+    <Text testID="household-action-error" role="alert" accessibilityLiveRegion="assertive" fontSize={14} color={palette.expiredText}>
+      {actionError}
+    </Text>
+  ) : null
 
   const header = (
     <ScreenHeader
@@ -205,14 +273,17 @@ export function HouseholdScreen() {
       ) : null}
 
       <YStack marginTop="$6" gap="$2">
-        <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.members')}</Text>
+        <Text role="heading" fontSize={15} fontWeight="800" color={palette.ink}>
+          {t('identity.members')}
+        </Text>
         {data.members.map((member) => (
           <MemberRow
             key={member.userId}
             member={member}
             isSelf={member.userId === currentUserId}
             canRemove={isOwner && member.userId !== currentUserId}
-            onRemove={() => setMemberToRemove(member)}
+            disabled={busy || !currentUserId}
+            onRemove={() => { setActionError(null); setMemberToRemove(member) }}
             palette={palette}
           />
         ))}
@@ -220,7 +291,9 @@ export function HouseholdScreen() {
 
       {isOwner ? (
         <YStack marginTop="$8" gap="$2">
-          <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.connected_home')}</Text>
+          <Text role="heading" fontSize={15} fontWeight="800" color={palette.ink}>
+            {t('identity.connected_home')}
+          </Text>
           {/* Same card style as the Foyer button on Réglages (2026-09-09 ask):
               an `IdentityCard`, not the bespoke mintPale row this used to be. */}
           <IdentityCard
@@ -230,75 +303,119 @@ export function HouseholdScreen() {
             chipColor={palette.chipTeal}
             icon={<HomeIcon size={18} color={palette.onDark} />}
             label={t('home-assistant.home_assistant')}
-            value={haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : t('identity.not_configured')}
+            value={haStatus}
             secondary={t('identity.keep_your_shopping_list_in_sync_with_home_assistant')}
             corner="b"
             palette={palette}
             onPress={() => router.push('/home-assistant')}
-            accessibilityLabel={t('identity.home_assistant', { value1: haLink.data?.configured && haLink.data.todoEntityName ? haLink.data.todoEntityName : t('identity.not_configured') })}
+            accessibilityLabel={t('identity.home_assistant', { value1: haStatus })}
           />
+          {haLink.isError ? (
+            <>
+              <Text role="alert" fontSize={14} color={palette.expiredText}>
+                {t('identity.ha_load_failed')}
+              </Text>
+              <PillButton
+                testID="household-ha-retry"
+                label={t('dashboard.try_again')}
+                accessibilityLabel={t('identity.ha_retry')}
+                onPress={() => haLink.refetch()}
+                palette={palette}
+              />
+            </>
+          ) : null}
         </YStack>
       ) : null}
 
-      {isOwner && data.members.length > 1 ? (
-        <YStack marginTop="$8">
+      {isOwner ? (
+        <YStack marginTop="$8" gap="$2">
+          <Text role="heading" fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.household_management')}</Text>
+          <Text testID="household-owner-leave-help" fontSize={14} color={palette.inkSecondary}>
+            {data.members.length > 1
+              ? t('identity.owner_leave_help')
+              : t('identity.sole_owner_leave_help')}
+          </Text>
+          {data.members.length > 1 ? (
+            <AuthButton
+              testID="household-transfer-ownership"
+              label={t('identity.transfer_ownership')}
+              variant="secondary"
+              icon={<ArrowLeftRightIcon size={16} color={palette.ink} />}
+              disabled={busy || !currentUserId}
+              onPress={() => { setActionError(null); setTransferPickerOpen(true) }}
+            />
+          ) : null}
+        </YStack>
+      ) : null}
+
+      {!isOwner ? (
+        <YStack marginTop="$4">
           <AuthButton
-            testID="household-transfer-ownership"
-            label={t('identity.transfer_ownership')}
+            testID="household-leave"
+            label={t('identity.leave_household')}
             variant="secondary"
-            icon={<ArrowLeftRightIcon size={16} color={palette.ink} />}
-            onPress={() => setTransferPickerOpen(true)}
+            disabled={busy}
+            icon={<LogOutIcon size={16} color={palette.ink} />}
+            onPress={() => { setActionError(null); setConfirmLeave(true) }}
           />
         </YStack>
       ) : null}
-
-      <YStack marginTop="$4">
-        <AuthButton
-          testID="household-leave"
-          label={t('identity.leave_household')}
-          variant="secondary"
-          icon={<LogOutIcon size={16} color={palette.ink} />}
-          onPress={() => setConfirmLeave(true)}
-        />
-      </YStack>
+      {busy ? (
+        <Text testID="household-action-status" role="status" accessibilityLiveRegion="polite" marginTop="$3" fontSize={14} color={palette.inkSecondary}>
+          {activeAction === 'transfer' ? t('identity.transferring_ownership') : activeAction === 'remove' ? t('identity.removing_member') : t('identity.leaving_household')}
+        </Text>
+      ) : null}
+      {!memberToRemove && !memberToTransfer && !confirmLeave ? errorMessage : null}
     </AppShell>
 
     <ActionSheet
       visible={memberToRemove !== null}
+      closeLabel={busy ? t('shared.close') : t('shared.cancel')}
       onClose={() => setMemberToRemove(null)}
       title={memberToRemove ? t('fridge.remove_2', { value1: memberToRemove.name }) : undefined}
       description={t('identity.this_person_will_lose_access_to_the_household_s_pantry')}
-      options={
-        memberToRemove
-          ? [
-              {
-                testID: 'household-remove-confirm',
-                label: t('identity.remove_from_household'),
-                icon: (color) => <XIcon size={18} color={color} />,
-                tint: palette.expired,
-                destructive: true,
-                onPress: () => handleRemove(memberToRemove),
-              },
-            ]
-          : []
-      }
-    />
+      options={memberToRemove ? [{
+        testID: 'household-remove-confirm',
+        label: activeAction === 'remove' ? t('identity.removing') : t('identity.remove_from_household'),
+        pending: activeAction === 'remove',
+        disabled: busy || !isOwner,
+        keepOpen: true,
+        destructive: true,
+        tint: palette.expired,
+        icon: (color) => <XIcon size={18} color={color} />,
+        onPress: () => handleRemove(memberToRemove),
+      }] : []}
+    >
+      {errorMessage}
+    </ActionSheet>
 
     <ActionSheet
-      visible={transferPickerOpen}
-      onClose={() => setTransferPickerOpen(false)}
-      title={t('identity.transfer_ownership')}
-      description={t('identity.choose_who_will_own_the_household_you_ll_remain_a')}
-      options={[]}
+      visible={transferPickerOpen || memberToTransfer !== null}
+      closeLabel={busy ? t('shared.close') : t('shared.cancel')}
+      onClose={() => { setTransferPickerOpen(false); setMemberToTransfer(null) }}
+      title={memberToTransfer ? t('identity.transfer_confirmation', { value1: memberToTransfer.name }) : t('identity.transfer_ownership')}
+      description={memberToTransfer
+        ? t('identity.transfer_consequences')
+        : t('identity.choose_who_will_own_the_household_you_ll_remain_a')}
+      options={memberToTransfer ? [{
+        testID: 'household-transfer-confirm',
+        label: activeAction === 'transfer' ? t('identity.transferring') : t('identity.transfer_ownership'),
+        pending: activeAction === 'transfer',
+        disabled: busy || !isOwner,
+        keepOpen: true,
+        tint: palette.chipTeal,
+        icon: (color) => <ArrowLeftRightIcon size={18} color={color} />,
+        onPress: () => handleTransfer(memberToTransfer),
+      }] : []}
     >
-      <YStack gap="$2">
+      {memberToTransfer ? errorMessage : <YStack gap="$2">
         {data.members
-          .filter((member) => member.userId !== currentUserId)
+          .filter((member) => member.role !== 'owner' && member.userId !== currentUserId)
           .map((member) => (
             <Pressable
               key={member.userId}
               testID={`household-transfer-target-${member.userId}`}
-              onPress={() => handleTransfer(member)}
+              onPress={() => { setTransferPickerOpen(false); setMemberToTransfer(member) }}
               accessibilityRole="button"
               accessibilityLabel={t('identity.transfer_ownership_to', { value1: member.name })}
               style={pointerCursor}
@@ -318,29 +435,29 @@ export function HouseholdScreen() {
               </XStack>
             </Pressable>
           ))}
-      </YStack>
+      </YStack>}
     </ActionSheet>
 
     <ActionSheet
-      visible={confirmLeave}
+      visible={confirmLeave && !isOwner}
+      closeLabel={busy ? t('shared.close') : t('shared.cancel')}
       onClose={() => setConfirmLeave(false)}
       title={t('identity.leave_household_2')}
-      description={
-        isOwner
-          ? t('identity.you_own_this_household_leaving_deletes_it_and_all_its')
-          : t('identity.you_ll_lose_access_to_the_household_s_pantry_shopping')
-      }
-      options={[
-        {
-          testID: 'household-leave-confirm',
-          label: isOwner ? t('identity.delete_household') : t('identity.leave_household'),
-          icon: (color) => <LogOutIcon size={18} color={color} />,
-          tint: palette.expired,
-          destructive: true,
-          onPress: handleLeave,
-        },
-      ]}
-    />
+      description={t('identity.you_ll_lose_access_to_the_household_s_pantry_shopping')}
+      options={[{
+        testID: 'household-leave-confirm',
+        label: activeAction === 'leave' ? t('identity.leaving') : t('identity.leave_household'),
+        pending: activeAction === 'leave',
+        disabled: busy,
+        keepOpen: true,
+        destructive: true,
+        tint: palette.expired,
+        icon: (color) => <LogOutIcon size={18} color={color} />,
+        onPress: handleLeave,
+      }]}
+    >
+      {errorMessage}
+    </ActionSheet>
     </>
   )
 }
@@ -349,12 +466,14 @@ function MemberRow({
   member,
   isSelf,
   canRemove,
+  disabled,
   onRemove,
   palette,
 }: {
   member: HouseholdMember
   isSelf: boolean
   canRemove: boolean
+  disabled: boolean
   onRemove: () => void
   palette: SoftPalette
 }) {
@@ -371,23 +490,29 @@ function MemberRow({
       style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 1 }}
     >
       <Avatar name={member.name} image={member.image} palette={palette} />
-      <YStack flex={1}>
+      <YStack flex={1} minWidth={0}>
         <Text fontSize={14} fontWeight="700" color={palette.ink}>
           {member.name}
           {isSelf ? ' (toi)' : ''}
         </Text>
-        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>{t('identity.since', { value1: ROLE_LABELS[member.role], value2: new Date(member.joinedAt).toLocaleDateString(getLocale()) })}</Text>
+        <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
+          {t('identity.since', { value1: ROLE_LABELS[member.role], value2: new Date(member.joinedAt).toLocaleDateString(getLocale()) })}
+        </Text>
       </YStack>
       {canRemove ? (
         <Pressable
           testID={`household-remove-${member.userId}`}
           onPress={onRemove}
+          disabled={disabled}
+          accessibilityState={{ disabled }}
           accessibilityRole="button"
           accessibilityLabel={t('identity.remove_from_household_2', { value1: member.name })}
           style={pointerCursor}
         >
           <XStack alignItems="center" minHeight={44} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.expiredBg}>
-            <Text fontSize={12} fontWeight="700" color={palette.expiredText}>{t('fridge.remove')}</Text>
+            <Text fontSize={12} fontWeight="700" color={palette.expiredText}>
+              {t('fridge.remove')}
+            </Text>
           </XStack>
         </Pressable>
       ) : null}
@@ -404,19 +529,46 @@ function HouseholdNameEditor({
 }: {
   initialName: string
   pending: boolean
-  onSave: (trimmed: string) => void
+  onSave: (trimmed: string) => Promise<boolean>
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initialName)
+  const [editing, setEditing] = useState(false)
+  if (!editing) return (
+    <YStack marginTop="$3">
+      <AuthButton
+        testID="household-rename-open"
+        label={t('identity.rename_household')}
+        variant="secondary"
+        onPress={() => { setName(initialName); setEditing(true) }}
+      />
+    </YStack>
+  )
   return (
     <YStack marginTop="$4" gap="$2">
-      <AuthField testID="household-rename-field" label={t('identity.household_name')} value={name} onChangeText={setName} autoCapitalize="words" />
+      <AuthField
+        testID="household-rename-field"
+        label={t('identity.household_name')}
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="words"
+        maxLength={80}
+        editable={!pending}
+      />
       <AuthButton
         testID="household-rename-save"
         label={t('identity.rename')}
         pending={pending}
         disabled={!name.trim() || name.trim() === initialName}
-        onPress={() => onSave(name.trim())}
+        pendingLabel={t('identity.renaming')}
+        onPress={async () => { if (await onSave(name.trim())) setEditing(false) }}
+      />
+      <AuthButton
+        testID="household-rename-cancel"
+        label={t('shared.cancel')}
+        variant="secondary"
+        disabled={pending}
+        onPress={() => setEditing(false)}
       />
     </YStack>
   )
