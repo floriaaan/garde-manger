@@ -13,8 +13,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Native style object cannot express — so the web build gets them injected
   // once from the same palette every component draws from.
   useEffect(() => {
-    installWebSurfaces(palette.accentLime, palette.accentLimeText)
-  }, [palette.accentLime, palette.accentLimeText])
+    installWebSurfaces(palette.accentLime, palette.accentLimeText, palette.ink)
+  }, [palette.accentLime, palette.accentLimeText, palette.ink])
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme ?? 'light'}>
       {children}

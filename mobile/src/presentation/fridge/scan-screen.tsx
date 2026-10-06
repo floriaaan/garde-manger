@@ -131,9 +131,11 @@ function ScanChoice({
       accessibilityLabel={`${title} — ${subtitle}`}
       style={[pointerCursor, stretch]}
     >
-      <Animated.View style={[{ transform: [{ scale: hover.scale }] }, stretch]}>
+      {/* Keep an automatic vertical basis: flex:1 here collapses the row's
+          intrinsic height on web, clipping the card to its padding. */}
+      <Animated.View style={{ transform: [{ scale: hover.scale }], flexGrow: featured ? undefined : 1 }}>
         <YStack
-          flex={featured ? undefined : 1}
+          flexGrow={featured ? undefined : 1}
           gap={featured ? '$5' : '$3'}
           padding={featured ? '$5' : '$4'}
           backgroundColor={tint}

@@ -19,7 +19,7 @@ import { Platform } from 'react-native'
  * Injected once, at the root, from the committed palette rather than a
  * hardcoded blue.
  */
-export function installWebSurfaces(accent: string, ink: string): void {
+export function installWebSurfaces(accent: string, ink: string, focusColor: string): void {
   if (Platform.OS !== 'web') return
   const doc = typeof document === 'undefined' ? null : document
   if (!doc) return
@@ -35,7 +35,7 @@ export function installWebSurfaces(accent: string, ink: string): void {
        border-radius, so the ring hugs a 999px pill and a 24px card alike
        instead of imposing a shape this system never chose. */
     *:focus-visible {
-      outline: 3px solid ${accent};
+      outline: 3px solid ${focusColor};
       outline-offset: 2px;
     }
     ::selection { background: ${accent}; color: ${ink}; }
