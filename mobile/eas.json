@@ -9,6 +9,8 @@
       "distribution": "internal"
     },
     "preview": {
+      "channel": "preview",
+      "environment": "preview",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -22,6 +24,8 @@
       }
     },
     "production": {
+      "channel": "production",
+      "environment": "production",
       "node": "24.18.0",
       "pnpm": "11.17.0",
       "autoIncrement": true,

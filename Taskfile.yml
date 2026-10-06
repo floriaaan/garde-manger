@@ -128,6 +128,37 @@ tasks:
     cmds:
       - pnpm run start
 
+  mobile:build-publish:
+    desc: Build a mobile binary and submit store builds using eas.json (production requires CONFIRM=production).
+    summary: |
+      Internal profiles produce an install link; store profiles auto-submit using the matching submit profile.
+      Defaults: PROFILE=preview PLATFORM=ios. SUBMIT=false allows a store build without submission.
+      task mobile:build-publish PROFILE=production PLATFORM=ios CONFIRM=production
+      No App Store review/release or Google Play rollout is performed by this task.
+    dir: mobile
+    env:
+      PROFILE: '{{.PROFILE | default "preview"}}'
+      PLATFORM: '{{.PLATFORM | default "ios"}}'
+      SUBMIT: '{{.SUBMIT | default "auto"}}'
+      CONFIRM: '{{.CONFIRM | default ""}}'
+    cmds:
+      - node ../dev/mobile-eas.mjs build
+
+  mobile:update:
+    desc: Publish a compatible OTA (CHANNEL and MESSAGE required; production requires CONFIRM=production).
+    summary: |
+      Resolves the channel's profile/environment from eas.json and checks remote variables against build env.
+      Native changes require a new app version and binary. Validate on preview before production.
+      task mobile:update CHANNEL=preview MESSAGE="Fix session persistence"
+      task mobile:update CHANNEL=production MESSAGE="Fix session persistence" CONFIRM=production
+    dir: mobile
+    env:
+      CHANNEL: '{{.CHANNEL | default ""}}'
+      MESSAGE: '{{.MESSAGE | default ""}}'
+      CONFIRM: '{{.CONFIRM | default ""}}'
+    cmds:
+      - node ../dev/mobile-eas.mjs update
+
   mobile:lint:
     desc: Lint the mobile app.
     cmds:
