@@ -20,48 +20,7 @@ import type { AiAccess } from '../../domain/settings/ai-settings.js'
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
 
-/**
- * iOS delegates subscription and billing management to the web app (#59).
- */
-export function ExternalSubscriptionNotice({ palette, subscribed, cancelled, until, onOpen, pending, error }: {
-  palette: SoftPalette
-  subscribed: boolean
-  cancelled?: boolean
-  until?: string | null
-  onOpen: () => void
-  pending: boolean
-  error: string | null
-}) {
-  return (
-    <YStack gap="$1.5" padding="$3" borderRadius="$4" backgroundColor={palette.cream}>
-      <Text fontSize={16} fontWeight="800" color={palette.ink}>
-        {subscribed ? cancelled ? 'Abonnement résilié' : 'Abonnement actif' : 'Abonnement sur le web'}
-      </Text>
-      {subscribed && cancelled && until ? (
-        <Text fontSize={13} color={palette.inkSecondary}>
-          L’IA reste débloquée jusqu’au {new Date(until).toLocaleDateString('fr-FR')}.
-        </Text>
-      ) : null}
-      <Text fontSize={13} color={palette.inkSecondary}>
-        La souscription et la facturation se font dans ton navigateur. Connecte-toi avec le même compte,
-        puis reviens dans l’application : ton abonnement et ton quota seront actualisés.
-      </Text>
-      <Pressable
-        onPress={onOpen}
-        disabled={pending}
-        testID="subscription-web-link"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: pending, busy: pending }}
-        style={{ minHeight: 48, justifyContent: 'center', opacity: pending ? 0.7 : 1 }}
-      >
-        <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
-          {pending ? 'Ouverture…' : subscribed ? 'Gérer l’abonnement sur le web' : 'Souscrire sur le web'}
-        </Text>
-      </Pressable>
-      {error ? <Text fontSize={13} color={palette.expiredText} accessibilityLiveRegion="polite">{error}</Text> : null}
-    </YStack>
-  )
-}
+const WEB_SUBSCRIPTION_NOTICE = 'L’abonnement se gère sur la version web. Connecte-toi avec le même compte, puis reviens dans l’application : ton abonnement et ton quota seront actualisés.'
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   return (
@@ -132,6 +91,7 @@ export function SubscriptionActiveCard({
   until,
   cancelled,
   onManage,
+  webOnly = false,
   pending,
   error,
 }: {
@@ -140,6 +100,8 @@ export function SubscriptionActiveCard({
   /** Cancelled in Stripe: access holds until `until`, no renewal. */
   cancelled?: boolean
   onManage: () => void
+  /** iOS: the only billing action opens the web subscription page. */
+  webOnly?: boolean
   pending?: boolean
   error?: string | null
 }) {
@@ -190,16 +152,17 @@ export function SubscriptionActiveCard({
         <Pressable
           onPress={onManage}
           disabled={pending}
-          testID="subscription-manage"
+          testID={webOnly ? 'subscription-web-link' : 'subscription-manage'}
           accessibilityRole="button"
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack backgroundColor={palette.cream} borderRadius={999} alignItems="center" justifyContent="center" minHeight={52}>
             <Text fontSize={16} fontWeight="900" color={palette.ink}>
-              {pending ? 'Un instant…' : cancelled ? 'Reprendre l’abonnement' : 'Gérer l’abonnement'}
+              {pending ? 'Un instant…' : webOnly ? 'Gérer l’abonnement sur le web' : cancelled ? 'Reprendre l’abonnement' : 'Gérer l’abonnement'}
             </Text>
           </XStack>
         </Pressable>
+        {webOnly ? <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE}</Text> : null}
         {error ? (
           <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
             {error}
@@ -221,12 +184,15 @@ export function SubscriptionActiveCard({
 export function SubscriptionPaywall({
   palette,
   onSubscribe,
+  webOnly = false,
   pending,
   reason,
   error,
 }: {
   palette: SoftPalette
   onSubscribe: () => void
+  /** Reuse the offer card with only a web redirect, without direct billing copy. */
+  webOnly?: boolean
   pending?: boolean
   reason?: string
   error?: string | null
@@ -256,14 +222,16 @@ export function SubscriptionPaywall({
           </Text>
         </YStack>
 
-        <XStack alignItems="flex-end" gap="$2.5">
-          <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
-            0,99€
-          </Text>
-          <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>
-            par mois,{'\n'}pour tout le foyer
-          </Text>
-        </XStack>
+        {!webOnly ? (
+          <XStack alignItems="flex-end" gap="$2.5">
+            <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
+              0,99€
+            </Text>
+            <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>
+              par mois,{'\n'}pour tout le foyer
+            </Text>
+          </XStack>
+        ) : null}
 
         <YStack height={0} borderTopWidth={1.5} borderStyle="dashed" borderColor={palette.onDarkSecondary} opacity={0.4} />
 
@@ -281,9 +249,9 @@ export function SubscriptionPaywall({
         <Pressable
           onPress={onSubscribe}
           disabled={pending}
-          testID="subscription-paywall-cta"
+          testID={webOnly ? 'subscription-web-link' : 'subscription-paywall-cta'}
           accessibilityRole="button"
-          accessibilityLabel="S’abonner pour 0,99 euro par mois"
+          accessibilityLabel={webOnly ? 'Souscrire sur le web' : 'S’abonner pour 0,99 euro par mois'}
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack
@@ -296,7 +264,7 @@ export function SubscriptionPaywall({
           >
             <SparklesIcon size={18} color={palette.accentLimeText} />
             <Text fontSize={16} fontWeight="900" color={palette.accentLimeText}>
-              {pending ? 'Un instant…' : 'S’abonner'}
+              {pending ? 'Un instant…' : webOnly ? 'Souscrire sur le web' : 'S’abonner'}
             </Text>
           </XStack>
         </Pressable>
@@ -305,23 +273,29 @@ export function SubscriptionPaywall({
             {error}
           </Text>
         ) : null}
-        <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-          Paiement sécurisé par Stripe. Résiliable à tout moment depuis l’application.
-        </Text>
-        <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-          En t’abonnant, tu demandes l’accès immédiat au service et tu renonces à ton droit de rétractation une fois le
-          service pleinement exécuté.{' '}
-          <Text
-            fontSize={12}
-            fontWeight="700"
-            color={palette.onDark}
-            textDecorationLine="underline"
-            accessibilityRole="link"
-            onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
-          >
-            Voir les CGV
-          </Text>
-        </Text>
+        {webOnly ? (
+          <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE}</Text>
+        ) : (
+          <>
+            <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
+              Paiement sécurisé par Stripe. Résiliable à tout moment depuis l’application.
+            </Text>
+            <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
+              En t’abonnant, tu demandes l’accès immédiat au service et tu renonces à ton droit de rétractation une fois le
+              service pleinement exécuté.{' '}
+              <Text
+                fontSize={12}
+                fontWeight="700"
+                color={palette.onDark}
+                textDecorationLine="underline"
+                accessibilityRole="link"
+                onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
+              >
+                Voir les CGV
+              </Text>
+            </Text>
+          </>
+        )}
       </YStack>
     </DarkSurface>
   )

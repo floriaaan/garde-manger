@@ -126,7 +126,6 @@ import { useFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { useProductsQuery } from '../../application/fridge/products.query.js'
 import { useShoppingItemsQuery } from '../../application/shopping-list/shopping-items.query.js'
 import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
-import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useReceiptsQuery } from '../../application/receipt/receipts.query.js'
 import type { Product } from '../../domain/fridge/product.js'
@@ -178,7 +177,7 @@ export function HouseholdDashboard({
   const shoppingQuery = useShoppingItemsQuery()
   const householdQuery = useHouseholdQuery()
   // Subscribers get the gold mascot in place of the regular one; the query is shared with the settings screens.
-  const subscribed = useAiSettingsQuery().data?.access.plan === 'subscriber' && platformCapabilities.billing
+  const subscribed = useAiSettingsQuery().data?.access.plan === 'subscriber'
   const receiptsQuery = useReceiptsQuery()
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data])
@@ -329,7 +328,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                     text past its own scale instead. */}
                 {/* Subscribers get the gold twin of the mascot, same size. */}
                 <Image
-                  testID={subscribed ? 'dashboard-subscriber-badge' : undefined}
+                  testID={subscribed ? 'dashboard-subscriber-badge' : 'dashboard-mascot'}
                   source={subscribed ? mascotGold : mascotIllustration}
                   style={{ width: 48, height: 48 }}
                   resizeMode="contain"

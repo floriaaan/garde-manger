@@ -76,27 +76,40 @@ describe('without billing (iOS)', () => {
     mockCapabilities.billing = false
   })
 
-  test('a spent free quota shows no paywall and no price, only the web action', async () => {
+  test('a spent free quota reuses the offer card with only a web action', async () => {
     await renderWith(<SubscriptionScreen />, spentFree)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
-    expect(screen.queryByTestId('subscription-paywall')).toBeNull()
+    expect(screen.getByTestId('subscription-paywall')).toBeTruthy()
+    expect(screen.getByText('Scan de tickets et de frigo')).toBeTruthy()
+    expect(screen.getByText('Partagé avec tout le foyer')).toBeTruthy()
     expect(screen.queryByText(/€/)).toBeNull()
+    expect(screen.queryByText(/Stripe/)).toBeNull()
+    expect(screen.queryByText('Voir les CGV')).toBeNull()
+    expect(screen.queryByTestId('subscription-withdrawal-notice')).toBeNull()
+    expect(screen.queryByTestId('subscription-paywall-cta')).toBeNull()
+    expect(screen.queryByLabelText('S’abonner pour 0,99 euro par mois')).toBeNull()
     expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
-  test('a subscriber from another platform gets no Customer Portal button, only the web link', async () => {
+  test('a subscriber reuses the active card with only a web management action', async () => {
     await renderWith(<SubscriptionScreen />, subscriber)
 
     await waitFor(() => expect(screen.getByTestId('ai-quota-hint')).toBeTruthy())
-    expect(screen.queryByTestId('subscription-active')).toBeNull()
+    expect(screen.getByTestId('subscription-active')).toBeTruthy()
+    expect(screen.getByText('Abonnement actif')).toBeTruthy()
+    expect(screen.getByText('L’IA est débloquée pour tout le foyer.')).toBeTruthy()
+    expect(screen.queryByTestId('subscription-paywall')).toBeNull()
+    expect(screen.queryByText('Souscrire sur le web')).toBeNull()
+    expect(screen.getByTestId('subscription-web-link')).toHaveTextContent('Gérer l’abonnement sur le web')
     expect(screen.queryByTestId('subscription-manage')).toBeNull()
     expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
   })
 
   test('a cancelled subscription shows the remaining access before linking to the web', async () => {
     await renderWith(<SubscriptionScreen />, { ...subscriber, cancelsAtPeriodEnd: true })
-    await waitFor(() => expect(screen.getByText('Abonnement résilié')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTestId('subscription-active')).toBeTruthy())
+    expect(screen.getAllByText('Résilié')).toHaveLength(2)
     expect(screen.getByText(/L’IA reste débloquée jusqu’au/)).toBeTruthy()
     expect(screen.queryByText('Abonnement actif')).toBeNull()
     expect(screen.getByTestId('subscription-web-link')).toBeTruthy()
@@ -121,7 +134,7 @@ describe('without billing (iOS)', () => {
 
     await fireEvent.press(screen.getByTestId('subscription-web-link'))
 
-    expect(Linking.openURL).toHaveBeenCalledWith('https://app.gardemander.floriaaan.fr/subscription')
+    expect(Linking.openURL).toHaveBeenCalledWith('https://app.gardemanger.floriaaan.fr/subscription')
     expect(checkout).not.toHaveBeenCalled()
     expect(portal).not.toHaveBeenCalled()
     expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled()
@@ -175,6 +188,12 @@ describe('with billing (Android, web)', () => {
     await renderWith(<SubscriptionScreen />, spentFree)
 
     await waitFor(() => expect(screen.getByTestId('subscription-paywall')).toBeTruthy())
+    expect(screen.getByText('0,99€')).toBeTruthy()
+    expect(screen.getByText(/Paiement sécurisé par Stripe/)).toBeTruthy()
+    expect(screen.getByText('Voir les CGV')).toBeTruthy()
+    expect(screen.getByTestId('subscription-withdrawal-notice')).toBeTruthy()
+    expect(screen.getByTestId('subscription-paywall-cta')).toBeTruthy()
+    expect(screen.queryByTestId('subscription-web-link')).toBeNull()
   })
 
   test.each([

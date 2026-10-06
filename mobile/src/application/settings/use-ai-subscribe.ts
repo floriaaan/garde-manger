@@ -10,7 +10,7 @@ import { platformCapabilities } from '../shared/platform-capabilities.js'
 import type { Result } from '../../domain/shared/result.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 
-const WEB_SUBSCRIPTION_URL = 'https://app.gardemander.floriaaan.fr/subscription'
+const WEB_SUBSCRIPTION_URL = 'https://app.gardemanger.floriaaan.fr/subscription'
 
 /**
  * The subscribe/manage flow every paywall shares (ADR 0015): the backend hands
