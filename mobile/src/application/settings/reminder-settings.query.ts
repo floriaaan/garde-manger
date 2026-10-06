@@ -1,4 +1,4 @@
-import { defineQuery } from '../shared/define-query.js'
+import { defineHouseholdQuery } from '../shared/use-household-domain-query.js'
 
-export const useReminderSettingsQuery = defineQuery(['reminder-settings'],
+export const useReminderSettingsQuery = defineHouseholdQuery(['reminder-settings'],
   (connector) => connector.getReminderSettings())
