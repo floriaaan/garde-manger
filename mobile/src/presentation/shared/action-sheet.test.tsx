@@ -29,6 +29,20 @@ test('renders one pressable row per option and calls its onPress when tapped', a
   expect(onPress).toHaveBeenCalledTimes(1)
 })
 
+test('a pending option exposes its busy state and prevents another press', async () => {
+  const onPress = jest.fn()
+  await render(
+    <ThemeProvider>
+      <ActionSheet visible onClose={jest.fn()} options={[option({ onPress, pending: true })]} />
+    </ThemeProvider>,
+  )
+  expect(screen.getByTestId('opt-a')).toBeDisabled()
+  expect(screen.getByTestId('opt-a').props.accessibilityState.busy).toBe(true)
+  expect(screen.getByTestId('opt-a-spinner')).toBeTruthy()
+  await fireEvent.press(screen.getByTestId('opt-a'))
+  expect(onPress).not.toHaveBeenCalled()
+})
+
 test('pressing the backdrop calls onClose', async () => {
   const onClose = jest.fn()
   await render(

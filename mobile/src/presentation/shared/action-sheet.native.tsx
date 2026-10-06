@@ -9,12 +9,13 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 
 export type { ActionSheetOption } from './action-sheet-content.js'
 
-export function ActionSheet({ visible, onClose, options, title, description, children }: {
+export function ActionSheet({ visible, onClose, options, title, description, closeLabel, children }: {
   visible: boolean
   onClose: () => void
   options: ActionSheetOption[]
   title?: string
   description?: string
+  closeLabel?: string
   children?: React.ReactNode
 }) {
   const { t } = useTranslation()
@@ -40,9 +41,9 @@ export function ActionSheet({ visible, onClose, options, title, description, chi
             option.onPress()
           },
         }} />)}
-        <Pressable testID="action-sheet-cancel" accessibilityRole="button" accessibilityLabel={t('shared.cancel')} onPress={close}>
+        <Pressable testID="action-sheet-cancel" accessibilityRole="button" accessibilityLabel={closeLabel ?? t('shared.cancel')} onPress={close}>
           <YStack minHeight={44} alignItems="center" justifyContent="center">
-            <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{t('shared.cancel')}</Text>
+            <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{closeLabel ?? t('shared.cancel')}</Text>
           </YStack>
         </Pressable>
       </YStack>

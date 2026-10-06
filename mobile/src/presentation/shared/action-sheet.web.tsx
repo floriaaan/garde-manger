@@ -17,6 +17,7 @@ export function ActionSheet({
   options,
   title,
   description,
+  closeLabel,
   children,
 }: {
   visible: boolean
@@ -25,6 +26,7 @@ export function ActionSheet({
   /** Names what the sheet is deciding — required reading before a destructive row. */
   title?: string
   description?: string
+  closeLabel?: string
   /** Rendered between the title and the options — for a choice the options alone can't carry. */
   children?: React.ReactNode
 }) {
@@ -80,11 +82,13 @@ export function ActionSheet({
                 testID="action-sheet-cancel"
                 onPress={onClose}
                 accessibilityRole="button"
-                accessibilityLabel={t('shared.cancel')}
+                accessibilityLabel={closeLabel ?? t('shared.cancel')}
                 style={pointerCursor}
               >
                 <XStack alignItems="center" justifyContent="center" minHeight={44} borderRadius={16}>
-                  <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{t('shared.cancel')}</Text>
+                  <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>
+                    {closeLabel ?? t('shared.cancel')}
+                  </Text>
                 </XStack>
               </Pressable>
             </YStack>
