@@ -9,7 +9,7 @@
       "distribution": "internal"
     },
     "preview": {
-      "channel": "preview",
+      "channel": "staging",
       "environment": "preview",
       "distribution": "internal",
       "android": {
@@ -24,7 +24,7 @@
       }
     },
     "production": {
-      "channel": "production",
+      "channel": "main",
       "environment": "production",
       "node": "24.18.0",
       "pnpm": "11.17.0",
@@ -40,6 +40,10 @@
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed"
+      },
       "ios": {
         "ascAppId": "6816469647"
       }

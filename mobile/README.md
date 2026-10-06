@@ -56,15 +56,20 @@ Or from the repo root: `task mobile:lint`, `task mobile:typecheck`, `task mobile
 
 Expo SDK 57 / React Native 0.86.3 uses `expo-updates` ~57.0.24. The existing EAS project is
 `floriaaan/garde-manger` (`67dc1735-bcfd-4ccc-a8af-a84df72877b2`). `app.json` points to its update URL.
-The `preview` build profile uses channel/environment `preview` and internal distribution (Android APK);
-`production` uses channel/environment `production` and store distribution. `development` remains an
+The `preview` build profile uses channel `staging`, environment `preview` and internal distribution (Android APK);
+`production` uses channel `main`, environment `production` and store distribution. `development` remains an
 internal development client without an automatic OTA channel. No CI publication behavior was changed.
 
 Audit on 2026-10-06: no remote channels, branches or EAS variables existed in preview/production.
 The last production iOS/Android builds (2026-10-03, version 1.0.0, build numbers 3/4) had no OTA channel
 or runtime. **Build and distribute a new binary once to activate EAS Update.** An OTA cannot install
 the native update module into existing binaries. The app version stays 1.0.0 for this activation.
-Remote channels/branches are created by the future EAS build/update workflow; none were created by this change.
+Follow-up audit on 2026-10-06: channel `staging` points to EAS branch `staging` and channel `main`
+now points to EAS branch `main` (linked by the project owner). Neither branch had published updates.
+Profiles/environments keep their existing names (`preview`/`production`); only channels use `staging`/`main`.
+EAS branches are not Git branches. Changing the local channel affects future builds; existing binaries
+retain the channel embedded at build time. The remote EAS `production` environment is still empty:
+prepare its public variables below before publishing an OTA.
 
 Prerequisites: Node 24+, installed workspace dependencies (`pnpm install --frozen-lockfile` from the root),
 EAS CLI satisfying `eas.json` (audited with 24.7.0), and `eas login` or `EXPO_TOKEN`.
@@ -125,19 +130,21 @@ native changes automatically. Do not publish code from a newer native runtime un
 From the repository root, after reviewing native compatibility and preparing the remote environment:
 
 ```bash
-task mobile:update CHANNEL=preview MESSAGE="Fix session persistence"
+task mobile:update CHANNEL=staging MESSAGE="Fix session persistence"
 # Test on an installed preview binary with the matching runtime before production:
-task mobile:update CHANNEL=production MESSAGE="Fix session persistence" CONFIRM=production
+task mobile:update MESSAGE="Fix session persistence"
 ```
 
-There is no default update channel or message. Production requires explicit `CONFIRM=production`.
+The default channel is the production profile's channel (`main`); OTA targets iOS and Android without
+platform/profile parameters. `MESSAGE` is required. Production asks you to type `production` interactively;
+use `CONFIRM=production` for explicitly confirmed unattended execution. `CHANNEL=staging` remains available.
 Messages are passed as process arguments, so quotes and shell characters are preserved safely.
 The helper resolves channel/environment from `eas.json`; it never copies API settings into Taskfile.
 The equivalent direct EAS commands, from `mobile/`, are:
 
 ```bash
-eas update --channel preview --environment preview --message "Fix session persistence"
-eas update --channel production --environment production --message "Fix session persistence"
+eas update --channel staging --environment preview --message "Fix session persistence"
+eas update --channel main --environment production --message "Fix session persistence"
 ```
 
 Direct commands bypass the Task guards. By default updates download on launch and apply on a subsequent
@@ -147,30 +154,43 @@ proof that store OTA delivery works. No custom reload UI or forced restart is ad
 ### Build and distribute a new binary
 
 ```bash
-# Internal install link, no store submission (default PLATFORM=ios):
-task mobile:build-publish PROFILE=preview PLATFORM=ios
-task mobile:build-publish PROFILE=preview PLATFORM=android
-# Existing production submission configuration: iOS -> App Store Connect / TestFlight
-task mobile:build-publish PROFILE=production PLATFORM=ios CONFIRM=production
-# Android has no explicit submit configuration: build AAB, then distribute via Play Console manually
-task mobile:build-publish PROFILE=production PLATFORM=android SUBMIT=false CONFIRM=production
+# Default: production, both platforms. Confirm interactively.
+task mobile:build-publish
+# Explicit confirmation for unattended use:
+task mobile:build-publish CONFIRM=production
+# Optional overrides:
+task mobile:build-publish PROFILE=preview
+task mobile:build-publish PLATFORM=ios
 ```
 
-The task uses `eas build --profile <profile> --platform <platform>` and, for store profiles with a matching
-submit configuration, adds `--auto-submit-with-profile <profile>`. `SUBMIT=auto` is the default;
-`SUBMIT=false` explicitly opts out. `PLATFORM=all` works for internal builds; auto-submission rejects platforms
-without explicit submit settings. Configure Android submission/credentials in `eas.json` if automation is needed.
+Defaults are `PROFILE=production`, `PLATFORM=all`, `SUBMIT=auto`. The task runs a single command,
+`eas build --profile production --platform all --auto-submit-with-profile production`. It adds
+`--auto-submit-with-profile <profile>` only for store platforms configured in `eas.json`:
+iOS submits to App Store Connect / TestFlight; Android submits its AAB automatically to the Google Play
+closed testing track `alpha`, configured in `submit.production.android`, with `releaseStatus: completed`.
+The project owner confirmed the default closed testing track; `beta` is open testing, not closed testing.
+The latest previous Android submission used `internal`; future task submissions use `alpha`.
+No manual AAB upload is needed. Store processing/review still applies before availability to testers.
+The planned command appears before the production confirmation. EAS manages the two platform builds and submissions.
+
+`SUBMIT=auto` (the default) submits store builds and requires submit settings for every selected platform;
+it fails before any build if a setting is missing. `SUBMIT=false` explicitly builds without submission.
+The Google Service Account key must be stored in EAS with permission to submit this application; a successful
+Android EAS submission was found during the audit. No credential file is added to the repository.
+Internal profiles produce install links without store submission.
+Production requires an interactive confirmation (type `production`) or `CONFIRM=production`;
+non-interactive execution without that explicit value stops before any EAS command.
 `PROFILE=development` is also accepted and preserves the existing development client setup.
 Submitting to App Store Connect does not itself request App Store review or release the app to users.
-The existing tag-triggered iOS CI still builds/submits production, now embedding the production OTA channel.
+The existing tag-triggered iOS CI still builds/submits production, now embedding the `main` OTA channel.
 
 ### Inspect delivery (read-only commands from mobile/)
 
 ```bash
 eas channel:list --json --non-interactive
 eas branch:list --json --non-interactive
-eas channel:view preview
-eas channel:view production
+eas channel:view staging
+eas channel:view main
 # See channel:view for the actual linked branch; do not assume it always has the channel's name:
 eas update:list --branch <linked-branch> --json --non-interactive
 eas update:list --all --json --non-interactive
