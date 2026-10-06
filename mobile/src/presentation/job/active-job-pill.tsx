@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Platform, Pressable } from 'react-native'
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect'
 import type { ReactNode } from 'react'
@@ -46,6 +47,7 @@ function Card({ palette, children }: { palette: SoftPalette; children: ReactNode
 
 /** Floating status of the oldest running job — "3 tasks" would hide what is actually happening. */
 export function ActiveJobPill() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const pathname = usePathname()
   // Wide layouts trade the tab bar for a sidebar: sit above the bottom edge, right of the sidebar.
@@ -77,7 +79,7 @@ export function ActiveJobPill() {
         testID="active-job-pill"
         onPress={() => router.push('/tasks')}
         accessibilityRole="button"
-        accessibilityLabel={`${JOB_TITLES[job.kind]} en cours${determinate ? `, ${done} sur ${total}` : ''}${more ? `, et ${active.length - 1} autre${active.length > 2 ? 's' : ''}` : ''}. Ouvrir les tâches`}
+        accessibilityLabel={t('job.in_progress_open_tasks', { value1: JOB_TITLES[job.kind], value2: determinate ? t('job.of', { value1: done, value2: total }) : '', value3: more ? t('job.and_more', { value1: active.length - 1, value2: active.length > 2 ? 's' : '' }) : '' })}
         style={[pointerCursor, { width: '100%', maxWidth: 360 }]}
       >
         <Card palette={palette}>

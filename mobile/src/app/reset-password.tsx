@@ -1,3 +1,4 @@
+import { useTranslation } from '../i18n/index.js'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { Text, YStack } from '../presentation/shared/tamagui-typed.js'
@@ -10,6 +11,7 @@ import { useSoftPalette } from '../presentation/dashboard/soft-palette.js'
 import { useResetPasswordMutation } from '../application/identity/password-reset.mutation.js'
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation()
   const { token, error } = useLocalSearchParams<{ token?: string; error?: string }>()
   const palette = useSoftPalette()
   const reset = useResetPasswordMutation()
@@ -18,7 +20,7 @@ export default function ResetPasswordScreen() {
   const [done, setDone] = useState(false)
   const invalidLink = !token || Boolean(error)
   const validPassword = password.length >= 8 && password.length <= 128 && password === confirmation
-  const resetError = authErrorMessage(reset.error, reset.data, 'Impossible de réinitialiser le mot de passe.')
+  const resetError = authErrorMessage(reset.error, reset.data, t('navigation.couldn_t_reset_password'))
 
   async function submit() {
     if (!token || !validPassword) return
@@ -27,25 +29,23 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <AuthShell title="Nouveau mot de passe" subtitle="Retrouve l’accès à ton garde-manger.">
+    <AuthShell title={t('identity.new_password')} subtitle={t('navigation.regain_access_to_your_pantry')}>
       <YStack gap="$3">
         {done ? (
-          <Text fontSize={14} color={palette.inkSecondary} accessibilityLiveRegion="polite">
-            Ton mot de passe a été changé. Tu peux te connecter.
-          </Text>
+          <Text fontSize={14} color={palette.inkSecondary} accessibilityLiveRegion="polite">{t('navigation.your_password_has_been_changed_you_can_sign_in')}</Text>
         ) : invalidLink ? (
-          <AuthError message="Ce lien est invalide ou a expiré. Demande un nouveau lien depuis la connexion." />
+          <AuthError message={t('navigation.this_link_is_invalid_or_expired_request_a_new_link')} />
         ) : (
           <>
-            <AuthPasswordField label="Nouveau mot de passe" labelColor={palette.inkSecondary} placeholder="••••••••" value={password} onChangeText={setPassword} autoComplete="new-password" testID="reset-password" />
-            <AuthPasswordField label="Confirmer le mot de passe" labelColor={palette.inkSecondary} placeholder="••••••••" value={confirmation} onChangeText={setConfirmation} autoComplete="new-password" testID="reset-confirmation" />
-            <Text fontSize={12} color={palette.inkSecondary}>Entre 8 et 128 caractères.</Text>
-            {confirmation && password !== confirmation ? <AuthError message="Les mots de passe ne correspondent pas." /> : null}
+            <AuthPasswordField label={t('identity.new_password')} labelColor={palette.inkSecondary} placeholder="••••••••" value={password} onChangeText={setPassword} autoComplete="new-password" testID="reset-password" />
+            <AuthPasswordField label={t('navigation.confirm_password')} labelColor={palette.inkSecondary} placeholder="••••••••" value={confirmation} onChangeText={setConfirmation} autoComplete="new-password" testID="reset-confirmation" />
+            <Text fontSize={12} color={palette.inkSecondary}>{t('identity.between_8_and_128_characters')}</Text>
+            {confirmation && password !== confirmation ? <AuthError message={t('navigation.passwords_don_t_match')} /> : null}
             {resetError ? <AuthError message={resetError} /> : null}
-            <AuthButton label="Changer mon mot de passe" pendingLabel="Enregistrement..." pending={reset.isPending} disabled={!validPassword} onPress={submit} testID="reset-submit" />
+            <AuthButton label={t('navigation.change_my_password')} pendingLabel={t('fridge.saving')} pending={reset.isPending} disabled={!validPassword} onPress={submit} testID="reset-submit" />
           </>
         )}
-        <AuthButton label="Retour à la connexion" variant="secondary" onPress={() => router.replace('/(auth)/sign-in')} testID="reset-back" />
+        <AuthButton label={t('identity.back_to_sign_in')} variant="secondary" onPress={() => router.replace('/(auth)/sign-in')} testID="reset-back" />
       </YStack>
     </AuthShell>
   )

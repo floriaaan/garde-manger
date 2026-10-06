@@ -103,8 +103,8 @@ const receiptExtraction = createResolver<ReceiptExtractionPort>(
   },
   (provider) => new ReceiptExtractionUnavailableError(provider),
   (adapter, onSuccess) => ({
-    async extract(image) {
-      const draft = await adapter.extract(image)
+    async extract(image, language) {
+      const draft = await adapter.extract(image, language)
       await onSuccess()
       return draft
     },
@@ -152,8 +152,8 @@ const fridgeScanExtraction = createResolver<FridgeScanExtractionPort>(
   // Fridge scan is a vision call like the receipt one, and shares its errors.
   (provider) => new ReceiptExtractionUnavailableError(provider),
   (adapter, onSuccess) => ({
-    async extract(image) {
-      const draft = await adapter.extract(image)
+    async extract(image, language) {
+      const draft = await adapter.extract(image, language)
       await onSuccess()
       return draft
     },

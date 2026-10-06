@@ -1,3 +1,4 @@
+import { useTranslation, getLocale } from '../../i18n/index.js'
 import { createElement, useState } from 'react'
 import { Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -17,7 +18,7 @@ export function toIsoDay(date: Date): string {
 
 /** "12 octobre 2026" — the field shows a date, the value stays `YYYY-MM-DD`. */
 function readableDay(isoDay: string): string {
-  return new Date(`${isoDay}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(`${isoDay}T00:00:00`).toLocaleDateString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 /**
@@ -52,6 +53,7 @@ export function DateField({
   hint?: string
   error?: string | null
 }) {
+  const { t } = useTranslation()
   // Android's picker is a one-shot dialog (fires once, then dismisses itself);
   // iOS's is an inline calendar that stays mounted while `open` is true.
   const [open, setOpen] = useState(false)
@@ -92,7 +94,7 @@ export function DateField({
             onPress={() => setOpen((shown) => !shown)}
             accessibilityRole="button"
             accessibilityLabel={label}
-            accessibilityValue={{ text: day ? readableDay(day) : 'Aucune date' }}
+            accessibilityValue={{ text: day ? readableDay(day) : t('fridge.no_date') }}
             android_ripple={ripple(palette.chipTeal)}
             style={[{ flex: 1 }, pointerCursor, rippleClip(12)]}
           >
@@ -107,7 +109,7 @@ export function DateField({
               borderColor={borderColor}
             >
               <Text fontSize={15} color={day ? palette.ink : palette.inkSecondary}>
-                {day ? readableDay(day) : 'Aucune date'}
+                {day ? readableDay(day) : t('fridge.no_date')}
               </Text>
             </XStack>
           </Pressable>
@@ -116,7 +118,7 @@ export function DateField({
               testID={`${testID}-clear`}
               onPress={() => onChange('')}
               accessibilityRole="button"
-              accessibilityLabel="Retirer la date"
+              accessibilityLabel={t('fridge.remove_date')}
               hitSlop={8}
               android_ripple={ripple(palette.chipTeal, { borderless: true })}
               style={pointerCursor}
@@ -128,7 +130,7 @@ export function DateField({
       )}
 
       {open ? (
-        <DateTimePicker
+        <DateTimePicker locale={getLocale()}
           testID={`${testID}-picker`}
           value={day ? new Date(`${day}T00:00:00`) : new Date()}
           mode="date"

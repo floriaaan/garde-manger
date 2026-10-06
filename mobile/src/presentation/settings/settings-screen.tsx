@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { Linking } from 'react-native'
 import { router } from 'expo-router'
@@ -85,6 +86,7 @@ function SectionLabel({ palette, marginTop, children }: { palette: SoftPalette; 
 }
 
 export function SettingsScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const session = useSessionQuery()
   const household = useHouseholdQuery()
@@ -109,43 +111,43 @@ export function SettingsScreen() {
       await disablePush(connector, { keepPreference: true })
       await signOut.mutateAsync(undefined)
     } catch {
-      showToast('Impossible de terminer la déconnexion. Réessaie.', 'error')
+      showToast(t('settings.couldn_t_finish_signing_out_try_again'), 'error')
       return
     }
     await session.refetch()
     router.replace('/(auth)/sign-in')
   }
 
-  const signOutError = signOut.error ? 'Une erreur est survenue lors de la déconnexion.' : null
+  const signOutError = signOut.error ? t('settings.an_error_occurred_while_signing_out') : null
   const members = household.data?.members ?? []
-  const memberSummary = members.length > 0 ? `${members.length} membre${members.length > 1 ? 's' : ''}` : undefined
+  const memberSummary = members.length > 0 ? t('identity.member_2', { count: members.length }) : undefined
   const roleLabel = household.data ? ROLE_LABELS[household.data.role] : null
   const householdSpokenLabel = [
-    'Foyer',
-    household.isPending ? 'chargement' : household.isError ? 'indisponible' : (household.data?.name ?? 'aucun foyer'),
+    t('identity.household'),
+    household.isPending ? t('settings.loading') : household.isError ? t('settings.unavailable') : (household.data?.name ?? t('settings.no_household')),
     memberSummary,
-    roleLabel ? `tu es ${roleLabel.toLowerCase()}` : null,
-    'gérer le foyer',
+    roleLabel ? t('settings.you_are_role', { role: roleLabel.toLowerCase() }) : null,
+    t('settings.manage_household'),
   ]
     .filter(Boolean)
     .join('. ')
 
   // Never state a fact about the plan before the plan has loaded.
   const plan = settings.data?.access.plan
-  const subscriptionValue = plan === 'subscriber' ? 'Actif' : plan === 'free' ? 'Offre gratuite' : settings.data ? 'Non applicable' : '—'
+  const subscriptionValue = plan === 'subscriber' ? t('settings.active') : plan === 'free' ? t('settings.free_plan') : settings.data ? t('settings.not_applicable') : '—'
   const subscriptionSecondary = !settings.data
     ? settings.isError
-      ? 'Tire pour réessayer.'
-      : 'Chargement…'
+      ? t('settings.pull_to_try_again')
+      : t('dashboard.loading_2')
     : plan === 'self-hosted'
-      ? 'Serveur auto-hébergé : IA sans limite.'
+      ? t('settings.self_hosted_server_unlimited_ai')
       : plan === 'subscriber'
-        ? 'IA pour tout le foyer.'
+        ? t('settings.ai_for_the_entire_household')
         : settings.data.access.limit !== null
           ? settings.data.access.used / settings.data.access.limit >= NUDGE_RATIO
-            ? `${settings.data.access.used}/${settings.data.access.limit} · Plus d’appels avec l’abonnement`
-            : `${settings.data.access.used}/${settings.data.access.limit} appels IA ce mois-ci.`
-          : 'Un quota d’IA gratuit chaque mois.'
+            ? t('settings.more_calls_with_a_subscription_2', { value1: settings.data.access.used, value2: settings.data.access.limit })
+            : t('settings.ai_calls_this_month_2', { value1: settings.data.access.used, value2: settings.data.access.limit })
+          : t('settings.a_free_ai_quota_every_month')
 
   return (
     <AppShell nav={{ kind: 'stack' }} hint={hint} refresh={refresh}
@@ -153,20 +155,20 @@ export function SettingsScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <SettingsIcon size={19} color={color} />}
-          title="Réglages"
+          title={t('dashboard.settings')}
           onBack={() => router.back()}
         />
       }
     >
       <YStack gap="$3" marginTop="$5">
-        <SectionLabel palette={palette}>Toi</SectionLabel>
+        <SectionLabel palette={palette}>{t('settings.you')}</SectionLabel>
         <IdentityCard
           testID="settings-account"
           bg={palette.cream}
           labelColor={palette.creamText}
           chipColor={palette.chipOrange}
           avatar={<Avatar name={session.data?.user.name ?? ''} image={session.data?.user.image} palette={palette} backgroundColor={palette.chipOrange} color={palette.accentWarmText} />}
-          label="Compte"
+          label={t('settings.account')}
           value={session.data?.user.name || '—'}
           secondary={session.data?.user.email}
           corner="a"
@@ -175,24 +177,24 @@ export function SettingsScreen() {
         />
         <IdentityCard testID="settings-notifications-page" bg={palette.butter}
           labelColor={palette.butterText} chipColor={palette.chipButter}
-          icon={<BellIcon size={18} color={palette.onDark} />} label="Notifications"
-          value="Gérer les notifications" secondary="Péremption, check-up et activation générale."
+          icon={<BellIcon size={18} color={palette.onDark} />} label={t('settings.notifications')}
+          value={t('settings.manage_notifications')} secondary={t('settings.expiry_check_up_and_general_notifications')}
           corner="a" palette={palette} onPress={() => router.push('/notifications')} />
-        <SectionLabel palette={palette} marginTop="$2">Ton foyer</SectionLabel>
+        <SectionLabel palette={palette} marginTop="$2">{t('dashboard.your_household')}</SectionLabel>
         <IdentityCard
           testID="settings-household"
           bg={palette.mintPale}
           labelColor={palette.mintPaleText}
           chipColor={palette.chipTeal}
           icon={<HomeIcon size={18} color={palette.onDark} />}
-          label="Foyer"
+          label={t('identity.household')}
           // Three distinct states, three distinct sentences. A failed read used
           // to render "Aucun foyer" — a fact about the account, printed for a
           // fact about the network, which invents a state the user does not
           // have and cannot act on.
-          value={household.isPending ? '—' : household.isError ? 'Foyer indisponible' : (household.data?.name ?? 'Aucun foyer')}
+          value={household.isPending ? '—' : household.isError ? t('settings.household_unavailable') : (household.data?.name ?? t('settings.no_household_2'))}
           secondary={
-            household.isError ? 'Tire pour réessayer.' : (memberSummary ?? 'Personne d’autre pour l’instant')
+            household.isError ? t('settings.pull_to_try_again') : (memberSummary ?? t('settings.no_one_else_yet'))
           }
           trailing={roleLabel ? <RoleBadge label={roleLabel} palette={palette} /> : null}
           corner="b"
@@ -211,10 +213,10 @@ export function SettingsScreen() {
             labelColor={palette.butterText}
             chipColor={palette.chipButter}
             icon={<WalletIcon size={18} color={palette.onDark} />}
-            label="Abonnement"
+            label={t('settings.subscription')}
             value={subscriptionValue}
             secondary={subscriptionSecondary}
-            accessibilityLabel={`Abonnement, ${subscriptionValue}. ${subscriptionSecondary}`}
+            accessibilityLabel={t('settings.subscription_3', { value1: subscriptionValue, value2: subscriptionSecondary })}
             corner="a"
             palette={palette}
             onPress={() => router.push('/subscription')}
@@ -223,25 +225,25 @@ export function SettingsScreen() {
       </YStack>
 
       <YStack marginTop="$3" gap="$3">
-        <SectionLabel palette={palette} marginTop="$2">Le service</SectionLabel>
+        <SectionLabel palette={palette} marginTop="$2">{t('settings.the_service')}</SectionLabel>
         <IdentityCard
           testID="settings-ai-provider"
           bg={palette.lavender}
           labelColor={palette.lavenderText}
           chipColor={palette.chipViolet}
           icon={<SparklesIcon size={18} color={palette.onDark} />}
-          label="Intelligence artificielle"
+          label={t('settings.artificial_intelligence')}
           // What the section governs, before what it offers. Named
           // "Fournisseur IA", it asked the foyer to pick between three
           // vendors without ever saying what the pick changes.
           value={
             settings.data && !settings.data.canChooseProvider
-              ? 'Gérée par Garde-manger'
+              ? t('settings.managed_by_garde_manger')
               : settings.data?.activeProvider
                 ? PROVIDER_LABELS[settings.data.activeProvider]
                 : '—'
           }
-          secondary="Lit tes tickets de caisse et invente tes recettes."
+          secondary={t('settings.reads_your_receipts_and_creates_your_recipes')}
           corner="b"
           palette={palette}
           onPress={() => router.push('/ai-provider')}
@@ -252,10 +254,10 @@ export function SettingsScreen() {
           labelColor={palette.creamText}
           chipColor={palette.chipOrange}
           icon={<ServerIcon size={17} color={palette.onDark} />}
-          label="Serveur"
+          label={t('settings.server')}
           value={
             instance.data
-              ? instance.data.name ?? (instance.data.mode === 'hosted' ? 'Garde-manger officiel' : 'Garde-manger auto-hébergé')
+              ? instance.data.name ?? (instance.data.mode === 'hosted' ? t('settings.official_garde_manger') : t('settings.self_hosted_garde_manger'))
               : '—'
           }
           valueBadge={
@@ -264,7 +266,7 @@ export function SettingsScreen() {
           // No raw URL or version here — that's technical detail, not a
           // setting; "Changer de serveur" is what this card leads to.
           secondary={
-            instance.data ? 'Connecté à ce serveur.' : instance.isError ? 'Impossible de contacter ce serveur.' : 'Chargement…'
+            instance.data ? t('settings.connected_to_this_server') : instance.isError ? t('settings.couldn_t_reach_this_server') : t('dashboard.loading_2')
           }
           corner="a"
           palette={palette}
@@ -275,12 +277,10 @@ export function SettingsScreen() {
       {/* Dev-only door to `/debug` (also reachable by triple-tapping the logo on the auth screens). Never bundled into a release build. */}
       {__DEV__ ? (
         <YStack marginTop="$8" gap="$2">
-          <Text fontSize={13} fontWeight="800" color={palette.ink}>
-            Debug (dev only)
-          </Text>
+          <Text fontSize={13} fontWeight="800" color={palette.ink}>{t('settings.debug_dev_only')}</Text>
           <PillButton
             testID="debug-menu-open"
-            label="Ouvrir le menu debug"
+            label={t('settings.open_debug_menu')}
             tone="quiet"
             size="dense"
             palette={palette}
@@ -297,8 +297,8 @@ export function SettingsScreen() {
       <YStack marginTop="$8" gap="$2">
         <AuthButton
           testID="sign-out"
-          label="Se déconnecter"
-          pendingLabel="Déconnexion..."
+          label={t('settings.sign_out')}
+          pendingLabel={t('settings.signing_out')}
           pending={signOut.isPending}
           variant="secondary"
           icon={<LogOutIcon size={16} color={palette.ink} />}
@@ -325,9 +325,7 @@ export function SettingsScreen() {
             textDecorationLine="underline"
             accessibilityRole="link"
             onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-          >
-            Confidentialité
-          </Text>
+          >{t('settings.privacy')}</Text>
           <Text
             testID="settings-terms"
             fontSize={12}
@@ -336,23 +334,19 @@ export function SettingsScreen() {
             textDecorationLine="underline"
             accessibilityRole="link"
             onPress={() => Linking.openURL(TERMS_OF_USE_URL)}
-          >
-            Conditions d’utilisation
-          </Text>
+          >{t('settings.terms_of_use')}</Text>
         </XStack>
-        <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
-          Garde-manger · v{Constants.expoConfig?.version ?? '—'}
-        </Text>
+        <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>{t('settings.garde_manger_v', { value1: Constants.expoConfig?.version ?? '—' })}</Text>
       </YStack>
 
       <ActionSheet
         visible={confirmingSignOut}
-        title="Se déconnecter ?"
-        description="Il faudra se reconnecter pour retrouver le garde-manger du foyer sur cet appareil."
+        title={t('settings.sign_out_2')}
+        description={t('settings.you_ll_need_to_sign_in_again_to_access_the')}
         options={[
           {
             testID: 'sign-out-confirm',
-            label: 'Se déconnecter',
+            label: t('settings.sign_out'),
             icon: (color) => <LogOutIcon size={18} color={color} />,
             tint: palette.expiredBg,
             destructive: true,

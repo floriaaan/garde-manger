@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Garde-manger utilise la caméra pour scanner le code-barres d'un produit, photographier un ticket de caisse ou le contenu de ton frigo, et lire le QR code d'invitation d'un foyer.",
+    "NSPhotoLibraryUsageDescription": "Garde-manger ouvre tes photos quand tu choisis d'importer la photo d'un ticket de caisse ou de ton frigo, pour en extraire les produits.",
+    "NSLocalNetworkUsageDescription": "Garde-manger se connecte à ton serveur auto-hébergé sur le réseau local (par exemple http://192.168.1.20:3333) pour synchroniser ton frigo et ta liste de courses."
+  }
+}

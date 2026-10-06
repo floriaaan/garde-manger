@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Image, Keyboard, KeyboardAvoidingView, Platform, Text as NativeText, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native'
@@ -12,6 +13,7 @@ import { AuthEntryLayoutContext, AuthGardenContext, gardenColors, useAuthEntryLa
 
 /** The approved comp's edge-to-edge field, oversized lettering and the familiar fridge mascot. */
 export function AuthGardenHero({ compact = false, title, subtitle }: { compact?: boolean; title?: string; subtitle?: string }) {
+  const { t } = useTranslation()
   const colors = gardenColors(useSoftPalette())
   const { heroSpace } = useAuthEntryLayout()
   const [textHeight, setTextHeight] = useState(0)
@@ -55,12 +57,12 @@ export function AuthGardenHero({ compact = false, title, subtitle }: { compact?:
         <AuthWordmark tone="ink" garden color={colors.leafInk} fontFamily={wordmarkFont} />
         {!compact || title ? (
           <NativeText accessibilityRole="header" style={{ marginTop: compact ? 24 : 28, paddingTop: displayPadding, paddingBottom: displayPadding, includeFontPadding: true, color: colors.leafInk, fontFamily: titleFont, fontWeight: titleWeight, fontSize: displaySize, lineHeight: displaySize * 1.15, letterSpacing: -0.8 }}>
-            {title ?? (fontScale > 1.2 ? 'Votre foyer. Votre garde-manger.' : 'Votre foyer.\nVotre\ngarde-manger.')}
+            {title ?? (fontScale > 1.2 ? t('identity.your_household_your_pantry') : t('identity.your_household_your_pantry_2'))}
           </NativeText>
         ) : null}
         {!compact || subtitle ? (
           <NativeText style={{ marginTop: 18, fontFamily: Platform.OS === 'web' ? '"Plus Jakarta Sans", system-ui, sans-serif' : loaded ? 'GardenTagline' : undefined, fontWeight: '400', fontSize: 18, lineHeight: 24, color: colors.leafInk }}>
-            {subtitle ?? 'Les produits de la maison,\nréunis au même endroit.'}
+            {subtitle ?? t('identity.all_your_household_s_products_together_in_one_place')}
           </NativeText>
         ) : null}
       </View>

@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { RecipeDraft } from '../recipe-draft.js'
 
 export interface RecipeGenerationProduct {
@@ -9,6 +10,7 @@ export interface RecipeGenerationProduct {
 export interface RecipeGenerationContext {
   products: RecipeGenerationProduct[]
   prompt?: string
+  language?: AiLanguage
   prioritizeExpiringSoon: boolean
 }
 

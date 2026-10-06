@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type {
   ReceiptExtractionPort,
   ReceiptFile,
@@ -6,13 +7,16 @@ import type {
 import type { ReceiptDraft } from '#domain/receipt/receipt-draft'
 import { parseReceiptDraftJson } from '#domain/receipt/receipt-draft-parser'
 import { ReceiptExtractionUnavailableError } from '#domain/receipt/receipt-extraction.errors'
-import { RECEIPT_EXTRACTION_PROMPT } from '#domain/receipt/receipt-extraction-prompt'
+import { buildReceiptExtractionPrompt } from '#domain/receipt/receipt-extraction-prompt'
 import { logAiAdapterFailure } from './log-ai-adapter-failure.js'
 
 export class OpenAiReceiptExtractionAdapter implements ReceiptExtractionPort {
   constructor(private readonly apiKey: string) {}
 
-  async extract({ buffer, contentType }: ReceiptFile): Promise<ReceiptDraft> {
+  async extract(
+    { buffer, contentType }: ReceiptFile,
+    language: AiLanguage = 'fr',
+  ): Promise<ReceiptDraft> {
     if (!this.apiKey) throw new ReceiptExtractionUnavailableError('openai')
 
     const client = new OpenAI({ apiKey: this.apiKey })
@@ -32,7 +36,7 @@ export class OpenAiReceiptExtractionAdapter implements ReceiptExtractionPort {
             {
               role: 'user',
               content: [
-                { type: 'input_text', text: RECEIPT_EXTRACTION_PROMPT },
+                { type: 'input_text', text: buildReceiptExtractionPrompt(language) },
                 {
                   type: 'input_file',
                   filename: 'receipt.pdf',
@@ -50,7 +54,7 @@ export class OpenAiReceiptExtractionAdapter implements ReceiptExtractionPort {
             {
               role: 'user',
               content: [
-                { type: 'text', text: RECEIPT_EXTRACTION_PROMPT },
+                { type: 'text', text: buildReceiptExtractionPrompt(language) },
                 {
                   type: 'image_url',
                   image_url: { url: `data:${contentType};base64,${buffer.toString('base64')}` },

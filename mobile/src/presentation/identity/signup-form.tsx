@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, View, useWindowDimensions, type TextInput } from 'react-native'
 import zxcvbn from 'zxcvbn'
@@ -14,6 +15,7 @@ import { AuthField } from './auth-field.js'
 import { AuthPasswordField } from './auth-password-field.js'
 
 export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const { keyboardOpen, availableHeight } = useAuthEntryLayout()
   const { fontScale } = useWindowDimensions()
@@ -41,7 +43,7 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     () => password ? zxcvbn(password.slice(0, 100), [trimmedName, trimmedEmail]).score : 0,
     [password, trimmedName, trimmedEmail],
   )
-  const strengthLabels = ['Très faible', 'Faible', 'Moyen', 'Bon', 'Très bon']
+  const strengthLabels = [t('identity.very_weak'), t('identity.weak'), t('identity.fair'), t('identity.good'), t('identity.very_good')]
   const strengthColors = [palette.expired, palette.expired, palette.soon, palette.fresh, palette.fresh]
 
   async function handleSubmit() {
@@ -50,7 +52,7 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     if (result.ok) onSuccess()
   }
 
-  const error = authErrorMessage(signUp.error, signUp.data, "Une erreur est survenue lors de l'inscription.")
+  const error = authErrorMessage(signUp.error, signUp.data, t('identity.an_error_occurred_while_signing_up'))
 
   return (
     <YStack gap={keyboardOpen ? 8 : '$3'}>
@@ -58,9 +60,9 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthField
         ref={nameRef}
         onFocus={() => setField('name')}
-        label="Nom"
+        label={t('fridge.name')}
         labelColor={palette.inkSecondary}
-        placeholder="Ton prénom"
+        placeholder={t('identity.your_first_name')}
         value={name}
         onChangeText={setName}
         autoComplete="name"
@@ -74,9 +76,9 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthField
         onFocus={() => setField('email')}
         ref={emailRef}
-        label="E-mail"
+        label={t('identity.email_2')}
         labelColor={palette.inkSecondary}
-        placeholder="toi@exemple.com"
+        placeholder={t('identity.you_example_com')}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -93,7 +95,7 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
       <AuthPasswordField
         onFocus={() => setField('password')}
         ref={passwordRef}
-        label="Mot de passe"
+        label={t('identity.password')}
         labelColor={palette.inkSecondary}
         placeholder="••••••••"
         value={password}
@@ -105,33 +107,31 @@ export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
       />
       </View>
       {!compactForm || field === 'password' ? <>
-      <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
-        Entre 8 et 128 caractères.
-      </Text>
+      <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>{t('identity.between_8_and_128_characters')}</Text>
       <AuthKeyboardAccessory>{password ? (
-        <YStack gap="$1" accessibilityLabel={`Force du mot de passe : ${strengthLabels[strength]}`}>
+        <YStack gap="$1" accessibilityLabel={t('identity.password_strength', { value1: strengthLabels[strength] })}>
           <XStack gap="$1">
             {[0, 1, 2, 3, 4].map((segment) => (
               <YStack key={segment} flex={1} height={5} borderRadius={999} backgroundColor={segment <= strength ? strengthColors[strength] : palette.heroPillFill} />
             ))}
           </XStack>
           <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
-            {`Force du mot de passe : ${strengthLabels[strength]}`}
+            {t('identity.password_strength', { value1: strengthLabels[strength] })}
           </Text>
         </YStack>
       ) : null}</AuthKeyboardAccessory>
       </> : null}
       {error ? <AuthError message={error} /> : null}
       <AuthButton
-        label={compactForm && field !== 'password' ? 'Continuer' : 'Créer mon compte'}
-        pendingLabel="Inscription..."
+        label={compactForm && field !== 'password' ? t('identity.continue') : t('identity.create_my_account')}
+        pendingLabel={t('identity.signing_up')}
         pending={signUp.isPending}
         disabled={signUp.isPending || (compactForm && field === 'name' ? !trimmedName : compactForm && field === 'email' ? !trimmedEmail : !canSubmit)}
         onPress={() => { if (compactForm && field !== 'password') setField(field === 'name' ? 'email' : 'password'); else void handleSubmit() }}
         testID="signup-submit"
       />
-      {compactForm && field !== 'name' ? <Pressable testID="signup-previous-field" accessibilityRole="button" accessibilityLabel="Revenir au champ précédent" disabled={signUp.isPending} onPress={() => setField(field === 'password' ? 'email' : 'name')} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }]}>
-        <Text fontSize={13} fontWeight="700" color={palette.ink}>Retour</Text>
+      {compactForm && field !== 'name' ? <Pressable testID="signup-previous-field" accessibilityRole="button" accessibilityLabel={t('identity.go_back_to_the_previous_field')} disabled={signUp.isPending} onPress={() => setField(field === 'password' ? 'email' : 'name')} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }]}>
+        <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('identity.back')}</Text>
       </Pressable> : null}
     </YStack>
   )

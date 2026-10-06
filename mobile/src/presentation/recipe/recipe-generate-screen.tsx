@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /*
  * DIRECTION CONTRACT — the recipe composer, presented modally (2026-09-05)
  *
@@ -145,6 +146,7 @@ const GROUP_ICONS: Record<RecipeOptionGroup['icon'], (color: string) => React.Re
 }
 
 export function RecipeGenerateScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const layout = useAppShellLayout({ kind: 'modal' })
   const queryClient = useQueryClient()
@@ -232,11 +234,11 @@ export function RecipeGenerateScreen() {
   const [firstRecipeId] = job?.result?.recipeIds ?? []
   const jobError: GenerationError | null =
     job?.status === 'failed'
-      ? toError(job.error?.type ?? 'unknown', job.error?.message ?? 'La génération a échoué.')
+      ? toError(job.error?.type ?? 'unknown', job.error?.message ?? t('recipe.generation_failed'))
       : job?.status === 'succeeded' && !firstRecipeId
         ? {
             // A successful call that produced nothing must not dismiss the sheet in silence.
-            message: 'Aucune recette n’est sortie de cette demande. Essaie avec moins de contraintes.',
+            message: t('recipe.no_recipe_came_out_of_this_request_try_fewer_constraints'),
             recovery: 'retry',
           }
         : null
@@ -254,7 +256,7 @@ export function RecipeGenerateScreen() {
   // `accessibilityLiveRegion` is Android-only: on iOS the form unmounted under
   // VoiceOver's focus and nothing said why, and an error arrived in silence.
   useEffect(() => {
-    if (Platform.OS === 'ios' && waiting) AccessibilityInfo.announceForAccessibility('On écrit ta recette. Quelques secondes.')
+    if (Platform.OS === 'ios' && waiting) AccessibilityInfo.announceForAccessibility(t('recipe.writing_your_recipe_just_a_few_seconds'))
   }, [waiting])
   const errorMessage = error?.message
   useEffect(() => {
@@ -269,8 +271,8 @@ export function RecipeGenerateScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ChefHatIcon size={19} color={color} />}
-          title="Envie de quoi ?"
-          subtitle="Tout est facultatif."
+          title={t('recipe.what_do_you_fancy')}
+          subtitle={t('recipe.everything_is_optional')}
           // No way out while the request is in flight — the same rule the
           // blocking overlay used to enforce with a scrim. The call cannot be
           // cancelled, so an exit here would leave a recipe arriving into a
@@ -301,11 +303,11 @@ export function RecipeGenerateScreen() {
                 you want, and it is the one field that needs no browsing. */}
             <FormField
               testID="recipes-wish"
-              label="Une envie ?"
+              label={t('recipe.fancy_anything')}
               value={wish.freeText}
               onChangeText={(freeText) => setWish((current) => ({ ...current, freeText }))}
               palette={palette}
-              placeholder="un gratin, quelque chose de réconfortant…"
+              placeholder={t('recipe.a_gratin_something_comforting')}
               autoCapitalize="sentences"
               // Not SparklesIcon: sparkles means "IA" everywhere else in this
               // system (Réglages' "Fournisseur IA"), so on the human's own
@@ -318,16 +320,12 @@ export function RecipeGenerateScreen() {
               // after a failed fetch would otherwise have the card claim the
               // garde-manger is empty, a confident false claim on shared state.
               <YStack gap="$2" backgroundColor={palette.cream} padding="$4" borderRadius={18}>
-                <Text fontSize={14} fontWeight="800" color={palette.ink}>
-                  Garde-manger indisponible
-                </Text>
-                <Text fontSize={12} fontWeight="500" color={palette.creamText} lineHeight={17}>
-                  On ne peut pas dire ce que tu as sous la main pour l’instant — la génération partira sans « Sous la main ».
-                </Text>
+                <Text fontSize={14} fontWeight="800" color={palette.ink}>{t('dashboard.pantry_unavailable')}</Text>
+                <Text fontSize={12} fontWeight="500" color={palette.creamText} lineHeight={17}>{t('recipe.we_can_t_see_what_you_have_right_now_generation')}</Text>
                 <PillButton
                   testID="recipe-generate-retry-products"
-                  label="Réessayer"
-                  accessibilityLabel="Réessayer de charger le garde-manger"
+                  label={t('dashboard.try_again')}
+                  accessibilityLabel={t('dashboard.try_loading_the_pantry_again')}
                   onPress={() => productsQuery.refetch()}
                   palette={palette}
                   tone="quiet"
@@ -355,8 +353,8 @@ export function RecipeGenerateScreen() {
                 without saying so. */}
             <CollapsibleCard
               testID="recipes-refine"
-              title="Affiner"
-              summary={chosen > 0 ? `${chosen} choix` : 'repas, temps, régime…'}
+              title={t('recipe.refine')}
+              summary={chosen > 0 ? t('common.choices_count', { count: chosen }) : t('recipe.meal_time_diet')}
               icon={(color) => <LayoutGridIcon size={14} color={color} />}
               defaultExpanded={false}
               palette={palette}
@@ -388,7 +386,7 @@ export function RecipeGenerateScreen() {
                           // The foyer's own size is marked on the chip that matches
                           // it, so the default is visible rather than assumed.
                           group.id === 'portions' && option.id === String(foyerSize)
-                            ? `${option.label} · ton foyer`
+                            ? t('recipe.your_household', { value1: option.label })
                             : option.label
                         }
                         // Drawn: "15 min". Announced: "Temps en cuisine : 15 min".
@@ -404,12 +402,12 @@ export function RecipeGenerateScreen() {
 
               <FormField
                 testID="recipes-avoid"
-                label="À éviter"
+                label={t('recipe.avoid')}
                 value={wish.avoid}
                 onChangeText={(avoid) => setWish((current) => ({ ...current, avoid }))}
                 palette={palette}
-                placeholder="champignons, piment…"
-                hint="Ce qu’on ne met pas dedans, même si c’est dans le garde-manger."
+                placeholder={t('recipe.mushrooms_chilli')}
+                hint={t('recipe.what_to_leave_out_even_if_it_s_in_the')}
                 surface="card"
                 autoCapitalize="none"
                 icon={(color) => <BanIcon size={13} color={color} />}
@@ -421,15 +419,13 @@ export function RecipeGenerateScreen() {
                 testID="recipes-wish-reset"
                 onPress={() => askDiscard('reset')}
                 accessibilityRole="button"
-                accessibilityLabel="Tout effacer"
+                accessibilityLabel={t('recipe.clear_all')}
                 // 16pt of text + 14 above and below: the 44pt floor.
                 hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}
                 android_ripple={ripple(palette.creamPillEdge, { borderless: true })}
                 style={[pointerCursor, { alignSelf: 'flex-start' }]}
               >
-                <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
-                  Tout effacer
-                </Text>
+                <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>{t('recipe.clear_all')}</Text>
               </Pressable>
             ) : null}
           </YStack>
@@ -448,7 +444,7 @@ export function RecipeGenerateScreen() {
           alignSelf="center"
         >
           {error?.quota && canSubscribe ? (
-            <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
+            <ConnectedPaywall palette={palette} reason={t('common.free_quota_reached')} />
           ) : error ? (
             <XStack
               testID="recipes-generate-error"
@@ -465,9 +461,9 @@ export function RecipeGenerateScreen() {
                 {error.message}
               </Text>
               {error.recovery === 'add-product' ? (
-                <RecoveryPill testID="recipes-error-add-product" label="Ajouter" palette={palette} onPress={goAddProduct} />
+                <RecoveryPill testID="recipes-error-add-product" label={t('fridge.add')} palette={palette} onPress={goAddProduct} />
               ) : error.recovery === 'retry' ? (
-                <RecoveryPill testID="recipes-error-retry" label="Réessayer" palette={palette} onPress={handleGenerate} />
+                <RecoveryPill testID="recipes-error-retry" label={t('dashboard.try_again')} palette={palette} onPress={handleGenerate} />
               ) : null}
             </XStack>
           ) : null}
@@ -476,17 +472,17 @@ export function RecipeGenerateScreen() {
               {/* The composed sentence, verbatim. Counting the choices told the
                   cook how many boxes they ticked; this tells them what the
                   machine will actually be asked. */}
-              On demandera : « {composeRecipePrompt(wish)} »
+              {t('recipe.we_ll_ask')}{composeRecipePrompt(wish)} »
             </Text>
           ) : null}
           <GenerateButton
             palette={palette}
-            label={empty ? 'Générer une recette' : 'Générer avec ces envies'}
+            label={empty ? t('recipe.generate_a_recipe') : t('recipe.generate_with_these_preferences')}
             caption={
               empty
-                ? 'Sans contrainte : on part des dates les plus proches.'
+                ? t('recipe.no_constraints_start_with_the_nearest_expiry_dates')
                 : wish.pinned.length > 0
-                  ? `Autour de ${joinFr(wish.pinned)}`
+                  ? t('recipe.using', { value1: joinFr(wish.pinned) })
                   : summarize(wish.freeText, wish.avoid, chosen)
             }
             onPress={handleGenerate}
@@ -497,12 +493,12 @@ export function RecipeGenerateScreen() {
 
       <ActionSheet
         visible={confirmDiscard !== null}
-        title="Effacer cette envie ?"
-        description="Les choix de cette feuille seront perdus."
+        title={t('recipe.clear_these_preferences')}
+        description={t('recipe.your_choices_on_this_sheet_will_be_lost')}
         options={[
           {
             testID: 'recipes-discard-confirm',
-            label: confirmDiscard === 'close' ? 'Fermer sans garder' : 'Tout effacer',
+            label: confirmDiscard === 'close' ? t('recipe.close_without_saving') : t('recipe.clear_all'),
             icon: (color) => <BanIcon size={18} color={color} />,
             tint: palette.expiredBg,
             destructive: true,
@@ -523,9 +519,9 @@ export function RecipeGenerateScreen() {
 /** "3 choix · une envie · une exclusion" — what the button is about to send, counted. */
 function summarize(freeText: string, avoid: string, chosen: number): string {
   const parts: string[] = []
-  if (chosen > 0) parts.push(`${chosen} choix`)
-  if (freeText.trim()) parts.push('une envie')
-  if (avoid.trim()) parts.push('une exclusion')
+  if (chosen > 0) parts.push(t('common.choices_count', { count: chosen }))
+  if (freeText.trim()) parts.push(t('recipe.a_preference'))
+  if (avoid.trim()) parts.push(t('recipe.an_exclusion'))
   return parts.join(' · ')
 }
 
@@ -646,6 +642,7 @@ function PantrySuggestions({
   isPinned: (name: string) => boolean
   onTogglePin: (name: string) => void
 }) {
+  const { t } = useTranslation()
   const [browsing, setBrowsing] = useState(false)
   const [search, setSearch] = useState('')
   const needle = search.trim().toLowerCase()
@@ -658,9 +655,9 @@ function PantrySuggestions({
 
   const summary =
     pinnedCount > 0
-      ? `${pinnedCount} choisi${pinnedCount > 1 ? 's' : ''}`
+      ? t('recipe.selected', { count: pinnedCount })
       : products.length > 0
-        ? `${products.length} produit${products.length > 1 ? 's' : ''}`
+        ? t('recipe.product', { count: products.length })
         : undefined
 
   function closeBrowsing() {
@@ -673,7 +670,7 @@ function PantrySuggestions({
     // offer, so it earns first look.
     <CollapsibleCard
       testID="recipes-cooking-from-toggle"
-      title="Sous la main"
+      title={t('recipe.on_hand')}
       summary={summary}
       // The garde-manger's own tab glyph, not a warning triangle: this card
       // lists products, it does not raise an alarm about them.
@@ -682,19 +679,15 @@ function PantrySuggestions({
       palette={palette}
     >
       {loading ? (
-        <Text fontSize={13} fontWeight="500" color={palette.creamText}>
-          Chargement…
-        </Text>
+        <Text fontSize={13} fontWeight="500" color={palette.creamText}>{t('dashboard.loading_2')}</Text>
       ) : products.length === 0 ? (
         // The next action lives inside the empty state, not six seconds and one
         // failed request later.
         <YStack gap="$3">
-          <Text fontSize={13} fontWeight="500" color={palette.creamText}>
-            Rien dans le garde-manger pour l’instant — la recette partira de tes envies seules.
-          </Text>
+          <Text fontSize={13} fontWeight="500" color={palette.creamText}>{t('recipe.nothing_in_the_pantry_yet_the_recipe_will_use_your')}</Text>
           <RecoveryPill
             testID="recipes-empty-add-product"
-            label="Ajouter un produit"
+            label={t('dashboard.add_a_product')}
             tone="neutral"
             palette={palette}
             onPress={onAddProduct}
@@ -702,26 +695,22 @@ function PantrySuggestions({
         </YStack>
       ) : (
         <>
-          <Text fontSize={12} fontWeight="500" color={palette.creamText}>
-            Touche un produit pour cuisiner autour.
-          </Text>
+          <Text fontSize={12} fontWeight="500" color={palette.creamText}>{t('recipe.tap_a_product_to_cook_with_it')}</Text>
           {browsing ? (
             <FormField
               testID="recipes-pantry-search"
-              label="Chercher un produit"
+              label={t('recipe.search_for_a_product')}
               value={search}
               onChangeText={setSearch}
               palette={palette}
               surface="card"
-              placeholder="Un nom de produit"
+              placeholder={t('fridge.a_product_name')}
               autoCapitalize="none"
               icon={(color) => <SearchIcon size={13} color={color} />}
             />
           ) : null}
           {shown.length === 0 ? (
-            <Text fontSize={13} fontWeight="500" color={palette.creamText}>
-              Aucun produit ne correspond à « {search.trim()} ».
-            </Text>
+            <Text fontSize={13} fontWeight="500" color={palette.creamText}>{t('fridge.no_product_matches', { value1: search.trim() })}</Text>
           ) : (
             <YStack gap="$2">
               {shown.map((product) => (
@@ -736,12 +725,10 @@ function PantrySuggestions({
             </YStack>
           )}
           {overflow > 0 ? (
-            <Text testID="recipes-pantry-overflow" fontSize={12} fontWeight="500" color={palette.creamText} textAlign="center">
-              Et {overflow} autre{overflow > 1 ? 's' : ''} — tape un nom pour les trouver.
-            </Text>
+            <Text testID="recipes-pantry-overflow" fontSize={12} fontWeight="500" color={palette.creamText} textAlign="center">{t('recipe.and_more_type_a_name_to_find_it', { count: overflow })}</Text>
           ) : null}
           {browsing ? (
-            <PantryListToggle testID="recipes-pantry-less" label="Réduire" palette={palette} onPress={closeBrowsing} />
+            <PantryListToggle testID="recipes-pantry-less" label={t('recipe.collapse')} palette={palette} onPress={closeBrowsing} />
           ) : hidden > 0 ? (
             <PantryListToggle
               testID="recipes-pantry-all"
@@ -886,6 +873,7 @@ function GeneratingState({
   pinned: readonly string[]
   onLater: () => void
 }) {
+  const { t } = useTranslation()
   const names = pinned.slice(0, 3)
   return (
     <YStack
@@ -899,17 +887,15 @@ function GeneratingState({
       accessibilityLiveRegion="polite"
     >
       <YStack width="100%" maxWidth={280}>
-        <ProgressBar palette={palette} testID="recipes-generating-bar" label="Génération en cours" />
+        <ProgressBar palette={palette} testID="recipes-generating-bar" label={t('recipe.generating')} />
       </YStack>
-      <Text fontSize={18} fontWeight="800" color={palette.ink} textAlign="center">
-        On écrit ta recette
-      </Text>
+      <Text fontSize={18} fontWeight="800" color={palette.ink} textAlign="center">{t('recipe.writing_your_recipe')}</Text>
       <Text fontSize={14} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
         {names.length > 0
-          ? `On part de ${joinFr(names)}. Quelques secondes.`
-          : 'Quelques secondes, le temps que l’IA réponde.'}
+          ? t('recipe.starting_with_just_a_few_seconds', { value1: joinFr(names) })
+          : t('recipe.a_few_seconds_while_ai_responds')}
       </Text>
-      <PillButton testID="recipes-generating-later" label="Je reviens plus tard" tone="quiet" palette={palette} onPress={onLater} />
+      <PillButton testID="recipes-generating-later" label={t('fridge.i_ll_come_back_later')} tone="quiet" palette={palette} onPress={onLater} />
     </YStack>
   )
 }

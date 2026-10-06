@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /*
  * The house, once the threshold is crossed.
  *
@@ -37,23 +38,23 @@ interface Beat {
 const BEATS: Beat[] = [
   {
     id: 'hero',
-    title: 'Ce qui part en premier',
-    body: 'Cette carte répond à la seule question du soir : qu’est-ce qu’il faut manger maintenant, avant que ça se perde.',
+    get title() { return t('onboarding.what_needs_using_first') },
+    get body() { return t('onboarding.this_card_answers_tonight_s_question_what_should_you_eat') },
   },
   {
     id: 'stats',
-    title: 'Trois nombres, trois listes',
-    body: 'Ce qui expire cette semaine, ce qui est dépassé, ce qu’il reste à racheter. Chacun ouvre ce qu’il compte.',
+    get title() { return t('onboarding.three_numbers_three_lists') },
+    get body() { return t('onboarding.what_expires_this_week_what_is_past_its_expiry_date') },
   },
   {
     id: 'navcards',
-    title: 'Recettes et Courses',
-    body: 'Recettes part de ce que vous avez déjà. Courses est la liste que tout le foyer voit en même temps.',
+    get title() { return t('onboarding.recipes_and_shopping') },
+    get body() { return t('onboarding.recipes_uses_what_you_already_have_shopping_is_the_list') },
   },
   {
     id: 'fab',
-    title: 'Le raccourci',
-    body: 'Photographie ton frigo ou un ticket de caisse et tous les produits entrent d’un coup — ou scanne un code-barres pour en ajouter un seul.',
+    get title() { return t('onboarding.the_shortcut') },
+    get body() { return t('onboarding.photograph_your_fridge_or_a_receipt_to_add_every_product') },
   },
 ]
 
@@ -73,6 +74,7 @@ export function FirstRunTour({
   onScan: () => void
   onFinish: () => void
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
@@ -242,19 +244,17 @@ export function FirstRunTour({
               onPress={onFinish}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Passer la présentation"
+              accessibilityLabel={t('onboarding.skip_introduction')}
               style={pointerCursor}
             >
-              <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>
-                Passer
-              </Text>
+              <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>{t('onboarding.skip')}</Text>
             </Pressable>
 
             <XStack gap="$2" alignItems="center">
               {isLast ? (
                 <PillButton
                   testID="first-run-tour-scan"
-                  label="Scanner"
+                  label={t('dashboard.scan')}
                   tone="quiet"
                   onPress={() => {
                     onFinish()
@@ -265,7 +265,7 @@ export function FirstRunTour({
               ) : null}
               <PillButton
                 testID="first-run-tour-next"
-                label={isLast ? 'C’est parti' : 'Suivant'}
+                label={isLast ? t('onboarding.let_s_go') : t('onboarding.next')}
                 onPress={() => (isLast ? onFinish() : setIndex(index + 1))}
                 palette={palette}
               />

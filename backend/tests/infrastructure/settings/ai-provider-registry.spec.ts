@@ -94,17 +94,23 @@ test.group('resolveReceiptExtractionAdapter (ai-provider-registry)', () => {
     )
   })
 
-  test('records usage after a successful hosted call, not before', async ({ assert }) => {
+  test('forwards the output language and records usage after a successful hosted call', async ({
+    assert,
+  }) => {
     const original = GeminiReceiptExtractionAdapter.prototype.extract
-    GeminiReceiptExtractionAdapter.prototype.extract = async () =>
-      ({}) as Awaited<ReturnType<typeof original>>
+    const languages: (string | undefined)[] = []
+    GeminiReceiptExtractionAdapter.prototype.extract = async (_file, language) => {
+      languages.push(language)
+      return {} as Awaited<ReturnType<typeof original>>
+    }
     try {
       const settings = fakeSettings('gemini', { access: { plan: 'free', limit: 5, used: 2 } })
       const quota = fakeQuota()
       const adapter = await resolveReceiptExtractionAdapter(settings, quota, fixedClock, 'h_1')
       assert.deepEqual(quota.recordedFor, [])
-      await adapter.extract({ buffer: Buffer.from(''), contentType: 'image/jpeg' })
+      await adapter.extract({ buffer: Buffer.from(''), contentType: 'image/jpeg' }, 'en')
       assert.deepEqual(quota.recordedFor, ['h_1'])
+      assert.deepEqual(languages, ['en'])
     } finally {
       GeminiReceiptExtractionAdapter.prototype.extract = original
     }

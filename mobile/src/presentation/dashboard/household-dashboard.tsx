@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * DIRECTION CONTRACT — dashboard foyer (redesign, 2026-08-27; pushed
  * toward Material Expressive same day per follow-up feedback; wired to
@@ -172,6 +173,7 @@ export function HouseholdDashboard({
   onOpenReceipts,
   onOpenHousehold,
 }: HouseholdDashboardProps) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const productsQuery = useProductsQuery()
   const shoppingQuery = useShoppingItemsQuery()
@@ -225,7 +227,7 @@ export function HouseholdDashboard({
   const loading = productsQuery.isPending
   const failed = !productsQuery.isPending && productsQuery.isError
   const empty = !loading && !failed && products.length === 0
-  const householdName = householdQuery.data?.name ?? 'Ton foyer'
+  const householdName = householdQuery.data?.name ?? t('dashboard.your_household')
   const members = householdQuery.data?.members ?? []
   const memberNames = members.map((member) => member.name)
 
@@ -278,12 +280,12 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
   }
 
   function heroHeadline() {
-    if (loading) return 'On regarde dans ton garde-manger…'
-    if (failed) return 'Garde-manger indisponible'
-    if (empty) return 'Ton garde-manger est encore vide'
+    if (loading) return t('dashboard.checking_your_pantry')
+    if (failed) return t('dashboard.pantry_unavailable')
+    if (empty) return t('dashboard.your_pantry_is_still_empty')
     return watchCount > 0
-      ? `${watchCount} produit${watchCount > 1 ? 's' : ''} à cuisiner en premier`
-      : 'Tout est frais aujourd’hui'
+      ? t('dashboard.product_to_cook_first', { count: watchCount })
+      : t('dashboard.everything_is_fresh_today')
   }
 
   /** `—` rather than `0` while loading: an honest blank, not a wrong number. */
@@ -296,9 +298,9 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
    * renders `—` while the query is in flight, and a label that interpolates the
    * count regardless announced a confident "0 produit" over an honest blank.
    */
-  function metricLabel(name: string, value: number, unit: string, unavailable = loading || failed) {
-    if (unavailable) return `${name}, chargement`
-    return `${name}, ${value} ${unit}${value > 1 ? 's' : ''}`
+  function metricLabel(name: string, value: number, unit: 'product' | 'item', unavailable = loading || failed) {
+    if (unavailable) return t('dashboard.loading', { value1: name })
+    return t('dashboard.metric_count', { name, count: value, summary: t(unit === 'product' ? 'common.products_count' : 'common.items_count', { count: value }) })
   }
 
   return (
@@ -333,7 +335,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   source={subscribed ? mascotGold : mascotIllustration}
                   style={{ width: 48, height: 48, flexShrink: 0 }}
                   resizeMode="contain"
-                  accessibilityLabel={subscribed ? 'Abonnement actif' : ''}
+                  accessibilityLabel={subscribed ? t('dashboard.subscription_active') : ''}
                 />
                 {/* The foyer, on the foyer's home screen. The one thing that
                     makes this product not a personal fridge tracker — several
@@ -347,8 +349,8 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   accessibilityRole="button"
                   accessibilityLabel={
                     memberNames.length > 0
-                      ? `${householdName}, ${memberNames.length} membre${memberNames.length > 1 ? 's' : ''} : ${memberNames.join(', ')}. Gérer le foyer`
-                      : `${householdName}. Gérer le foyer`
+                      ? t('dashboard.member_manage_household', { value1: householdName, count: memberNames.length, value3: memberNames.join(', ') })
+                      : t('dashboard.manage_household', { value1: householdName })
                   }
                   style={[{ flex: 1, minWidth: 0 }, pointerCursor]}
                 >
@@ -365,9 +367,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                         this past `title` to chase the mascot's size was the
                         wrong axis to move; the glyph is sized to this text,
                         not the other way round. */}
-                    <Text fontSize={14} fontWeight="500" color={palette.inkSecondary}>
-                      Salut, {userName || 'toi'}
-                    </Text>
+                    <Text fontSize={14} fontWeight="500" color={palette.inkSecondary}>{t('dashboard.hi', { value1: userName || t('recipe.you') })}</Text>
                     <XStack alignItems="center" gap="$2" marginTop="$1" minWidth={0}>
                       <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={1} ellipsizeMode="tail" flexShrink={1} minWidth={0}>
                         {householdName}
@@ -391,7 +391,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                 onPressIn={tasksHover.onPressIn}
                 onPressOut={tasksHover.onPressOut}
                 accessibilityRole="button"
-                accessibilityLabel={pendingTasks > 0 ? `Tâches, ${pendingTasks} à suivre` : 'Tâches'}
+                accessibilityLabel={pendingTasks > 0 ? t('dashboard.tasks_to_follow', { value1: pendingTasks }) : t('dashboard.tasks')}
                 style={pointerCursor}
               >
                 <Animated.View style={{ transform: [{ scale: tasksHover.scale }] }}>
@@ -434,7 +434,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                 onPressIn={settingsHover.onPressIn}
                 onPressOut={settingsHover.onPressOut}
                 accessibilityRole="button"
-                accessibilityLabel="Réglages"
+                accessibilityLabel={t('dashboard.settings')}
                 style={pointerCursor}
               >
                 <Animated.View style={{ transform: [{ scale: settingsHover.scale }] }}>
@@ -486,21 +486,15 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
             >
               <HeroWarmGlow warm={palette.accentWarm} ground={palette.brandDeep} />
               <YStack padding="$5" gap="$3">
-                <Text fontSize={12} fontWeight="600" color={palette.brandDeepTextSecondary}>
-                  AUJOURD’HUI DANS TON GARDE-MANGER
-                </Text>
+                <Text fontSize={12} fontWeight="600" color={palette.brandDeepTextSecondary}>{t('dashboard.today_in_your_pantry')}</Text>
                 <Text fontSize={24} fontWeight="800" color={palette.brandDeepText} lineHeight={30}>
                   {heroHeadline()}
                 </Text>
                 {failed ? (
-                  <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary}>
-                    On n’a pas pu joindre le serveur.
-                  </Text>
+                  <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary}>{t('dashboard.we_couldn_t_reach_the_server')}</Text>
                 ) : null}
                 {empty ? (
-                  <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary}>
-                    Ajoute un produit ou scanne un ticket de caisse pour démarrer.
-                  </Text>
+                  <Text fontSize={13} fontWeight="500" color={palette.brandDeepTextSecondary}>{t('dashboard.add_a_product_or_scan_a_receipt_to_get_started')}</Text>
                 ) : null}
                 <XStack gap="$2" flexWrap="wrap">
                   {/* The pills are the two cards, restated — same windows, same
@@ -509,24 +503,20 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   {thisWeekCount > 0 ? (
                     <XStack alignItems="center" gap="$1.5" backgroundColor={palette.heroPillFill} paddingVertical="$1.5" paddingHorizontal="$3" borderRadius={999}>
                       <TriangleAlertIcon size={13} color={palette.soonOnDark} />
-                      <Text fontSize={12} fontWeight="700" color={palette.soonOnDark}>
-                        {thisWeekCount} cette semaine
-                      </Text>
+                      <Text fontSize={12} fontWeight="700" color={palette.soonOnDark}>{t('dashboard.this_week', { value1: thisWeekCount })}</Text>
                     </XStack>
                   ) : null}
                   {expiredCount > 0 ? (
                     <XStack alignItems="center" gap="$1.5" backgroundColor={palette.heroPillFill} paddingVertical="$1.5" paddingHorizontal="$3" borderRadius={999}>
                       <CircleXIcon size={13} color={palette.expiredOnDark} />
-                      <Text fontSize={12} fontWeight="700" color={palette.expiredOnDark}>
-                        {expiredCount} dépassé{expiredCount > 1 ? 's' : ''}
-                      </Text>
+                      <Text fontSize={12} fontWeight="700" color={palette.expiredOnDark}>{t('dashboard.past_expiry', { count: expiredCount })}</Text>
                     </XStack>
                   ) : null}
                   {failed ? (
                     <PillButton
                       testID="dashboard-retry"
-                      label="Réessayer"
-                      accessibilityLabel="Réessayer de charger le garde-manger"
+                      label={t('dashboard.try_again')}
+                      accessibilityLabel={t('dashboard.try_loading_the_pantry_again')}
                       onPress={() => productsQuery.refetch()}
                       palette={palette}
                     />
@@ -548,12 +538,12 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
               valueColor={palette.ink}
               chipColor={palette.chipOrange}
               icon={<TriangleAlertIcon size={18} color={palette.onDark} />}
-              label="Cette semaine"
+              label={t('dashboard.this_week_2')}
               value={metric(thisWeekCount)}
               corner="a"
               palette={palette}
               onPress={() => onOpenFridge('week')}
-              accessibilityLabel={metricLabel('Cette semaine', thisWeekCount, 'produit')}
+              accessibilityLabel={metricLabel(t('dashboard.this_week_2'), thisWeekCount, 'product')}
             />
             <StatCard
               testID="dashboard-stat-expired"
@@ -562,12 +552,12 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
               valueColor={palette.ink}
               chipColor={palette.chipViolet}
               icon={<CircleXIcon size={18} color={palette.onDark} />}
-              label="Dates dépassées"
+              label={t('dashboard.past_expiry_dates')}
               value={metric(expiredCount)}
               corner="b"
               palette={palette}
               onPress={() => onOpenFridge('expired')}
-              accessibilityLabel={metricLabel('Dates dépassées', expiredCount, 'produit')}
+              accessibilityLabel={metricLabel(t('dashboard.past_expiry_dates'), expiredCount, 'product')}
             />
             <StatCard
               testID="dashboard-stat-to-buy"
@@ -576,12 +566,12 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
               valueColor={palette.ink}
               chipColor={palette.chipTeal}
               icon={<ShoppingCartIcon size={18} color={palette.onDark} />}
-              label="À racheter"
+              label={t('dashboard.to_buy_again')}
               value={shoppingQuery.isPending ? '—' : String(toBuyCount)}
               corner="c"
               palette={palette}
               onPress={onOpenCourses}
-              accessibilityLabel={metricLabel('À racheter', toBuyCount, 'article', shoppingQuery.isPending)}
+              accessibilityLabel={metricLabel(t('dashboard.to_buy_again'), toBuyCount, 'item', shoppingQuery.isPending)}
             />
           </XStack>
           </TourAnchor>
@@ -594,9 +584,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                     about the food. The status pills below still carry the
                     warning glyphs, where the colour+icon+word rule wants them. */}
                 <PackageIcon size={15} color={soonProducts.length > 0 ? palette.soon : palette.inkSecondary} />
-                <Text fontSize={15} fontWeight="800" color={palette.ink}>
-                  À consommer en premier
-                </Text>
+                <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('dashboard.use_first')}</Text>
               </XStack>
               <Pressable
                 // Wrapped, not passed: `onOpenFridge` now takes an expiry
@@ -608,13 +596,11 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                 onPressOut={seeAllHover.onPressOut}
                 hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                 accessibilityRole="button"
-                accessibilityLabel="Voir tout le garde-manger"
+                accessibilityLabel={t('dashboard.view_the_whole_pantry')}
                 style={pointerCursor}
               >
                 <Animated.View style={{ transform: [{ scale: seeAllHover.scale }] }}>
-                  <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>
-                    Voir tout →
-                  </Text>
+                  <Text fontSize={12} fontWeight="700" color={palette.inkSecondary}>{t('dashboard.view_all')}</Text>
                 </Animated.View>
               </Pressable>
             </XStack>
@@ -628,29 +614,25 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
             >
               {loading ? (
                 <YStack padding="$2">
-                  <SkeletonList rows={PREVIEW_COUNT} label="Chargement du garde-manger" palette={palette} />
+                  <SkeletonList rows={PREVIEW_COUNT} label={t('dashboard.loading_pantry')} palette={palette} />
                 </YStack>
               ) : null}
               {failed ? (
-                <Text fontSize={13} fontWeight="500" color={palette.expiredText} padding="$3">
-                  Liste indisponible hors connexion.
-                </Text>
+                <Text fontSize={13} fontWeight="500" color={palette.expiredText} padding="$3">{t('dashboard.list_unavailable_offline')}</Text>
               ) : null}
               {empty ? (
                 <YStack padding="$3" gap="$3">
-                  <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>
-                    Ajoute un produit, photographie ton frigo ou scanne un ticket pour démarrer.
-                  </Text>
+                  <Text fontSize={13} fontWeight="500" color={palette.inkSecondary}>{t('dashboard.add_a_product_photograph_your_fridge_or_scan_a_receipt')}</Text>
                   <XStack gap="$2" flexWrap="wrap">
                     <PillButton
-                      label="Scanner"
+                      label={t('dashboard.scan')}
                       onPress={goToScan}
                       testID="dashboard-empty-scan"
                       icon={(color) => <ScanLineIcon size={15} color={color} />}
                       palette={palette}
                     />
                     <PillButton
-                      label="Ajouter un produit"
+                      label={t('dashboard.add_a_product')}
                       onPress={onAddProduct}
                       testID="dashboard-empty-add"
                       icon={(color) => <PlusIcon size={15} color={color} />}
@@ -676,9 +658,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
           <YStack marginTop="$6">
             <XStack alignItems="center" gap="$2">
               <LayoutGridIcon size={15} color={palette.inkSecondary} />
-              <Text fontSize={15} fontWeight="800" color={palette.ink}>
-                Accès rapide
-              </Text>
+              <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('dashboard.quick_access')}</Text>
             </XStack>
             <YStack marginTop="$3">
               <ScanDraftBanner palette={palette} />
@@ -692,8 +672,8 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   onPress={onOpenRecettes}
                   icon={<ChefHatIcon size={30} color={palette.onDark} />}
                   imageSource={potOfFoodIllustration}
-                  title="Recettes"
-                  subtitle={watchCount > 0 ? 'Cuisine ce qui part en premier' : 'Idées pour ce soir'}
+                  title={t('dashboard.recipes')}
+                  subtitle={watchCount > 0 ? t('dashboard.cook_what_needs_using_first') : t('dashboard.ideas_for_tonight')}
                   corner="b"
                   palette={palette}
                 />
@@ -703,11 +683,11 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   onPress={onOpenCourses}
                   icon={<ShoppingCartIcon size={30} color={palette.onDark} />}
                   imageSource={shoppingCartIllustration}
-                  title="Courses"
+                  title={t('dashboard.shopping')}
                   // No count here: the "À racheter" StatCard 200pt above already
                   // prints `toBuyCount` and already opens this exact destination.
                   // One question, one control.
-                  subtitle={toBuyCount === 0 && !shoppingQuery.isPending ? 'Liste à jour' : 'Ce qu’il manque'}
+                  subtitle={toBuyCount === 0 && !shoppingQuery.isPending ? t('dashboard.list_up_to_date') : t('dashboard.what_s_missing')}
                   corner="a"
                   palette={palette}
                 />
@@ -719,8 +699,8 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   onPress={onOpenStats}
                   icon={<TrendingUpIcon size={30} color={palette.onDark} />}
                   imageSource={chartIncreasingIllustration}
-                  title="Stats"
-                  subtitle="Ton gaspi cette semaine"
+                  title={t('dashboard.stats')}
+                  subtitle={t('dashboard.your_food_waste_this_week')}
                   corner="b"
                   palette={palette}
                 />
@@ -731,14 +711,14 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                   onPress={onOpenReceipts}
                   icon={<ReceiptIcon size={30} color={palette.onDark} />}
                   imageSource={receiptIllustration}
-                  title="Tickets de caisse"
-                  subtitle={receiptsQuery.isPending ? 'Chargement…' : receiptsSummary(receiptsQuery.data ?? [])}
+                  title={t('dashboard.receipts')}
+                  subtitle={receiptsQuery.isPending ? t('dashboard.loading_2') : receiptsSummary(receiptsQuery.data ?? [])}
                   corner="a"
                   palette={palette}
                   accessibilityLabel={
                     receiptsQuery.isPending
-                      ? 'Tickets de caisse. Chargement'
-                      : `Tickets de caisse. ${receiptsSummary(receiptsQuery.data ?? [])}`
+                      ? t('dashboard.receipts_loading')
+                      : t('dashboard.receipts_2', { value1: receiptsSummary(receiptsQuery.data ?? []) })
                   }
                 />
               </XStack>

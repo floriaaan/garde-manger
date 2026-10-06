@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Everything drawn over a live camera feed, shared by the three scanners
  * (code-barres, ticket, frigo).
@@ -55,6 +56,7 @@ export function CameraChrome({
   shutter?: ReactNode
   end?: ReactNode
 }) {
+  const { t } = useTranslation()
   const hasBar = Boolean(start || shutter || end)
 
   return (
@@ -65,7 +67,7 @@ export function CameraChrome({
             testID={closeTestID}
             onPress={onClose}
             accessibilityRole="button"
-            accessibilityLabel="Fermer le scanner"
+            accessibilityLabel={t('onboarding.close_scanner')}
             style={pointerCursor}
           >
             <YStack width={44} height={44} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={palette.cameraScrim}>
@@ -133,6 +135,7 @@ export function ShutterButton({
   onPress: () => void
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   return (
     <Pressable
@@ -142,7 +145,7 @@ export function ShutterButton({
       onPressOut={hover.onPressOut}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel="Prendre la photo"
+      accessibilityLabel={t('shared.take_photo')}
       accessibilityState={{ disabled }}
       style={pointerCursor}
     >

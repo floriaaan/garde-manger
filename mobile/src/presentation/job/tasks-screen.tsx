@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { Pressable } from 'react-native'
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
@@ -26,6 +27,7 @@ const KIND_ICONS = { receipt_scan: ReceiptIcon, fridge_scan: ScanLineIcon, recip
 
 /** Task center: what the AI is doing, and what it finished while the member was elsewhere. */
 export function TasksScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const jobsQuery = useJobsQuery()
   const draftsQuery = useScanDraftsQuery()
@@ -44,16 +46,16 @@ export function TasksScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ClockIcon size={19} color={color} />}
-          title="Tâches"
-          subtitle="Les analyses et recettes gardées 48 h"
+          title={t('dashboard.tasks')}
+          subtitle={t('job.analyses_and_recipes_kept_for_48_hours')}
           onBack={() => goBack('/(tabs)')}
         />
       }
     >
       <YStack gap="$5">
-        <Section title="En cours" empty="Aucune analyse en cours." jobs={running} all={jobs} palette={palette} canSubscribe={canSubscribe} />
-        <Section title="Terminées" empty="Rien de terminé pour le moment." jobs={finished} all={jobs} palette={palette} canSubscribe={canSubscribe} />
-        <Section title="Masquées" empty="Aucune tâche masquée." jobs={hidden} all={jobs} palette={palette} canSubscribe={canSubscribe} />
+        <Section title={t('job.in_progress')} empty={t('common.no_analyses_in_progress')} jobs={running} all={jobs} palette={palette} canSubscribe={canSubscribe} />
+        <Section title={t('job.finished')} empty={t('common.nothing_finished_yet')} jobs={finished} all={jobs} palette={palette} canSubscribe={canSubscribe} />
+        <Section title={t('job.hidden')} empty={t('common.no_hidden_tasks')} jobs={hidden} all={jobs} palette={palette} canSubscribe={canSubscribe} />
       </YStack>
     </AppShell>
   )
@@ -105,6 +107,7 @@ function TextAction({ label, onPress, testID, color, icon }: { label: string; on
 }
 
 function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; palette: SoftPalette; canSubscribe: boolean }) {
+  const { t } = useTranslation()
   const retry = useRetryJobMutation()
   const hide = useHideJobMutation()
   const remove = useDeleteJobMutation()
@@ -123,12 +126,12 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
   let action: { label: string; onPress: () => void; icon: (color: string) => ReactNode } | null = null
   if (job.status === 'succeeded') {
     action = {
-      label: job.kind === 'recipe_generation' ? 'Voir les recettes' : 'Relire',
+      label: job.kind === 'recipe_generation' ? t('job.view_recipes') : t('dashboard.review'),
       icon: (color) => (job.kind === 'recipe_generation' ? <ChefHatIcon size={16} color={color} /> : <PencilIcon size={16} color={color} />),
       onPress: () => router.push(outcomeRoute(job) as Parameters<typeof router.push>[0]),
     }
   } else if (isRetryable(job)) {
-    action = { label: 'Réessayer', icon: (color) => <RefreshIcon size={16} color={color} />, onPress: () => retry.mutate(job.id) }
+    action = { label: t('dashboard.try_again'), icon: (color) => <RefreshIcon size={16} color={color} />, onPress: () => retry.mutate(job.id) }
   }
 
   // Without a second link the main action sits in the header row: one line less per card.
@@ -171,26 +174,26 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
       ) : (
         <Text fontSize={13} fontWeight="500" lineHeight={19} color={failed ? palette.expiredText : palette.inkSecondary}>
           {failed ? failureMessage(job) : outcomeMessage(job)}
-          {partial ? ` — ${job.progress.failed.length} photo(s) manquante(s)` : ''}
+          {partial ? t('job.missing_photo_s', { value1: job.progress.failed.length }) : ''}
         </Text>
       )}
-      {quota && canSubscribe ? <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" /> : null}
+      {quota && canSubscribe ? <ConnectedPaywall palette={palette} reason={t('common.free_quota_reached')} /> : null}
       {screenReader && !active ? (
         // The swipe is invisible to VoiceOver/TalkBack: the same actions, as buttons.
         <XStack alignItems="center" gap="$4" flexWrap="wrap">
           {job.dismissedAt ? (
-            <TextAction testID={`task-${job.id}-restore-a11y`} label="Démasquer" color={palette.ink} icon={(c) => <ArchiveIcon size={15} color={c} />} onPress={() => restore.mutate(job.id)} />
+            <TextAction testID={`task-${job.id}-restore-a11y`} label={t('job.unhide')} color={palette.ink} icon={(c) => <ArchiveIcon size={15} color={c} />} onPress={() => restore.mutate(job.id)} />
           ) : (
-            <TextAction testID={`task-${job.id}-dismiss-a11y`} label="Masquer" color={palette.ink} icon={(c) => <XIcon size={15} color={c} />} onPress={() => hide.mutate(job.id)} />
+            <TextAction testID={`task-${job.id}-dismiss-a11y`} label={t('job.hide')} color={palette.ink} icon={(c) => <XIcon size={15} color={c} />} onPress={() => hide.mutate(job.id)} />
           )}
-          <TextAction testID={`task-${job.id}-delete-a11y`} label="Supprimer" color={palette.expiredText} icon={(c) => <TrashIcon size={15} color={c} />} onPress={() => remove.mutate(job)} />
+          <TextAction testID={`task-${job.id}-delete-a11y`} label={t('job.delete')} color={palette.expiredText} icon={(c) => <TrashIcon size={15} color={c} />} onPress={() => remove.mutate(job)} />
         </XStack>
       ) : null}
       {partial ? (
         <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
           <XStack alignItems="center" gap="$4">
             {partial ? (
-              <TextAction testID={`task-${job.id}-retry-failed`} label="Photos manquantes" color={palette.ink} icon={(c) => <RefreshIcon size={15} color={c} />} onPress={() => retry.mutate(job.id)} />
+              <TextAction testID={`task-${job.id}-retry-failed`} label={t('job.missing_photos')} color={palette.ink} icon={(c) => <RefreshIcon size={15} color={c} />} onPress={() => retry.mutate(job.id)} />
             ) : null}
           </XStack>
           {action ? <PillButton testID={`task-${job.id}-action`} label={action.label} icon={action.icon} palette={palette} onPress={action.onPress} /> : null}
@@ -211,7 +214,7 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
           <SwipeAction
             side="left"
             testID={`task-${job.id}-restore`}
-            label="Démasquer"
+            label={t('job.unhide')}
             background={palette.freshBg}
             color={palette.freshText}
             icon={<ArchiveIcon size={18} color={palette.freshText} />}
@@ -224,7 +227,7 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
           <SwipeAction
             side="left"
             testID={`task-${job.id}-dismiss`}
-            label="Masquer"
+            label={t('job.hide')}
             background={palette.cream}
             color={palette.creamText}
             icon={<XIcon size={18} color={palette.creamText} />}
@@ -239,7 +242,7 @@ function JobCard({ job, jobs, palette, canSubscribe }: { job: Job; jobs: Job[]; 
         <SwipeAction
           side="right"
           testID={`task-${job.id}-delete`}
-          label="Supprimer"
+          label={t('job.delete')}
           background={palette.expiredBg}
           color={palette.expiredText}
           icon={<TrashIcon size={18} color={palette.expiredText} />}

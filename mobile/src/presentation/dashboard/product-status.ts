@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 /**
  * Expiry semantics for the whole app, derived from a real `Product`.
  *
@@ -69,12 +70,12 @@ export function productStatus(product: Pick<Product, 'expiresAt'>, now?: Date): 
 }
 
 export function expiryLabel(daysLeft: number | null): string {
-  if (daysLeft === null) return 'Sans date'
-  if (daysLeft < 0) return `Date dépassée de ${Math.abs(daysLeft)} j`
-  if (daysLeft === 0) return 'À consommer aujourd’hui'
-  if (daysLeft === 1) return 'À consommer demain'
-  if (daysLeft <= 30) return `À consommer sous ${daysLeft} j`
-  return 'Longue conservation'
+  if (daysLeft === null) return t('dashboard.no_date')
+  if (daysLeft < 0) return t('dashboard.days_past_expiry', { value1: Math.abs(daysLeft) })
+  if (daysLeft === 0) return t('dashboard.use_today')
+  if (daysLeft === 1) return t('dashboard.use_tomorrow')
+  if (daysLeft <= 30) return t('dashboard.use_within_days', { value1: daysLeft })
+  return t('dashboard.long_shelf_life')
 }
 
 /**
@@ -113,8 +114,8 @@ export const EXPIRY_WINDOWS: readonly ExpiryWindow[] = ['week', 'expired']
 
 /** The one wording, shared by the stat card that links and the pill that says why the list is short. */
 export const EXPIRY_WINDOW_LABELS: Record<ExpiryWindow, string> = {
-  week: 'Cette semaine',
-  expired: 'Dates dépassées',
+  get week() { return t('dashboard.this_week_2') },
+  get expired() { return t('dashboard.past_expiry_dates') },
 }
 
 export function matchesExpiryWindow(daysLeft: number | null, window: ExpiryWindow): boolean {

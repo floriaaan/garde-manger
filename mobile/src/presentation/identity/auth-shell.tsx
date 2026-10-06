@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { Keyboard } from 'react-native'
 import { Text, YStack } from '../shared/tamagui-typed.js'
@@ -23,6 +24,7 @@ export function AuthShell({ title, subtitle, mode, onModeChange, pages, children
   back?: ReactNode
   busy?: boolean
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   return (
     <AuthScreenChrome maxWidth={440} hero={garden ? <AuthGardenHero /> : undefined}>
@@ -44,8 +46,8 @@ export function AuthShell({ title, subtitle, mode, onModeChange, pages, children
           })}
           <AuthKeyboardAccessory><Pressable testID={`auth-tab-${mode === 'sign-up' ? 'sign-in' : 'sign-up'}`} accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => { if (busy) return; Keyboard.dismiss(); onModeChange(mode === 'sign-up' ? 'sign-in' : 'sign-up') }} style={[pointerCursor, { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', opacity: busy ? 0.6 : 1 }]}>
             <Text fontSize={14} color={palette.ink}>
-              {mode === 'sign-up' ? 'Déjà un compte ? ' : 'Pas encore de compte ? '}
-              <Text fontSize={14} fontWeight="800" textDecorationLine="underline" color={palette.ink}>{mode === 'sign-up' ? 'Se connecter' : 'Créer un compte'}</Text>
+              {mode === 'sign-up' ? t('identity.already_have_an_account') : t('identity.don_t_have_an_account_yet')}
+              <Text fontSize={14} fontWeight="800" textDecorationLine="underline" color={palette.ink}>{mode === 'sign-up' ? t('identity.sign_in') : t('identity.create_an_account')}</Text>
             </Text>
           </Pressable></AuthKeyboardAccessory>
         </>

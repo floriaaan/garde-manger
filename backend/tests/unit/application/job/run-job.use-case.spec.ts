@@ -169,6 +169,7 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
 }) => {
   let used = 0
   let calls = 0
+  const languages: (string | undefined)[] = []
   let existing: ScanDraft | null = null
   const settings: AiSettingsProvider = {
     async resolveEffective() {
@@ -198,7 +199,8 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
     },
   }
   const original = GeminiFridgeScanExtractionAdapter.prototype.extract
-  GeminiFridgeScanExtractionAdapter.prototype.extract = async () => {
+  GeminiFridgeScanExtractionAdapter.prototype.extract = async (_image, language) => {
+    languages.push(language)
     calls++
     if (calls === 1) throw new ReceiptExtractionParseError('bad first photo')
     return { items: [item(`Produit ${calls}`)] }
@@ -216,6 +218,7 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
         ),
     })
     const job = fridgeJob(['a', 'b', 'c'])
+    job.input.language = 'en'
     await run.execute(job)
     assert.equal(job.status, 'succeeded')
     assert.deepEqual(job.progress, { total: 3, done: 2, failed: [0] })
@@ -226,6 +229,7 @@ test('one hosted fridge scan uses one quota unit across all photos and partial r
     assert.deepEqual(job.progress, { total: 3, done: 3, failed: [] })
     assert.equal(used, 1)
     assert.equal(calls, 4)
+    assert.deepEqual(languages, ['en', 'en', 'en', 'en'])
     // A separate scan still needs an available quota unit.
     const next = fridgeJob(['d'])
     await run.execute(next)
@@ -242,9 +246,11 @@ test('a full retry after an unexpected error remembers the scan already counted'
 }) => {
   let calls = 0
   let charged = 0
+  const languages: (string | undefined)[] = []
   const { run } = setup([], {
     resolveFridgeScanExtraction: async (_householdId, recorded) => ({
-      async extract() {
+      async extract(_image, language) {
+        languages.push(language)
         calls++
         if (calls === 2) throw new Error('temporary failure')
         if (!recorded) charged++
@@ -253,6 +259,7 @@ test('a full retry after an unexpected error remembers the scan already counted'
     }),
   })
   const job = fridgeJob(['a', 'b'])
+  job.input.language = 'en'
   await run.execute(job)
   assert.equal(job.status, 'queued')
   assert.isNull(job.result)
@@ -263,4 +270,51 @@ test('a full retry after an unexpected error remembers the scan already counted'
   assert.equal(retry.status, 'succeeded')
   assert.equal(charged, 1)
   assert.equal(calls, 4)
+  assert.deepEqual(languages, ['en', 'en', 'en', 'en'])
+})
+
+test.group('RunJob: requesting user language', () => {
+  for (const kind of ['receipt_scan', 'fridge_scan', 'recipe_generation'] as const) {
+    for (const language of ['en', 'fr', undefined] as const) {
+      test(`${kind} forwards ${language ?? 'legacy French'} to the provider`, async ({
+        assert,
+      }) => {
+        const received: (string | undefined)[] = []
+        const { run } = setup([], {
+          products: { findByHousehold: async () => [] } as unknown as RunJobDeps['products'],
+          resolveRecipeGeneration: async () => ({
+            generate: async (context) => {
+              received.push(context.language)
+              return []
+            },
+          }),
+          resolveReceiptExtraction: async () => ({
+            extract: async (_file, outputLanguage) => {
+              received.push(outputLanguage)
+              return { storeName: 'Monoprix', scannedAt: now, totalAmount: 0, items: [] }
+            },
+          }),
+          resolveFridgeScanExtraction: async () => ({
+            extract: async (_image, outputLanguage) => {
+              received.push(outputLanguage)
+              return { items: [item('Milk')] }
+            },
+          }),
+        })
+        const job = Job.create({
+          id: 'localized-job',
+          householdId: 'h1',
+          createdBy: 'u1',
+          kind,
+          input: { imageKeys: ['photo'], language },
+          total: 1,
+          traceparent: null,
+          now,
+        })
+        await run.execute(job)
+        assert.equal(job.status, 'succeeded')
+        assert.deepEqual(received, [language ?? 'fr'])
+      })
+    }
+  }
 })

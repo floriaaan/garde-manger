@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * What the route gates (`(tabs)`, `(auth)`, `(onboarding)`) render while the
  * session / foyer answer is pending, instead of `null` — which was a blank
@@ -34,6 +35,7 @@ const STALLED_MS = 6000
 /** Only foreground content fades out; the shared ground stays mounted. Skipped under Reduce Motion. */
 const GROUND_OUT = FadeOut.duration(300)
 export function BootSplash() {
+  const { t } = useTranslation()
   const sharedBackground = useSharedAuthBackground()
   useSplashBackground()
   const { width, height, fontScale } = useWindowDimensions()
@@ -74,7 +76,7 @@ export function BootSplash() {
       <YStack flex={1} minHeight={0} alignItems="center" justifyContent="center" paddingHorizontal={26} paddingVertical={16}>
         <YStack width="100%" maxWidth={440} alignItems="center">
           {stalled && compact ? (
-            <Text fontFamily={brandFont} fontSize={22} fontWeight="800" color={palette.ink}>Garde-manger</Text>
+            <Text fontFamily={brandFont} fontSize={22} fontWeight="800" color={palette.ink}>{t('fridge.pantry')}</Text>
           ) : (
             <>
               {height / fontScale >= 500 ? <Image source={mascot} accessible={false} resizeMode="contain" style={{ width: imageWidth, height: imageWidth, marginBottom: 12 }} /> : null}
@@ -85,8 +87,8 @@ export function BootSplash() {
           )}
           {!stalled || retrying ? (
             <YStack alignItems="center" gap={16} marginTop={24} accessibilityLiveRegion="polite">
-              <Text fontSize={14} lineHeight={20} color={palette.inkSecondary} textAlign="center">Ouverture du garde-manger…</Text>
-              <PantryLoader palette={palette} label="Ouverture du garde-manger" testID="boot-splash-loader" />
+              <Text fontSize={14} lineHeight={20} color={palette.inkSecondary} textAlign="center">{t('shared.opening_pantry')}</Text>
+              <PantryLoader palette={palette} label={t('shared.opening_pantry_2')} testID="boot-splash-loader" />
             </YStack>
           ) : null}
         </YStack>
@@ -101,16 +103,14 @@ export function BootSplash() {
           accessibilityLiveRegion="polite"
         >
           <Text fontFamily={brandFont} fontSize={18} fontWeight="800" color={palette.ink}>
-            {retried && !retrying ? 'Toujours injoignable' : 'Serveur injoignable'}
+            {retried && !retrying ? t('shared.still_unreachable') : t('shared.server_unreachable')}
           </Text>
-          <Text fontSize={13} fontWeight="500" textAlign="center" color={palette.inkSecondary}>
-            Vérifie ta connexion, ou l’adresse du serveur si elle a changé.
-          </Text>
-          <PillButton centered label={retrying ? 'Nouvelle tentative…' : 'Réessayer'} palette={palette} onPress={retry} />
+          <Text fontSize={13} fontWeight="500" textAlign="center" color={palette.inkSecondary}>{t('shared.check_your_connection_or_the_server_address_if_it_has')}</Text>
+          <PillButton centered label={retrying ? t('shared.trying_again') : t('dashboard.try_again')} palette={palette} onPress={retry} />
           <PillButton
             centered
             tone="quiet"
-            label="Changer de serveur"
+            label={t('settings.change_server')}
             palette={palette}
             onPress={() => router.push('/server-choice?next=sign-in')}
           />

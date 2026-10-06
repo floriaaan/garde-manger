@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { Animated } from 'react-native'
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
@@ -54,6 +55,7 @@ function RowActions({
   onDelete: () => void
   swipeableMethods: SwipeableMethods
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
 
   // A plain closure re-created every render — cheap, and it keeps
@@ -86,13 +88,11 @@ function RowActions({
           onEdit()
         }}
         accessibilityRole="button"
-        accessibilityLabel={`Modifier ${item.name}`}
+        accessibilityLabel={t('shopping-list.edit', { value1: item.name })}
         style={pointerCursor}
       >
         <YStack backgroundColor={palette.mintPale} alignItems="center" justifyContent="center" width={72} height="100%">
-          <Text fontSize={12} fontWeight="700" color={palette.mintPaleText}>
-            Modifier
-          </Text>
+          <Text fontSize={12} fontWeight="700" color={palette.mintPaleText}>{t('fridge.edit')}</Text>
         </YStack>
       </Pressable>
       <Pressable
@@ -102,13 +102,11 @@ function RowActions({
           onDelete()
         }}
         accessibilityRole="button"
-        accessibilityLabel={`Supprimer ${item.name}`}
+        accessibilityLabel={t('shopping-list.delete', { value1: item.name })}
         style={pointerCursor}
       >
         <YStack backgroundColor={palette.expiredBg} alignItems="center" justifyContent="center" width={72} height="100%">
-          <Text fontSize={12} fontWeight="700" color={palette.expiredText}>
-            Supprimer
-          </Text>
+          <Text fontSize={12} fontWeight="700" color={palette.expiredText}>{t('job.delete')}</Text>
         </YStack>
       </Pressable>
     </XStack>
@@ -132,6 +130,7 @@ export function ShoppingRow({
   onLongPress: () => void
   isLast: boolean
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const row = useQuietRowFeedback()
   // Tracks the swipe's actual open/closed state so the "Modifier"/"Supprimer"
@@ -166,7 +165,7 @@ export function ShoppingRow({
         accessibilityRole="checkbox"
         accessibilityState={{ checked: item.checked }}
         accessibilityLabel={`${item.name}, ${item.quantity.amount} ${item.quantity.unit}`}
-        accessibilityHint="Appui long pour modifier ou supprimer"
+        accessibilityHint={t('shopping-list.long_press_to_edit_or_delete')}
         android_ripple={ripple(palette.ink)}
         style={[pointerCursor, rippleClip(10)]}
       >

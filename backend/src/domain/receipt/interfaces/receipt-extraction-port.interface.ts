@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { ReceiptDraft } from '../receipt-draft.js'
 
 export interface ReceiptFile {
@@ -7,5 +8,5 @@ export interface ReceiptFile {
 }
 
 export interface ReceiptExtractionPort {
-  extract(file: ReceiptFile): Promise<ReceiptDraft>
+  extract(file: ReceiptFile, language?: AiLanguage): Promise<ReceiptDraft>
 }

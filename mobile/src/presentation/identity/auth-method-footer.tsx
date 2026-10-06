@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Image, Keyboard, View } from 'react-native'
@@ -28,6 +29,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
   disabled?: boolean
   onNativeBusyChange?: (busy: boolean) => void
 }) {
+  const { t } = useTranslation()
   const connector = useConnector()
   const palette = useSoftPalette()
   const authMethods = useAuthMethodsQuery()
@@ -45,7 +47,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
   const hasSocial = Boolean(pocketId || google || apple || passkey)
   const emailActive = Boolean(password && emailForm && (mode === 'email' || !hasSocial))
   const socialBusy = disabled || pendingNativeProvider !== null || pendingProvider !== null || signInSocial.isPending
-  const socialError = authErrorMessage(signInSocial.error, signInSocial.data, 'Connexion impossible. Réessaie ou choisis une autre méthode.')
+  const socialError = authErrorMessage(signInSocial.error, signInSocial.data, t('identity.couldn_t_sign_in_try_again_or_choose_another_method'))
 
   async function handlePocketId() {
     if (socialBusy) return
@@ -55,7 +57,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
       const result = await signInSocial.mutateAsync({ provider: 'pocketid' })
       if (result.ok && result.value) onSuccess()
     } catch {
-      setNativeError('Connexion impossible. Réessaie ou choisis une autre méthode.')
+      setNativeError(t('identity.couldn_t_sign_in_try_again_or_choose_another_method'))
     } finally {
       setPendingProvider(null)
     }
@@ -69,7 +71,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
       const result = await signInSocial.mutateAsync({ provider: 'google' })
       if (result.ok && result.value) onSuccess()
     } catch {
-      setNativeError('Connexion impossible. Réessaie ou choisis une autre méthode.')
+      setNativeError(t('identity.couldn_t_sign_in_try_again_or_choose_another_method'))
     } finally {
       setPendingProvider(null)
     }
@@ -90,13 +92,13 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
       })
-      if (!credential.identityToken) throw new Error('Apple n’a pas renvoyé de jeton d’identité.')
+      if (!credential.identityToken) throw new Error(t('identity.apple_didn_t_return_an_identity_token'))
       const result = await connector.signInApple(credential.identityToken)
       if (result.ok) onSuccess()
       else setNativeError(result.error.message)
     } catch (error) {
       if (!(typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_REQUEST_CANCELED') && !(error instanceof Error && error.message.includes('ERR_REQUEST_CANCELED'))) {
-        setNativeError(error instanceof Error ? error.message : 'Connexion Apple impossible.')
+        setNativeError(error instanceof Error ? error.message : t('identity.couldn_t_sign_in_with_apple'))
       }
     } finally {
       setPendingNativeProvider(null)
@@ -114,7 +116,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
       if (result.ok) onSuccess()
       else if (result.error.type !== 'ERROR_CEREMONY_ABORTED') setNativeError(result.error.message)
     } catch (error) {
-      setNativeError(error instanceof Error ? error.message : 'Connexion par clé d’accès impossible.')
+      setNativeError(error instanceof Error ? error.message : t('identity.couldn_t_sign_in_with_a_passkey'))
     } finally {
       setPendingNativeProvider(null)
       onNativeBusyChange?.(false)
@@ -133,10 +135,10 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
     <View style={{ gap: 16 }}>
       <View style={{ display: emailActive ? 'none' : 'flex', gap: 12 }} accessibilityElementsHidden={emailActive} importantForAccessibility={emailActive ? 'no-hide-descendants' : 'auto'}>
         {hasSocial ? <View testID="auth-social-methods" style={{ flexDirection: 'row', gap: 8, alignItems: 'stretch' }}>
-          {apple ? <AuthProviderButton name="Apple" label="Continuer avec Apple" testID="auth-method-apple" icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />} pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} /> : null}
-          {google ? <AuthProviderButton name="Google" label="Continuer avec Google" testID="auth-method-google" icon={<GoogleIcon size={24} />} pending={pendingProvider === 'google'} disabled={socialBusy} onPress={handleGoogle} /> : null}
-          {pocketId ? <AuthProviderButton name={pocketId.label} label={`Continuer avec ${pocketId.label}`} testID="auth-method-pocketid" icon={<PocketIdIcon size={24} color={palette.accentLimeText} />} pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} /> : null}
-          {passkey ? <AuthProviderButton name="Clé d’accès" label="Utiliser une clé d’accès" testID="auth-method-passkey" icon={<LockIcon size={24} color={palette.accentLimeText} />} pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} /> : null}
+          {apple ? <AuthProviderButton name="Apple" label={t('identity.continue_with_apple')} testID="auth-method-apple" icon={<Image source={require('../../../assets/images/sign-in-with-apple-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />} pending={pendingNativeProvider === 'apple'} disabled={socialBusy} onPress={handleApple} /> : null}
+          {google ? <AuthProviderButton name="Google" label={t('identity.continue_with_google')} testID="auth-method-google" icon={<GoogleIcon size={24} />} pending={pendingProvider === 'google'} disabled={socialBusy} onPress={handleGoogle} /> : null}
+          {pocketId ? <AuthProviderButton name={pocketId.label} label={t('identity.continue_with', { value1: pocketId.label })} testID="auth-method-pocketid" icon={<PocketIdIcon size={24} color={palette.accentLimeText} />} pending={pendingProvider === 'pocketid'} disabled={socialBusy} onPress={handlePocketId} /> : null}
+          {passkey ? <AuthProviderButton name="Clé d’accès" label={t('identity.use_a_passkey')} testID="auth-method-passkey" icon={<LockIcon size={24} color={palette.accentLimeText} />} pending={pendingNativeProvider === 'passkey'} disabled={socialBusy} onPress={handlePasskey} /> : null}
         </View> : null}
         {socialError ? <AuthError message={socialError} /> : null}
         {nativeError ? <AuthError message={nativeError} /> : null}
@@ -144,7 +146,7 @@ export function AuthMethodFooter({ emailLabel, emailForm, onSuccess, allowPasske
       </View>
       {everEnteredEmail || emailActive ? (
         <View style={{ display: emailActive ? 'flex' : 'none', gap: 16 }} accessibilityElementsHidden={!emailActive} importantForAccessibility={emailActive ? 'auto' : 'no-hide-descendants'}>
-          {hasSocial ? <AuthKeyboardAccessory><PillButton testID="auth-method-back" label="Autre méthode" tone="quiet" palette={palette} disabled={socialBusy} icon={(color) => <ArrowLeftIcon size={16} color={color} />} onPress={() => changeEmailMode(false)} /></AuthKeyboardAccessory> : null}
+          {hasSocial ? <AuthKeyboardAccessory><PillButton testID="auth-method-back" label={t('identity.another_method')} tone="quiet" palette={palette} disabled={socialBusy} icon={(color) => <ArrowLeftIcon size={16} color={color} />} onPress={() => changeEmailMode(false)} /></AuthKeyboardAccessory> : null}
           {emailForm}
         </View>
       ) : null}

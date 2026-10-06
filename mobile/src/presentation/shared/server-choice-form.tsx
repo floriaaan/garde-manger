@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { Animated, Linking, Platform } from 'react-native'
 import { Pressable } from './pressable.js'
@@ -96,6 +97,7 @@ function RadioOption({
  * and says so, instead of looking tappable and doing nothing.
  */
 function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; serverVersion: string }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   const canUpdate = Boolean(APP_UPDATE_URL)
   const slop = 6
@@ -103,9 +105,7 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
   return (
     <XStack testID="server-choice-version-mismatch" alignItems="center" gap="$2" borderRadius={12} padding="$3" backgroundColor={palette.soonBg}>
       <TriangleAlertIcon size={16} color={palette.soonText} />
-      <Text flex={1} fontSize={12} fontWeight="600" color={palette.soonText}>
-        Serveur en v{serverVersion}, application en v{APP_VERSION}.
-      </Text>
+      <Text flex={1} fontSize={12} fontWeight="600" color={palette.soonText}>{t('shared.server_v_app_v', { value1: serverVersion, value2: APP_VERSION })}</Text>
       <Pressable
         testID="server-choice-update-app"
         disabled={!canUpdate}
@@ -126,9 +126,7 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
         <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: canUpdate ? 1 : 0.5, minHeight: 32, justifyContent: 'center' }}>
           <XStack alignItems="center" gap="$1">
             <RefreshIcon size={14} color={palette.soonText} />
-            <Text fontSize={12} fontWeight="700" color={palette.soonText}>
-              Mettre à jour
-            </Text>
+            <Text fontSize={12} fontWeight="700" color={palette.soonText}>{t('shared.update')}</Text>
           </XStack>
         </Animated.View>
       </Pressable>
@@ -157,7 +155,7 @@ function UpdateAppBanner({ palette, serverVersion }: { palette: SoftPalette; ser
 export function ServerChoiceForm({
   palette,
   defaultUrl,
-  saveLabel = 'Sauvegarder',
+  saveLabel: providedSaveLabel,
   fieldLabelColor,
   onSave,
 }: {
@@ -168,6 +166,8 @@ export function ServerChoiceForm({
   /** `info` is `null` for the official server, which is saved without a check. */
   onSave: (url: string, info: InstanceInfo | null) => void | Promise<void>
 }) {
+  const { t } = useTranslation()
+  const saveLabel = providedSaveLabel ?? t('shared.save')
   const connector = useConnector()
   const initialUrl = defaultUrl ?? getDefaultServerUrl()
   const [mode, setMode] = useState<Mode>(initialUrl === OFFICIAL_SERVER_URL ? 'official' : 'self-hosted')
@@ -185,7 +185,7 @@ export function ServerChoiceForm({
     try {
       new URL(trimmed)
     } catch {
-      setError("Adresse invalide : il manque le https:// (ex. https://mon-serveur.exemple.com).")
+      setError(t('shared.invalid_address_https_is_missing_e_g_https_my_server'))
       haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error))
       return
     }
@@ -193,7 +193,7 @@ export function ServerChoiceForm({
     const info = await connector.getInstanceInfo(trimmed)
     setChecking(false)
     if (!info) {
-      setError("Ce serveur ne répond pas comme une instance Garde-manger. Vérifie l'adresse.")
+      setError(t('shared.this_server_doesn_t_respond_as_a_garde_manger_instance'))
       haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error))
       return
     }
@@ -227,8 +227,8 @@ export function ServerChoiceForm({
           testID="server-choice-official"
           palette={palette}
           selected={mode === 'official'}
-          title="Garde-manger officiel"
-          subtitle="Notre serveur, prêt à l'emploi, sans rien à installer ni à maintenir."
+          title={t('settings.official_garde_manger')}
+          subtitle={t('shared.our_server_ready_to_go_with_nothing_to_install_or')}
           onPress={() => {
             setMode('official')
             setUrl(OFFICIAL_SERVER_URL)
@@ -240,8 +240,8 @@ export function ServerChoiceForm({
           testID="server-choice-self-hosted"
           palette={palette}
           selected={mode === 'self-hosted'}
-          title="Auto-hébergé"
-          subtitle="Connecte-toi à ton propre serveur Garde-manger : tu gardes la main sur tes données et leur hébergement."
+          title={t('shared.self_hosted')}
+          subtitle={t('shared.connect_to_your_own_garde_manger_server_you_control_your')}
           onPress={() => setMode('self-hosted')}
         />
       </YStack>
@@ -249,9 +249,9 @@ export function ServerChoiceForm({
       <YStack gap="$3">
         {mode === 'self-hosted' ? (
           <AuthField
-            label="Adresse du serveur"
+            label={t('shared.server_address')}
             labelColor={fieldLabelColor}
-            placeholder="https://mon-serveur.exemple.com"
+            placeholder={t('shared.https_my_server_example_com')}
             value={url}
             onChangeText={(next) => {
               setUrl(next)
@@ -270,7 +270,7 @@ export function ServerChoiceForm({
         {verified && mode === 'self-hosted' ? (
           <YStack borderRadius={14} padding="$3" backgroundColor={palette.mintPale} gap="$1">
             <Text testID="server-choice-found" fontSize={13} fontWeight="700" color={palette.mintPaleText}>
-              {verified.name ? `${verified.name} — v${verified.version}` : `Serveur trouvé — v${verified.version}`}
+              {verified.name ? `${verified.name} — v${verified.version}` : t('shared.server_found_v', { value1: verified.version })}
             </Text>
           </YStack>
         ) : null}
@@ -283,8 +283,8 @@ export function ServerChoiceForm({
 
         <AuthButton
           testID="server-choice-submit"
-          label={ready ? saveLabel : 'Vérifier'}
-          pendingLabel={ready ? 'Sauvegarde...' : 'Vérification...'}
+          label={ready ? saveLabel : t('shared.check')}
+          pendingLabel={ready ? t('shared.saving') : t('shared.checking')}
           pending={ready ? saving : checking}
           disabled={!url.trim()}
           onPress={ready ? handleSave : handleVerify}

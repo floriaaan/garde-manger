@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import { useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
@@ -26,11 +27,11 @@ import { useConnector } from '../../application/shared/connector-context.js'
 import { isFakeConnector } from '../../application/shared/connector-mode.js'
 
 const PROVIDER_LABELS: Record<string, string> = {
-  password: 'Email et mot de passe',
+  get password() { return t('identity.email_and_password') },
   pocketid: 'PocketID',
   google: 'Google',
   apple: 'Apple',
-  passkey: 'Clé d’accès (passkey)',
+  get passkey() { return t('identity.passkey') },
 }
 
 function ProviderIcon({ provider, color }: { provider: string; color: string }) {
@@ -45,6 +46,7 @@ function ProviderIcon({ provider, color }: { provider: string; color: string }) 
 }
 
 export function AccountScreen() {
+  const { t } = useTranslation()
   const connector = useConnector()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
@@ -89,18 +91,18 @@ export function AccountScreen() {
         const credential = await AppleAuthentication.signInAsync({
           requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
         })
-        if (!credential.identityToken) throw new Error('Apple n’a pas renvoyé de jeton d’identité.')
+        if (!credential.identityToken) throw new Error(t('identity.apple_didn_t_return_an_identity_token'))
         identityToken = credential.identityToken
       }
       const result = await connector.linkApple(identityToken)
       if (!result.ok) showHint(result.error.message, 'error')
       else {
         void queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
-        showHint('Compte Apple associé', 'success')
+        showHint(t('identity.apple_account_linked'), 'success')
       }
     } catch (error) {
       if (!(error instanceof Error && error.message.includes('ERR_REQUEST_CANCELED'))) {
-        showHint(error instanceof Error ? error.message : 'Association Apple impossible.', 'error')
+        showHint(error instanceof Error ? error.message : t('identity.couldn_t_link_apple'), 'error')
       }
     } finally {
       setNativePending(false)
@@ -115,7 +117,7 @@ export function AccountScreen() {
         if (result.error.type !== 'ERROR_CEREMONY_ABORTED') showHint(result.error.message, 'error')
       } else {
         void queryClient.invalidateQueries({ queryKey: ['linked-accounts'] })
-        showHint('Clé d’accès ajoutée', 'success')
+        showHint(t('identity.passkey_added'), 'success')
       }
     } finally {
       setNativePending(false)
@@ -124,7 +126,7 @@ export function AccountScreen() {
 
   async function handleSaveName(trimmed: string) {
     if (!trimmed) {
-      showHint('Le nom ne peut pas être vide.', 'error')
+      showHint(t('identity.the_name_can_t_be_empty'), 'error')
       return
     }
     const result = await updateName.mutateAsync(trimmed)
@@ -133,7 +135,7 @@ export function AccountScreen() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['session'] })
-    showHint('Nom mis à jour', 'success')
+    showHint(t('identity.name_updated'), 'success')
   }
 
   async function handleChangePassword() {
@@ -144,7 +146,7 @@ export function AccountScreen() {
     }
     setCurrentPassword('')
     setNewPassword('')
-    showHint('Mot de passe mis à jour', 'success', { description: 'Utilise-le à ta prochaine connexion.' })
+    showHint(t('identity.password_updated'), 'success', { description: t('identity.use_it_the_next_time_you_sign_in') })
   }
 
   return (
@@ -156,7 +158,7 @@ export function AccountScreen() {
           <ScreenHeader
             palette={palette}
             icon={(color) => <UserIcon size={19} color={color} />}
-            title="Mon compte"
+            title={t('identity.my_account')}
             onBack={() => goBack('/settings')}
           />
         }
@@ -179,26 +181,24 @@ export function AccountScreen() {
 
         {canChangePassword ? (
           <YStack marginTop="$8" gap="$2">
-            <Text fontSize={15} fontWeight="800" color={palette.ink}>
-              Mot de passe
-            </Text>
+            <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.password')}</Text>
             <AuthPasswordField
               testID="account-current-password"
-              label="Mot de passe actuel"
+              label={t('identity.current_password')}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               autoComplete="current-password"
             />
             <AuthPasswordField
               testID="account-new-password"
-              label="Nouveau mot de passe"
+              label={t('identity.new_password')}
               value={newPassword}
               onChangeText={setNewPassword}
               autoComplete="new-password"
             />
             <AuthButton
               testID="account-save-password"
-              label="Changer le mot de passe"
+              label={t('identity.change_password')}
               pending={changePassword.isPending}
               disabled={!currentPassword || !newPassword}
               onPress={handleChangePassword}
@@ -207,9 +207,7 @@ export function AccountScreen() {
         ) : null}
 
         <YStack marginTop="$8" gap="$2">
-          <Text fontSize={15} fontWeight="800" color={palette.ink}>
-            Méthodes de connexion
-          </Text>
+          <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('identity.sign_in_methods')}</Text>
           {(linkedAccounts.data ?? []).map((account) => (
             <XStack
               key={account.provider}
@@ -232,7 +230,7 @@ export function AccountScreen() {
             <AuthButton
               key={method.id}
               testID={`account-link-${method.id}`}
-              label={`Connecter ${PROVIDER_LABELS[method.id] ?? method.label}`}
+              label={t('identity.connect', { value1: PROVIDER_LABELS[method.id] ?? method.label })}
               variant="secondary"
               icon={<ProviderIcon provider={method.id} color={palette.ink} />}
               pending={linkSocial.isPending}
@@ -240,17 +238,17 @@ export function AccountScreen() {
             />
           ))}
           {(appleAvailable || isFakeConnector) && authMethods.data?.some((method) => method.id === 'apple' && method.enabled) && !linkedProviders.has('apple') ? (
-            <AuthButton testID="account-link-apple" label="Connecter Apple" variant="secondary" pending={nativePending} onPress={handleLinkApple} />
+            <AuthButton testID="account-link-apple" label={t('identity.connect_apple')} variant="secondary" pending={nativePending} onPress={handleLinkApple} />
           ) : null}
           {authMethods.data?.some((method) => method.id === 'passkey' && method.enabled) ? (
-            <AuthButton testID="account-add-passkey" label="Ajouter une clé d’accès" variant="secondary" pending={nativePending} onPress={handleAddPasskey} />
+            <AuthButton testID="account-add-passkey" label={t('identity.add_a_passkey')} variant="secondary" pending={nativePending} onPress={handleAddPasskey} />
           ) : null}
         </YStack>
 
         <YStack marginTop="$8" gap="$2">
           <AuthButton
             testID="account-delete"
-            label="Supprimer le compte"
+            label={t('identity.delete_account')}
             variant="secondary"
             icon={<TrashIcon size={16} color={palette.expiredText} />}
             onPress={() => router.push('/delete-account')}
@@ -275,13 +273,14 @@ function NameEditor({
   pending: boolean
   onSave: (trimmed: string) => void
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   return (
     <YStack marginTop="$6" gap="$2">
-      <AuthField testID="account-name" label="Nom" value={name} onChangeText={setName} autoCapitalize="words" />
+      <AuthField testID="account-name" label={t('fridge.name')} value={name} onChangeText={setName} autoCapitalize="words" />
       <AuthButton
         testID="account-save-name"
-        label="Enregistrer"
+        label={t('fridge.save')}
         pending={pending}
         disabled={name.trim() === initialName}
         onPress={() => onSave(name.trim())}

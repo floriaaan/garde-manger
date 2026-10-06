@@ -15,6 +15,7 @@ const ingredientSchema = vine.object({
 export const generateRecipesValidator = vine.compile(
   vine.object({
     prompt: vine.string().trim().maxLength(500).optional(),
+    language: vine.enum(['fr', 'en'] as const).optional(),
   }),
 )
 

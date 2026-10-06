@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * The app's own "working on it", for a wait that has no measurable progress.
  *
@@ -78,7 +79,7 @@ export function PulseDots({
   palette,
   size = 10,
   testID,
-  label = 'Chargement',
+  label: providedLabel,
 }: {
   palette: SoftPalette
   size?: number
@@ -86,6 +87,8 @@ export function PulseDots({
   /** Announced once for the whole row — three anonymous dots are noise to a screen reader. */
   label?: string
 }) {
+  const { t } = useTranslation()
+  const label = providedLabel ?? t('shared.loading')
   const reduceMotion = useReduceMotion()
   const colors = [palette.chipOrange, palette.chipViolet, palette.chipTeal]
 

@@ -72,6 +72,7 @@ export class RunJob {
         householdId: job.householdId,
         createdBy: job.createdBy,
         prompt: job.input.prompt,
+        language: job.input.language ?? 'fr',
       })
     }, 'generation_failed')
 
@@ -149,6 +150,7 @@ export class RunJob {
       const extraction = await this.deps.resolveReceiptExtraction(job.householdId)
       return new ScanReceipt(extraction).execute({
         image: { buffer: image.buffer, contentType: image.contentType },
+        language: job.input.language ?? 'fr',
       })
     }, 'extraction_failed')
   }
@@ -161,7 +163,10 @@ export class RunJob {
         job.householdId,
         job.input.aiUsageRecorded === true || job.progress.done > 0,
       )
-      return new ScanFridge(extraction).execute({ image: image.buffer })
+      return new ScanFridge(extraction).execute({
+        image: image.buffer,
+        language: job.input.language ?? 'fr',
+      })
     }, 'extraction_failed')
   }
 

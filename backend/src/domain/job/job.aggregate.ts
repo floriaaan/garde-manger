@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import { nextAttemptAt } from './retry-policy.js'
 
 export type JobKind = 'receipt_scan' | 'fridge_scan' | 'recipe_generation'
@@ -11,6 +12,8 @@ export interface JobProgress {
 }
 
 export interface JobInput {
+  /** Persisted so asynchronous execution and retries retain the requesting user's language. */
+  language?: AiLanguage
   imageKeys?: string[]
   prompt?: string
   /** Fridge scans consume one quota unit; keep this across full and partial retries. */

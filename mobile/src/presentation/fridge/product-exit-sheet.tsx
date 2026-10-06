@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 /**
  * How a product leaves the garde-manger — the question the app never asked.
  *
@@ -25,10 +26,10 @@ import type { DiscardReason } from '../../domain/fridge/product-outcome.js'
 import type { Product } from '../../domain/fridge/product.js'
 
 const REASON_LABELS: Record<DiscardReason, string> = {
-  expired: 'Dépassé',
-  spoiled: 'Abîmé',
-  disliked: 'Pas aimé',
-  other: 'Autre',
+  get expired() { return t('dashboard.past_expiry_2') },
+  get spoiled() { return t('fridge.damaged') },
+  get disliked() { return t('fridge.didn_t_like_it') },
+  get other() { return t('fridge.other') },
 }
 
 export function ProductExitSheet({
@@ -46,6 +47,7 @@ export function ProductExitSheet({
   onDiscarded: (details: { discardReason: DiscardReason | null; amount: number | null }) => void
   onCorrection: () => void
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const single = products.length === 1 ? products[0] : null
   const allExpired = products.length > 0 && products.every((product) => productStatus(product) === 'expired')
@@ -77,12 +79,12 @@ export function ProductExitSheet({
       <ActionSheet
         visible={visible}
         onClose={onClose}
-        title={`Retirer ${subject} ?`}
-        description="Mangé ou jeté, ça compte dans le bilan du foyer. Une erreur de saisie ne compte pas."
+        title={t('fridge.remove_2', { value1: subject })}
+        description={t('fridge.used_or_discarded_products_count_towards_the_household_s_stats')}
         options={[
           {
             testID: 'product-exit-consumed',
-            label: plural ? 'Consommés' : 'Consommé',
+            label: plural ? t('fridge.used') : t('fridge.used_2'),
             icon: (color) => <CircleCheckIcon size={18} color={color} />,
             tint: palette.freshText,
             onPress: onConsumed,
@@ -90,14 +92,14 @@ export function ProductExitSheet({
           {
             testID: 'product-exit-discarded',
             keepOpen: true,
-            label: plural ? 'Jetés' : 'Jeté',
+            label: plural ? t('fridge.discarded') : t('fridge.discarded_2'),
             icon: (color) => <BanIcon size={18} color={color} />,
             tint: palette.soonText,
             onPress: () => setStep('discard'),
           },
           {
             testID: 'product-exit-correction',
-            label: plural ? 'Supprimer — erreurs de saisie' : 'Supprimer — erreur de saisie',
+            label: plural ? t('fridge.delete_entry_mistakes') : t('fridge.delete_entry_mistake'),
             icon: (color) => <PencilIcon size={18} color={color} />,
             tint: palette.inkSecondary,
             quiet: true,
@@ -112,11 +114,11 @@ export function ProductExitSheet({
     <ActionSheet
       visible={visible}
       onClose={onClose}
-      title={`Jeter ${subject} ?`}
+      title={t('fridge.discard_3', { value1: subject })}
       options={[
         {
           testID: 'product-exit-discard-confirm',
-          label: 'Jeter',
+          label: t('fridge.discard_2'),
           icon: (color) => <BanIcon size={18} color={color} />,
           tint: palette.expired,
           destructive: true,
@@ -125,9 +127,7 @@ export function ProductExitSheet({
       ]}
     >
       <YStack gap="$3" paddingHorizontal="$2" paddingBottom="$2">
-        <Text fontSize={13} fontWeight="600" color={palette.inkSecondary}>
-          Pourquoi ? (facultatif)
-        </Text>
+        <Text fontSize={13} fontWeight="600" color={palette.inkSecondary}>{t('fridge.why_optional')}</Text>
         <XStack gap="$3" flexWrap="wrap">
           {DISCARD_REASONS.map((value) => (
             <Chip
@@ -144,9 +144,7 @@ export function ProductExitSheet({
 
         {single && stock !== null && amount !== null ? (
           <XStack alignItems="center" justifyContent="space-between" gap="$3" marginTop="$1">
-            <Text fontSize={13} fontWeight="600" color={palette.inkSecondary}>
-              Quantité jetée
-            </Text>
+            <Text fontSize={13} fontWeight="600" color={palette.inkSecondary}>{t('fridge.discarded_quantity')}</Text>
             <XStack alignItems="center" gap="$2">
               <StepButton
                 testID="product-exit-amount-decrease"
@@ -156,7 +154,7 @@ export function ProductExitSheet({
                 // on iOS never re-announces the `Text` between these buttons —
                 // the label a screen reader focuses next has to carry the
                 // number itself.
-                accessibilityLabel={`Un de moins, ${amount - 1} ${single.quantity.unit} restant${amount - 1 > 1 ? 's' : ''}`}
+                accessibilityLabel={t('fridge.one_less_left', { count: amount - 1, value2: single.quantity.unit })}
                 disabled={amount <= 1}
                 onPress={() => setAmount(Math.max(1, amount - 1))}
               />
@@ -174,7 +172,7 @@ export function ProductExitSheet({
               <StepButton
                 testID="product-exit-amount-increase"
                 label="+"
-                accessibilityLabel={`Un de plus, ${amount + 1} ${single.quantity.unit} restant${amount + 1 > 1 ? 's' : ''}`}
+                accessibilityLabel={t('fridge.one_more_left', { count: amount + 1, value2: single.quantity.unit })}
                 disabled={amount >= stock}
                 onPress={() => setAmount(Math.min(stock, amount + 1))}
               />

@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
@@ -19,6 +20,7 @@ import { useAiSettingsQuery } from '../../application/settings/ai-settings.query
 import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 
 export function SubscriptionScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const settings = useAiSettingsQuery()
   const refresh = usePullToRefresh(() => settings.refetch())
@@ -33,14 +35,14 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title="Abonnement"
+          title={t('settings.subscription')}
           onBack={() => router.back()}
         />
       }
     >
       <YStack gap="$3" marginTop="$5">
         {settings.isPending ? (
-          <SkeletonGroup label="Chargement de l’abonnement">
+          <SkeletonGroup label={t('settings.loading_subscription')}>
             <SkeletonCard height={56} palette={palette} />
             <SkeletonCard height={320} palette={palette} />
           </SkeletonGroup>
@@ -48,12 +50,8 @@ export function SubscriptionScreen() {
 
         {access?.plan === 'self-hosted' ? (
           <YStack testID="subscription-not-applicable" gap="$1.5" padding="$4" borderRadius="$4" backgroundColor={palette.cream}>
-            <Text fontSize={16} fontWeight="800" color={palette.ink}>
-              Non applicable
-            </Text>
-            <Text fontSize={13} color={palette.inkSecondary}>
-              Tu utilises un serveur auto-hébergé : l’IA n’y est pas limitée et aucun abonnement n’est nécessaire.
-            </Text>
+            <Text fontSize={16} fontWeight="800" color={palette.ink}>{t('settings.not_applicable')}</Text>
+            <Text fontSize={13} color={palette.inkSecondary}>{t('settings.you_re_using_a_self_hosted_server_ai_is_unlimited')}</Text>
           </YStack>
         ) : null}
 
@@ -86,13 +84,9 @@ export function SubscriptionScreen() {
 
         {!settings.isPending && !settings.data ? (
           <YStack gap="$1.5" accessibilityLiveRegion="polite">
-            <Text fontSize={13} color={palette.expiredText}>
-              Impossible de charger l’abonnement.
-            </Text>
+            <Text fontSize={13} color={palette.expiredText}>{t('settings.couldn_t_load_subscription')}</Text>
             <Pressable testID="subscription-retry" onPress={() => void settings.refetch()} accessibilityRole="button" hitSlop={8}>
-              <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>
-                Réessayer
-              </Text>
+              <Text fontSize={13} fontWeight="700" color={palette.lavenderText}>{t('dashboard.try_again')}</Text>
             </Pressable>
           </YStack>
         ) : null}

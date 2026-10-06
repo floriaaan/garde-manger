@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * DIRECTION CONTRACT — the Frigo screen's cabinet (2026-09-05, asked for
  * directly: "peux-tu rendre la page frigo skeumorphique — que ça ressemble
@@ -111,6 +112,7 @@ export function ShelfHeader({
   label: string
   count: number
 }) {
+  const { t } = useTranslation()
   return (
     <XStack alignItems="center" gap="$2" paddingHorizontal="$3" paddingTop="$3" paddingBottom="$2">
       {icon}
@@ -118,9 +120,7 @@ export function ShelfHeader({
         {label.toUpperCase()}
       </Text>
       <YStack flex={1} />
-      <Text fontSize={11} fontWeight="600" color={palette.cabinetInkSecondary}>
-        {count} produit{count > 1 ? 's' : ''}
-      </Text>
+      <Text fontSize={11} fontWeight="600" color={palette.cabinetInkSecondary}>{t('fridge.product', { count: count })}</Text>
     </XStack>
   )
 }

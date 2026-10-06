@@ -1,4 +1,5 @@
 import { errorStatus } from '../../domain/shared/log-diagnostic.js'
+import { getLocale } from '../../i18n/index.js'
 import { Platform } from 'react-native'
 import { File } from 'expo-file-system'
 import { queryClient } from '../../application/shared/query-client.js'
@@ -510,7 +511,7 @@ export class HttpFridgeConnector implements FridgeConnector {
   async enqueueRecipeGeneration(prompt?: string): Promise<Result<Job, ApiError>> {
     const result = await apiFetch<{ job: Job }>(
       '/api/jobs/recipe-generation',
-      { method: 'POST', body: JSON.stringify(prompt ? { prompt } : {}) },
+      { method: 'POST', body: JSON.stringify({ prompt, language: getLocale() }) },
       { action: 'job.enqueue_recipe_generation' },
     )
     return result.ok ? Result.ok(result.value.job) : Result.err(result.error)
@@ -635,6 +636,7 @@ export class HttpFridgeConnector implements FridgeConnector {
 
   async enqueueReceiptScan(imageUri: string): Promise<Result<Job, ApiError>> {
     const formData = new FormData()
+    formData.append('language', getLocale())
     // A hardcoded ".jpg" here used to route every PDF import through the
     // backend's extname-based content-type sniff as a JPEG — a receipt
     // scanned as a PDF has to keep its extension to be read as one.
@@ -648,6 +650,7 @@ export class HttpFridgeConnector implements FridgeConnector {
 
   async enqueueFridgeScan(imageUris: string[]): Promise<Result<Job, ApiError>> {
     const formData = new FormData()
+    formData.append('language', getLocale())
     for (const [index, uri] of imageUris.entries()) {
       await appendImagePart(formData, uri, `fridge-${index}.jpg`, 'images')
     }

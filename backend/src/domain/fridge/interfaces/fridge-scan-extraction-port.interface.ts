@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { FridgeScanDraft } from '../fridge-scan-draft.js'
 
 /**
@@ -8,5 +9,5 @@ import type { FridgeScanDraft } from '../fridge-scan-draft.js'
  * message anyway.
  */
 export interface FridgeScanExtractionPort {
-  extract(image: Buffer): Promise<FridgeScanDraft>
+  extract(image: Buffer, language?: AiLanguage): Promise<FridgeScanDraft>
 }

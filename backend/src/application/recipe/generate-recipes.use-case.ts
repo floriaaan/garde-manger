@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { UseCase } from '#application/shared/use-case'
 import type { RecipeRepository } from '#domain/recipe/interfaces/recipe-repository.interface'
 import type { RecipeGenerationPort } from '#domain/recipe/interfaces/recipe-generation-port.interface'
@@ -18,6 +19,7 @@ export interface GenerateRecipesInput {
   /** The member doing it — the library is shared, so every row records who added it. */
   createdBy: string
   prompt?: string
+  language?: AiLanguage
 }
 
 export type GenerateRecipesError = 'provider_not_configured' | 'generation_failed'
@@ -51,6 +53,7 @@ export class GenerateRecipes implements UseCase<
           expiresAt: p.expiresAt,
         })),
         prompt: input.prompt,
+        language: input.language,
         prioritizeExpiringSoon: false,
       })
     } catch (error) {

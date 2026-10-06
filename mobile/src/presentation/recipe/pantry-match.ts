@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js'
 /**
  * Does this recipe use what the foyer already has, and does it save anything?
  *
@@ -139,9 +140,9 @@ export function splitIngredients(recipe: Recipe, match: PantryMatch) {
  * that has ~140pt; the full sentence is for anything with a line to itself.
  */
 export function pantrySentence(match: PantryMatch, { short = false }: { short?: boolean } = {}): string {
-  if (short) return `${match.owned} sur ${match.total} chez toi`
-  if (match.owned === 0) return `Aucun des ${match.total} ingrédients chez toi`
-  return `${match.owned} ingrédient${match.owned > 1 ? 's' : ''} sur ${match.total} chez toi`
+  if (short) return t('recipe.of_at_home', { value1: match.owned, value2: match.total })
+  if (match.owned === 0) return t('recipe.none_of_the_ingredients_at_home', { value1: match.total })
+  return t('recipe.of_ingredients_at_home', { count: match.owned, value2: match.total })
 }
 
 export function coverage(match: PantryMatch): number {

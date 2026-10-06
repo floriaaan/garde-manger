@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { Animated } from 'react-native'
 import { Pressable } from './pressable.js'
 import { YStack } from './tamagui-typed.js'
@@ -13,6 +14,7 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
  * has nothing else.
  */
 export function CloseButton({ testID, palette, onPress }: { testID?: string; palette: SoftPalette; onPress: () => void }) {
+  const { t } = useTranslation()
   const hover = useHoverPress()
   return (
     <Pressable
@@ -23,7 +25,7 @@ export function CloseButton({ testID, palette, onPress }: { testID?: string; pal
       onPressIn={hover.onPressIn}
       onPressOut={hover.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel="Fermer"
+      accessibilityLabel={t('shared.close')}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       android_ripple={ripple(palette.creamPillEdge, { borderless: true })}
       style={pointerCursor}

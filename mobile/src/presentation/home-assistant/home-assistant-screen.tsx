@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Animated, Switch } from 'react-native'
@@ -25,15 +26,15 @@ import { useUnlinkHaMutation } from '../../application/home-assistant/unlink-ha.
 import type { HaSyncDirection, HaTodoEntity } from '../../domain/home-assistant/ha-link.js'
 
 const DIRECTION_LABELS: Record<HaSyncDirection, string> = {
-  two_way: 'Deux sens',
-  push: 'Vers Home Assistant',
-  pull: 'Depuis Home Assistant',
+  get two_way() { return t('home-assistant.both_ways') },
+  get push() { return t('home-assistant.to_home_assistant') },
+  get pull() { return t('home-assistant.from_home_assistant') },
 }
 
 const DIRECTION_HINTS: Record<HaSyncDirection, string> = {
-  two_way: 'Les ajouts faits ici et dans Home Assistant se retrouvent des deux côtés.',
-  push: 'Home Assistant reflète cette liste. Un article supprimé là-bas revient.',
-  pull: 'Cette liste suit Home Assistant. Tes modifications ici seront écrasées.',
+  get two_way() { return t('home-assistant.items_added_here_or_in_home_assistant_appear_in_both') },
+  get push() { return t('home-assistant.home_assistant_mirrors_this_list_an_item_deleted_there_will') },
+  get pull() { return t('home-assistant.this_list_follows_home_assistant_changes_made_here_will_be') },
 }
 
 const DIRECTION_ICONS: Record<HaSyncDirection, typeof ArrowRightIcon> = {
@@ -138,22 +139,23 @@ function SwitchRow({
 /** French phrasing for the five distinct connection failures — never a
  * single generic message (design §8). */
 const CONNECTION_ERROR_MESSAGES: Record<string, string> = {
-  unreachable: 'Impossible de joindre cette adresse depuis le serveur.',
-  unauthorized: 'Home Assistant a refusé ce jeton.',
-  host_not_allowed: "Cet hôte n'est pas autorisé sur ce serveur.",
-  invalid_url: "Cette adresse n'est pas valide.",
-  token_required: 'Un jeton est requis pour la première connexion.',
+  get unreachable() { return t('home-assistant.the_server_couldn_t_reach_this_address') },
+  get unauthorized() { return t('home-assistant.home_assistant_rejected_this_token') },
+  get host_not_allowed() { return t('home-assistant.this_host_isn_t_allowed_on_this_server') },
+  get invalid_url() { return t('home-assistant.this_address_is_invalid') },
+  get token_required() { return t('home-assistant.a_token_is_required_for_the_first_connection') },
 }
 
 function lastSyncLabel(lastSyncAt: string | null, lastError: string | null): string {
   if (lastError) return lastError
-  if (!lastSyncAt) return 'Jamais synchronisé.'
+  if (!lastSyncAt) return t('home-assistant.never_synced')
   const minutes = Math.max(0, Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 60000))
-  if (minutes < 1) return 'Synchronisé à l’instant.'
-  return `Dernière synchro il y a ${minutes} min.`
+  if (minutes < 1) return t('home-assistant.synced_just_now')
+  return t('home-assistant.last_synced_min_ago', { value1: minutes })
 }
 
 export function HomeAssistantScreen() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const link = useHaLinkQuery()
@@ -211,7 +213,7 @@ export function HomeAssistantScreen() {
       return
     }
     if (result.value.length === 0) {
-      setConnectionError('Aucune liste todo sur cette instance.')
+      setConnectionError(t('home-assistant.no_todo_lists_on_this_instance'))
       return
     }
     setEntities(result.value)
@@ -260,12 +262,12 @@ export function HomeAssistantScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <HomeIcon size={19} color={color} />}
-          title="Home Assistant"
+          title={t('home-assistant.home_assistant')}
           // A step name, not a step count: "Étape 1/2" would still leave the
           // question of what each step *is*. The two states were otherwise
           // unlabeled — the only cue a foyer had for "which screen is this"
           // was which fields happened to be on it (2026-09-09 design pass).
-          subtitle={step === 'connect' ? 'Connexion' : 'Liste et synchronisation'}
+          subtitle={step === 'connect' ? t('home-assistant.connection') : t('home-assistant.list_and_sync')}
           onBack={() => router.back()}
         />
       }
@@ -277,16 +279,12 @@ export function HomeAssistantScreen() {
         // them to re-enter a URL and token that are already stored. Nothing
         // below distinguishes "not set up" from "couldn't check" without this.
         <YStack marginBottom="$4" gap="$2" backgroundColor={palette.expiredBg} padding="$4" borderRadius={18}>
-          <Text fontSize={13} fontWeight="700" color={palette.expiredText}>
-            État de la connexion indisponible
-          </Text>
-          <Text fontSize={12} fontWeight="500" color={palette.expiredText} lineHeight={17}>
-            Impossible de vérifier si Home Assistant est déjà lié à ce foyer. Réessaie avant de reconfigurer.
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.expiredText}>{t('home-assistant.connection_status_unavailable')}</Text>
+          <Text fontSize={12} fontWeight="500" color={palette.expiredText} lineHeight={17}>{t('home-assistant.we_couldn_t_check_whether_home_assistant_is_already_linked')}</Text>
           <PillButton
             testID="ha-retry-link"
-            label="Réessayer"
-            accessibilityLabel="Réessayer de charger l'état de la connexion Home Assistant"
+            label={t('dashboard.try_again')}
+            accessibilityLabel={t('home-assistant.try_loading_the_home_assistant_connection_status_again')}
             onPress={() => link.refetch()}
             palette={palette}
             tone="quiet"
@@ -298,8 +296,8 @@ export function HomeAssistantScreen() {
         <FormCard palette={palette}>
           <AuthField
             testID="ha-instance-url"
-            label="Adresse de l'instance"
-            placeholder="Adresse (ex. http://homeassistant.local:8123)"
+            label={t('home-assistant.instance_address')}
+            placeholder={t('home-assistant.address_e_g_http_homeassistant_local_8123')}
             value={instanceUrl}
             onChangeText={setInstanceUrl}
             autoCapitalize="none"
@@ -307,8 +305,8 @@ export function HomeAssistantScreen() {
           />
           <AuthField
             testID="ha-token"
-            label="Jeton d'accès longue durée"
-            placeholder="Jeton"
+            label={t('home-assistant.long_lived_access_token')}
+            placeholder={t('home-assistant.token')}
             value={token}
             onChangeText={setToken}
             autoCapitalize="none"
@@ -321,7 +319,7 @@ export function HomeAssistantScreen() {
           ) : null}
           <PillButton
             testID="ha-test-connection"
-            label="Tester la connexion"
+            label={t('home-assistant.test_connection')}
             palette={palette}
             onPress={handleTestConnection}
           />
@@ -337,9 +335,7 @@ export function HomeAssistantScreen() {
         // undifferentiated stack of controls.
         <FormCard palette={palette} gap="$4">
           <YStack gap="$2">
-            <Text fontSize={13} fontWeight="700" color={palette.ink}>
-              Liste à synchroniser
-            </Text>
+            <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('home-assistant.list_to_sync')}</Text>
             <TodoEntityPicker
               entities={
                 entities.length > 0
@@ -357,9 +353,7 @@ export function HomeAssistantScreen() {
           </YStack>
 
           <YStack gap="$2">
-            <Text fontSize={13} fontWeight="700" color={palette.ink}>
-              Sens de synchronisation
-            </Text>
+            <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('home-assistant.sync_direction')}</Text>
             <YStack gap="$2">
               {(Object.keys(DIRECTION_LABELS) as HaSyncDirection[]).map((value) => (
                 <DirectionRow key={value} direction={value} selected={direction === value} onPress={() => setDirection(value)} />
@@ -371,13 +365,11 @@ export function HomeAssistantScreen() {
           </YStack>
 
           <YStack gap="$2">
-            <Text fontSize={13} fontWeight="700" color={palette.ink}>
-              Synchronisation
-            </Text>
+            <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('home-assistant.sync')}</Text>
             <SwitchRow
               testID="ha-enabled-toggle"
-              label="Synchronisation active"
-              accessibilityLabel="Synchronisation active"
+              label={t('home-assistant.sync_enabled')}
+              accessibilityLabel={t('home-assistant.sync_enabled')}
               value={enabled}
               onValueChange={setEnabled}
               palette={palette}
@@ -395,10 +387,10 @@ export function HomeAssistantScreen() {
 
           <YStack gap="$3" marginTop="$2">
             <XStack gap="$3" justifyContent="space-between">
-              <PillButton testID="ha-save" label="Enregistrer" palette={palette} onPress={handleSave} />
+              <PillButton testID="ha-save" label={t('fridge.save')} palette={palette} onPress={handleSave} />
               <PillButton
                 testID="ha-unlink"
-                label="Délier"
+                label={t('home-assistant.unlink')}
                 tone="quiet"
                 palette={palette}
                 icon={(color) => <LogOutIcon size={16} color={color} />}
@@ -415,13 +407,11 @@ export function HomeAssistantScreen() {
               onPressOut={editLinkHover.onPressOut}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Modifier la connexion"
+              accessibilityLabel={t('home-assistant.edit_connection')}
               style={[pointerCursor, { alignSelf: 'center' }]}
             >
               <Animated.View style={{ transform: [{ scale: editLinkHover.scale }] }}>
-                <Text fontSize={13} fontWeight="600" color={palette.inkSecondary} textAlign="center">
-                  Modifier la connexion
-                </Text>
+                <Text fontSize={13} fontWeight="600" color={palette.inkSecondary} textAlign="center">{t('home-assistant.edit_connection')}</Text>
               </Animated.View>
             </Pressable>
           </YStack>
@@ -430,12 +420,12 @@ export function HomeAssistantScreen() {
 
       <ActionSheet
         visible={confirmingUnlink}
-        title="Délier Home Assistant ?"
-        description="La liste de courses ne sera plus synchronisée avec cette instance."
+        title={t('home-assistant.unlink_home_assistant')}
+        description={t('home-assistant.the_shopping_list_will_no_longer_sync_with_this_instance')}
         options={[
           {
             testID: 'ha-unlink-confirm',
-            label: 'Délier',
+            label: t('home-assistant.unlink'),
             icon: (color) => <LogOutIcon size={18} color={color} />,
             tint: palette.expiredBg,
             destructive: true,

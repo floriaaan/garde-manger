@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Per-photo progress while the scans run, then a merged, de-duplicated list
  * to approve — same "approve, don't retype" contract as
@@ -98,6 +99,7 @@ export function FridgeScanReviewScreen({
   jobId?: string
   draftId?: string
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   const enqueueScan = useEnqueueFridgeScanMutation()
@@ -178,13 +180,13 @@ export function FridgeScanReviewScreen({
       if (!item.included) return
       const rowErrors: ReceiptItemErrors = {}
 
-      if (item.name.trim().length === 0) rowErrors.name = 'Donne un nom à cet article.'
+      if (item.name.trim().length === 0) rowErrors.name = t('fridge.give_this_item_a_name')
 
       const quantity = Number(item.quantity)
-      if (!Number.isFinite(quantity) || quantity <= 0) rowErrors.quantity = 'Quantité invalide.'
+      if (!Number.isFinite(quantity) || quantity <= 0) rowErrors.quantity = t('fridge.invalid_quantity')
 
       const expiresAt = parseDateOrNull(item.expiresAt)
-      if (expiresAt === 'invalid') rowErrors.expiresAt = 'Date invalide (AAAA-MM-JJ).'
+      if (expiresAt === 'invalid') rowErrors.expiresAt = t('fridge.invalid_date_yyyy_mm_dd')
 
       if (Object.keys(rowErrors).length > 0) {
         errors[index] = rowErrors
@@ -210,7 +212,7 @@ export function FridgeScanReviewScreen({
 
     const included = items.filter((item) => item.included)
     if (included.length === 0) {
-      setSubmitError('Inclus au moins un produit avant d’importer.')
+      setSubmitError(t('fridge.include_at_least_one_product_before_importing'))
       return
     }
 
@@ -219,13 +221,13 @@ export function FridgeScanReviewScreen({
     if (badIndexes.length > 0) {
       setItemErrors(errors)
       setExpandedIndex(badIndexes[0])
-      setSubmitError(badIndexes.length === 1 ? 'Un produit est à corriger.' : `${badIndexes.length} produits sont à corriger.`)
+      setSubmitError(badIndexes.length === 1 ? t('fridge.one_product_needs_correcting') : t('fridge.products_need_correcting', { value1: badIndexes.length }))
       return
     }
 
     const result = await importProducts.mutateAsync({ items: parsed, draftId })
     if (!result.ok) {
-      setSubmitError(result.error.type === 'validation_failed' ? 'Certains champs sont invalides. Vérifie les produits.' : result.error.message)
+      setSubmitError(result.error.type === 'validation_failed' ? t('fridge.some_fields_are_invalid_check_the_products') : result.error.message)
       return
     }
 
@@ -240,10 +242,10 @@ export function FridgeScanReviewScreen({
     <ScreenHeader
       palette={palette}
       icon={(color) => <CameraIcon size={19} color={color} />}
-      title="Vérifier le frigo"
+      title={t('fridge.check_the_fridge')}
       subtitle={
         draft && items.length > 0 && imported === null
-          ? `${items.length} produit${items.length > 1 ? 's' : ''} détecté${items.length > 1 ? 's' : ''} — touche-en un pour le corriger`
+          ? t('fridge.product_detected_tap_it_to_correct_it', { count: items.length })
           : undefined
       }
       onBack={() => goBack('/(tabs)/scan')}
@@ -258,12 +260,10 @@ export function FridgeScanReviewScreen({
             <YStack width={64} height={64} borderRadius={999} backgroundColor={palette.freshBg} alignItems="center" justifyContent="center">
               <CircleCheckIcon size={30} color={palette.freshText} />
             </YStack>
-            <Text testID="fridge-scan-review-success" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
-              {imported} produit{imported > 1 ? 's' : ''} ajouté{imported > 1 ? 's' : ''} au garde-manger
-            </Text>
+            <Text testID="fridge-scan-review-success" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.product_added_to_the_pantry', { count: imported })}</Text>
           </YStack>
           <YStack width="100%" gap="$2" paddingBottom="$2">
-            <AuthButton testID="fridge-scan-review-open-fridge" label="Voir le garde-manger" onPress={() => router.replace('/(tabs)/fridge')} />
+            <AuthButton testID="fridge-scan-review-open-fridge" label={t('fridge.view_pantry')} onPress={() => router.replace('/(tabs)/fridge')} />
           </YStack>
         </YStack>
       </AppShell>
@@ -278,7 +278,7 @@ export function FridgeScanReviewScreen({
       <AppShell nav={nav} header={header}>
         {quotaExceeded && canSubscribe ? (
           <YStack flex={1} justifyContent="center">
-            <ConnectedPaywall palette={palette} reason="Quota gratuit atteint" />
+            <ConnectedPaywall palette={palette} reason={t('common.free_quota_reached')} />
           </YStack>
         ) : (
           <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
@@ -286,7 +286,7 @@ export function FridgeScanReviewScreen({
               <TriangleAlertIcon size={30} color={palette.expiredText} />
             </YStack>
             <Text testID="fridge-scan-blocked-title" fontSize={17} fontWeight="800" color={palette.ink}>
-              {quotaExceeded ? 'Quota atteint' : 'Extraction indisponible'}
+              {quotaExceeded ? t('fridge.quota_reached') : t('fridge.extraction_unavailable')}
             </Text>
             <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={320}>
               {failureText}
@@ -302,15 +302,13 @@ export function FridgeScanReviewScreen({
       <AppShell nav={nav} header={header}>
         <YStack marginTop="$6" alignItems="center">
           <ResultCard palette={palette} tone="expired" icon={<TriangleAlertIcon size={28} color={palette.expiredText} />}>
-            <Text testID="fridge-scan-failed-title" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
-              Analyse impossible
-            </Text>
+            <Text testID="fridge-scan-failed-title" fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.analysis_failed')}</Text>
             <Text fontSize={14} fontWeight="500" lineHeight={20} color={palette.inkSecondary} textAlign="center">
               {failureText}
             </Text>
             <PillButton
               testID="fridge-scan-retry-all"
-              label="Réessayer"
+              label={t('dashboard.try_again')}
               centered
               palette={palette}
               icon={(color) => <RefreshIcon size={16} color={color} />}
@@ -343,15 +341,13 @@ export function FridgeScanReviewScreen({
                 once the whole batch has landed. */}
             <XStack testID="fridge-scan-reading-photos" gap="$3" flexWrap="wrap" justifyContent="center">
               {photos.map((uri, index) => (
-                <PhotoProgress key={uri} uri={uri} state={states[index] ?? 'pending'} palette={palette} size={photos.length > 3 ? 88 : 104} tall position={`${index + 1} sur ${photos.length}`} />
+                <PhotoProgress key={uri} uri={uri} state={states[index] ?? 'pending'} palette={palette} size={photos.length > 3 ? 88 : 104} tall position={t('fridge.of', { value1: index + 1, value2: photos.length })} />
               ))}
             </XStack>
             <YStack alignItems="center" gap="$1">
-              <Text fontSize={22} fontWeight="800" color={palette.ink} textAlign="center">
-                L’IA fait l’inventaire…
-              </Text>
+              <Text fontSize={22} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.ai_is_taking_inventory')}</Text>
               <Text testID="fridge-scan-progress" fontSize={14} fontWeight="600" color={palette.inkSecondary} textAlign="center">
-                {job?.status === 'queued' || !job ? 'En attente…' : `${settled} / ${total} photos analysées`}
+                {job?.status === 'queued' || !job ? t('fridge.waiting') : t('fridge.photos_analysed', { value1: settled, value2: total })}
               </Text>
             </YStack>
             <YStack width="100%">
@@ -360,16 +356,14 @@ export function FridgeScanReviewScreen({
                 value={job && total > 0 ? settled : undefined}
                 total={job && total > 0 ? total : undefined}
                 testID="fridge-scan-reading-bar"
-                label="Lecture des photos en cours"
+                label={t('fridge.reading_photos')}
               />
             </YStack>
           </YStack>
-          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={300}>
-            Tu peux quitter cet écran : retrouve l’analyse dans Tâches quand elle est prête.
-          </Text>
+          <Text fontSize={13} fontWeight="500" color={palette.inkSecondary} textAlign="center" maxWidth={300}>{t('fridge.you_can_leave_this_screen_find_the_analysis_in_tasks')}</Text>
           <PillButton
             testID="fridge-scan-review-later"
-            label="Je reviens plus tard"
+            label={t('fridge.i_ll_come_back_later')}
             tone="quiet"
             centered
             palette={palette}
@@ -388,20 +382,16 @@ export function FridgeScanReviewScreen({
     <YStack gap="$2">
       {failedCount > 0 ? (
         <YStack backgroundColor={palette.expiredBg} borderRadius={14} padding="$3" gap="$2">
-          <Text fontSize={13} fontWeight="700" color={palette.expiredText}>
-            {failedCount} photo{failedCount > 1 ? 's' : ''} sur {job?.progress.total ?? photos.length} n’a pas pu être analysée{failedCount > 1 ? 's' : ''}.
-          </Text>
+          <Text fontSize={13} fontWeight="700" color={palette.expiredText}>{t('fridge.of_photos_couldn_t_be_analysed', { count: failedCount, value2: job?.progress.total ?? photos.length })}</Text>
           <Pressable
             testID="fridge-scan-retry-failed"
             onPress={() => job && retryJob.mutate(job.id)}
             accessibilityRole="button"
-            accessibilityLabel="Réessayer les photos manquantes"
+            accessibilityLabel={t('fridge.retry_missing_photos')}
             style={pointerCursor}
           >
             <XStack alignItems="center" alignSelf="flex-start" minHeight={36} paddingHorizontal="$3" borderRadius={999} backgroundColor={palette.cream}>
-              <Text fontSize={12} fontWeight="700" color={palette.creamText}>
-                Réessayer {failedCount > 1 ? 'les photos manquantes' : 'la photo manquante'}
-              </Text>
+              <Text fontSize={12} fontWeight="700" color={palette.creamText}>{t('fridge.retry_the_missing_photo', { count: failedCount })}</Text>
             </XStack>
           </Pressable>
         </YStack>
@@ -414,7 +404,7 @@ export function FridgeScanReviewScreen({
             state={states[index] ?? 'pending'}
             palette={palette}
             size={56}
-            position={`${index + 1} sur ${photos.length}`}
+            position={t('fridge.of', { value1: index + 1, value2: photos.length })}
             onPress={() => setViewerUri(uri)}
           />
         ))}
@@ -424,11 +414,11 @@ export function FridgeScanReviewScreen({
           testID="fridge-scan-toggle-all"
           onPress={() => setItems((current) => current.map((item) => ({ ...item, included: !allIncluded })))}
           accessibilityRole="button"
-          accessibilityLabel={allIncluded ? 'Tout décocher' : 'Tout cocher'}
+          accessibilityLabel={allIncluded ? t('fridge.uncheck_all') : t('fridge.check_all')}
           style={[pointerCursor, { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' }]}
         >
           <Text fontSize={13} fontWeight="700" color={palette.ink}>
-            {allIncluded ? 'Tout décocher' : 'Tout cocher'}
+            {allIncluded ? t('fridge.uncheck_all') : t('fridge.check_all')}
           </Text>
         </Pressable>
       ) : null}
@@ -445,8 +435,8 @@ export function FridgeScanReviewScreen({
       ) : null}
       <AuthButton
         testID="fridge-scan-review-submit"
-        label={includedCount > 0 ? `Ajouter ${includedCount} produit${includedCount > 1 ? 's' : ''}` : 'Ajouter'}
-        pendingLabel="Importation..."
+        label={includedCount > 0 ? t('fridge.add_product', { count: includedCount }) : t('fridge.add')}
+        pendingLabel={t('fridge.importing')}
         pending={importProducts.isPending}
         onPress={handleSubmit}
       />
@@ -509,7 +499,7 @@ export function FridgeScanReviewScreen({
             testID="fridge-scan-photo-viewer-close"
             onPress={() => setViewerUri(null)}
             accessibilityRole="button"
-            accessibilityLabel="Fermer la photo"
+            accessibilityLabel={t('fridge.close_photo')}
             style={[pointerCursor, { position: 'absolute', top: 12, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }]}
           >
             <XIcon size={20} color="#FFFFFF" />
@@ -521,18 +511,15 @@ export function FridgeScanReviewScreen({
 }
 
 function EmptyItems({ palette }: { palette: SoftPalette }) {
+  const { t } = useTranslation()
   return (
     <YStack alignItems="center" marginTop="$4">
       <ResultCard palette={palette} tone="soon" icon={<CameraIcon size={28} color={palette.soonText} />}>
-        <Text fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">
-          Aucun produit détecté
-        </Text>
-        <Text fontSize={14} fontWeight="500" lineHeight={20} color={palette.inkSecondary} textAlign="center">
-          L’IA n’a rien reconnu sur ces photos. Reprends-en en cadrant bien l’intérieur du frigo.
-        </Text>
+        <Text fontSize={20} fontWeight="800" color={palette.ink} textAlign="center">{t('fridge.no_products_detected')}</Text>
+        <Text fontSize={14} fontWeight="500" lineHeight={20} color={palette.inkSecondary} textAlign="center">{t('fridge.ai_didn_t_recognise_anything_in_these_photos_try_again')}</Text>
         <PillButton
           testID="fridge-scan-retake"
-          label="Reprendre des photos"
+          label={t('fridge.take_new_photos')}
           centered
           palette={palette}
           icon={(color) => <CameraIcon size={16} color={color} />}
@@ -623,8 +610,9 @@ function PhotoProgress({
   /** Opens the photo full-size. */
   onPress?: () => void
 }) {
+  const { t } = useTranslation()
   const height = tall ? Math.round(size * 1.25) : size
-  const stateLabel = { pending: 'en attente', running: 'en cours de lecture', done: 'analysée', failed: 'non analysée' }[state]
+  const stateLabel = { pending: t('debug.waiting'), running: t('fridge.being_read'), done: t('fridge.analysed'), failed: t('fridge.not_analysed') }[state]
   return (
     <Pressable
       disabled={!onPress}
@@ -632,7 +620,7 @@ function PhotoProgress({
       accessible
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`Photo ${position}, ${stateLabel}`}
-      accessibilityHint={onPress ? 'Agrandir la photo' : undefined}
+      accessibilityHint={onPress ? t('fridge.enlarge_photo') : undefined}
       style={onPress ? pointerCursor : undefined}
     >
       <YStack

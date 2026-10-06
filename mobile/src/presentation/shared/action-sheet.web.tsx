@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 // Web fallback. Metro resolves action-sheet.native.tsx on iOS and Android.
 import { KeyboardAvoidingView, Modal, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -27,6 +28,7 @@ export function ActionSheet({
   /** Rendered between the title and the options — for a choice the options alone can't carry. */
   children?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   if (!visible) return null
 
@@ -78,13 +80,11 @@ export function ActionSheet({
                 testID="action-sheet-cancel"
                 onPress={onClose}
                 accessibilityRole="button"
-                accessibilityLabel="Annuler"
+                accessibilityLabel={t('shared.cancel')}
                 style={pointerCursor}
               >
                 <XStack alignItems="center" justifyContent="center" minHeight={44} borderRadius={16}>
-                  <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>
-                    Annuler
-                  </Text>
+                  <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{t('shared.cancel')}</Text>
                 </XStack>
               </Pressable>
             </YStack>

@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /**
  * Loading states that keep the page's shape.
  *
@@ -85,7 +86,9 @@ export function Skeleton({
  * blocks themselves are hidden from the accessibility tree (above) and this
  * wrapper carries the only label.
  */
-export function SkeletonGroup({ label = 'Chargement', children }: { label?: string; children: React.ReactNode }) {
+export function SkeletonGroup({ label: providedLabel, children }: { label?: string; children: React.ReactNode }) {
+  const { t } = useTranslation()
+  const label = providedLabel ?? t('shared.loading')
   return (
     <YStack gap="$3" accessible accessibilityLabel={label} role="progressbar">
       {children}

@@ -1,3 +1,4 @@
+import { t, useTranslation } from '../../i18n/index.js'
 import { useEffect, useState } from 'react'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -20,9 +21,10 @@ import { Quantity } from '../../domain/fridge/quantity.js'
 type ShoppingItemFormMode = { mode: 'create' } | { mode: 'edit'; itemId: string }
 
 /** Same list as the fridge form's unit chips (fridge-form-screen.tsx) — one vocabulary for quantity units app-wide. */
-const UNIT_SUGGESTIONS = ['g', 'kg', 'mL', 'L', 'pièce(s)']
+const UNIT_SUGGESTIONS = () => ['g', 'kg', 'mL', 'L', t('fridge.item_s')]
 
 export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess?: () => void }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const queryClient = useQueryClient()
   // No per-id fetch exists for shopping items — the list is already cached by the
@@ -75,7 +77,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
   async function handleSubmit() {
     setError(null)
     if (name.trim().length === 0) {
-      setError('Le nom est requis.')
+      setError(t('fridge.a_name_is_required'))
       return
     }
     const quantity = Quantity.create(Number(amount), unit)
@@ -115,7 +117,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
         <ScreenHeader
           palette={palette}
           icon={(color) => <ShoppingCartIcon size={19} color={color} />}
-          title={props.mode === 'create' ? 'Ajouter un article' : "Modifier l'article"}
+          title={props.mode === 'create' ? t('shopping-list.add_an_item') : t('shopping-list.edit_item')}
           // Adding is a sheet (`shopping-list/_layout.tsx`), so it closes;
           // editing is still pushed, so it goes back.
           onBack={props.mode === 'create' ? undefined : () => router.back()}
@@ -134,17 +136,17 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
         {editUnavailable ? (
           <FormCard palette={palette} gap="$3">
             <Text fontSize={13} fontWeight="700" color={palette.ink}>
-              {editNotFound ? "Cet article n'existe plus." : 'Article introuvable pour le moment.'}
+              {editNotFound ? t('shopping-list.this_item_no_longer_exists') : t('shopping-list.item_not_found_right_now')}
             </Text>
             <Text fontSize={12} fontWeight="500" color={palette.inkSecondary}>
               {editNotFound
-                ? 'Il a peut-être été supprimé ailleurs sur le foyer.'
-                : 'Impossible de charger sa fiche — vérifie ta connexion.'}
+                ? t('shopping-list.it_may_have_been_deleted_elsewhere_in_the_household')
+                : t('shopping-list.couldn_t_load_its_details_check_your_connection')}
             </Text>
             {itemsQuery.isError ? (
               <AuthButton
                 testID="shopping-item-form-retry"
-                label="Réessayer"
+                label={t('dashboard.try_again')}
                 onPress={() => itemsQuery.refetch()}
               />
             ) : null}
@@ -153,7 +155,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
         <FormCard palette={palette} gap="$3">
           <FormField
             testID="shopping-item-form-name"
-            label="Nom"
+            label={t('fridge.name')}
             value={name}
             onChangeText={setName}
             palette={palette}
@@ -163,7 +165,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
             <YStack flex={1}>
               <FormField
                 testID="shopping-item-form-amount"
-                label="Quantité"
+                label={t('fridge.quantity')}
                 value={amount}
                 onChangeText={setAmount}
                 palette={palette}
@@ -174,7 +176,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
             <YStack flex={1}>
               <FormField
                 testID="shopping-item-form-unit"
-                label="Unité"
+                label={t('fridge.unit')}
                 value={unit}
                 onChangeText={setUnit}
                 palette={palette}
@@ -183,7 +185,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
             </YStack>
           </XStack>
           <XStack gap="$3" flexWrap="wrap">
-            {UNIT_SUGGESTIONS.map((suggestion) => (
+            {UNIT_SUGGESTIONS().map((suggestion) => (
               <Chip
                 key={suggestion}
                 testID={`shopping-item-form-unit-${suggestion}`}
@@ -204,8 +206,8 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
 
           <AuthButton
             testID="shopping-item-form-submit"
-            label="Enregistrer"
-            pendingLabel="Enregistrement..."
+            label={t('fridge.save')}
+            pendingLabel={t('fridge.saving')}
             pending={pending}
             onPress={handleSubmit}
           />

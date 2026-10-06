@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import type { ReactNode } from 'react'
 import { Linking, Platform } from 'react-native'
 import { Pressable } from './pressable.js'
@@ -56,6 +57,7 @@ export function CameraPermissionModal({
   closeTestID: string
   children?: ReactNode
 }) {
+  const { t } = useTranslation()
   const closeHover = useHoverPress()
   const settingsFallback = Platform.OS !== 'web' && !canAskAgain
 
@@ -73,7 +75,7 @@ export function CameraPermissionModal({
                 onPressIn={closeHover.onPressIn}
                 onPressOut={closeHover.onPressOut}
                 accessibilityRole="button"
-                accessibilityLabel="Fermer"
+                accessibilityLabel={t('shared.close')}
                 // The glyph is 20pt; the press area is not. Without this the
                 // tappable region was the size of the icon — the only control
                 // in the app under the 44pt floor.
@@ -90,7 +92,7 @@ export function CameraPermissionModal({
 
             <AuthButton
               testID={requestTestID}
-              label={settingsFallback ? 'Ouvrir les réglages' : 'Autoriser la caméra'}
+              label={settingsFallback ? t('settings.open_settings') : t('shared.allow_camera')}
               onPress={settingsFallback ? () => Linking.openSettings() : onRequestPermission}
             />
 

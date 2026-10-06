@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Animated, Platform, Pressable } from 'react-native'
 import { Text, XStack } from './tamagui-typed.js'
@@ -12,6 +13,7 @@ const ACTION_DISMISS_MS = 7000
 
 /** Mounted once at the app root, overlaying every screen. Renders nothing until the first `showToast` call. */
 export function ToastHost() {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [toast, setToast] = useState<ToastMessage | null>(null)
   // `useState`, not `useRef`: the `Animated.Value` instance is read directly
@@ -73,7 +75,7 @@ export function ToastHost() {
       >
         <XStack alignItems="center" gap="$3">
           {toast.variant === 'loading' ? <PulseDots palette={palette} size={6}
-            testID="toast-loading" label="Action en cours" /> : null}
+            testID="toast-loading" label={t('shared.action_in_progress')} /> : null}
           <Text fontSize={13} fontWeight="600" color={text} flexShrink={1} accessibilityLiveRegion="polite">
             {toast.message}
           </Text>

@@ -1,3 +1,4 @@
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { UseCase } from '#application/shared/use-case'
 import type { FridgeScanExtractionPort } from '#domain/fridge/interfaces/fridge-scan-extraction-port.interface'
 import type { FridgeScanDraft } from '#domain/fridge/fridge-scan-draft'
@@ -12,14 +13,17 @@ export type ScanFridgeError = 'provider_not_configured' | 'extraction_failed'
 
 /** One photo per provider call; the job worker merges photos and counts the entire scan as one quota unit. */
 export class ScanFridge implements UseCase<
-  { image: Buffer },
+  { image: Buffer; language?: AiLanguage },
   ResultType<FridgeScanDraft, ScanFridgeError>
 > {
   constructor(private readonly extraction: FridgeScanExtractionPort) {}
 
-  async execute(input: { image: Buffer }): Promise<ResultType<FridgeScanDraft, ScanFridgeError>> {
+  async execute(input: {
+    image: Buffer
+    language?: AiLanguage
+  }): Promise<ResultType<FridgeScanDraft, ScanFridgeError>> {
     try {
-      const draft = await this.extraction.extract(input.image)
+      const draft = await this.extraction.extract(input.image, input.language)
       return Result.ok(draft)
     } catch (error) {
       if (error instanceof ReceiptExtractionUnavailableError)

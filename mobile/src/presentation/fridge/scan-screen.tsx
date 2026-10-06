@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 /*
  * The destination of iOS's floating "search"-role tab (see
  * `(tabs)/_layout.tsx`), and a real screen rather than a trick.
@@ -29,6 +30,7 @@ function goToFridgeScan() {
 
 /** `onClose` when presented as a sheet (`app/scanner.tsx`); the iPhone tab has none. */
 export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
 
   return (
@@ -38,8 +40,8 @@ export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
         <ScreenHeader
           palette={palette}
           icon={(color) => <ScanLineIcon size={19} color={color} />}
-          title="Scanner"
-          subtitle="Remplis le garde-manger sans rien taper."
+          title={t('dashboard.scan')}
+          subtitle={t('fridge.fill_your_pantry_without_typing')}
           trailing={onClose ? <CloseButton testID="scan-screen-close" palette={palette} onPress={onClose} /> : null}
         />
       }
@@ -50,9 +52,9 @@ export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
       <YStack gap="$3" marginTop="$4">
         <ScanChoice
           testID="scan-screen-fridge"
-          title="Mon frigo"
-          subtitle="Photographie chaque étagère, l’IA liste tout ce qu’elle voit."
-          detail="1 à 5 photos"
+          title={t('fridge.my_fridge')}
+          subtitle={t('fridge.photograph_each_shelf_ai_lists_everything_it_sees')}
+          detail={t('fridge.1_to_5_photos')}
           icon={(color) => <CameraIcon size={26} color={color} />}
           tint={palette.navCardWarm}
           corner="a"
@@ -63,8 +65,8 @@ export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
         <XStack gap="$3" alignItems="stretch">
           <ScanChoice
             testID="scan-screen-product"
-            title="Un produit"
-            subtitle="Le code-barres remplit le nom et la catégorie."
+            title={t('fridge.one_product')}
+            subtitle={t('fridge.the_barcode_fills_in_the_name_and_category')}
             icon={(color) => <ScanLineIcon size={22} color={color} />}
             tint={palette.navCardTeal}
             corner="b"
@@ -73,8 +75,8 @@ export function ScanScreen({ onClose }: { onClose?: () => void } = {}) {
           />
           <ScanChoice
             testID="scan-screen-receipt"
-            title="Un ticket"
-            subtitle="Tous les produits du ticket de caisse d’un coup."
+            title={t('fridge.one_receipt')}
+            subtitle={t('fridge.all_the_products_on_a_receipt_at_once')}
             icon={(color) => <ReceiptIcon size={22} color={color} />}
             tint={palette.navCardViolet}
             corner="c"

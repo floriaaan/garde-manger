@@ -1,3 +1,4 @@
+import { useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { TextInput } from 'react-native'
 import { Pressable } from '../shared/pressable.js'
@@ -83,6 +84,7 @@ export function TodoEntityPicker({
   selectedEntityId: string | null
   onSelect: (entityId: string, friendlyName: string) => void
 }) {
+  const { t } = useTranslation()
   const palette = useSoftPalette()
   const [search, setSearch] = useState('')
   const filtered = entities.filter((entity) => {
@@ -96,9 +98,9 @@ export function TodoEntityPicker({
       <TextInput
         value={search}
         onChangeText={setSearch}
-        placeholder="Rechercher une liste"
+        placeholder={t('home-assistant.search_for_a_list')}
         placeholderTextColor={palette.inkSecondary}
-        accessibilityLabel="Rechercher une liste"
+        accessibilityLabel={t('home-assistant.search_for_a_list')}
         style={{
           minHeight: 44,
           borderRadius: 14,
@@ -118,9 +120,7 @@ export function TodoEntityPicker({
           />
         ))}
         {filtered.length === 0 ? (
-          <Text fontSize={13} color={palette.inkSecondary} paddingVertical="$2">
-            Aucune liste ne correspond.
-          </Text>
+          <Text fontSize={13} color={palette.inkSecondary} paddingVertical="$2">{t('home-assistant.no_matching_lists')}</Text>
         ) : null}
       </YStack>
     </YStack>

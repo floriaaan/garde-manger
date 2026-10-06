@@ -8,6 +8,8 @@ import { traceAction } from '#presentation/shared/trace-action'
 import { generateRecipesValidator } from '#presentation/recipe/recipe.validator'
 import { toJobDto, toScanDraftDto } from './job.dto.js'
 import { AiQuotaExceededError } from '#domain/settings/ai-quota-exceeded.error'
+import { enqueueScanValidator } from './job.validator.js'
+import type { AiLanguage } from '#domain/shared/ai-language'
 import type { JobKind } from '#domain/job/job.aggregate'
 import { EnqueueJob } from '#application/job/enqueue-job.use-case'
 import { ListJobs } from '#application/job/list-jobs.use-case'
@@ -240,11 +242,15 @@ export default class JobController {
       async () => {
         let images: { buffer: Buffer; contentType: string }[] | undefined
         let prompt: string | undefined
+        let language: AiLanguage | undefined
 
         if (kind === 'recipe_generation') {
           const body = await ctx.request.validateUsing(generateRecipesValidator)
           prompt = body.prompt
+          language = body.language
         } else {
+          const scanBody = await ctx.request.validateUsing(enqueueScanValidator)
+          language = scanBody.language
           const files =
             kind === 'receipt_scan'
               ? [ctx.request.file('image', RECEIPT_RULES)]
@@ -294,6 +300,7 @@ export default class JobController {
           kind,
           images,
           prompt,
+          language,
           traceparent: currentTraceparent(),
         })
         ctx.response.status(202).json({ job: toJobDto(job) })

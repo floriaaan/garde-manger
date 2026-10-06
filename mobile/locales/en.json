@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Garde-manger uses the camera to scan product barcodes, photograph receipts or your fridge, and read household invite QR codes.",
+    "NSPhotoLibraryUsageDescription": "Garde-manger opens your photos when you choose to import a receipt or fridge photo to extract products.",
+    "NSLocalNetworkUsageDescription": "Garde-manger connects to your self-hosted server on the local network (for example http://192.168.1.20:3333) to sync your fridge and shopping list."
+  }
+}
