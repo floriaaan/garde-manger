@@ -13,8 +13,8 @@ export const fakeHousehold: Household = {
   inviteCode: 'K4Q2M7XP',
   role: 'owner',
   members: [
-    { userId: 'fake-user-1', name: 'Thomas C.', role: 'owner', joinedAt: '2026-08-01T09:00:00.000Z' },
-    { userId: 'fake-user-2', name: 'Camille', role: 'member', joinedAt: '2026-08-04T18:30:00.000Z' },
+    { userId: 'fake-user-1', name: 'Thomas C.', image: `https://api.dicebear.com/10.x/initial-face/svg?seed=${encodeURIComponent('Thomas C.')}&animationVariant=medium`, role: 'owner', joinedAt: '2026-08-01T09:00:00.000Z' },
+    { userId: 'fake-user-2', name: 'Camille', image: `https://api.dicebear.com/10.x/initial-face/svg?seed=${encodeURIComponent('Camille')}&animationVariant=medium`, role: 'member', joinedAt: '2026-08-04T18:30:00.000Z' },
   ],
 }
 

@@ -227,7 +227,8 @@ export function HouseholdDashboard({
   const failed = !productsQuery.isPending && productsQuery.isError
   const empty = !loading && !failed && products.length === 0
   const householdName = householdQuery.data?.name ?? 'Ton foyer'
-  const memberNames = (householdQuery.data?.members ?? []).map((member) => member.name)
+  const members = householdQuery.data?.members ?? []
+  const memberNames = members.map((member) => member.name)
 
   const reduceMotion = useReduceMotion()
   const [entrance] = useState(() => new Animated.Value(0))
@@ -315,8 +316,8 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
       // used to scroll away, which meant the one surface that names the foyer
       // stopped naming it as soon as you moved.
       header={
-            <XStack justifyContent="space-between" alignItems="center">
-              <XStack alignItems="center" gap="$2.5" flex={1}>
+            <XStack justifyContent="space-between" alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="$2.5" flex={1} minWidth={0}>
                 {/* 44, not the carrot glyph's old 40 — the mascot is a full
                     character (face, arms, a held leaf), not a simple icon
                     shape, and needs a few more pixels than a flat glyph to
@@ -331,7 +332,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                 <Image
                   testID={subscribed ? 'dashboard-subscriber-badge' : undefined}
                   source={subscribed ? mascotGold : mascotIllustration}
-                  style={{ width: 48, height: 48 }}
+                  style={{ width: 48, height: 48, flexShrink: 0 }}
                   resizeMode="contain"
                   accessibilityLabel={subscribed ? 'Abonnement actif' : ''}
                 />
@@ -350,7 +351,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                       ? `${householdName}, ${memberNames.length} membre${memberNames.length > 1 ? 's' : ''} : ${memberNames.join(', ')}. Gérer le foyer`
                       : `${householdName}. Gérer le foyer`
                   }
-                  style={[{ flex: 1 }, pointerCursor]}
+                  style={[{ flex: 1, minWidth: 0 }, pointerCursor]}
                 >
                   {/* Keep the greeting's intrinsic height: flex={1} gives
                       this column a zero basis on web, so its text can spill
@@ -368,16 +369,18 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
                     <Text fontSize={14} fontWeight="500" color={palette.inkSecondary}>
                       Salut, {userName || 'toi'}
                     </Text>
-                    <XStack alignItems="center" gap="$2" marginTop="$1">
-                      <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={1} flexShrink={1}>
+                    <XStack alignItems="center" gap="$2" marginTop="$1" minWidth={0}>
+                      <Text fontSize={20} fontWeight="800" color={palette.ink} numberOfLines={1} ellipsizeMode="tail" flexShrink={1} minWidth={0}>
                         {householdName}
                       </Text>
-                      <MemberAvatars names={memberNames} palette={palette} max={3} />
+                      <XStack flexShrink={0}>
+                        <MemberAvatars members={members} palette={palette} max={3} />
+                      </XStack>
                     </XStack>
                   </YStack>
                 </Pressable>
               </XStack>
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="$2" flexShrink={0}>
               {/* Was an 11px grey text link — the app's only route to Réglages,
                   and invisible next to a 40px illustration. Now a real 44pt
                   icon button (the Sidebar carries its own entry on desktop). */}

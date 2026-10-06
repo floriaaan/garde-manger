@@ -12,6 +12,17 @@
 // — so the config must be registered globally here instead.
 import './tamagui.config'
 
+// Remote avatars must not fetch over the network in component tests.
+jest.mock('react-native-svg', () => {
+  const actual = jest.requireActual('react-native-svg')
+  const { createElement } = require('react')
+  const { View } = require('react-native')
+  function MockSvgUri(props: Record<string, unknown>) {
+    return createElement(View, props)
+  }
+  return { ...actual, SvgUri: MockSvgUri }
+})
+
 // React Query's `notifyManager` batches subscriber notifications through a
 // real `setTimeout(fn, 0)` by default — a macrotask nothing in RNTL's
 // `waitFor`/`act` machinery waits on. A screen with more than one

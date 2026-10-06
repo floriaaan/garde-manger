@@ -1,5 +1,5 @@
 /**
- * Up to three overlapping initials, then a "+N" disc — the foyer made visible.
+ * Up to three overlapping avatars, then a "+N" disc — the foyer made visible.
  *
  * It lived in `settings/identity-card.tsx` and rendered in exactly one place:
  * Réglages → Foyer, two taps in, on a screen nobody opens. The one thing that
@@ -8,40 +8,33 @@
  * used. It sits in `shared/` now because the dashboard shows it too.
  */
 import { Text, XStack, YStack } from './tamagui-typed.js'
+import { Avatar } from './avatar.js'
+import type { HouseholdMember } from '../../domain/identity/household.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
 export function MemberAvatars({
-  names,
+  members,
   palette,
   max = 3,
 }: {
-  names: readonly string[]
+  members: readonly Pick<HouseholdMember, 'name' | 'image'>[]
   palette: SoftPalette
   max?: number
 }) {
-  if (names.length === 0) return null
-  const shown = names.slice(0, max)
-  const rest = names.length - shown.length
+  if (members.length === 0) return null
+  const shown = members.slice(0, max)
+  const rest = members.length - shown.length
 
   return (
     <XStack alignItems="center" gap="$2">
       <XStack alignItems="center">
-        {shown.map((name, index) => (
+        {shown.map(({ name, image }, index) => (
           <YStack
             key={`${name}-${index}`}
-            width={26}
-            height={26}
-            borderRadius={999}
-            // navCardTeal, not chipTeal: this disc carries white *text*, and
-            // the chip siblings measure under 4.5:1 against white.
-            backgroundColor={palette.navCardTeal}
-            alignItems="center"
-            justifyContent="center"
+            flexShrink={0}
             marginLeft={index === 0 ? 0 : -8}
           >
-            <Text fontSize={11} fontWeight="800" color={palette.onDark}>
-              {initials(name)}
-            </Text>
+            <Avatar name={name} image={image} size={26} palette={palette} />
           </YStack>
         ))}
         {rest > 0 ? (
@@ -54,12 +47,4 @@ export function MemberAvatars({
       </XStack>
     </XStack>
   )
-}
-
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  const first = parts[0]?.[0] ?? ''
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return (first + last).toUpperCase()
 }

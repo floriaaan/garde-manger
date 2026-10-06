@@ -5,6 +5,7 @@ import type { HouseholdRole } from '#domain/identity/household-role.vo'
 export interface HouseholdMemberDto {
   userId: string
   name: string
+  image: string | null
   role: HouseholdRole
   joinedAt: string
 }
@@ -38,6 +39,7 @@ export function toHouseholdDto(
     members: household.members.map((m) => ({
       userId: m.userId,
       name: memberById.get(m.userId)?.name ?? 'Utilisateur inconnu',
+      image: memberById.get(m.userId)?.image ?? null,
       role: m.role,
       joinedAt: m.joinedAt.toISOString(),
     })),

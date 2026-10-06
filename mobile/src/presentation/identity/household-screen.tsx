@@ -25,13 +25,14 @@ import { ActionSheet } from '../shared/action-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { goBack } from '../shared/navigation.js'
 import { PillButton } from '../shared/pill-button.js'
+import { Avatar } from '../shared/avatar.js'
 import { pointerCursor } from '../shared/hover.js'
 import { AuthButton } from './auth-button.js'
 import { InviteShareCard } from './invite-share-card.js'
 import { ROLE_LABELS } from './role-labels.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
-import { ArrowLeftRightIcon, HomeIcon, LogOutIcon, UserIcon, UsersIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ArrowLeftRightIcon, HomeIcon, LogOutIcon, UsersIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import { IdentityCard } from '../settings/identity-card.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
@@ -314,9 +315,7 @@ export function HouseholdScreen() {
                 padding="$3"
                 minHeight={44}
               >
-                <YStack width={36} height={36} borderRadius={999} backgroundColor={palette.mintPale} alignItems="center" justifyContent="center">
-                  <UserIcon size={17} color={palette.mintPaleText} />
-                </YStack>
+                <Avatar name={member.name} image={member.image} palette={palette} />
                 <Text fontSize={14} fontWeight="700" color={palette.ink} flex={1}>
                   {member.name}
                 </Text>
@@ -374,9 +373,7 @@ function MemberRow({
       minHeight={56}
       style={{ shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 1 }}
     >
-      <YStack width={36} height={36} borderRadius={999} backgroundColor={palette.mintPale} alignItems="center" justifyContent="center">
-        <UserIcon size={17} color={palette.mintPaleText} />
-      </YStack>
+      <Avatar name={member.name} image={member.image} palette={palette} />
       <YStack flex={1}>
         <Text fontSize={14} fontWeight="700" color={palette.ink}>
           {member.name}
