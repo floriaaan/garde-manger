@@ -509,7 +509,8 @@ describe('Android browser OAuth return (#91)', () => {
     remove = jest.fn()
     jest.spyOn(Linking, 'addEventListener').mockImplementation((_event, listener) => {
       receiveURL = listener
-      return { remove }
+      // This test only exercises cleanup, not React Native's emitter internals.
+      return { remove } as unknown as ReturnType<typeof Linking.addEventListener>
     })
     jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
     jest.spyOn(telemetry, 'recordEvent').mockImplementation(() => {})
