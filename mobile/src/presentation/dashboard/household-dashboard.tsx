@@ -103,6 +103,7 @@ import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { goToScan } from '../shared/scan-sheet.js'
 import { StatusChip } from './status-chip.js'
 import { StatCard } from './stat-card.js'
+import { StoreReviewCard } from './store-review-card.js'
 import { HeroWarmGlow } from './hero-warm-glow.js'
 import { NavCard } from './nav-card.js'
 import { receiptsSummary } from './receipts-row.js'
@@ -725,6 +726,7 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
             </YStack>
             </TourAnchor>
           </YStack>
+          <StoreReviewCard palette={palette} />
     </AppShell>
     {/* The mobile bottom nav (glass pill + FAB) and the desktop sidebar are
         both AppShell's job now — see app-shell.tsx. Keeping them here,

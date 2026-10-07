@@ -1,5 +1,12 @@
 {
   "dashboard": {
+    "review_title": "Give the project a hand",
+    "review_description": "Finding Garde-manger helpful? Your review helps other households discover it.",
+    "review_action": "Leave a review",
+    "review_opening": "Opening reviews…",
+    "review_store_action": "Open the store",
+    "review_native_help": "If no review window appeared, you can leave your review directly on the store.",
+    "review_unavailable": "Reviews couldn’t be opened right now. Try again later.",
     "your_household": "Your household",
     "checking_your_pantry": "Checking your pantry…",
     "your_pantry_is_still_empty": "Your pantry is still empty",
