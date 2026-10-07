@@ -170,6 +170,32 @@ class MobileTelemetry {
     }
   }
 
+  /** Records progress without waiting for the operation to finish. */
+  recordEvent(
+    operation: string,
+    outcome: 'started' | 'completed' | 'success',
+    options?: {
+      span?: Pick<SpanHandle, 'traceId' | 'spanId'>
+      attributes?: Record<string, AttributeValue>
+    },
+  ): void {
+    try {
+      this.enqueueLog({
+        timeUnixNano: nanos(Date.now()),
+        severityText: 'INFO',
+        severityNumber: 9,
+        body: { stringValue: 'client event' },
+        attributes: toAttributes({
+          ...options?.attributes, 'app.operation': operation, 'event.outcome': outcome,
+        }),
+        traceId: options?.span?.traceId,
+        spanId: options?.span?.spanId,
+      })
+    } catch {
+      // Telemetry must never surface in application code.
+    }
+  }
+
   /**
    * Records an error as an OTLP log record, tied to a span when one is
    * available so the mobile error, the mobile span and the backend trace all
@@ -239,7 +265,7 @@ class MobileTelemetry {
 
   private enqueueLog(log: QueuedLog): void {
     if (this.stopped) return
-    if (log.severityText === 'INFO') {
+    if (log.severityText === 'INFO' && log.body.stringValue === 'operation failed') {
       const signature = (entry: QueuedLog) => JSON.stringify(
         ['app.operation', 'error.code', 'http.response.status_code', 'entity.id'].map(
           (key) => entry.attributes.find((attribute) => attribute.key === key)?.value,
