@@ -512,6 +512,7 @@ describe('Android browser OAuth return (#91)', () => {
       return { remove }
     })
     jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
+    jest.spyOn(telemetry, 'recordEvent').mockImplementation(() => {})
     ;(authClient.getSession as jest.Mock).mockReset()
     ;(authClient.signIn.social as jest.Mock).mockReset()
   })
@@ -534,10 +535,14 @@ describe('Android browser OAuth return (#91)', () => {
     queryClient.setQueryData(['session'], null)
 
     expect(await new HttpFridgeConnector().signInSocial(provider)).toEqual({ ok: true, value: session })
-    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider, callbackURL: ANDROID_OAUTH_CALLBACK, errorCallbackURL: ANDROID_OAUTH_CALLBACK })
+    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider, callbackURL: ANDROID_OAUTH_CALLBACK, errorCallbackURL: ANDROID_OAUTH_CALLBACK,
+      fetchOptions: { onResponse: expect.any(Function) },
+    })
     expect(queryClient.getQueryData(['session'])).toEqual(session)
     expect(authClient.signOut).not.toHaveBeenCalled()
     expect(remove).toHaveBeenCalledTimes(1)
+    expect(telemetry.recordEvent).toHaveBeenCalledWith(`identity.sign_in_social.${provider}.session`, 'started', expect.any(Object))
+    expect(telemetry.recordEvent).toHaveBeenCalledWith(`identity.sign_in_social.${provider}.session`, 'success', expect.any(Object))
   })
 
   test.each([null, 'access_denied'])('cancellation (%s) is distinct from a callback/session failure', async (error) => {
@@ -586,6 +591,33 @@ describe('Android browser OAuth return (#91)', () => {
       ok: false, error: { type: 'PROVIDER_DISABLED', message: expect.stringContaining('Réessaie') },
     })
     expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test('progress and failure logs correlate the last reached OAuth stage with the backend request', async () => {
+    const span = { traceId: 'a'.repeat(32), spanId: 'b'.repeat(16), traceparent: `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`, end: jest.fn() }
+    jest.spyOn(telemetry, 'startClientSpan').mockReturnValue(span)
+    ;(authClient.signIn.social as jest.Mock).mockImplementation(async ({ fetchOptions }) => {
+      expect(fetchOptions.headers.traceparent).toBe(span.traceparent)
+      fetchOptions.onResponse({ response: { headers: new Headers({ 'x-request-id': 'oauth-request-123' }) } })
+      receiveURL({ url: `${ANDROID_OAUTH_CALLBACK}?error=account_not_linked&error_description=secret` })
+      return {}
+    })
+
+    await new HttpFridgeConnector().signInSocial('google')
+    expect(jest.mocked(telemetry.recordEvent).mock.calls.map(([operation, outcome]) => [operation, outcome])).toEqual([
+      ['identity.sign_in_social.google.request', 'started'],
+      ['identity.sign_in_social.google.request', 'completed'],
+      ['identity.sign_in_social.google.callback', 'completed'],
+      ['identity.sign_in_social.google.browser', 'completed'],
+    ])
+    expect(telemetry.recordError).toHaveBeenCalledWith('identity.sign_in_social failed', {
+      span, level: 'error', attributes: {
+        'app.operation': 'identity.sign_in_social.google.callback', 'error.code': 'account_not_linked', request_id: 'oauth-request-123',
+      },
+    })
+    expect(span.end).toHaveBeenCalledWith({ error: { code: 'account_not_linked' }, attributes: { request_id: 'oauth-request-123', 'event.outcome': 'failure' } })
+    expect(JSON.stringify(jest.mocked(telemetry.recordEvent).mock.calls)).not.toContain('secret')
+    expect(JSON.stringify(jest.mocked(telemetry.recordError).mock.calls)).not.toContain('secret')
   })
 
   test.each([{ data: null }, { error: { status: 401 } }])('foreground absence does not erase a cookie while OAuth is persisting: %j', async (response) => {

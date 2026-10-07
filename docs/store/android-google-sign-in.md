@@ -18,7 +18,7 @@ Run the focused tests when validation is authorized:
 
 ```sh
 cd mobile
-pnpm exec jest --runInBand src/application/identity/android-oauth-return.test.ts src/infrastructure/http/http-fridge-connector.test.ts src/presentation/identity/google-availability.test.tsx
+pnpm exec jest --runInBand src/application/identity/android-oauth-return.test.ts src/infrastructure/http/http-fridge-connector.test.ts src/presentation/identity/google-availability.test.tsx src/infrastructure/telemetry/telemetry.test.ts
 ```
 
 ## Device checks before release
@@ -40,8 +40,15 @@ test account. They have not been performed in the coding workspace.
    session verification error; reconnect and retry successfully.
 6. Repeat success and cancellation several times, including background/foreground
    transitions. Expect no cookie clearing or silent return to login.
-7. Check diagnostics for `identity.sign_in_social.google.request`, `.callback`
-   and `.session` plus their error codes. No callback URL, cookie, token,
+7. In OpenObserve logs, filter `app.operation` by the prefix
+   `identity.sign_in_social.google.`. INFO events show `.request` started and
+   completed, `.callback` completed, `.browser` completed, and `.session` started
+   then success. If a flow stops, its last event identifies the stage reached;
+   detected failures add an ERROR with `error.code` (cancellation is INFO).
+   Events and failures share a trace; the Android auth request sends its
+   `traceparent` and subsequent logs include the backend `request_id` when
+   available. Progress events are not aggregated across sign-in attempts.
+   No callback URL, cookie, token,
    email or OAuth error description should appear in these diagnostics.
 8. Verify web Google sign-in still returns to the frontend origin; verify iOS
    provider availability and the existing native authentication flow remain intact.

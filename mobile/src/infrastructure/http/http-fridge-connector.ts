@@ -228,9 +228,20 @@ export class HttpFridgeConnector implements FridgeConnector {
     const android = Platform.OS === 'android'
     let callback: ReturnType<typeof readAndroidOAuthReturn> = null
     let stage = 'request'
+    const operation = `identity.sign_in_social.${provider}`
+    const span = telemetry.startClientSpan(operation, { 'app.operation': operation })
+    let requestId: string | undefined
+    const progress = (step: string, outcome: 'started' | 'completed' | 'success') => {
+      telemetry.recordEvent(`${operation}.${step}`, outcome, {
+        ...(span ? { span } : {}),
+        attributes: { request_id: requestId },
+      })
+    }
     const failure = (type: string, message: string): Result<Session | null, ApiError> => {
+      span?.end({ error: { code: type }, attributes: { request_id: requestId, 'event.outcome': type === 'oauth_cancelled' ? 'cancelled' : 'failure' } })
       telemetry.recordError('identity.sign_in_social failed', {
-        attributes: { 'app.operation': `identity.sign_in_social.${provider}.${stage}`, 'error.code': type },
+        ...(span ? { span } : {}),
+        attributes: { 'app.operation': `${operation}.${stage}`, 'error.code': type, ...(requestId ? { request_id: requestId } : {}) },
         level: type === 'oauth_cancelled' ? 'info' : 'error',
       })
       return Result.err({ type, message })
@@ -241,23 +252,41 @@ export class HttpFridgeConnector implements FridgeConnector {
     }
     let subscription: ReturnType<typeof Linking.addEventListener> | undefined
     try {
+      progress('request', 'started')
       if (android) subscription = Linking.addEventListener('url', ({ url }) => {
         const result = readAndroidOAuthReturn(url)
-        if (result) callback = result
+        if (result) {
+          callback = result
+          progress('callback', 'completed')
+        }
       })
       // Expo turns the native path into a deep link. On web a relative path
       // would redirect to the API host, so return to the frontend origin.
       const { error } = await authClient.signIn.social({
         provider,
         callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : android ? ANDROID_OAUTH_CALLBACK : '/',
-        ...(android ? { errorCallbackURL: ANDROID_OAUTH_CALLBACK } : {}),
+        ...(android ? {
+          errorCallbackURL: ANDROID_OAUTH_CALLBACK,
+          fetchOptions: {
+            ...(span ? { headers: { traceparent: span.traceparent } } : {}),
+            onResponse({ response }: { response: Response }) {
+              requestId = response.headers.get('x-request-id') ?? undefined
+              progress('request', 'completed')
+            },
+          },
+        } : {}),
       })
       if (error) {
         return failure(errorCode(error, 'sign_in_failed'), 'Connexion impossible. Réessaie ou choisis une autre méthode.')
       }
       // On web, better-auth starts a full-page OAuth redirect. The session
       // only exists after the callback reloads the app.
-      if (Platform.OS === 'web') return Result.ok(null)
+      if (Platform.OS === 'web') {
+        progress('redirect', 'started')
+        span?.end({ attributes: { 'event.outcome': 'redirect_started' } })
+        return Result.ok(null)
+      }
+      progress('browser', 'completed')
       stage = 'callback'
       if (android) {
         // The Expo plugin resolves without an error on browser cancellation
@@ -275,6 +304,7 @@ export class HttpFridgeConnector implements FridgeConnector {
         if (!returned.hasCookie) return failure('oauth_cookie_missing', 'La connexion n’a pas créé de session. Réessaie ou choisis une autre méthode.')
       }
       stage = 'session'
+      progress('session', 'started')
       const session = await this.getSession()
       if (!session) return failure('oauth_session_missing', 'La session n’a pas pu être restaurée. Réessaie ou choisis une autre méthode.')
       if (android) {
@@ -283,6 +313,8 @@ export class HttpFridgeConnector implements FridgeConnector {
         await queryClient.cancelQueries({ queryKey: ['session'] })
         queryClient.setQueryData(['session'], session)
       }
+      progress('session', 'success')
+      span?.end({ attributes: { request_id: requestId, 'event.outcome': 'success' } })
       return Result.ok(session)
     } catch {
       return failure(`oauth_${stage}_failed`, stage === 'session'

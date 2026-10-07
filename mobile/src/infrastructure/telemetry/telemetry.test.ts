@@ -82,6 +82,36 @@ function logRecords(fetchMock: jest.Mock) {
     .flatMap(([, init]) => JSON.parse(init.body).resourceLogs[0].scopeLogs[0].logRecords)
 }
 
+test('OAuth progress logs are exported individually with trace correlation and sanitized attributes', async () => {
+  const { telemetry } = loadModules(true)
+  telemetry.start()
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 202 })
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  const span = { traceId: 'a'.repeat(32), spanId: 'b'.repeat(16) }
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    telemetry.recordEvent('identity.sign_in_social.google.request', 'started', { span })
+  }
+  telemetry.recordEvent('identity.sign_in_social.google.callback', 'completed', {
+    span, attributes: { request_id: 'oauth-request-123', cookie: 'secret', token: 'secret', url: 'secret' },
+  })
+  telemetry.recordEvent('identity.sign_in_social.google.session', 'success', { span })
+  telemetry.shutdown()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+
+  const records = logRecords(fetchMock)
+  expect(records).toHaveLength(4)
+  expect(records.map((record) => record.severityText)).toEqual(['INFO', 'INFO', 'INFO', 'INFO'])
+  expect(records.map((record) => record.attributes.find(({ key }: { key: string }) => key === 'event.outcome').value.stringValue))
+    .toEqual(['started', 'started', 'completed', 'success'])
+  for (const record of records) {
+    expect(record.traceId).toBe(span.traceId)
+    expect(record.spanId).toBe(span.spanId)
+    expect(record.body.stringValue).toBe('client event')
+    expect(record.attributes.some(({ key }: { key: string }) => key === 'error.code')).toBe(false)
+  }
+  expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('secret')
+})
+
 test('expected refusals aggregate occurrences; distinct technical failures stay ERROR and redact secrets', async () => {
   const { telemetry } = loadModules(true)
   telemetry.start()
