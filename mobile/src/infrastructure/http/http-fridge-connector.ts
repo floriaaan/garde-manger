@@ -1,8 +1,9 @@
-import { errorStatus } from '../../domain/shared/log-diagnostic.js'
+import { errorCode, errorStatus } from '../../domain/shared/log-diagnostic.js'
 import { getLocale } from '../../i18n/index.js'
-import { Platform } from 'react-native'
+import { Linking, Platform } from 'react-native'
 import { File } from 'expo-file-system'
 import { queryClient } from '../../application/shared/query-client.js'
+import { ANDROID_OAUTH_CALLBACK, readAndroidOAuthReturn } from '../../application/identity/android-oauth-return.js'
 import { authClient } from '../auth/auth-client.js'
 import { apiFetch, apiFetchMultipart } from './http-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
@@ -90,6 +91,9 @@ async function appendImagePart(
 }
 
 const SESSION_TIMEOUT_MS = 5000
+// Android foreground revalidation races the browser plugin's cookie write.
+let pendingAndroidSignIns = 0
+let androidSignInGeneration = 0
 
 export class HttpFridgeConnector implements FridgeConnector {
   /** Raw `fetch`, not `apiFetch`: `url` is a candidate server, not necessarily the one currently configured — this must never read `getServerUrl()`. */
@@ -107,6 +111,9 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async getSession(): Promise<Session | null> {
+    const generation = androidSignInGeneration
+    const pendingAtStart = pendingAndroidSignIns > 0
+    const canClearSession = () => !pendingAtStart && !pendingAndroidSignIns && generation === androidSignInGeneration
     // A bounded check must not turn a temporary outage into a sign-out.
     // Rejecting preserves TanStack's last session; null is authoritative absence.
     const span = telemetry.startClientSpan('identity.get_session', { 'app.operation': 'identity.get_session' })
@@ -121,7 +128,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       } })
       if (error && !controller.signal.aborted && errorStatus(error) === 401) {
         span?.end({ attributes: { request_id: requestId, 'event.outcome': 'session_invalid' } })
-        authClient.signOut().catch(() => {})
+        if (canClearSession()) authClient.signOut().catch(() => {})
         return null
       }
       if (error) throw error
@@ -130,7 +137,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       // must leave credentials intact, just like transport failures.
       if (!session && data !== null) throw new Error('Invalid session response')
       span?.end({ attributes: { request_id: requestId, 'event.outcome': session ? 'session_valid' : 'session_absent' } })
-      if (!session) authClient.signOut().catch(() => {})
+      if (!session && canClearSession()) authClient.signOut().catch(() => {})
       return session
     } catch (error) {
       const diagnostic = controller.signal.aborted
@@ -218,22 +225,72 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async signInSocial(provider: 'pocketid' | 'google'): Promise<Result<Session | null, ApiError>> {
+    const android = Platform.OS === 'android'
+    let callback: ReturnType<typeof readAndroidOAuthReturn> = null
+    let stage = 'request'
+    const failure = (type: string, message: string): Result<Session | null, ApiError> => {
+      telemetry.recordError('identity.sign_in_social failed', {
+        attributes: { 'app.operation': `identity.sign_in_social.${provider}.${stage}`, 'error.code': type },
+        level: type === 'oauth_cancelled' ? 'info' : 'error',
+      })
+      return Result.err({ type, message })
+    }
+    if (android) {
+      pendingAndroidSignIns += 1
+      androidSignInGeneration += 1
+    }
+    let subscription: ReturnType<typeof Linking.addEventListener> | undefined
     try {
+      if (android) subscription = Linking.addEventListener('url', ({ url }) => {
+        const result = readAndroidOAuthReturn(url)
+        if (result) callback = result
+      })
       // Expo turns the native path into a deep link. On web a relative path
       // would redirect to the API host, so return to the frontend origin.
-      const { error } = await authClient.signIn.social({ provider, callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : '/' })
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : android ? ANDROID_OAUTH_CALLBACK : '/',
+        ...(android ? { errorCallbackURL: ANDROID_OAUTH_CALLBACK } : {}),
+      })
       if (error) {
-        return Result.err({ type: error.code ?? 'sign_in_failed', message: error.message ?? 'Connexion impossible.' })
+        return failure(errorCode(error, 'sign_in_failed'), 'Connexion impossible. Réessaie ou choisis une autre méthode.')
       }
       // On web, better-auth starts a full-page OAuth redirect. The session
       // only exists after the callback reloads the app.
       if (Platform.OS === 'web') return Result.ok(null)
+      stage = 'callback'
+      if (android) {
+        // The Expo plugin resolves without an error on browser cancellation
+        // and on an OAuth callback without a cookie. Observe Android's URL
+        // event before opening the browser, but let the plugin own storage.
+        const returned = callback as ReturnType<typeof readAndroidOAuthReturn>
+        if (!returned || returned.error === 'access_denied') {
+          return failure('oauth_cancelled', 'Connexion annulée. Tu peux réessayer.')
+        }
+        if (returned.error) {
+          return failure(returned.error, returned.error === 'account_not_linked'
+            ? 'Ce compte Google n’est pas lié à ton compte Garde-manger. Connecte-toi avec ta méthode habituelle, puis associe Google depuis ton compte.'
+            : 'La connexion n’a pas abouti. Réessaie ou choisis une autre méthode.')
+        }
+        if (!returned.hasCookie) return failure('oauth_cookie_missing', 'La connexion n’a pas créé de session. Réessaie ou choisis une autre méthode.')
+      }
+      stage = 'session'
       const session = await this.getSession()
-      if (!session) return Result.err({ type: 'sign_in_failed', message: 'Connexion impossible.' })
+      if (!session) return failure('oauth_session_missing', 'La session n’a pas pu être restaurée. Réessaie ou choisis une autre méthode.')
+      if (android) {
+        // A foreground request started before persistence must not overwrite
+        // this verified session with its stale signed-out response.
+        await queryClient.cancelQueries({ queryKey: ['session'] })
+        queryClient.setQueryData(['session'], session)
+      }
       return Result.ok(session)
-    } catch (error) {
-      reportFailure('identity.sign_in_social', error)
-      return Result.err({ type: 'sign_in_failed', message: 'Connexion impossible.' })
+    } catch {
+      return failure(`oauth_${stage}_failed`, stage === 'session'
+        ? 'Impossible de vérifier la session. Vérifie ta connexion et réessaie.'
+        : 'Connexion impossible. Vérifie ta connexion et réessaie.')
+    } finally {
+      subscription?.remove()
+      if (android) pendingAndroidSignIns -= 1
     }
   }
 

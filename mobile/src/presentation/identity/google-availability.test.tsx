@@ -3,7 +3,7 @@
  * (App Store 4.8). Until that ships, iOS hides Google at sign-in and at
  * account linking; Android and web keep it.
  */
-import { render, screen, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
@@ -85,5 +85,27 @@ describe('with Google (Android, web)', () => {
     await renderAccount()
 
     await waitFor(() => expect(screen.getByTestId('account-link-google')).toBeTruthy())
+  })
+
+  test.each(['oauth_cookie_missing', 'account_not_linked', 'oauth_cancelled'])('Google %s displays feedback and allows retry', async (type) => {
+    const connector = connectorOfferingGoogle()
+    const message = type === 'oauth_cancelled' ? 'Connexion annulée. Tu peux réessayer.' : 'Connexion impossible. Réessaie ou choisis une autre méthode.'
+    jest.spyOn(connector, 'signInSocial').mockResolvedValue({ ok: false, error: { type, message } })
+    const onSuccess = jest.fn()
+    await renderWith(<AuthMethodFooter emailLabel="Continuer avec e-mail" emailForm={null} onSuccess={onSuccess} />, connector)
+    await waitFor(() => expect(screen.getByTestId('auth-method-google')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('auth-method-google'))
+    await waitFor(() => expect(screen.getByText(message)).toBeTruthy())
+    expect(onSuccess).not.toHaveBeenCalled()
+    await fireEvent.press(screen.getByTestId('auth-method-google'))
+    expect(connector.signInSocial).toHaveBeenCalledTimes(2)
+  })
+
+  test('a verified Google session proceeds into the application', async () => {
+    const onSuccess = jest.fn()
+    await renderWith(<AuthMethodFooter emailLabel="Continuer avec e-mail" emailForm={null} onSuccess={onSuccess} />, connectorOfferingGoogle())
+    await waitFor(() => expect(screen.getByTestId('auth-method-google')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('auth-method-google'))
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
   })
 })

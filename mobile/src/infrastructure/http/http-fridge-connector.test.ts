@@ -1,5 +1,6 @@
 import { setLocaleOverride } from '../../i18n/index.js'
-import { Platform } from 'react-native'
+import { Linking, Platform } from 'react-native'
+import { ANDROID_OAUTH_CALLBACK } from '../../application/identity/android-oauth-return.js'
 import { authClient } from '../auth/auth-client.js'
 import { HttpFridgeConnector } from './http-fridge-connector.js'
 import { queryClient } from '../../application/shared/query-client.js'
@@ -494,6 +495,124 @@ describe('authentication integrations', () => {
     expect(await new HttpFridgeConnector().signInPasskey()).toEqual({
       ok: false, error: { type: 'ERROR_CEREMONY_ABORTED', message: 'Cancelled' },
     })
+  })
+})
+
+describe('Android browser OAuth return (#91)', () => {
+  const originalOS = Platform.OS
+  const session = { user: { id: 'u1', name: 'Alice', email: 'alice@example.com', image: null } }
+  let receiveURL: (event: { url: string }) => void
+  let remove: jest.Mock
+
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' })
+    remove = jest.fn()
+    jest.spyOn(Linking, 'addEventListener').mockImplementation((_event, listener) => {
+      receiveURL = listener
+      return { remove }
+    })
+    jest.spyOn(telemetry, 'recordError').mockImplementation(() => {})
+    ;(authClient.getSession as jest.Mock).mockReset()
+    ;(authClient.signIn.social as jest.Mock).mockReset()
+  })
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalOS })
+    jest.restoreAllMocks()
+  })
+
+  function browserReturn(query: string) {
+    ;(authClient.signIn.social as jest.Mock).mockImplementation(async () => {
+      receiveURL({ url: `${ANDROID_OAUTH_CALLBACK}?${query}` })
+      return {}
+    })
+  }
+
+  test.each(['google', 'pocketid'] as const)('%s restores an existing account and refreshes navigation state', async (provider) => {
+    browserReturn('cookie=stored-by-expo')
+    ;(authClient.getSession as jest.Mock).mockResolvedValue({ data: session })
+    queryClient.setQueryData(['session'], null)
+
+    expect(await new HttpFridgeConnector().signInSocial(provider)).toEqual({ ok: true, value: session })
+    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider, callbackURL: ANDROID_OAUTH_CALLBACK, errorCallbackURL: ANDROID_OAUTH_CALLBACK })
+    expect(queryClient.getQueryData(['session'])).toEqual(session)
+    expect(authClient.signOut).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([null, 'access_denied'])('cancellation (%s) is distinct from a callback/session failure', async (error) => {
+    if (error) browserReturn(`error=${error}`)
+    else (authClient.signIn.social as jest.Mock).mockResolvedValue({})
+
+    expect(await new HttpFridgeConnector().signInSocial('google')).toEqual({
+      ok: false, error: { type: 'oauth_cancelled', message: 'Connexion annulée. Tu peux réessayer.' },
+    })
+    expect(authClient.getSession).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([
+    ['error=account_not_linked&error_description=secret', 'account_not_linked', 'méthode habituelle'],
+    ['error=state_not_found', 'state_not_found', 'Réessaie'],
+    ['error=secret%20credentials', 'oauth_callback_failed', 'Réessaie'],
+    ['unrelated=value', 'oauth_cookie_missing', 'créé de session'],
+  ])('surfaces callback failure %s with sanitized stage diagnostics', async (query, code, message) => {
+    browserReturn(query)
+    const result = await new HttpFridgeConnector().signInSocial('google')
+    expect(result).toEqual({ ok: false, error: { type: code, message: expect.stringContaining(message) } })
+    expect(telemetry.recordError).toHaveBeenCalledWith('identity.sign_in_social failed', {
+      attributes: { 'app.operation': 'identity.sign_in_social.google.callback', 'error.code': code }, level: 'error',
+    })
+    expect(authClient.getSession).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([
+    ['missing', 'oauth_session_missing'],
+    ['network', 'oauth_session_failed'],
+  ])('does not report success when session restoration fails: %s', async (kind, code) => {
+    browserReturn('cookie=stored-by-expo')
+    if (kind === 'network') (authClient.getSession as jest.Mock).mockRejectedValue(new Error('token=secret'))
+    else (authClient.getSession as jest.Mock).mockResolvedValue({ data: null })
+    expect(await new HttpFridgeConnector().signInSocial('google')).toEqual({
+      ok: false, error: { type: code, message: expect.stringMatching(/[Rr]éessaie/) },
+    })
+    expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test('request failures are visible and always release the URL listener', async () => {
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({ error: { code: 'PROVIDER_DISABLED', message: 'secret' } })
+    expect(await new HttpFridgeConnector().signInSocial('google')).toEqual({
+      ok: false, error: { type: 'PROVIDER_DISABLED', message: expect.stringContaining('Réessaie') },
+    })
+    expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([{ data: null }, { error: { status: 401 } }])('foreground absence does not erase a cookie while OAuth is persisting: %j', async (response) => {
+    const connector = new HttpFridgeConnector()
+    ;(authClient.getSession as jest.Mock).mockResolvedValueOnce(response).mockResolvedValueOnce({ data: session })
+    ;(authClient.signIn.social as jest.Mock).mockImplementation(async () => {
+      receiveURL({ url: `${ANDROID_OAUTH_CALLBACK}?cookie=stored-by-expo` })
+      expect(await connector.getSession()).toBeNull()
+      expect(authClient.signOut).not.toHaveBeenCalled()
+      return {}
+    })
+    expect(await connector.signInSocial('google')).toEqual({ ok: true, value: session })
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test('a signed-out request started before OAuth cannot erase the new session after completion', async () => {
+    let finishOldRequest!: (response: { data: null }) => void
+    ;(authClient.getSession as jest.Mock).mockImplementationOnce(() => new Promise((resolve) => { finishOldRequest = resolve }))
+      .mockResolvedValueOnce({ data: session })
+    const connector = new HttpFridgeConnector()
+    const oldRequest = connector.getSession()
+    browserReturn('cookie=stored-by-expo')
+    await connector.signInSocial('google')
+    finishOldRequest({ data: null })
+    expect(await oldRequest).toBeNull()
+    expect(authClient.signOut).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['session'])).toEqual(session)
   })
 })
 
