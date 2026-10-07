@@ -7,6 +7,7 @@
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "appStoreUrl": "https://apps.apple.com/app/id6816469647",
       "icon": {
         "light": "./assets/images/icon.png",
         "dark": "./assets/images/icon-dark.png",
@@ -28,6 +29,7 @@
       }
     },
     "android": {
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.floriaaan.gardemanger",
       "icon": "./assets/images/icon.png",
       "predictiveBackGestureEnabled": true,
       "package": "com.floriaaan.gardemanger",

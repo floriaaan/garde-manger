@@ -1,5 +1,9 @@
 {
   "dashboard": {
+    "review_title": "Un coup de pouce au projet",
+    "review_description": "Garde-manger t’aide au quotidien ? Ton avis aide d’autres foyers à le découvrir.",
+    "review_action": "Laisser un avis",
+    "review_unavailable": "Impossible d’ouvrir les avis pour le moment. Réessaie plus tard.",
     "your_household": "Ton foyer",
     "checking_your_pantry": "On regarde dans ton garde-manger…",
     "your_pantry_is_still_empty": "Ton garde-manger est encore vide",

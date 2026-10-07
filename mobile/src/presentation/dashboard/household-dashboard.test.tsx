@@ -4,6 +4,7 @@ import { ConnectorProvider } from '../../application/shared/connector-context.js
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { HouseholdDashboard } from './household-dashboard.js'
+import { Platform } from 'react-native'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
 // iOS cannot bill directly, but the household's subscription still applies.
@@ -57,6 +58,23 @@ test.each(['subscriber', 'free', 'self-hosted'] as const)('the header mascot fol
   } else {
     expect(screen.getByTestId('dashboard-mascot').props.source).toEqual(require('../../../assets/mascot.png'))
     expect(screen.queryByTestId('dashboard-subscriber-badge')).toBeNull()
+  }
+})
+
+test.each(['free', 'self-hosted'] as const)('the %s dashboard places the review card after its content', async (plan) => {
+  const originalPlatform = Platform.OS
+  Platform.OS = 'ios'
+  try {
+    const connector = new FakeFridgeConnector()
+    const settings = await connector.getAiSettings()
+    jest.spyOn(connector, 'getAiSettings').mockResolvedValue({ ...settings!, access: { ...settings!.access, plan } })
+    renderDashboard({}, connector)
+    await waitFor(() => expect(screen.getByText('Appartement des loulous')).toBeTruthy())
+    expect(screen.getByTestId('dashboard-store-review-card')).toBeTruthy()
+    const tree = JSON.stringify(screen.toJSON())
+    expect(tree.indexOf('dashboard-store-review-card')).toBeGreaterThan(tree.indexOf('dashboard-receipts'))
+  } finally {
+    Platform.OS = originalPlatform
   }
 })
 
