@@ -19,8 +19,11 @@ import type { SoftPalette } from '../dashboard/soft-palette.js'
 /** The pill surface itself — spread alongside a `backgroundColor` and `toastPillShadow`. */
 export const TOAST_PILL_STYLE = {
   borderRadius: 14,
-  paddingVertical: 10,
-  paddingHorizontal: 16,
+  // Explicit sides also work when Tamagui forwards this style to the web.
+  paddingTop: 10,
+  paddingBottom: 10,
+  paddingLeft: 16,
+  paddingRight: 16,
   maxWidth: 480,
 }
 
