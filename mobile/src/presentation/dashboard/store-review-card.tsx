@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Linking, Platform } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { AccessibilityInfo, Linking, Platform } from 'react-native'
 import appConfig from '../../../app.json'
 import { useTranslation } from '../../i18n/index.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -12,6 +12,13 @@ export function StoreReviewCard({ palette }: { palette: SoftPalette }) {
   const inFlight = useRef(false)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [nativeRequested, setNativeRequested] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'ios' && pending) {
+      AccessibilityInfo.announceForAccessibility(t('dashboard.review_opening'))
+    }
+  }, [pending, t])
 
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null
 
@@ -21,17 +28,20 @@ export function StoreReviewCard({ palette }: { palette: SoftPalette }) {
     setPending(true)
     setFailed(false)
     try {
-      try {
-        // Load on tap so an older native client without the module can still
-        // open its store listing. The chosen backend has no bearing on this.
-        const StoreReview = await import('expo-store-review')
-        if (await StoreReview.isAvailableAsync()) {
-          await StoreReview.requestReview()
-          // The OS can silently suppress the prompt; it exposes no result.
-          return
+      if (!nativeRequested) {
+        try {
+          // Load on tap so an older native client without the module can still
+          // open its store listing. The chosen backend has no bearing on this.
+          const StoreReview = await import('expo-store-review')
+          if (await StoreReview.isAvailableAsync()) {
+            await StoreReview.requestReview()
+            // The OS can silently suppress the prompt; it exposes no result.
+            setNativeRequested(true)
+            return
+          }
+        } catch {
+          // An unavailable module or failed native request falls back to the store.
         }
-      } catch {
-        // An unavailable module or failed native request falls back to the store.
       }
       const url = Platform.OS === 'ios'
         ? `${appConfig.expo.ios.appStoreUrl}?action=write-review`
@@ -46,14 +56,30 @@ export function StoreReviewCard({ palette }: { palette: SoftPalette }) {
   }
 
   return (
-    <YStack testID="dashboard-store-review-card" marginTop="$6" padding="$4" gap="$2" backgroundColor={palette.cream} borderRadius={18}>
+    <YStack
+      testID="dashboard-store-review-card"
+      marginTop="$6"
+      padding="$4"
+      gap="$2"
+      backgroundColor={palette.cream}
+      borderTopLeftRadius={26}
+      borderTopRightRadius={14}
+      borderBottomRightRadius={26}
+      borderBottomLeftRadius={14}
+    >
       <Text fontSize={15} fontWeight="800" color={palette.ink}>{t('dashboard.review_title')}</Text>
       <Text fontSize={14} fontWeight="500" color={palette.creamText}>{t('dashboard.review_description')}</Text>
+      {nativeRequested ? (
+        <Text testID="dashboard-store-review-help" fontSize={13} fontWeight="500" color={palette.creamText}>
+          {t('dashboard.review_native_help')}
+        </Text>
+      ) : null}
       <PillButton
         testID="dashboard-store-review"
-        label={t('dashboard.review_action')}
+        label={t(pending ? 'dashboard.review_opening' : nativeRequested ? 'dashboard.review_store_action' : 'dashboard.review_action')}
         onPress={() => void requestReview()}
         disabled={pending}
+        busy={pending}
         icon={(color) => <StarIcon size={16} color={color} />}
         palette={palette}
       />

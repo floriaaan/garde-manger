@@ -44,6 +44,7 @@ export function PillButton({
   size = 'default',
   centered = false,
   disabled = false,
+  busy = false,
 }: {
   testID?: string
   label: string
@@ -59,6 +60,7 @@ export function PillButton({
   /** For a centered empty state's own CTA — see the note above `flex-start`. */
   centered?: boolean
   disabled?: boolean
+  busy?: boolean
 }) {
   const hover = useHoverPress()
   const height = PILL_HEIGHT[size]
@@ -68,7 +70,7 @@ export function PillButton({
       testID={testID}
       onPress={onPress}
       disabled={disabled}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, busy }}
       onHoverIn={hover.onHoverIn}
       onHoverOut={hover.onHoverOut}
       onPressIn={hover.onPressIn}
