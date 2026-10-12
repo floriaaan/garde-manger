@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 import { addNetworkStateListener, getNetworkStateAsync, type NetworkState } from 'expo-network'
 import { getTelemetry } from './telemetry.js'
+import { useOfflineSimulation } from './connectivity-simulation.js'
 
 /** Unknown stays unknown; a failed device-state read is not evidence of a lost connection. */
 export function useConnectivity(): boolean | undefined {
   const [online, setOnline] = useState<boolean>()
+  const simulatedOffline = useOfflineSimulation()
   useEffect(() => {
     let active = true
     let revision = 0
@@ -32,5 +34,5 @@ export function useConnectivity(): boolean | undefined {
     void refresh()
     return () => { active = false; network.remove(); foreground.remove() }
   }, [])
-  return online
+  return simulatedOffline ? false : online
 }

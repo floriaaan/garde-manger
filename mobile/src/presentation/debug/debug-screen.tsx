@@ -6,7 +6,7 @@ import { t, useTranslation, getLocaleOverride, setLocaleOverride, type LocaleOve
  * release build needs when the server URL is wrong.
  */
 import { useState } from 'react'
-import { Platform } from 'react-native'
+import { Platform, Switch } from 'react-native'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip } from '../shared/chip.js'
@@ -20,6 +20,7 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { useSessionQuery } from '../../application/identity/session.query.js'
 import { useSignOutMutation } from '../../application/identity/sign-out.mutation.js'
 import { queryClient } from '../../application/shared/query-client.js'
+import { setOfflineSimulation, useOfflineSimulation } from '../../application/shared/connectivity-simulation.js'
 import {
   APP_VERSION,
   OFFICIAL_SERVER_URL,
@@ -47,6 +48,7 @@ export function DebugScreen() {
   const session = useSessionQuery()
   const signOut = useSignOutMutation()
   const hasSeenWelcome = useHasSeenWelcome()
+  const simulatedOffline = useOfflineSimulation()
   const [confirming, setConfirming] = useState(false)
   const [localeOverride, setOverride] = useState<LocaleOverride>(getLocaleOverride)
   // Previewing the splash has no way back on purpose: reload the app to leave it.
@@ -73,6 +75,7 @@ export function DebugScreen() {
     ])
     await resetWelcomeSeen()
     await clearServerUrl()
+    setOfflineSimulation(false)
     setLocaleOverride(null)
     router.replace('/welcome')
     // After navigating: clearing first would flip the gates below to their splash mid-transition.
@@ -106,6 +109,23 @@ export function DebugScreen() {
           </XStack>
           <Text fontSize={12} color={palette.inkSecondary}>{t('debug.language_session_only')}</Text>
         </YStack>
+        <XStack padding="$3" gap="$3" alignItems="center" minHeight={64}>
+          <YStack flex={1} minWidth={0} gap={4}>
+            <Text fontSize={15} fontWeight="700" lineHeight={22} color={palette.ink}>
+              {t('debug.simulate_offline')}
+            </Text>
+            <Text fontSize={13} lineHeight={18} color={palette.inkSecondary}>
+              {t('debug.simulate_offline_description')}
+            </Text>
+          </YStack>
+          <XStack minHeight={48} flexShrink={0} alignItems="center">
+            <Switch testID="debug-network-simulation" accessibilityRole="switch"
+              accessibilityLabel={t('debug.simulate_offline')}
+              accessibilityHint={t('debug.simulate_offline_description')}
+              value={simulatedOffline} onValueChange={setOfflineSimulation}
+              trackColor={{ true: palette.soonText }} />
+          </XStack>
+        </XStack>
         {rows.map(([label, value]) => (
           <YStack key={label} padding="$3" borderRadius="$3" backgroundColor={palette.gradientBottom}>
             <Text fontSize={12} color={palette.inkSecondary}>

@@ -46,3 +46,9 @@ A persistent, translated status banner reports loss of device connectivity and
 shows “Connection restored” for 3.5 seconds after reconnecting. It observes
 Expo Network events and refreshes on foreground; an unknown state is silent.
 It reports device connectivity, not backend health or completed synchronization.
+
+Debug offers a session-only disconnection simulation switch for previewing the
+offline/recovery banner. It overrides the displayed connectivity state while
+continuing to observe the real network. It does not block requests or alter
+authentication. Turning it off restores the actual network state; a device that
+is genuinely offline stays offline. App restart/reset disables the simulation.
