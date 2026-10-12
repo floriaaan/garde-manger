@@ -18,42 +18,38 @@ export function NetworkStatusBanner() {
   const reduceMotion = useReduceMotion()
   const height = useSharedValue(0)
   const animationRevision = useRef(0)
-  const animatedStyle = useAnimatedStyle(() => ({ height: height.value }))
+  const animatedStyle = useAnimatedStyle(() => ({ height: height.get() }))
 
   const [contentHeight, setContentHeight] = useState(0)
   const [visible, setVisible] = useState(false)
+  const [previousOnline, setPreviousOnline] = useState<boolean | undefined>(undefined)
   const [status, setStatus] = useState<'offline' | 'restored' | null>(null)
   const finishClosing = useCallback((revision: number) => {
     if (animationRevision.current === revision) setStatus(null)
   }, [])
   useEffect(() => {
-    if (online === false) { setStatus('offline'); setVisible(true) }
-    else if (online === true) setStatus((previous) => previous === 'offline' ? 'restored' : previous)
-  }, [online])
-  useEffect(() => {
     if (status !== 'restored') return
-    const timer = setTimeout(() => setVisible(false), 3500)
+    const timer = setTimeout(() => {
+      setVisible(false)
+      if (reduceMotion) setStatus(null)
+    }, 3500)
     return () => clearTimeout(timer)
-  }, [status])
+  }, [status, reduceMotion])
   const title = status ? t(`shared.network_${status}`) : ''
   const description = status === 'offline' ? t('shared.network_offline_description') : ''
   const message = description ? `${title}. ${description}` : title
   useEffect(() => {
-    if (!status) return
+    if (!status) { height.set(0); return }
     const target = visible ? contentHeight : 0
-    if (reduceMotion || contentHeight === 0) {
-      height.value = target
-      if (!visible) setStatus(null)
-      return
-    }
+    if (reduceMotion) { height.set(target); return }
     // Animate on the UI thread; JS-driven height updates compete with navigation.
     const revision = ++animationRevision.current
-    height.value = withTiming(target, {
-      duration: visible ? 240 : 180,
+    height.set(withTiming(target, {
+      duration: contentHeight === 0 ? 0 : visible ? 240 : 180,
       easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
     }, (finished) => {
       if (finished && !visible) scheduleOnRN(finishClosing, revision)
-    })
+    }))
     return () => {
       ++animationRevision.current
       cancelAnimation(height)
@@ -62,6 +58,12 @@ export function NetworkStatusBanner() {
   useEffect(() => {
     if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message)
   }, [message])
+  // A guarded render update synchronizes connectivity before committing stale content.
+  if (previousOnline !== online) {
+    setPreviousOnline(online)
+    if (online === false) { setStatus('offline'); setVisible(true) }
+    else if (online === true && status === 'offline') setStatus('restored')
+  }
   if (!status) return null
   const offline = status === 'offline'
   const color = offline ? palette.soonText : palette.freshText
