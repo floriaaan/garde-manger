@@ -77,6 +77,8 @@
     "metric_count": "{{name}}, {{summary}}"
   },
   "debug": {
+    "simulate_offline": "Simulate a disconnection",
+    "simulate_offline_description": "Test the banner without blocking requests. Simulation lasts for this session only.",
     "scan_a_receipt": "Scan a receipt",
     "scan_the_fridge": "Scan the fridge",
     "generate_recipes": "Generate recipes",
@@ -1010,6 +1012,9 @@
     "unavailable": "unavailable"
   },
   "shared": {
+    "network_offline": "Offline",
+    "network_offline_description": "Previously loaded data remains available.",
+    "network_restored": "Connection restored",
     "cancel": "Cancel",
     "scan_a_product_or_receipt": "Scan a product or receipt",
     "scan_the_fridge_a_product_or_a_receipt": "Scan the fridge, a product or a receipt",

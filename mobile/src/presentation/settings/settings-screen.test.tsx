@@ -54,7 +54,7 @@ test('the foyer card carries the whole width, its members and the role — not a
   expect(screen.getByText('2 membres')).toBeTruthy()
   expect(screen.getByText('Propriétaire')).toBeTruthy()
 
-  fireEvent.press(screen.getByTestId('settings-household'))
+  await fireEvent.press(screen.getByTestId('settings-household'))
 
   expect(router.push).toHaveBeenCalledWith('/household')
 })
@@ -63,7 +63,7 @@ test('tapping the account card opens Mon compte', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('settings-account')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('settings-account'))
+  await fireEvent.press(screen.getByTestId('settings-account'))
 
   expect(router.push).toHaveBeenCalledWith('/account')
 })
@@ -79,8 +79,8 @@ test('links to the privacy policy and the terms of use (App Store 5.1.1(i))', as
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('settings-privacy-policy')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('settings-privacy-policy'))
-  fireEvent.press(screen.getByTestId('settings-terms'))
+  await fireEvent.press(screen.getByTestId('settings-privacy-policy'))
+  await fireEvent.press(screen.getByTestId('settings-terms'))
 
   expect(openURL).toHaveBeenCalledWith('https://gardemanger.floriaaan.fr/privacy')
   expect(openURL).toHaveBeenCalledWith('https://gardemanger.floriaaan.fr/cgu')
@@ -91,14 +91,14 @@ test('tapping the AI card opens the provider page', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('settings-ai-provider')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('settings-ai-provider'))
+  await fireEvent.press(screen.getByTestId('settings-ai-provider'))
 
   expect(router.push).toHaveBeenCalledWith('/ai-provider')
 })
 
 test('opens Notifications and keeps the global switch on that page', async () => {
   await renderAuthenticated()
-  fireEvent.press(screen.getByTestId('settings-notifications-page'))
+  await fireEvent.press(screen.getByTestId('settings-notifications-page'))
   expect(router.push).toHaveBeenCalledWith('/notifications')
   expect(screen.queryByTestId('settings-notifications-switch')).toBeNull()
   expect(screen.queryByTestId('settings-expiry-reminders')).toBeNull()
@@ -134,9 +134,9 @@ test('a failed push removal reports a toast and retains the session for retry', 
   const disable = jest.spyOn(pushNotifications, 'disablePush').mockRejectedValueOnce(new Error('Offline'))
   jest.mocked(router.replace).mockClear()
   await renderAuthenticated(connector)
-  fireEvent.press(screen.getByTestId('sign-out'))
+  await fireEvent.press(screen.getByTestId('sign-out'))
   await waitFor(() => expect(screen.getByTestId('sign-out-confirm')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('sign-out-confirm'))
+  await fireEvent.press(screen.getByTestId('sign-out-confirm'))
   await waitFor(() => expect(showToast).toHaveBeenCalledWith('Impossible de terminer la déconnexion. Réessaie.', 'error'))
   expect(signOut).not.toHaveBeenCalled()
   expect(router.replace).not.toHaveBeenCalled()
@@ -164,7 +164,7 @@ test('the debug entry opens the debug screen', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('debug-menu-open')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('debug-menu-open'))
+  await fireEvent.press(screen.getByTestId('debug-menu-open'))
 
   expect(router.push).toHaveBeenCalledWith('/debug')
 })
@@ -186,7 +186,7 @@ test('tapping the instance card opens the server-info page', async () => {
   await renderAuthenticated()
 
   await waitFor(() => expect(screen.getByTestId('settings-instance')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('settings-instance'))
+  await fireEvent.press(screen.getByTestId('settings-instance'))
 
   expect(router.push).toHaveBeenCalledWith('/server-info')
 })

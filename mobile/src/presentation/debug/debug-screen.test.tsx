@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { DebugScreen } from './debug-screen.js'
 import { getLocaleOverride, i18n, setLocaleOverride } from '../../i18n/index.js'
+import { setOfflineSimulation } from '../../application/shared/connectivity-simulation.js'
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
@@ -16,7 +17,7 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => undefined),
 }))
 
-afterEach(() => setLocaleOverride(null))
+afterEach(async () => { await act(() => setOfflineSimulation(false)); setLocaleOverride(null) })
 
 test('switches rendered labels immediately and returns to the system locale', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -39,5 +40,20 @@ test('switches rendered labels immediately and returns to the system locale', as
   await fireEvent.press(screen.getByTestId('debug-locale-system'))
   expect(getLocaleOverride()).toBeNull()
   expect(screen.getByTestId('debug-locale-system').props.accessibilityState.selected).toBe(true)
+  client.clear()
+})
+
+test('the native debug switch toggles the session-only disconnection simulation', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const view = await render(<ThemeProvider><QueryClientProvider client={client}>
+    <ConnectorProvider connector={new FakeFridgeConnector()}><DebugScreen /></ConnectorProvider>
+  </QueryClientProvider></ThemeProvider>)
+  const control = () => screen.getByRole('switch', { name: 'Simuler une déconnexion' })
+  expect(control().props.value).toBe(false)
+  await fireEvent(control(), 'valueChange', true)
+  expect(control().props.value).toBe(true)
+  await fireEvent(control(), 'valueChange', false)
+  expect(control().props.value).toBe(false)
+  await view.unmount()
   client.clear()
 })

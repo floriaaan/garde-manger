@@ -52,6 +52,15 @@ export const EyeIcon = icon([{ d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 
 export const EyeOffIcon = icon([{ d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z' }, { cx: '12', cy: '12', r: '3' }, { d: 'M3 3 21 21' }])
 export const CircleCheckIcon = icon([{ cx: '12', cy: '12', r: '10' }, { d: 'm9 12 2 2 4-4' }])
 export const CheckIcon = icon([{ d: 'M20 6 9 17l-5-5' }])
+export const WifiOffIcon = icon([
+  { d: 'm2 2 20 20' },
+  { d: 'M8.5 16.5a5 5 0 0 1 7 0' },
+  { d: 'M2 8.82a15 15 0 0 1 2.87-1.93' },
+  { d: 'M10.66 5.06A15 15 0 0 1 22 8.82' },
+  { d: 'M5 12a10 10 0 0 1 5.24-2.76' },
+  { d: 'M16.4 10.07A10 10 0 0 1 19 12' },
+  { d: 'M12 20h.01' },
+])
 export const BadgeCheckIcon = icon([
   { d: 'M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z' },
   { d: 'm9 12 2 2 4-4' },

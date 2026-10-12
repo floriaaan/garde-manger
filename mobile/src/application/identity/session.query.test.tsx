@@ -32,19 +32,22 @@ test('revalidation failures keep the last session until the server confirms abse
   function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}><ConnectorProvider connector={connector}>{children}</ConnectorProvider></QueryClientProvider>
   }
-  const { result, unmount } = await renderHook(() => useSessionQuery(), { wrapper: Wrapper })
+  // Observe status changes even when cached data itself stays unchanged.
+  const { result, unmount } = await renderHook(() => useSessionQuery({ notifyOnChangeProps: 'all' }), { wrapper: Wrapper })
   await waitFor(() => expect(result.current.data).toEqual(session))
   for (let i = 0; i < 3; i++) {
-    getSession.mockRejectedValueOnce(new Error('Network unavailable'))
+    const error = new Error('Network unavailable')
+    getSession.mockRejectedValueOnce(error)
     await act(async () => { await result.current.refetch() })
+    await waitFor(() => expect(result.current.error).toBe(error))
     expect(result.current.isError).toBe(true)
     expect(result.current.data).toEqual(session)
   }
   await act(async () => { await result.current.refetch() })
-  expect(result.current.isSuccess).toBe(true)
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
   getSession.mockResolvedValueOnce(null)
   await act(async () => { await result.current.refetch() })
-  expect(result.current.data).toBeNull()
+  await waitFor(() => expect(result.current.data).toBeNull())
   await unmount()
   queryClient.clear()
 })
@@ -57,11 +60,11 @@ test('a failed cold-start read stays unknown and can restore the session on retr
   function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}><ConnectorProvider connector={connector}>{children}</ConnectorProvider></QueryClientProvider>
   }
-  const { result, unmount } = await renderHook(() => useSessionQuery(), { wrapper: Wrapper })
+  const { result, unmount } = await renderHook(() => useSessionQuery({ notifyOnChangeProps: 'all' }), { wrapper: Wrapper })
   await waitFor(() => expect(result.current.isError).toBe(true))
   expect(result.current.data).toBeUndefined()
   await act(async () => { await result.current.refetch() })
-  expect(result.current.data).toEqual(session)
+  await waitFor(() => expect(result.current.data).toEqual(session))
   await unmount()
   queryClient.clear()
 })

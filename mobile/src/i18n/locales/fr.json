@@ -81,6 +81,8 @@
     "metric_count": "{{name}}, {{summary}}"
   },
   "debug": {
+    "simulate_offline": "Simuler une déconnexion",
+    "simulate_offline_description": "Teste le bandeau sans bloquer les requêtes. Simulation limitée à cette session.",
     "scan_a_receipt": "Scanner un ticket",
     "scan_the_fridge": "Scanner le frigo",
     "generate_recipes": "Générer des recettes",
@@ -1049,6 +1051,9 @@
     "unavailable": "indisponible"
   },
   "shared": {
+    "network_offline": "Hors connexion",
+    "network_offline_description": "Les données enregistrées restent disponibles.",
+    "network_restored": "Connexion rétablie",
     "cancel": "Annuler",
     "scan_a_product_or_receipt": "Scanner un produit ou un ticket de caisse",
     "scan_the_fridge_a_product_or_a_receipt": "Scanner le frigo, un produit ou un ticket de caisse",
