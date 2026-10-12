@@ -2,18 +2,26 @@
 
 MODE: Operate
 
-TARGET: `src/presentation/shared/network-status-banner.tsx`, `src/presentation/shared/pending-actions-screen.tsx`, route `/pending-actions`.
+TARGET: `src/presentation/shared/pending-actions-screen.tsx`, offline banner and `/pending-actions` native modal.
 
-PURPOSE: Let a household member inspect changes saved on this device while offline and understand which are waiting, retrying or blocked.
+PURPOSE: Inspect locally saved household changes and distinguish automatic delivery from changes needing attention.
 
-DIRECTION: Extend the incumbent Sunlit Pantry world from `DESIGN.md` with a bolder hierarchy scoped to this modal. The offline banner opens a native `presentation: 'modal'` route with `AppShell` modal navigation. A local 32pt heading uses the existing web heading font at weight 600 and native system type at weight 800. Reuse the soft palette, shared `Pressable`, `PillButton` and existing clock, trash, Wi-Fi, check, chevron and close icons. Native navigation owns the transition. A labelled 48pt Close control returns to the previous route; direct entry falls back to home. No new visual system or assets.
+STATES: Loading, empty, read failure with retry, waiting, retrying and blocked. Fake and real modes share copy and queue/replay behavior; fake storage is in memory and seeded actions replay. Close and native dismissal remain available. Banner height respects Reduce Motion.
 
-COMPOSITION: The heading and queue count precede a scrolling list. Each separated row names the affected item in 18pt/800 type, then identifies collection and operation and displays changed field values in 16pt/700 type. Existing cream 38pt icon squares carry a trash glyph for deletions and a clock for edits. Written waiting/retrying status pills use `soonBg`/`soonText`; blocked pills use `expiredBg`/`expiredText`. Blocked rows explain conflict, missing item or refusal in place. Separation uses the existing `creamPillEdge` token.
+EVIDENCE: Source inspected; no runtime validation, builds, tests, lint or typechecks. Inherited composer capture establishes incumbent context only. Read-only simctl found zero booted simulators; no fresh native rendering or transition proof. Preserve DESIGN.md/design.json; preexisting `design-sidecar-stale` and `config-build-path-unset` remain unresolved.
 
-STATES: Offline banner is actionable; restored connectivity is informational and dismisses after 3.5 seconds. Banner height respects Reduce Motion. The queue exposes loading, empty, load failure with retry, waiting, retrying and blocked states. Close remains available in each queue state. Field labels, dates, currency and status copy follow the existing translation and locale helpers.
+REVIEW: Finish reviewer returned ship at source-inspection scope; no material fixes identified. Native rendering and accessibility remain unverified at runtime.
 
-BEHAVIOR: Fake and real connectors use the same queue, replay pipeline and UI copy. There is no demo-specific banner, queue description or modal branch. Fake queue storage is in memory, matching the fake server's lifetime; its seeded initial actions are actual queued mutations that replay through the shared pipeline rather than static presentation rows.
+## Direction contract
 
-EVIDENCE: Source inspection confirms the final heading/row hierarchy, status pills, shared components, modal routing, 48pt Close and row separation. Connector wiring and fake storage source confirm the common queue pipeline and mutable in-memory seed. Inherited visual reference: `screenshots/composer/iphone-light-default.png`, evidence for the existing modal world only. No fresh render validation, capture, build, test, lint or typecheck was performed under AGENTS.md; source inspection and this reference do not prove runtime replay, the pending-actions surface's native rendering or transition quality.
+THESIS: Le reçu des changements is one continuous local change ledger with before/after assignments and a separate recovery section.
 
-CONTEXT: Preexisting `design-sidecar-stale` and `config-build-path-unset` findings remain unchanged. Preserve `DESIGN.md` and `.impeccable/design.json`; this brief records only the new surface.
+OWN-WORLD: Existing cream, ink, mint and rose tokens, typography and outline icons. Scoped `AppShell` surfaceColor override; default shell behavior remains. No raster assets ship.
+
+STORY: See what is saved, understand intended changes, then distinguish automatic delivery from intent requiring attention.
+
+FIRST VIEWPORT: Compact 26pt heading, count and 48pt Close precede a mint saved-state strip. SectionList rows show muted 16pt old values → bold 22pt new values and textual waiting states. Failures form a rose À vérifier group with tinted secondary text. Content scrolls natively.
+
+FORM: Grounded candidate 4, seed afe70049, explicitly selected receipt, buildPath code. Generated critique reference: `/Users/floriaaan/.codex/generated_images/01a131db-9c6f-7240-bfd4-d18ed0fee2a5/exec-a56f4285-5f77-4735-87b3-fb1a9a20c52e.png`; not runtime evidence or a shipping raster.
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

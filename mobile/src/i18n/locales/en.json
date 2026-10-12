@@ -1110,6 +1110,12 @@
     "estimated_hint_suffix": ", estimated"
   },
   "sync": {
+    "on_device": "On this device",
+    "send_when_available": "Pending actions will be sent when the server is available.",
+    "needs_attention": "Your changes are saved. Some actions need attention.",
+    "attention": "Needs attention",
+    "not_set": "Not set",
+    "change_description": "{{field}}: {{before}}, then {{after}}.",
     "title": "Pending actions",
     "view_actions": "View pending actions",
     "open_hint": "Opens the list of actions waiting to sync.",

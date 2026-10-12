@@ -45,7 +45,7 @@ test('shows saved values and updates to empty as the local queue drains', async 
   const s = setup()
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
   await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { quantity: { amount: 3, unit: 'L' } }) })
-  await waitFor(() => expect(screen.getByText('Quantité : 3 L')).toBeTruthy())
+  await waitFor(() => expect(screen.getByLabelText('Quantité : 2 L, puis 3 L.')).toBeTruthy())
   expect(screen.getAllByText('En attente de synchronisation')).toHaveLength(1)
   await act(async () => { await s.queue.flush() })
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
@@ -69,7 +69,7 @@ test('opening the modal observes identity cache without missing-queryFn errors o
 test('changing households hides the previous household queue', async () => {
   const s = setup()
   await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], null) })
-  await waitFor(() => expect(screen.getByText('Courses · Suppression')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Suppression')).toBeTruthy())
   await act(() => s.changeHousehold())
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
   expect(screen.queryByText(fakeShoppingItems[0].name)).toBeNull()
@@ -77,10 +77,21 @@ test('changing households hides the previous household queue', async () => {
 
 test('fake mode previews waiting, retrying, deletion and blocked actions', async () => {
   setup(true)
-  await waitFor(() => expect(screen.getByText('Quantité : 2 L')).toBeTruthy())
+  await waitFor(() => expect(screen.getByLabelText('Quantité : 1 L, puis 2 L.')).toBeTruthy())
   expect(screen.getAllByText('En attente de synchronisation')).toHaveLength(2)
   expect(screen.getByText('Nouvelle tentative prévue')).toBeTruthy()
-  expect(screen.getByText('Courses · Suppression')).toBeTruthy()
-  expect(screen.getByText('Action bloquée')).toBeTruthy()
+  expect(screen.getByText('Suppression')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'À vérifier' })).toBeTruthy()
   expect(screen.queryByText(/démo/i)).toBeNull()
+})
+
+
+test('retained failures stay separate after pending work drains, without promising automatic delivery', async () => {
+  const s = setup(true)
+  await waitFor(() => expect(screen.getByLabelText('Quantité : 1 L, puis 2 L.')).toBeTruthy())
+  await act(async () => { await s.queue.flush(true) })
+  await waitFor(() => expect(screen.getByText('Tes modifications sont conservées. Certaines actions nécessitent une vérification.')).toBeTruthy())
+  expect(screen.getByRole('heading', { name: 'À vérifier' })).toBeTruthy()
+  expect(screen.getByLabelText('Emplacement : Frigo, puis Congélateur.')).toBeTruthy()
+  expect(screen.queryByText('Les actions en attente seront envoyées dès que le serveur sera disponible.')).toBeNull()
 })

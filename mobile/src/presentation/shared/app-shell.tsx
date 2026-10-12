@@ -104,6 +104,8 @@ export type AppShellNav =
 
 export interface AppShellProps {
   nav: AppShellNav
+  /** A continuous solid surface for focused modal tasks. */
+  surfaceColor?: string
   hint?: Hint | null
   contentMaxWidth?: number
   /**
@@ -562,6 +564,7 @@ function WebTabNav({ tab, onScan }: { tab: SidebarSection; onScan: () => void })
 
 export function AppShell({
   nav,
+  surfaceColor,
   hint,
   contentMaxWidth = 640,
   scrollable = true,
@@ -582,8 +585,8 @@ export function AppShell({
   const contentStyle = shellContentStyle({ isWide, hasMobileNav: reservesBottomChrome, contentMaxWidth })
 
   const content = (
-    <YStack flex={1} minHeight={0} backgroundColor={palette.gradientBottom} style={{ position: 'relative' }}>
-      <BlobBackground blobStrong={palette.blobStrong} blobSoft={palette.blobSoft} ground={palette.gradientBottom} />
+    <YStack flex={1} minHeight={0} backgroundColor={surfaceColor ?? palette.gradientBottom} style={{ position: 'relative' }}>
+      {!surfaceColor ? <BlobBackground blobStrong={palette.blobStrong} blobSoft={palette.blobSoft} ground={palette.gradientBottom} /> : null}
       {/* `left`/`right` too: once the orientation lock came off, a landscape
           notch would otherwise eat the header's back button.
 

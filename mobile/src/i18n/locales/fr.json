@@ -1149,6 +1149,12 @@
     "estimated_hint_suffix": ", estimation"
   },
   "sync": {
+    "on_device": "Sur cet appareil",
+    "send_when_available": "Les actions en attente seront envoyées dès que le serveur sera disponible.",
+    "needs_attention": "Tes modifications sont conservées. Certaines actions nécessitent une vérification.",
+    "attention": "À vérifier",
+    "not_set": "Non renseigné",
+    "change_description": "{{field}} : {{before}}, puis {{after}}.",
     "title": "Actions en attente",
     "view_actions": "Voir les actions en attente",
     "open_hint": "Ouvre la liste des actions à synchroniser.",
