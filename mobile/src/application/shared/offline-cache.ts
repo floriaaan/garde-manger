@@ -8,6 +8,7 @@ import {
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 import type { Session } from '../../domain/identity/session.js'
 import type { Household } from '../../domain/identity/household.js'
+import { hasHouseholdMembership, isValidHousehold, isValidSession } from './offline-cache/verifications.js'
 
 export interface OfflineCacheStorage {
   read(): Promise<string | null>
@@ -32,15 +33,8 @@ function context(cache: PersistedClient) {
   const queries = cache.clientState.queries
   const session = queries.find((query) => query.queryKey[0] === 'session')?.state.data as Session | undefined
   const household = queries.find((query) => query.queryKey[0] === 'household')?.state.data as Household | undefined
-  if (typeof session?.user?.id !== 'string' || !session.user.id
-    || typeof session.user.name !== 'string' || typeof session.user.email !== 'string'
-    || !(session.user.image === null || typeof session.user.image === 'string')
-    || typeof household?.id !== 'string' || !household.id || typeof household.name !== 'string'
-    || !['owner', 'member'].includes(household.role) || !Array.isArray(household.members)
-    || !household.members.every((member) => typeof member.userId === 'string'
-      && typeof member.name === 'string' && typeof member.joinedAt === 'string'
-      && ['owner', 'member'].includes(member.role))
-    || !household.members.some((member) => member.userId === session.user.id)) return undefined
+  if (!isValidSession(session) || !isValidHousehold(household)
+    || !hasHouseholdMembership(session, household)) return undefined
   return { session, household }
 }
 
