@@ -196,7 +196,7 @@ test('fake fixture actions use normal overlays, replay and subsequent local writ
   expect((await getServerProducts()).find((row) => row.id === fakeProducts[0].id)?.quantity.amount).toBe(1)
   await offline.queue.flush(true)
   expect(await offline.queue.pending()).toEqual([])
-  expect(await offline.queue.failures()).toHaveLength(1)
+  expect(await offline.queue.failures()).toHaveLength(3)
   expect((await getServerProducts()).find((row) => row.id === fakeProducts[0].id)?.quantity.amount).toBe(2)
   expect((await getServerItems()).some((row) => row.id === fakeShoppingItems[3].id)).toBe(false)
   const current = (await getServerProducts()).find((row) => row.id === fakeProducts[0].id)!

@@ -46,7 +46,9 @@ query lists scoped pending and failed intent, updates after durable queue edits,
 and shows the action, affected row, before/after values and delivery state on a
 continuous cream ledger. Failed intent is grouped under “À vérifier”. It remains
 open as connectivity returns, so completed actions disappear from the list.
-Fake mode supplies four initial in-memory actions and uses the same overlays,
+Fake mode supplies twelve initial in-memory actions (nine pending, three conflicts),
+covering quantities, checkboxes, locations, dates, prices, names and deletion,
+and uses the same overlays,
 local mutations and reconnect replay as the real connector. Its offline simulation
 pauses replay until connectivity is restored. Session and
 household cache observers reuse their domain query functions with `enabled: false`.

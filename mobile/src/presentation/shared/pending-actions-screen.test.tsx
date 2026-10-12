@@ -76,12 +76,14 @@ test('changing households hides the previous household queue', async () => {
 })
 
 test('fake mode previews waiting, retrying, deletion and blocked actions', async () => {
-  setup(true)
+  const s = setup(true)
   await waitFor(() => expect(screen.getByLabelText('Quantité : 1 L, puis 2 L.')).toBeTruthy())
-  expect(screen.getAllByText('En attente de synchronisation')).toHaveLength(2)
-  expect(screen.getByText('Nouvelle tentative prévue')).toBeTruthy()
+  expect(screen.getByText('12 actions enregistrées sur cet appareil')).toBeTruthy()
+  expect(screen.getAllByText('En attente de synchronisation').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('Nouvelle tentative prévue').length).toBeGreaterThan(0)
   expect(screen.getByText('Suppression')).toBeTruthy()
-  expect(screen.getByRole('heading', { name: 'À vérifier' })).toBeTruthy()
+  expect(await s.queue.pending()).toHaveLength(9)
+  expect(await s.queue.failures()).toHaveLength(3)
   expect(screen.queryByText(/démo/i)).toBeNull()
 })
 
