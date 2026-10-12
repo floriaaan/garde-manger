@@ -69,3 +69,13 @@ test('simulation overrides all observers and disabling it returns to the real ne
   expect(view.result.current).toEqual([false, false])
   await view.unmount()
 })
+
+test('transport observers ignore visual simulation and still follow real connectivity', async () => {
+  jest.mocked(getNetworkStateAsync).mockResolvedValue({ isConnected: true })
+  const view = await renderHook(() => [useConnectivity(), useConnectivity(false)])
+  await act(() => setOfflineSimulation(true))
+  expect(view.result.current).toEqual([false, true])
+  await act(() => onNetwork({ isConnected: false }))
+  expect(view.result.current).toEqual([false, false])
+  await view.unmount()
+})

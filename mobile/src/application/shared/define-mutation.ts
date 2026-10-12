@@ -4,10 +4,11 @@ import type { FridgeConnector } from '../../domain/interfaces/fridge-connector.j
 
 export function defineMutation<TVariables, TData>(
   mutationFn: (connector: FridgeConnector, variables: TVariables) => Promise<TData>,
+  defaults?: Omit<UseMutationOptions<TData, Error, TVariables>, 'mutationFn'>,
 ) {
   return function useThisMutation(
     options?: Omit<UseMutationOptions<TData, Error, TVariables>, 'mutationFn'>,
   ): UseMutationResult<TData, Error, TVariables> {
-    return useDomainMutation(mutationFn, options)
+    return useDomainMutation(mutationFn, { ...defaults, ...options })
   }
 }

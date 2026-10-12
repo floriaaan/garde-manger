@@ -554,7 +554,9 @@ export class HttpFridgeConnector implements FridgeConnector {
     const result = await apiFetch<{ items: ShoppingItem[] }>('/api/shopping-items', undefined, {
       action: 'shopping_list.get_items',
     })
-    return result.ok ? result.value.items : []
+    // A failed read must retain the existing local-first cache, not replace it with an empty list.
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.items
   }
 
   async createShoppingItem(input: CreateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {
@@ -639,7 +641,8 @@ export class HttpFridgeConnector implements FridgeConnector {
     const result = await apiFetch<{ products: Product[] }>(`/api/products${qs ? `?${qs}` : ''}`, undefined, {
       action: 'fridge.get_products',
     })
-    return result.ok ? result.value.products : []
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.products
   }
 
   async getProduct(productId: string): Promise<Product | null> {
@@ -647,7 +650,9 @@ export class HttpFridgeConnector implements FridgeConnector {
       action: 'fridge.get_product',
       attributes: { 'entity.id': productId },
     })
-    return result.ok ? result.value.product : null
+    if (!result.ok && result.error.type === 'product_not_found') return null
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.product
   }
 
   async createProduct(input: CreateProductInput): Promise<Result<Product, ApiError>> {

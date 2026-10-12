@@ -95,20 +95,9 @@ export function ShoppingListScreen() {
   // not by anything failing visibly in this session.
   const [hint, showHint] = useHint()
   const [sheetItem, setSheetItem] = useState<ShoppingItem | null>(null)
-  // Optimistic: the checkbox flips now, and rolls back with a hint if the
-  // server refuses. `onSettled` re-syncs either way.
+  // The offline connector applies the optimistic change after durable storage.
   const updateItem = useUpdateShoppingItemMutation({
-    onMutate: async ({ itemId, patch }) => {
-      await queryClient.cancelQueries({ queryKey: ['shopping-items'] })
-      const previous = queryClient.getQueryData<ShoppingItem[]>(['shopping-items'])
-      queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (current) =>
-        (current ?? []).map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
-      )
-      return { previous }
-    },
-    onError: (_error, _variables, context) => {
-      const previous = (context as { previous?: ShoppingItem[] } | undefined)?.previous
-      if (previous) queryClient.setQueryData(['shopping-items'], previous)
+    onError: () => {
       showHint(t('shopping-list.couldn_t_check_off_this_item'))
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['shopping-items'] }),

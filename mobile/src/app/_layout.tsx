@@ -1,7 +1,7 @@
 import '../presentation/shared/fonts.css'
 import { watchSystemLanguage } from '../i18n/index.js'
 import { Stack, router } from 'expo-router'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -15,12 +15,14 @@ import { NetworkStatusBanner } from '../presentation/shared/network-status-banne
 import { ErrorBoundary } from '../presentation/shared/error-boundary.js'
 import { ConnectorProvider } from '../application/shared/connector-context.js'
 import { queryClient } from '../application/shared/query-client.js'
-import { createConnector } from '../../providers/create-connector.js'
+import { createConnector, startConnectorSync, restoreConnectorMutations } from '../../providers/create-connector.js'
 import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
 import { wireFocusManager } from '../application/shared/wire-focus-manager.js'
 import { loadStoredServerUrl } from '../application/shared/server-config.js'
 import { startAppOfflineCache } from '../../providers/start-offline-cache.js'
+import { useConnectivity } from '../application/shared/use-connectivity.js'
+import { isFakeConnector } from '../application/shared/connector-mode.js'
 
 // Module load, not an effect: this only assigns a reference (see
 // `wire-telemetry.ts`) — nothing to defer past the first frame, and every
@@ -35,6 +37,10 @@ export default function RootLayout() {
   // cached session on a 401, and a client built inside this component would
   // be unreachable from a plain module.
   const [connector] = useState(() => createConnector())
+  const online = useConnectivity(false)
+  useEffect(() => {
+    if (!isFakeConnector && online !== undefined) onlineManager.setOnline(online)
+  }, [online])
 
   // In an effect, not at module load: telemetry must never sit on the path
   // to the first frame. `start()` is a no-op unless
@@ -61,14 +67,18 @@ export default function RootLayout() {
   // against the default URL on a device that chose a different server.
   const [serverReady, setServerReady] = useState(false)
   useEffect(() => {
+    if (serverReady) return startConnectorSync(connector)
+  }, [serverReady, connector])
+  useEffect(() => {
     let disposed = false
     let cleanup: (() => void) | undefined
-    loadStoredServerUrl().then(startAppOfflineCache).then((stop) => {
+    loadStoredServerUrl().then(startAppOfflineCache).then(async (stop) => {
+      await restoreConnectorMutations(connector)
       if (disposed) stop()
       else { cleanup = stop; setServerReady(true) }
     })
     return () => { disposed = true; cleanup?.() }
-  }, [])
+  }, [connector])
 
   // A PDF shared into the app from another app (Mail, Files…) lands here as
   // a share intent, not a route param — the only route the receipt review
