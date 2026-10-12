@@ -28,6 +28,7 @@ export interface CreateShoppingItemInput {
 
 /** Mirrors `updateShoppingItemValidator` — any subset of fields, same shape `updateProduct`'s patch already uses. */
 export interface UpdateShoppingItemInput {
+  expectedUpdatedAt?: string
   name?: string
   quantity?: { amount: number; unit: string }
   checked?: boolean

@@ -15,6 +15,8 @@ export interface ProductRepository {
   findExpiringForDigest(householdId: string, today: string, days: number): Promise<Product[]>
   findByReceiptId(receiptId: string): Promise<Product[]>
   save(product: Product): Promise<void>
+  /** Atomic update only; never inserts a deleted row. */
+  saveIfUnchanged(entity: Product, updatedAt: Date): Promise<boolean>
   /** A data-entry correction: removes the product and records nothing (ADR-0012). */
   delete(id: string): Promise<void>
   /**

@@ -11,6 +11,7 @@ import type { Result as ResultType } from '#domain/shared/result'
 export interface UpdateProductInput {
   householdId: string
   productId: string
+  expectedUpdatedAt?: Date
   name?: string
   quantity?: { amount: number; unit: string }
   location?: string
@@ -22,7 +23,7 @@ export interface UpdateProductInput {
   price?: number | null
 }
 
-export type UpdateProductError = 'product_not_found' | ValidationError
+export type UpdateProductError = 'product_not_found' | 'sync_conflict' | ValidationError
 
 export class UpdateProduct implements UseCase<
   UpdateProductInput,
@@ -37,6 +38,10 @@ export class UpdateProduct implements UseCase<
     const product = await this.products.findById(input.productId)
     if (!product || product.householdId !== input.householdId)
       return Result.err('product_not_found')
+
+    const version = product.updatedAt
+    if (input.expectedUpdatedAt && input.expectedUpdatedAt.getTime() !== version.getTime())
+      return Result.err('sync_conflict')
 
     const patch: UpdateProductProps = {}
     if (input.name !== undefined) patch.name = input.name
@@ -59,8 +64,9 @@ export class UpdateProduct implements UseCase<
       patch.location = location.value
     }
 
-    product.update(patch, this.clock.now())
-    await this.products.save(product)
+    product.update(patch, new Date(Math.max(this.clock.now().getTime(), version.getTime() + 1)))
+    if (!(await this.products.saveIfUnchanged(product, version)))
+      return Result.err('sync_conflict')
     return Result.ok(product)
   }
 }

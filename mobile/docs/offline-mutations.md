@@ -21,8 +21,8 @@ Network hook, which also handles foreground refresh and stale network events.
 The debug simulation remains visual only. Temporary transport errors and HTTP
 408/429/5xx retry with exponential backoff capped at five minutes. Later actions
 on the same entity wait behind a retrying action. Unrelated actions can continue
-after a permanent refusal, which is saved and shown in a toast; the affected row
-is restored locally. Confirmed authentication revocation still invalidates the
+after a permanent refusal, which is saved and shown in a toast. The authoritative
+row is refreshed and the local intent is retained for recovery. Confirmed authentication revocation still invalidates the
 session and stops replay. Queues from another account, household, or server are
 neither displayed nor replayed.
 
@@ -36,8 +36,9 @@ Creation, imports, product outcomes, scans, and AI jobs remain online operations
 Full offline cold starts reuse the local-first engine already on `develop`:
 session, household, and unrelated cached rows stay in its read snapshot. Failed
 household reads reject so TanStack retains that snapshot instead of saving an
-empty list. Read freshness, conflict policy, and persistent sync status remain
-separate concerns.
+empty list. Persistent sync status remains a separate concern (#86). Conflict
+policy is defined in
+[household-sync-conflicts.md](household-sync-conflicts.md).
 
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,

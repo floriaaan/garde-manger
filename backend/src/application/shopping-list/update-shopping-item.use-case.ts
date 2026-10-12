@@ -13,12 +13,13 @@ import type { Result as ResultType } from '#domain/shared/result'
 export interface UpdateShoppingItemInput {
   householdId: string
   itemId: string
+  expectedUpdatedAt?: Date
   name?: string
   quantity?: { amount: number; unit: string }
   checked?: boolean
 }
 
-export type UpdateShoppingItemError = 'shopping_item_not_found' | ValidationError
+export type UpdateShoppingItemError = 'shopping_item_not_found' | 'sync_conflict' | ValidationError
 
 export class UpdateShoppingItem implements UseCase<
   UpdateShoppingItemInput,
@@ -36,6 +37,10 @@ export class UpdateShoppingItem implements UseCase<
     if (!item || item.householdId !== input.householdId)
       return Result.err('shopping_item_not_found')
 
+    const version = item.updatedAt
+    if (input.expectedUpdatedAt && input.expectedUpdatedAt.getTime() !== version.getTime())
+      return Result.err('sync_conflict')
+
     const patch: UpdateShoppingItemProps = {}
     if (input.name !== undefined) patch.name = input.name
     if (input.quantity !== undefined) {
@@ -44,11 +49,12 @@ export class UpdateShoppingItem implements UseCase<
       patch.quantity = quantity.value
     }
 
-    const now = this.clock.now()
+    const now = new Date(Math.max(this.clock.now().getTime(), version.getTime() + 1))
     if (Object.keys(patch).length > 0) item.update(patch, now)
     if (input.checked !== undefined && input.checked !== item.checked) item.toggle(now)
 
-    await this.items.save(item)
+    if (!(await this.items.saveIfUnchanged(item, version)))
+      return Result.err('sync_conflict')
     return Result.ok(item)
   }
 }

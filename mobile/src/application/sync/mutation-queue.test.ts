@@ -132,3 +132,59 @@ test('concurrent enqueues and overlapping replays do not lose or send duplicate 
   expect(s.send).toHaveBeenCalledTimes(2)
   expect(s.disk()).toEqual([])
 })
+
+
+test('a conflict retains dependent intent across restart and permits scoped dismissal', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 2, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { checked: true })
+  await s.queue.flush()
+  const restarted = s.create()
+  await restarted.flush(true)
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(await restarted.overlay('shopping-items', [])).toEqual([])
+  const failures = await restarted.failures()
+  expect(failures).toHaveLength(2)
+  expect(failures[0].patch).toEqual({ quantity: { amount: 2, unit: 'L' } })
+  s.setScope({ ...initialScope, userId: 'other' })
+  await restarted.discardFailure(failures[0].id)
+  expect(s.disk()).toHaveLength(2)
+  s.setScope(initialScope)
+  await restarted.discardFailure(failures[0].id)
+  expect(await restarted.failures()).toHaveLength(1)
+})
+
+test('acknowledged server versions advance later edits within the same replay', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.ok({ ...item, checked: true, updatedAt: 'next-version' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', item, { name: 'Milk edited' })
+  await s.queue.flush()
+  expect(s.send.mock.calls[1][0].base.updatedAt).toBe('next-version')
+})
+
+
+test('explicit recovery rebases retained edits onto a fresh server row', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { name: 'Local name' })
+  await s.queue.enqueue('shopping-items', { ...item, name: 'Local name' }, { checked: true })
+  await s.queue.flush()
+  await s.queue.reapplyConflicts('shopping-items', { ...item, quantity: { amount: 7, unit: 'L' }, updatedAt: 'fresh-version' })
+  expect(await s.queue.failures()).toEqual([])
+  const restarted = s.create()
+  expect(await restarted.overlay('shopping-items', [])).toEqual([
+    { ...item, name: 'Local name', checked: true, quantity: { amount: 7, unit: 'L' }, updatedAt: 'fresh-version' },
+  ])
+})
+
+test('a matching lost response cannot rebase later intent over unrelated remote changes', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.ok({ ...item, checked: true, quantity: { amount: 7, unit: 'L' }, updatedAt: 'remote-version' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, checked: true }, { quantity: { amount: 3, unit: 'L' } })
+  await s.queue.flush()
+  expect(s.send.mock.calls[1][0].base.updatedAt).toBe(item.updatedAt)
+})

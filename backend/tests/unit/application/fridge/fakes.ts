@@ -1,16 +1,32 @@
 import type { ProductRepository } from '#domain/fridge/interfaces/product-repository.interface'
-import type { Product } from '#domain/fridge/product.entity'
+import { Product } from '#domain/fridge/product.entity'
 import type { ProductOutcome } from '#domain/fridge/product-outcome.entity'
 import { Quantity } from '#domain/fridge/quantity.vo'
 import { Location } from '#domain/fridge/location.vo'
-import { Product as ProductEntity } from '#domain/fridge/product.entity'
 
 export class FakeProductRepository implements ProductRepository {
   readonly products = new Map<string, Product>()
   readonly outcomes: ProductOutcome[] = []
 
   async findById(id: string) {
-    return this.products.get(id) ?? null
+    const entity = this.products.get(id)
+    return entity ? Product.reconstruct(id, {
+      householdId: entity.householdId,
+      name: entity.name,
+      quantity: entity.quantity,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+      receiptId: entity.receiptId,
+      initialQuantity: entity.initialQuantity,
+      location: entity.location,
+      expiresAt: entity.expiresAt,
+      openedAt: entity.openedAt,
+      category: entity.category,
+      openfoodfactId: entity.openfoodfactId,
+      categories: entity.categories,
+      price: entity.price,
+      imageKey: entity.imageKey,
+    }) : null
   }
   async findByHousehold(householdId: string) {
     return [...this.products.values()].filter((product) => product.householdId === householdId)
@@ -26,6 +42,11 @@ export class FakeProductRepository implements ProductRepository {
   }
   async save(product: Product) {
     this.products.set(product.id, product)
+  }
+  async saveIfUnchanged(entity: Product, updatedAt: Date) {
+    if (this.products.get(entity.id)?.updatedAt.getTime() !== updatedAt.getTime()) return false
+    await this.save(entity)
+    return true
   }
   async delete(id: string) {
     this.products.delete(id)
@@ -48,7 +69,7 @@ export function buildProduct(
   const quantity = Quantity.create(overrides.amount ?? 6, 'unités')
   const location = Location.create('fridge')
   if (!quantity.ok || !location.ok) throw new Error('unreachable')
-  return ProductEntity.create({
+  return Product.create({
     id: overrides.id ?? 'p_1',
     householdId: overrides.householdId ?? 'h_1',
     name: 'Yaourts nature',

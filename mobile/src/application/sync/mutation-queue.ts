@@ -24,7 +24,7 @@ export function sameScope(a: SyncScope | null, b: SyncScope | null): boolean {
   return Boolean(a && b && a.server === b.server && a.userId === b.userId && a.householdId === b.householdId)
 }
 
-/** Only absolute PATCH assignments and DELETE are supported: replay cannot create duplicates. */
+/** Absolute assignments use the server version; DELETE always wins over a stale edit. */
 export class MutationQueue {
   private entries: QueuedMutation[] = []
   private ready: Promise<void>
@@ -87,6 +87,31 @@ export class MutationQueue {
     return this.entries.filter((entry) => !entry.error && sameScope(entry.scope, this.scope()))
   }
 
+  /** Recoverable local intent, scoped and retained across restarts. */
+  async failures(): Promise<QueuedMutation[]> {
+    await this.ready
+    return this.entries.filter((entry) => entry.error && sameScope(entry.scope, this.scope()))
+  }
+
+  /** Explicit user recovery after reading the latest server row. */
+  async reapplyConflicts(collection: QueuedMutation['collection'], base: Product | ShoppingItem): Promise<void> {
+    const scope = this.scope()
+    let nextBase = base
+    await this.edit((entries) => entries.map((entry) => {
+      if (!sameScope(entry.scope, scope) || entry.collection !== collection || entry.entityId !== base.id || entry.error?.type !== 'sync_conflict') return entry
+      const next = { ...entry, base: nextBase, error: undefined, attempts: 0, retryAt: 0 }
+      if (entry.patch) nextBase = { ...nextBase, ...entry.patch }
+      return next
+    }))
+  }
+
+  async discardFailure(id: number): Promise<void> {
+    const scope = this.scope()
+    await this.edit((entries) => entries.filter((entry) =>
+      !(entry.id === id && entry.error && sameScope(entry.scope, scope)),
+    ))
+  }
+
   async overlay<T extends Product | ShoppingItem>(collection: QueuedMutation['collection'], rows: T[]): Promise<T[]> {
     await this.ready
     const result = new Map(rows.map((row) => [row.id, row]))
@@ -107,7 +132,9 @@ export class MutationQueue {
       const scope = this.scope()
       if (!scope) return
       const blocked = new Set<string>()
-      for (const entry of [...this.entries]) {
+      for (const snapshot of [...this.entries]) {
+        const entry = this.entries.find((item) => item.id === snapshot.id)
+        if (!entry) continue
         if (!sameScope(scope, this.scope())) break
         if (!sameScope(entry.scope, scope) || entry.error) continue
         const key = `${entry.collection}:${entry.entityId}`
@@ -119,7 +146,19 @@ export class MutationQueue {
         const alreadyDeleted = !result.ok && entry.patch === null &&
           result.error.type === (entry.collection === 'products' ? 'product_not_found' : 'shopping_item_not_found')
         if (result.ok || alreadyDeleted) {
-          await this.edit((entries) => entries.filter((item) => item.id !== entry.id))
+          await this.edit((entries) => entries.filter((item) => item.id !== entry.id).map((item) => {
+            if (!result.ok || !result.value || typeof result.value !== 'object' || !('updatedAt' in result.value)) return item
+            // A matching replay might include unrelated remote edits after a lost response.
+            // Rebase only when the entire editable state matches our intended result.
+            const fields = entry.collection === 'products'
+              ? ['name', 'quantity', 'location', 'category', 'expiresAt', 'openedAt', 'openfoodfactId', 'categories', 'price']
+              : ['name', 'quantity', 'checked']
+            const expected = { ...entry.base, ...entry.patch } as unknown as Record<string, unknown>
+            const actual = result.value as Record<string, unknown>
+            const unchanged = fields.every((field) => JSON.stringify(actual[field]) === JSON.stringify(expected[field]))
+            return unchanged && item.base.updatedAt === entry.base.updatedAt && sameScope(item.scope, scope) && item.collection === entry.collection && item.entityId === entry.entityId && !item.error
+              ? { ...item, base: { ...item.base, updatedAt: result.value.updatedAt as string } } : item
+          }))
         } else if (['network_error', 'temporary_error'].includes(result.error.type)) {
           const error = result.error
           await this.edit((entries) => entries.map((item) => item.id === entry.id ? {
@@ -132,7 +171,11 @@ export class MutationQueue {
           continue
         } else {
           const error = result.error
-          await this.edit((entries) => entries.map((item) => item.id === entry.id ? { ...item, error } : item))
+          await this.edit((entries) => entries.map((item) =>
+            sameScope(item.scope, scope) && item.collection === entry.collection && item.entityId === entry.entityId && item.id >= entry.id && !item.error
+              ? { ...item, error } : item,
+          ))
+          blocked.add(key)
           this.failed({ ...entry, error })
         }
         // A response for an old session must not update the current account's cache.

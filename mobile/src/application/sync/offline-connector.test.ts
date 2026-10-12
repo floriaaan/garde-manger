@@ -125,3 +125,57 @@ test('a rejected deletion restores its row, reports the failure, and retains it 
   expect(s.disk()[0].error?.type).toBe('forbidden')
   stop()
 })
+
+
+test('remote quantity changes preserve server state and both local intents', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  const remote = { ...item, quantity: { ...item.quantity, amount: 7 }, updatedAt: 'remote-version' }
+  const raw = new FakeFridgeConnector()
+  jest.spyOn(raw, 'getShoppingItems').mockResolvedValue([remote])
+  const send = jest.spyOn(raw, 'updateShoppingItem')
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { quantity: { ...item.quantity, amount: 3 } })
+  await offline.connector.updateShoppingItem(item.id, { name: 'Local name' })
+  await offline.queue.flush()
+  expect(send).not.toHaveBeenCalled()
+  expect(queryClient.getQueryData(['shopping-items'])).toContainEqual(remote)
+  expect(await offline.queue.failures()).toHaveLength(2)
+})
+
+test('remote deletions never restore local rows on replay or restart', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  const raw = new FakeFridgeConnector()
+  jest.spyOn(raw, 'getShoppingItems').mockResolvedValue([])
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { name: 'Local name' })
+  await offline.connector.updateShoppingItem(item.id, { checked: true })
+  await offline.queue.flush()
+  expect(queryClient.getQueryData(['shopping-items'])).not.toContainEqual(expect.objectContaining({ id: item.id }))
+  queryClient.setQueryData(['shopping-items'], fakeShoppingItems)
+  const restarted = withOfflineMutations(raw, s.storage)
+  await restarted.restorePending()
+  expect(queryClient.getQueryData(['shopping-items'])).not.toContainEqual(expect.objectContaining({ id: item.id }))
+  expect(await restarted.connector.getShoppingItems()).toEqual([])
+  expect(await restarted.queue.failures()).toHaveLength(2)
+})
+
+test('a lost acknowledgement recognizes applied fields without resending the write', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  const raw = new FakeFridgeConnector()
+  let current = item
+  jest.spyOn(raw, 'getShoppingItems').mockImplementation(async () => [current])
+  const send = jest.spyOn(raw, 'updateShoppingItem').mockImplementationOnce(async (_id, patch) => {
+    expect(patch.expectedUpdatedAt).toBe(item.updatedAt)
+    current = { ...item, name: 'Applied', updatedAt: 'committed-version' }
+    return Result.err({ type: 'network_error', message: 'Response lost' })
+  })
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { name: 'Applied' })
+  await offline.queue.flush()
+  await offline.queue.flush(true)
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(s.disk()).toEqual([])
+})
