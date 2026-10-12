@@ -5,7 +5,7 @@ import { MutationQueue, type QueuedMutation, type SyncScope } from '../../applic
 import { MutationQueueProvider } from '../../application/sync/mutation-queue-context.js'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
-import { createFakeMutationQueue } from '../../infrastructure/fake/fake-mutation-queue.js'
+import { createFakeMutationQueueStorage } from '../../infrastructure/fake/fake-mutation-queue.js'
 import { Result } from '../../domain/shared/result.js'
 import { fakeShoppingItems } from '../../infrastructure/fake/fixtures/shopping-item.fixture.js'
 import { fakeSession } from '../../infrastructure/fake/fixtures/session.fixture.js'
@@ -21,7 +21,8 @@ jest.mock('../../application/shared/server-config.js', () => ({ getServerUrl: ()
 function setup(demo = false) {
   let disk: QueuedMutation[] = []
   let scope: SyncScope = { server: 'https://server.example', userId: fakeSession.user.id, householdId: fakeHousehold.id }
-  const queue = demo ? createFakeMutationQueue(scope.server, () => scope) : new MutationQueue({ read: async () => disk, write: async (entries) => { disk = entries } },
+  const storage = demo ? createFakeMutationQueueStorage(scope.server) : { read: async () => disk, write: async (entries: QueuedMutation[]) => { disk = entries } }
+  const queue = new MutationQueue(storage,
     () => scope, async () => Result.ok(undefined), () => {}, () => {})
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
   client.setQueryData(['session'], fakeSession)
@@ -81,4 +82,5 @@ test('fake mode previews waiting, retrying, deletion and blocked actions', async
   expect(screen.getByText('Nouvelle tentative prévue')).toBeTruthy()
   expect(screen.getByText('Courses · Suppression')).toBeTruthy()
   expect(screen.getByText('Action bloquée')).toBeTruthy()
+  expect(screen.queryByText(/démo/i)).toBeNull()
 })

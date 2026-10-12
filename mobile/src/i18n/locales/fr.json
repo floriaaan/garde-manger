@@ -1149,7 +1149,6 @@
     "estimated_hint_suffix": ", estimation"
   },
   "sync": {
-    "demo_description": "Exemples d’actions en attente en mode démo. Elles ne sont pas envoyées à un serveur.",
     "title": "Actions en attente",
     "view_actions": "Voir les actions en attente",
     "open_hint": "Ouvre la liste des actions à synchroniser.",

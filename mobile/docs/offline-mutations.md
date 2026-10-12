@@ -3,7 +3,7 @@
 The real mobile connector queues shopping-item edits (including checkbox and
 quantity changes), shopping-item deletions, product edits, and product deletions.
 These hooks run with `networkMode: 'always'`, so local actions remain available
-when TanStack Query knows the device is disconnected. Fake/demo mode is unchanged.
+when TanStack Query knows the device is disconnected. Fake mode uses the same queue and replay pipeline with in-memory fixture storage.
 
 The queue reuses the local-first AsyncStorage adapter on native and web, under
 `garde-manger.mutation-queue-v1`, separate from the read-cache snapshot. Storage
@@ -18,7 +18,8 @@ membership checks. Pending changes are overlaid on later reads.
 Replay runs serially on reconnect, foreground, session/household restoration,
 and a five-second foreground timer. Connectivity comes from the existing Expo
 Network hook, which also handles foreground refresh and stale network events.
-The debug simulation remains visual only. Temporary transport errors and HTTP
+The debug simulation remains visual only for real transport and pauses fake
+replay for offline interaction checks. Temporary transport errors and HTTP
 408/429/5xx retry with exponential backoff capped at five minutes. Later actions
 on the same entity wait behind a retrying action. Unrelated actions can continue
 after a permanent refusal, which is saved and shown in a toast. The authoritative
@@ -44,8 +45,9 @@ The offline banner opens `/pending-actions` as a native modal. Its local-only
 query lists scoped pending and failed intent, updates after durable queue edits,
 and shows the action, affected row, assigned values and delivery state. It remains
 open as connectivity returns, so completed actions disappear from the list.
-Fake mode supplies four in-memory example actions for this modal, labelled as
-demo data; they are not replayed or overlaid on the demo inventory. Session and
+Fake mode supplies four initial in-memory actions and uses the same overlays,
+local mutations and reconnect replay as the real connector. Its offline simulation
+pauses replay until connectivity is restored. Session and
 household cache observers reuse their domain query functions with `enabled: false`.
 
 Focused coverage is authored in `mutation-queue.test.ts`,

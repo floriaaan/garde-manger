@@ -457,7 +457,7 @@ export class FakeFridgeConnector implements FridgeConnector {
 
   async getShoppingItems(): Promise<ShoppingItem[]> {
     await this.pretendNetworkLatency()
-    return [...this.shoppingItems]
+    return JSON.parse(JSON.stringify(this.shoppingItems)) as ShoppingItem[]
   }
 
   async createShoppingItem(input: CreateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {
@@ -500,15 +500,18 @@ export class FakeFridgeConnector implements FridgeConnector {
   async updateShoppingItem(itemId: string, patch: UpdateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {
     await this.pretendNetworkLatency()
     const item = this.shoppingItems.find((i) => i.id === itemId)
-    if (!item) return Result.err({ type: 'not_found', message: 'Article introuvable.' })
-    Object.assign(item, patch, { updatedAt: new Date().toISOString() })
-    return Result.ok(item)
+    if (!item) return Result.err({ type: 'shopping_item_not_found', message: 'Article introuvable.' })
+    const { expectedUpdatedAt, ...fields } = patch
+    if (expectedUpdatedAt && expectedUpdatedAt !== item.updatedAt)
+      return Result.err({ type: 'sync_conflict', message: 'Cet élément a changé sur un autre appareil.' })
+    Object.assign(item, fields, { updatedAt: new Date(Math.max(Date.now(), Date.parse(item.updatedAt) + 1)).toISOString() })
+    return Result.ok(JSON.parse(JSON.stringify(item)) as ShoppingItem)
   }
 
   async deleteShoppingItem(itemId: string): Promise<Result<void, ApiError>> {
     await this.pretendNetworkLatency()
     const index = this.shoppingItems.findIndex((i) => i.id === itemId)
-    if (index === -1) return Result.err({ type: 'not_found', message: 'Article introuvable.' })
+    if (index === -1) return Result.err({ type: 'shopping_item_not_found', message: 'Article introuvable.' })
     this.shoppingItems.splice(index, 1)
     return Result.ok(undefined)
   }
@@ -819,12 +822,13 @@ export class FakeFridgeConnector implements FridgeConnector {
       const threshold = Date.now() + params.expiringWithinDays * 24 * 60 * 60 * 1000
       result = result.filter((p) => p.expiresAt !== null && new Date(p.expiresAt).getTime() <= threshold)
     }
-    return result
+    return JSON.parse(JSON.stringify(result)) as Product[]
   }
 
   async getProduct(productId: string): Promise<Product | null> {
     await this.pretendNetworkLatency()
-    return this.products.find((p) => p.id === productId) ?? null
+    const product = this.products.find((p) => p.id === productId)
+    return product ? JSON.parse(JSON.stringify(product)) as Product : null
   }
 
   async createProduct(input: CreateProductInput): Promise<Result<Product, ApiError>> {
@@ -854,8 +858,11 @@ export class FakeFridgeConnector implements FridgeConnector {
     await this.pretendNetworkLatency()
     const product = this.products.find((p) => p.id === productId)
     if (!product) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
-    Object.assign(product, patch, { updatedAt: new Date().toISOString() })
-    return Result.ok(product)
+    const { expectedUpdatedAt, ...fields } = patch
+    if (expectedUpdatedAt && expectedUpdatedAt !== product.updatedAt)
+      return Result.err({ type: 'sync_conflict', message: 'Cet élément a changé sur un autre appareil.' })
+    Object.assign(product, fields, { updatedAt: new Date(Math.max(Date.now(), Date.parse(product.updatedAt) + 1)).toISOString() })
+    return Result.ok(JSON.parse(JSON.stringify(product)) as Product)
   }
 
   async deleteProduct(productId: string): Promise<Result<void, ApiError>> {

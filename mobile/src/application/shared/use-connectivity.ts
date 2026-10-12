@@ -3,6 +3,7 @@ import { AppState, Platform } from 'react-native'
 import { onlineManager } from '@tanstack/react-query'
 import { addNetworkStateListener, getNetworkStateAsync, type NetworkState } from 'expo-network'
 import { getTelemetry } from './telemetry.js'
+import { isFakeConnector } from './connector-mode.js'
 import { useOfflineSimulation } from './connectivity-simulation.js'
 
 /** Unknown stays unknown; a failed device-state read is not evidence of a lost connection. */
@@ -13,9 +14,10 @@ export function useConnectivity(includeSimulation = true): boolean | undefined {
     let active = true
     let revision = 0
     function update(state: NetworkState) {
-      // Drive queries from real device connectivity, never the visual debug override.
+      // Real transport follows device connectivity. Fake transport is driven by
+      // the root observer, including its offline simulation.
       // A connected LAN can reach a self-hosted server without public Internet.
-      if (Platform.OS !== 'web' && typeof state.isConnected === 'boolean') {
+      if (!isFakeConnector && Platform.OS !== 'web' && typeof state.isConnected === 'boolean') {
         onlineManager.setOnline(state.isConnected)
       }
       if (state.isConnected === false || state.isInternetReachable === false) setOnline(false)

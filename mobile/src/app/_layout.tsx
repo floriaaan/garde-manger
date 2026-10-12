@@ -37,10 +37,10 @@ export default function RootLayout() {
   // `query-client.ts`: `http-client.ts` needs the same instance to flip the
   // cached session on a 401, and a client built inside this component would
   // be unreachable from a plain module.
-  const [connector] = useState(() => createConnector())
-  const online = useConnectivity(false)
+  const [connector, setConnector] = useState<ReturnType<typeof createConnector> | null>(null)
+  const online = useConnectivity(isFakeConnector)
   useEffect(() => {
-    if (!isFakeConnector && online !== undefined) onlineManager.setOnline(online)
+    if (online !== undefined) onlineManager.setOnline(online)
   }, [online])
 
   // In an effect, not at module load: telemetry must never sit on the path
@@ -68,18 +68,22 @@ export default function RootLayout() {
   // against the default URL on a device that chose a different server.
   const [serverReady, setServerReady] = useState(false)
   useEffect(() => {
-    if (serverReady) return startConnectorSync(connector)
+    if (serverReady && connector) return startConnectorSync(connector)
   }, [serverReady, connector])
   useEffect(() => {
     let disposed = false
     let cleanup: (() => void) | undefined
-    loadStoredServerUrl().then(startAppOfflineCache).then(async (stop) => {
-      await restoreConnectorMutations(connector)
+    loadStoredServerUrl().then(async () => {
+      if (disposed) return
+      // Fixture queue scope, like the real transport, must use the restored server.
+      const restoredConnector = createConnector()
+      const stop = await startAppOfflineCache()
+      await restoreConnectorMutations(restoredConnector)
       if (disposed) stop()
-      else { cleanup = stop; setServerReady(true) }
+      else { cleanup = stop; setConnector(restoredConnector); setServerReady(true) }
     })
     return () => { disposed = true; cleanup?.() }
-  }, [connector])
+  }, [])
 
   // A PDF shared into the app from another app (Mail, Files…) lands here as
   // a share intent, not a route param — the only route the receipt review
@@ -93,7 +97,7 @@ export default function RootLayout() {
     resetShareIntent()
   }, [serverReady, hasShareIntent, shareIntent, resetShareIntent])
 
-  if (!serverReady) return null
+  if (!serverReady || !connector) return null
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

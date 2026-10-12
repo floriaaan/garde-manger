@@ -1,5 +1,6 @@
 import { withOfflineMutations } from './offline-connector.js'
 import { queryClient } from '../shared/query-client.js'
+import { createFakeMutationQueueStorage } from '../../infrastructure/fake/fake-mutation-queue.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { fakeShoppingItems } from '../../infrastructure/fake/fixtures/shopping-item.fixture.js'
 import { fakeProducts } from '../../infrastructure/fake/fixtures/product.fixture.js'
@@ -178,4 +179,30 @@ test('a lost acknowledgement recognizes applied fields without resending the wri
   await offline.queue.flush(true)
   expect(send).toHaveBeenCalledTimes(1)
   expect(s.disk()).toEqual([])
+})
+
+
+test('fake fixture actions use normal overlays, replay and subsequent local writes', async () => {
+  queryClient.setQueryData(['session'], fakeSession)
+  queryClient.setQueryData(['household'], fakeHousehold)
+  queryClient.setQueryData(['products', {}], fakeProducts)
+  queryClient.setQueryData(['shopping-items'], fakeShoppingItems)
+  const raw = new FakeFridgeConnector()
+  const getServerProducts = raw.getProducts.bind(raw)
+  const getServerItems = raw.getShoppingItems.bind(raw)
+  const offline = withOfflineMutations(raw, createFakeMutationQueueStorage('https://server.example'))
+  await offline.restorePending()
+  expect(queryClient.getQueryData(['product', fakeProducts[0].id])).toEqual(expect.objectContaining({ quantity: { amount: 2, unit: 'L' } }))
+  expect((await getServerProducts()).find((row) => row.id === fakeProducts[0].id)?.quantity.amount).toBe(1)
+  await offline.queue.flush(true)
+  expect(await offline.queue.pending()).toEqual([])
+  expect(await offline.queue.failures()).toHaveLength(1)
+  expect((await getServerProducts()).find((row) => row.id === fakeProducts[0].id)?.quantity.amount).toBe(2)
+  expect((await getServerItems()).some((row) => row.id === fakeShoppingItems[3].id)).toBe(false)
+  const current = (await getServerProducts()).find((row) => row.id === fakeProducts[0].id)!
+  queryClient.setQueryData(['product', current.id], current)
+  await offline.connector.updateProduct(current.id, { name: 'New local edit' })
+  expect(await offline.queue.pending()).toHaveLength(1)
+  await offline.queue.flush(true)
+  expect((await getServerProducts()).find((row) => row.id === current.id)?.name).toBe('New local edit')
 })
