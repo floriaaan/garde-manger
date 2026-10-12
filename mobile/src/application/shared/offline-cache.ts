@@ -1,4 +1,11 @@
-import type { QueryClient, QueryKey } from '@tanstack/react-query'
+import { hashKey, type QueryClient, type QueryKey } from '@tanstack/react-query'
+import {
+  persistQueryClientRestore,
+  persistQueryClientSubscribe,
+  type PersistedClient,
+  type Persister,
+} from '@tanstack/react-query-persist-client'
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 import type { Session } from '../../domain/identity/session.js'
 import type { Household } from '../../domain/identity/household.js'
 
@@ -8,155 +15,165 @@ export interface OfflineCacheStorage {
   clear(): void
 }
 
-const VERSION = 1
+const VERSION = 2
 const READS = new Set(['products', 'product', 'product-outcome-stats', 'shopping-items'])
 const CONTEXT = new Set(['session', 'household'])
 const PUBLIC = new Set(['instance-info', 'auth-methods'])
-
-function isRead(key: QueryKey): boolean {
-  return typeof key[0] === 'string' && READS.has(key[0])
-}
+const isRead = (key: QueryKey) => typeof key[0] === 'string' && READS.has(key[0])
 
 interface Snapshot {
-  version: number
-  server: string
   account: string
   householdId: string
-  session: Session
-  household: Household
-  queries: { key: QueryKey; data: unknown; updatedAt: number }[]
+  generation: number
+  cache: PersistedClient
 }
 
-/** Restore before mounting observers: no network request may race hydration. */
+function context(cache: PersistedClient) {
+  const queries = cache.clientState.queries
+  const session = queries.find((query) => query.queryKey[0] === 'session')?.state.data as Session | undefined
+  const household = queries.find((query) => query.queryKey[0] === 'household')?.state.data as Household | undefined
+  if (typeof session?.user?.id !== 'string' || !session.user.id
+    || typeof session.user.name !== 'string' || typeof session.user.email !== 'string'
+    || !(session.user.image === null || typeof session.user.image === 'string')
+    || typeof household?.id !== 'string' || !household.id || typeof household.name !== 'string'
+    || !['owner', 'member'].includes(household.role) || !Array.isArray(household.members)
+    || !household.members.every((member) => typeof member.userId === 'string'
+      && typeof member.name === 'string' && typeof member.joinedAt === 'string'
+      && ['owner', 'member'].includes(member.role))
+    || !household.members.some((member) => member.userId === session.user.id)) return undefined
+  return { session, household }
+}
+
+/** TanStack restores/subscribes; this boundary only owns isolation and sensitive-data policy. */
 export async function startOfflineCache(
   client: QueryClient,
   storage: OfflineCacheStorage,
   server: string,
   reportError: (error: unknown) => void,
 ): Promise<{ changeServer(url: string): void; stop(): void }> {
-  function safely(action: () => void) {
-    try { action() } catch (error) { reportError(error) }
+  // Match infinite maxAge only for persisted reads; other caches retain their defaults.
+  for (const root of [...CONTEXT, ...READS]) {
+    client.setQueryDefaults([root], { ...client.getQueryDefaults([root]), gcTime: Infinity })
   }
-  try {
-    const raw = await storage.read()
-    if (raw) {
+  let generation = 0
+  let changingContext = false
+  function clearStorage() {
+    try { storage.clear() } catch (error) { reportError(error) }
+  }
+  const asyncPersister = createAsyncStoragePersister({
+    throttleTime: 100,
+    storage: {
+      getItem: () => storage.read(),
+      // Throttled writes from a previous context must never recreate its snapshot.
+      setItem: (_key, value) => { if (JSON.parse(value).generation === generation) storage.write(value) },
+      removeItem: clearStorage,
+    },
+    retry: ({ error }) => { reportError(error); return undefined },
+    serialize: (cache) => {
+      const { session, household } = context(cache)!
+      const { id, email, name, image } = session.user
+      return JSON.stringify({
+        account: id, householdId: household.id,
+        generation: (cache as PersistedClient & { generation: number }).generation,
+        cache: {
+          ...cache,
+          clientState: {
+            mutations: [],
+            queries: cache.clientState.queries.map((query) => ({
+              queryKey: query.queryKey, queryHash: query.queryHash,
+              state: {
+                ...query.state, status: 'success', fetchStatus: 'idle',
+                error: null, fetchFailureReason: null, fetchMeta: null,
+                data: query.queryKey[0] === 'session' ? { user: { id, email, name, image } }
+                  : query.queryKey[0] === 'household' ? {
+                    id: household.id, name: household.name, role: household.role,
+                    members: household.members.map(({ userId, name, image, role, joinedAt }) =>
+                      ({ userId, name, image, role, joinedAt })),
+                  } : query.state.data,
+              },
+            })),
+          },
+        },
+      } satisfies Snapshot)
+    },
+    deserialize: (raw) => {
       const snapshot: Snapshot = JSON.parse(raw)
-      if (snapshot.version !== VERSION || snapshot.server !== server
-        || typeof snapshot.account !== 'string' || !snapshot.account
-        || snapshot.session?.user?.id !== snapshot.account
-        || typeof snapshot.session.user.name !== 'string'
-        || typeof snapshot.session.user.email !== 'string'
-        || !(snapshot.session.user.image === null || typeof snapshot.session.user.image === 'string')
-        || typeof snapshot.householdId !== 'string' || !snapshot.householdId
-        || snapshot.household?.id !== snapshot.householdId
-        || typeof snapshot.household.name !== 'string'
-        || !['owner', 'member'].includes(snapshot.household.role)
-        || !Array.isArray(snapshot.household.members)
-        || !snapshot.household.members.every((member) => typeof member.userId === 'string'
-          && typeof member.name === 'string' && typeof member.joinedAt === 'string'
-          && ['owner', 'member'].includes(member.role))
-        || !snapshot.household.members.some((member) => member.userId === snapshot.account)
-        || !Array.isArray(snapshot.queries)
-        || !snapshot.queries.every((query) => Array.isArray(query.key) && isRead(query.key)
-          && query.data !== undefined && Number.isFinite(query.updatedAt) && query.updatedAt >= 0)) {
-        safely(() => storage.clear())
-      } else {
-        client.setQueryData(['session'], snapshot.session)
-        client.setQueryData(['household'], snapshot.household)
-        for (const query of snapshot.queries) {
-          client.setQueryData(query.key, query.data, { updatedAt: query.updatedAt })
-        }
+      const cache = snapshot.cache
+      const scope = context(cache)
+      if (!scope || snapshot.account !== scope.session.user.id || snapshot.householdId !== scope.household.id
+        || cache.clientState.mutations.length !== 0
+        || !cache.clientState.queries.every((query) => Array.isArray(query.queryKey)
+          && query.queryHash === hashKey(query.queryKey)
+          && (isRead(query.queryKey) || CONTEXT.has(String(query.queryKey[0])))
+          && query.state.data !== undefined && Number.isFinite(query.state.dataUpdatedAt))) {
+        throw new Error('Invalid offline cache context')
       }
-    }
-  } catch (error) {
-    reportError(error)
-    safely(() => storage.clear())
+      return cache
+    },
+  })
+  const persister: Persister = {
+    ...asyncPersister,
+    persistClient: (cache) => !changingContext && context(cache)
+      ? asyncPersister.persistClient(Object.assign(cache, { generation }))
+      : undefined,
   }
+  const options = () => ({
+    queryClient: client, persister, buster: `household-cache-v${VERSION}:${server}`,
+    dehydrateOptions: {
+      shouldDehydrateMutation: () => false,
+      shouldDehydrateQuery: (query: { queryKey: QueryKey; state: { data: unknown } }) =>
+        query.state.data !== undefined && (isRead(query.queryKey) || CONTEXT.has(String(query.queryKey[0]))),
+    },
+  })
+  try {
+    // The root layout already gates mounting on this promise. No provider can fetch early.
+    await persistQueryClientRestore({ ...options(), maxAge: Infinity })
+  } catch (error) { reportError(error) }
 
   let account = client.getQueryData<Session>(['session'])?.user.id
   let householdId = client.getQueryData<Household>(['household'])?.id
-  let changingContext = false
-  let timer: ReturnType<typeof setTimeout> | undefined
-
   function discardReads(keepHousehold: boolean) {
+    generation++
     changingContext = true
-    // Removing queries cancels their in-flight reads before another context can use them.
     client.removeQueries({ predicate: (query) => {
       const root = String(query.queryKey[0])
       return root !== 'session' && !PUBLIC.has(root) && !(keepHousehold && root === 'household')
     } })
     changingContext = false
-    safely(() => storage.clear())
+    clearStorage()
   }
-
-  function persist() {
-    const session = client.getQueryData<Session>(['session'])
-    const household = client.getQueryData<Household>(['household'])
-    if (!session || !household || !household.members.some((member) => member.userId === session.user.id)) {
-      safely(() => storage.clear())
-      return
-    }
-    // Explicit projections: never serialize auth cookies/tokens or the owner's invite code.
-    const { id, email, name, image } = session.user
-    const snapshot: Snapshot = {
-      version: VERSION, server, account: id, householdId: household.id,
-      session: { user: { id, email, name, image } },
-      household: {
-        id: household.id, name: household.name, role: household.role,
-        members: household.members.map(({ userId, name, image, role, joinedAt }) =>
-          ({ userId, name, image, role, joinedAt })),
-      },
-      queries: client.getQueryCache().getAll()
-        .filter((query) => isRead(query.queryKey) && query.state.data !== undefined)
-        .map((query) => ({ key: query.queryKey, data: query.state.data, updatedAt: query.state.dataUpdatedAt })),
-    }
-    safely(() => storage.write(JSON.stringify(snapshot)))
-  }
-
-  const unsubscribe = client.getQueryCache().subscribe((event) => {
+  // Register context invalidation before TanStack's save subscription.
+  const unsubscribeContext = client.getQueryCache().subscribe((event) => {
     if (changingContext) return
     const root = String(event.query.queryKey[0])
     if (event.type === 'removed' && CONTEXT.has(root)) {
-      if (timer) clearTimeout(timer)
       if (root === 'session') account = undefined
       householdId = undefined
       discardReads(false)
-      return
-    }
-    if (event.type !== 'updated' || event.action.type !== 'success') return
-    if (root === 'session') {
-      const next = client.getQueryData<Session>(['session'])?.user.id
-      if (next !== account) {
-        account = next
-        householdId = undefined
-        discardReads(false)
+    } else if (event.type === 'updated' && event.action.type === 'success') {
+      if (root === 'session') {
+        const next = client.getQueryData<Session>(['session'])?.user.id
+        if (next !== account) { account = next; householdId = undefined; discardReads(false) }
+      } else if (root === 'household') {
+        const next = client.getQueryData<Household>(['household'])?.id
+        if (next !== householdId) { householdId = next; discardReads(true) }
       }
-    } else if (root === 'household') {
-      const next = client.getQueryData<Household>(['household'])?.id
-      if (next !== householdId) {
-        householdId = next
-        discardReads(true)
-      }
-    }
-    if (CONTEXT.has(root) || isRead(event.query.queryKey)) {
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(persist, 100)
     }
   })
+  let unsubscribePersistence = persistQueryClientSubscribe(options())
   return {
     changeServer(url) {
-      if (timer) clearTimeout(timer)
+      unsubscribePersistence()
+      generation++
       server = url
       account = undefined
       householdId = undefined
       changingContext = true
       client.clear()
       changingContext = false
-      safely(() => storage.clear())
+      clearStorage()
+      unsubscribePersistence = persistQueryClientSubscribe(options())
     },
-    stop() {
-      unsubscribe()
-      if (timer) clearTimeout(timer)
-    },
+    stop() { generation++; unsubscribeContext(); unsubscribePersistence() },
   }
 }

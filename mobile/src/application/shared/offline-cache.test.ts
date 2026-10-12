@@ -37,18 +37,18 @@ async function boot(server = SERVER) {
   return { client, ...cache }
 }
 
-function load(client: QueryClient) {
+async function load(client: QueryClient) {
   client.setQueryData(['session'], fakeSession)
   client.setQueryData(['household'], fakeHousehold)
   client.setQueryData(['products', {}], fakeProducts, { updatedAt: 1234 })
   client.setQueryData(['product', fakeProducts[0].id], fakeProducts[0])
   client.setQueryData(['shopping-items'], fakeShoppingItems)
-  jest.advanceTimersByTime(100)
+  await jest.advanceTimersByTimeAsync(1000)
 }
 
 test('cold start restores context, inventory and shopping before any network read', async () => {
   const first = await boot()
-  load(first.client)
+  await load(first.client)
   first.stop()
   const { client } = await boot()
   expect(client.getQueryData(['session'])).toEqual(fakeSession)
@@ -63,27 +63,32 @@ test('cold start restores context, inventory and shopping before any network rea
 
 test('allowlist excludes credentials, invites, integrations, settings, jobs and mutations', async () => {
   const { client } = await boot()
-  load(client)
+  await load(client)
   client.setQueryData(['session'], { ...fakeSession, token: 'secret-token' })
   for (const key of ['ai-settings', 'ha-link', 'linked-accounts', 'jobs', 'scan-drafts', 'receipts']) {
     client.setQueryData([key], { secret: 'never-persist' })
   }
-  jest.advanceTimersByTime(100)
+  client.getMutationCache().build(client, { mutationKey: ['never-persist'] }, {
+    context: undefined, data: undefined, error: null, failureCount: 0, failureReason: null,
+    isPaused: true, status: 'pending', variables: { password: 'secret-password' }, submittedAt: Date.now(),
+  })
+  await jest.advanceTimersByTimeAsync(1000)
   expect(value).not.toContain('secret-token')
   expect(value).not.toContain(fakeHousehold.inviteCode)
   expect(value).not.toContain('never-persist')
-  expect(JSON.parse(value!).queries.map((query: { key: string[] }) => query.key[0]))
-    .toEqual(['products', 'product', 'shopping-items'])
+  expect(value).not.toContain('secret-password')
+  expect(JSON.parse(value!).cache.clientState.queries.map((query: { queryKey: string[] }) => query.queryKey[0]))
+    .toEqual(['session', 'household', 'products', 'product', 'shopping-items'])
 })
 
 test.each(['server', 'account', 'household', 'version', 'corrupt'])('rejects a snapshot with mismatched %s', async (kind) => {
   const first = await boot()
-  load(first.client)
+  await load(first.client)
   first.stop()
   const snapshot = JSON.parse(value!)
   if (kind === 'account') snapshot.account = 'another-user'
   if (kind === 'household') snapshot.householdId = 'another-household'
-  if (kind === 'version') snapshot.version = 0
+  if (kind === 'version') snapshot.cache.buster = 'household-cache-v0'
   value = kind === 'corrupt' ? '{invalid' : JSON.stringify(snapshot)
   const { client } = await boot(kind === 'server' ? 'https://other.example.com' : SERVER)
   expect(client.getQueryData(['session'])).toBeUndefined()
@@ -93,7 +98,7 @@ test.each(['server', 'account', 'household', 'version', 'corrupt'])('rejects a s
 
 test.each(['sign-out', 'clear', 'household', 'account', 'server'])('%s cancels old reads and clears memory and disk', async (kind) => {
   const cache = await boot()
-  load(cache.client)
+  await load(cache.client)
   let resolve!: (data: unknown) => void
   const request = cache.client.fetchQuery({ queryKey: ['products', {}], queryFn: () => new Promise((done) => { resolve = done }) }).catch(() => {})
   if (kind === 'sign-out') cache.client.setQueryData(['session'], null)
@@ -104,21 +109,21 @@ test.each(['sign-out', 'clear', 'household', 'account', 'server'])('%s cancels o
   expect(value).toBeNull()
   resolve(fakeProducts)
   await request
-  jest.advanceTimersByTime(100)
+  await jest.advanceTimersByTimeAsync(1000)
   expect(cache.client.getQueryData(['products', {}])).toBeUndefined()
   expect(value).toBeNull()
 })
 
 test('a new household and a new server persist only their own reads', async () => {
   const cache = await boot()
-  load(cache.client)
+  await load(cache.client)
   cache.client.setQueryData(['household'], { ...fakeHousehold, id: 'other-household' })
-  jest.advanceTimersByTime(100)
+  await jest.advanceTimersByTimeAsync(1000)
   expect(JSON.parse(value!).householdId).toBe('other-household')
-  expect(JSON.parse(value!).queries).toEqual([])
+  expect(JSON.parse(value!).cache.clientState.queries.map((query: { queryKey: string[] }) => query.queryKey[0])).toEqual(['session', 'household'])
   cache.changeServer('https://other.example.com')
-  load(cache.client)
-  expect(JSON.parse(value!).server).toBe('https://other.example.com')
+  await load(cache.client)
+  expect(JSON.parse(value!).cache.buster).toBe('household-cache-v2:https://other.example.com')
 })
 
 test('unavailable storage does not block boot or online reads', async () => {
@@ -126,6 +131,39 @@ test('unavailable storage does not block boot or online reads', async () => {
   storage.write = () => { throw new Error('full') }
   storage.clear = () => { throw new Error('unavailable') }
   const { client } = await boot()
-  expect(() => load(client)).not.toThrow()
+  await expect(load(client)).resolves.toBeUndefined()
   expect(client.getQueryData(['products', {}])).toEqual(fakeProducts)
+})
+
+test.each(['sign-out', 'server', 'stop'])('a throttled write cannot recreate old data after %s', async (kind) => {
+  const cache = await boot()
+  await load(cache.client)
+  // Leave another write in the persister's throttle window, without draining microtasks.
+  cache.client.setQueryData(['shopping-items'], [])
+  if (kind === 'sign-out') cache.client.setQueryData(['session'], null)
+  if (kind === 'server') cache.changeServer('https://other.example.com')
+  if (kind === 'stop') { cache.stop(); storage.clear() }
+  await jest.advanceTimersByTimeAsync(1000)
+  expect(value).toBeNull()
+})
+
+test('a read that failed revalidation remains persistable without its error payload', async () => {
+  const cache = await boot()
+  await load(cache.client)
+  await expect(cache.client.fetchQuery({
+    queryKey: ['shopping-items'],
+    queryFn: async () => { throw { message: 'offline', credential: 'secret-error-payload' } },
+  })).rejects.toEqual(expect.objectContaining({ message: 'offline' }))
+  await jest.advanceTimersByTimeAsync(1000)
+  expect(value).not.toContain('secret-error-payload')
+  cache.stop()
+  const next = await boot()
+  expect(next.client.getQueryData(['shopping-items'])).toEqual(fakeShoppingItems)
+})
+
+test('the previous custom snapshot schema is discarded', async () => {
+  value = JSON.stringify({ version: 1, server: SERVER, session: fakeSession, household: fakeHousehold, queries: [] })
+  const { client } = await boot()
+  expect(client.getQueryData(['session'])).toBeUndefined()
+  expect(value).toBeNull()
 })

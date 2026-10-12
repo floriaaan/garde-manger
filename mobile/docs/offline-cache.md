@@ -1,11 +1,14 @@
 # Offline cold starts
 
 The root layout loads the selected server, then restores the read cache before
-mounting query observers. Normal TanStack Query revalidation follows hydration;
+mounting query observers. The official `@tanstack/react-query-persist-client`
+restore/subscribe APIs and `@tanstack/query-async-storage-persister` handle
+hydration, dehydration and throttled storage writes. Normal TanStack Query
+revalidation follows hydration;
 failed requests keep the restored data. This cache does not queue mutations or
 grant server permissions: every write still requires server authorization.
 
-The version 1 snapshot contains the last active server URL, account ID and
+The version 2 snapshot contains the last active server URL, account ID and
 household ID. Identity fields are projected explicitly, and the account must
 appear among the household members. It restores the household context, product
 lists (including filters), product details, outcome statistics and shopping
@@ -27,7 +30,12 @@ the snapshot through the existing query-cache clear. A temporary network error
 does not invalidate it. Storage errors are reported and degrade to memory-only
 operation rather than blocking startup.
 
-The schema version is explicit. Corrupt, incompatible or context-mismatched
+The schema version is explicit in TanStack’s `buster`, together with the server
+URL. Version 1 snapshots from the previous custom format are discarded.
+`maxAge` and query `gcTime` are infinite so this cold-start foundation does not
+introduce an arbitrary expiry or lose unobserved persisted reads. Freshness and
+revalidation remain separate concerns. A generation guard prevents a delayed
+write from recreating a discarded context. Corrupt, incompatible or context-mismatched
 snapshots are discarded, never partially migrated. Any incompatible change to
 the read DTOs or snapshot layout must increment the version; the server then
 repopulates it through normal reads. Future migrations must validate the full
