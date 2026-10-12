@@ -42,10 +42,15 @@ policy is defined in
 [household-sync-conflicts.md](household-sync-conflicts.md).
 
 The offline banner opens `/pending-actions` as a native modal. Its local-only
-query lists scoped pending and failed intent, updates after durable queue edits,
-and shows the action, affected row, before/after values and delivery state on a
-continuous cream ledger. Failed intent is grouped under “À vérifier”. It remains
-open as connectivity returns, so completed actions disappear from the list.
+query lists scoped pending and failed intent and updates after durable queue edits.
+The dossier composition follows `DESIGN.md`: a mocha canopy uses the shared
+`ScreenHeader`, device-save status and a 48pt Close control above an asymmetric
+light pane. Shared chips stay pinned above the list and filter all actions,
+“À envoyer” or “À vérifier”. Expandable rows disclose each recorded old → new
+value; delivery states pair an icon, semantic color and word. The first visible
+row opens initially. It remains open as connectivity returns, so completed
+actions disappear from the list. Source inspection confirms the shared design
+components; fresh native rendering and transition fidelity remain unverified.
 Fake mode supplies twelve initial in-memory actions (nine pending, three conflicts),
 covering quantities, checkboxes, locations, dates, prices, names and deletion,
 and uses the same overlays,

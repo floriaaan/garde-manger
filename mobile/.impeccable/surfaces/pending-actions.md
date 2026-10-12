@@ -2,26 +2,20 @@
 
 MODE: Operate
 
-TARGET: `src/presentation/shared/pending-actions-screen.tsx`, offline banner and `/pending-actions` native modal.
-
-PURPOSE: Inspect locally saved household changes and distinguish automatic delivery from changes needing attention.
-
-STATES: Loading, empty, read failure with retry, waiting, retrying and blocked. Fake and real modes share copy and queue/replay behavior; fake storage is in memory and seeded actions replay. Close and native dismissal remain available. Banner height respects Reduce Motion.
-
-EVIDENCE: Source inspected; no runtime validation, builds, tests, lint or typechecks. Inherited composer capture establishes incumbent context only. Read-only simctl found zero booted simulators; no fresh native rendering or transition proof. Preserve DESIGN.md/design.json; preexisting `design-sidecar-stale` and `config-build-path-unset` remain unresolved.
-
-REVIEW: Finish reviewer returned ship at source-inspection scope; no material fixes identified. Native rendering and accessibility remain unverified at runtime.
+TARGET: `src/presentation/shared/pending-actions-screen.tsx`, `/pending-actions` native modal.
 
 ## Direction contract
 
-THESIS: Le reçu des changements is one continuous local change ledger with before/after assignments and a separate recovery section.
+THESIS: Le dossier d’envoi replaces the receipt with one mocha canopy, one light pane, pinned status filters and compact disclosure rows.
 
-OWN-WORLD: Existing cream, ink, mint and rose tokens, typography and outline icons. Scoped `AppShell` surfaceColor override; default shell behavior remains. No raster assets ship.
+AUTHORITY: The user chose the folder comp (candidate 6, seed 8fc8fb71, buildPath comp), then instructed “Fais matcher avec le design.md”. DESIGN.md takes precedence over the comp’s teal, oversized title and segmented controls. The approved comp and provenance remain a composition reference, not a runtime asset.
 
-STORY: See what is saved, understand intended changes, then distinguish automatic delivery from intent requiring attention.
+OWN-WORLD: Existing brandDeep/onDark tokens, themed light pane, lime selection, native typography and Spectral web ScreenHeader. Shared Chip, useHoverPress and Android ripple. No appliance colors outside the fridge, decorative raster assets or new dependencies.
 
-FIRST VIEWPORT: Compact 26pt heading, count and 48pt Close precede a mint saved-state strip. SectionList rows show muted 16pt old values → bold 22pt new values and textual waiting states. Failures form a rose À vérifier group with tinted secondary text. Content scrolls natively.
+STORY: Scan saved changes, filter automatic delivery or retained failures, then expand an action to inspect every recorded before/after assignment. Fake and real queues share the same behavior and copy.
 
-FORM: Grounded candidate 4, seed afe70049, explicitly selected receipt, buildPath code. Generated critique reference: `/Users/floriaaan/.codex/generated_images/01a131db-9c6f-7240-bfd4-d18ed0fee2a5/exec-a56f4285-5f77-4735-87b3-fb1a9a20c52e.png`; not runtime evidence or a shipping raster.
+FIRST VIEWPORT: Close48 above the shared ScreenHeader and device-save status. An asymmetric 28/18pt light pane holds the pinned wrapping chips. First action opens initially; remaining rows show name/target and disclosure chevrons. Every queue status pairs an icon, semantic color and word. Expanded values use the 24/800 display role. Content scrolls through FlatList on the AppShell modal measure.
 
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+PROOF: Source and diff review only. Tests updated but not executed per AGENTS.md. No booted simulator was available; native capture comparison and pixel fidelity remain unverified. Web-oriented build-phase scratch metadata is not evidence of native rendering.
+
+FINISH: Source review identified the wide-filter alignment and scored its shared-measure correction resolved. Documentation is source-aligned; global DESIGN.md/design.json remain unchanged. Native verdict remains recapture until device evidence is available.

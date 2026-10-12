@@ -403,3 +403,10 @@ export const ArrowLeftRightIcon = icon([
 export const StarIcon = icon([
   { d: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z' },
 ])
+
+
+export const SmartphoneCheckIcon = icon([
+  { rect: { x: '5', y: '2', width: '14', height: '20', rx: '2' } },
+  { d: 'm8 10 3 3 5-5' },
+  { cx: '12', cy: '18', r: '0.5' },
+])
