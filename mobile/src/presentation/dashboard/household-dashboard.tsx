@@ -226,7 +226,7 @@ export function HouseholdDashboard({
   const watchCount = thisWeekCount + expiredCount
 
   const loading = productsQuery.isPending
-  const failed = !productsQuery.isPending && productsQuery.isError
+  const failed = !productsQuery.isPending && productsQuery.isLoadingError
   const empty = !loading && !failed && products.length === 0
   const householdName = householdQuery.data?.name ?? t('dashboard.your_household')
   const members = householdQuery.data?.members ?? []

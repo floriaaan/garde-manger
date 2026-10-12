@@ -124,7 +124,7 @@ export function SettingsScreen() {
   const roleLabel = household.data ? ROLE_LABELS[household.data.role] : null
   const householdSpokenLabel = [
     t('identity.household'),
-    household.isPending ? t('settings.loading') : household.isError ? t('settings.unavailable') : (household.data?.name ?? t('settings.no_household')),
+    household.isPending ? t('settings.loading') : household.isLoadingError ? t('settings.unavailable') : (household.data?.name ?? t('settings.no_household')),
     memberSummary,
     roleLabel ? t('settings.you_are_role', { role: roleLabel.toLowerCase() }) : null,
     t('settings.manage_household'),
@@ -192,9 +192,9 @@ export function SettingsScreen() {
           // to render "Aucun foyer" — a fact about the account, printed for a
           // fact about the network, which invents a state the user does not
           // have and cannot act on.
-          value={household.isPending ? '—' : household.isError ? t('settings.household_unavailable') : (household.data?.name ?? t('settings.no_household_2'))}
+          value={household.isPending ? '—' : household.isLoadingError ? t('settings.household_unavailable') : (household.data?.name ?? t('settings.no_household_2'))}
           secondary={
-            household.isError ? t('settings.pull_to_try_again') : (memberSummary ?? t('settings.no_one_else_yet'))
+            household.isLoadingError ? t('settings.pull_to_try_again') : (memberSummary ?? t('settings.no_one_else_yet'))
           }
           trailing={roleLabel ? <RoleBadge label={roleLabel} palette={palette} /> : null}
           corner="b"

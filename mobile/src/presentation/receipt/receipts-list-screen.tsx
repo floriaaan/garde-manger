@@ -73,7 +73,7 @@ export function ReceiptsListScreen() {
         ListEmptyComponent={
           receipts.isPending ? (
             <SkeletonList rows={5} label={t('receipt.loading_receipts')} palette={palette} />
-          ) : receipts.isError ? (
+          ) : receipts.isLoadingError ? (
             // Before the empty branch: a failed read used to render "Aucun
             // ticket importé", which tells a foyer its history is empty when
             // it is only unreachable — and then offers the scanner, which

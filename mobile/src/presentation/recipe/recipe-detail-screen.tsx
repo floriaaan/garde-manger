@@ -214,7 +214,7 @@ export function RecipeDetailScreen({ recipeId }: { recipeId: string }) {
    * garde-manger is unknown, never a zeroed match: an empty owned list because
    * a query has not answered is a false statement about a shared fridge.
    */
-  const pantryKnown = !productsQuery.isPending && !productsQuery.isError
+  const pantryKnown = !productsQuery.isPending && !productsQuery.isLoadingError
   const match = pantryKnown ? matchPantry(data, productsQuery.data ?? []) : null
   const { owned, missing } = match
     ? splitIngredients(data, match)

@@ -71,8 +71,8 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
   // would have surfaced only as "La quantité doit être un entier..." — a
   // quantity-validation error with nothing to do with the real cause.
   const editNotFound =
-    props.mode === 'edit' && !itemsQuery.isPending && !itemsQuery.isError && !itemsQuery.data?.some((i) => i.id === editItemId)
-  const editUnavailable = props.mode === 'edit' && !hasAppliedEditPrefill && (itemsQuery.isError || editNotFound)
+    props.mode === 'edit' && !itemsQuery.isPending && !itemsQuery.isLoadingError && !itemsQuery.data?.some((i) => i.id === editItemId)
+  const editUnavailable = props.mode === 'edit' && !hasAppliedEditPrefill && (itemsQuery.isLoadingError || editNotFound)
 
   async function handleSubmit() {
     setError(null)
@@ -143,7 +143,7 @@ export function ShoppingItemFormScreen(props: ShoppingItemFormMode & { onSuccess
                 ? t('shopping-list.it_may_have_been_deleted_elsewhere_in_the_household')
                 : t('shopping-list.couldn_t_load_its_details_check_your_connection')}
             </Text>
-            {itemsQuery.isError ? (
+            {itemsQuery.isLoadingError ? (
               <AuthButton
                 testID="shopping-item-form-retry"
                 label={t('dashboard.try_again')}

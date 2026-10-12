@@ -19,6 +19,7 @@ import { createConnector, startConnectorSync, restoreConnectorMutations } from '
 import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
 import { wireFocusManager } from '../application/shared/wire-focus-manager.js'
+import { wireOnlineManager } from '../application/shared/wire-online-manager.js'
 import { loadStoredServerUrl } from '../application/shared/server-config.js'
 import { startAppOfflineCache } from '../../providers/start-offline-cache.js'
 import { useConnectivity } from '../application/shared/use-connectivity.js'
@@ -50,6 +51,7 @@ export default function RootLayout() {
 
   // Session restoration must also retry on foreground before tabs mount.
   useEffect(() => wireFocusManager(), [])
+  useEffect(() => wireOnlineManager(), [])
 
   // The SPA's manifest lets iOS offer Web Push when installed on the home screen.
   useEffect(() => {
