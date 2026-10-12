@@ -40,6 +40,11 @@ empty list. Persistent sync status remains a separate concern (#86). Conflict
 policy is defined in
 [household-sync-conflicts.md](household-sync-conflicts.md).
 
+The offline banner opens `/pending-actions` as a native modal. Its local-only
+query lists scoped pending and failed intent, updates after durable queue edits,
+and shows the action, affected row, assigned values and delivery state. It remains
+open as connectivity returns, so completed actions disappear from the list.
+
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,
 builds, lint, and typechecks are not executed automatically.

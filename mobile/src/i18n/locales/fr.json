@@ -1147,5 +1147,42 @@
     "rescue_mission": "🎯 Mission sauvetage",
     "anti_waste_chef": "⭐ Chef Anti-gaspi",
     "estimated_hint_suffix": ", estimation"
+  },
+  "sync": {
+    "title": "Actions en attente",
+    "view_actions": "Voir les actions en attente",
+    "open_hint": "Ouvre la liste des actions à synchroniser.",
+    "count_one": "{{count}} action enregistrée sur cet appareil",
+    "count_other": "{{count}} actions enregistrées sur cet appareil",
+    "description": "Tes modifications sont enregistrées sur cet appareil. Elles seront envoyées automatiquement dès que le serveur sera disponible.",
+    "loading": "Chargement des actions…",
+    "load_error": "Impossible de lire les actions enregistrées.",
+    "empty": "Aucune action en attente",
+    "empty_description": "Les prochaines modifications faites hors connexion apparaîtront ici.",
+    "products": "Garde-manger",
+    "shopping": "Courses",
+    "edit": "Modification",
+    "delete": "Suppression",
+    "waiting": "En attente de synchronisation",
+    "retrying": "Nouvelle tentative prévue",
+    "blocked": "Action bloquée",
+    "conflict": "Cet élément a changé sur un autre appareil. Ta modification est conservée.",
+    "deleted": "Cet élément a été supprimé sur un autre appareil. Ta modification est conservée.",
+    "refused": "Le serveur a refusé cette action. Ta modification est conservée.",
+    "cleared": "Effacer",
+    "checked": "Coché",
+    "unchecked": "À acheter",
+    "fields": {
+      "name": "Nom",
+      "quantity": "Quantité",
+      "checked": "État",
+      "location": "Emplacement",
+      "category": "Catégorie",
+      "expiresAt": "Date limite",
+      "openedAt": "Date d’ouverture",
+      "openfoodfactId": "Code-barres",
+      "categories": "Catégories",
+      "price": "Prix"
+    }
   }
 }

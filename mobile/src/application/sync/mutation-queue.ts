@@ -30,6 +30,12 @@ export class MutationQueue {
   private ready: Promise<void>
   private writes: Promise<unknown> = Promise.resolve()
   private replaying = false
+  private listeners = new Set<() => void>()
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
 
   constructor(
     private storage: QueueStorage,
@@ -50,6 +56,7 @@ export class MutationQueue {
       const next = change(this.entries)
       await this.storage.write(next)
       this.entries = next
+      for (const listener of this.listeners) listener()
     })
     this.writes = operation.catch(() => {})
     await operation

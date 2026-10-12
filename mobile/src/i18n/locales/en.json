@@ -1108,5 +1108,42 @@
     "rescue_mission": "🎯 Rescue mission",
     "anti_waste_chef": "⭐ Anti-waste chef",
     "estimated_hint_suffix": ", estimated"
+  },
+  "sync": {
+    "title": "Pending actions",
+    "view_actions": "View pending actions",
+    "open_hint": "Opens the list of actions waiting to sync.",
+    "count_one": "{{count}} action saved on this device",
+    "count_other": "{{count}} actions saved on this device",
+    "description": "Your changes are saved on this device. They will be sent automatically when the server becomes available.",
+    "loading": "Loading actions…",
+    "load_error": "Could not read saved actions.",
+    "empty": "No pending actions",
+    "empty_description": "Your next offline changes will appear here.",
+    "products": "Pantry",
+    "shopping": "Shopping list",
+    "edit": "Update",
+    "delete": "Deletion",
+    "waiting": "Waiting to sync",
+    "retrying": "Retry scheduled",
+    "blocked": "Action blocked",
+    "conflict": "This item changed on another device. Your change is saved.",
+    "deleted": "This item was deleted on another device. Your change is saved.",
+    "refused": "The server refused this action. Your change is saved.",
+    "cleared": "Clear",
+    "checked": "Checked",
+    "unchecked": "To buy",
+    "fields": {
+      "name": "Name",
+      "quantity": "Quantity",
+      "checked": "Status",
+      "location": "Location",
+      "category": "Category",
+      "expiresAt": "Expiry date",
+      "openedAt": "Opened on",
+      "openfoodfactId": "Barcode",
+      "categories": "Categories",
+      "price": "Price"
+    }
   }
 }

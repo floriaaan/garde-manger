@@ -15,7 +15,8 @@ import { NetworkStatusBanner } from '../presentation/shared/network-status-banne
 import { ErrorBoundary } from '../presentation/shared/error-boundary.js'
 import { ConnectorProvider } from '../application/shared/connector-context.js'
 import { queryClient } from '../application/shared/query-client.js'
-import { createConnector, startConnectorSync, restoreConnectorMutations } from '../../providers/create-connector.js'
+import { createConnector, startConnectorSync, restoreConnectorMutations, getConnectorMutationQueue } from '../../providers/create-connector.js'
+import { MutationQueueProvider } from '../application/sync/mutation-queue-context.js'
 import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
 import { wireFocusManager } from '../application/shared/wire-focus-manager.js'
@@ -102,6 +103,7 @@ export default function RootLayout() {
         <SafeAreaProvider style={{ flex: 1, minHeight: 0 }}>
           <QueryClientProvider client={queryClient}>
             <ConnectorProvider connector={connector}>
+              <MutationQueueProvider queue={getConnectorMutationQueue(connector)}>
               <ErrorBoundary>
                 {/* A Stack, not a Slot. `Réglages`, `Foyer` and `Historique des
                   tickets` used to live inside `(tabs)/`, where iOS's
@@ -144,9 +146,11 @@ export default function RootLayout() {
                     <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="debug" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="pending-actions" options={{ presentation: 'modal' }} />
                   </Stack>
                 </AuthBackgroundFrame>
               </ErrorBoundary>
+              </MutationQueueProvider>
             </ConnectorProvider>
           </QueryClientProvider>
         </SafeAreaProvider>

@@ -1,0 +1,33 @@
+import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Household } from '../../domain/identity/household.js'
+import type { Session } from '../../domain/identity/session.js'
+import type { MutationQueue } from './mutation-queue.js'
+import { getServerUrl } from '../shared/server-config.js'
+
+const MutationQueueContext = createContext<MutationQueue | null>(null)
+
+export function MutationQueueProvider({ queue, children }: { queue: MutationQueue | null; children: ReactNode }) {
+  return <MutationQueueContext.Provider value={queue}>{children}</MutationQueueContext.Provider>
+}
+
+/** Local-only reads remain available offline; durable edits refresh the mounted list. */
+export function useQueuedActions() {
+  const queue = useContext(MutationQueueContext)
+  const client = useQueryClient()
+  const session = useQuery<Session | null>({ queryKey: ['session'], enabled: false }).data
+  const household = useQuery<Household | null>({ queryKey: ['household'], enabled: false }).data
+  const actions = useQuery({
+    queryKey: ['sync-actions', getServerUrl(), session?.user.id, household?.id],
+    queryFn: async () => {
+      if (!queue) return []
+      const [pending, failed] = await Promise.all([queue.pending(), queue.failures()])
+      return [...pending, ...failed].sort((a, b) => a.id - b.id)
+    },
+    networkMode: 'always', retry: false,
+  })
+  useEffect(() => queue?.subscribe(() => {
+    void client.invalidateQueries({ queryKey: ['sync-actions'] })
+  }), [queue, client])
+  return actions
+}

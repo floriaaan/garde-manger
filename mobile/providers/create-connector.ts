@@ -9,6 +9,10 @@ import { getTelemetry } from '../src/application/shared/telemetry.js'
 
 const queues = new WeakMap<FridgeConnector, ReturnType<typeof withOfflineMutations>>()
 
+export function getConnectorMutationQueue(connector: FridgeConnector) {
+  return queues.get(connector)?.queue ?? null
+}
+
 export function createConnector(): FridgeConnector {
   if (isFakeConnector) return new FakeFridgeConnector()
   const offline = withOfflineMutations(new HttpFridgeConnector(), mutationQueueStorage)
