@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { UseQueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useConnector } from './connector-context.js'
 import type { FridgeConnector } from '../../domain/interfaces/fridge-connector.js'
+import { queryStaleTime } from './query-freshness.js'
 
 export function useDomainQuery<TData>(
   queryKey: unknown[],
@@ -9,5 +10,5 @@ export function useDomainQuery<TData>(
   options?: Omit<UseQueryOptions<TData>, 'queryKey' | 'queryFn'>,
 ): UseQueryResult<TData> {
   const connector = useConnector()
-  return useQuery({ queryKey, queryFn: () => queryFn(connector), ...options })
+  return useQuery({ staleTime: queryStaleTime(queryKey), queryKey, queryFn: () => queryFn(connector), ...options })
 }

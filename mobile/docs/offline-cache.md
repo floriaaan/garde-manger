@@ -3,11 +3,12 @@
 The root layout loads the selected server, then restores the read cache before
 mounting query observers. The official `@tanstack/react-query-persist-client`
 restore/subscribe APIs and `@tanstack/query-async-storage-persister` handle
-hydration, dehydration and throttled storage writes. Normal TanStack Query
-revalidation follows hydration;
-failed requests keep the restored data. The read snapshot does not contain
-mutations or grant server permissions. The separate mutation queue described
-in [offline-mutations.md](offline-mutations.md) restores pending edits after this
+hydration, dehydration and throttled storage writes. Domain freshness rules
+control TanStack Query revalidation after hydration (see
+[cache freshness](../../docs/cache-freshness.md)); failed requests keep the
+restored data. The read snapshot does not contain mutations or grant server
+permissions. The separate mutation queue described in
+[offline-mutations.md](offline-mutations.md) restores pending edits after this
 snapshot and replays them with server authorization on reconnect.
 
 The version 2 snapshot contains the last active server URL, account ID and
@@ -38,7 +39,9 @@ The schema version is explicit in TanStack’s `buster`, together with the serve
 URL. Version 1 snapshots from the previous custom format are discarded.
 `maxAge` and query `gcTime` are infinite so this cold-start foundation does not
 introduce an arbitrary expiry or lose unobserved persisted reads. Freshness and
-revalidation remain separate concerns. A generation guard prevents a delayed
+revalidation use the separate per-domain policy; hydration preserves the original
+update timestamps rather than marking restored reads as freshly fetched.
+A generation guard prevents a delayed
 write from recreating a discarded context. Corrupt, incompatible or context-mismatched
 snapshots are discarded, never partially migrated. Any incompatible change to
 the read DTOs or snapshot layout must increment the version; the server then
@@ -48,7 +51,11 @@ context before restoring data.
 A persistent, translated status banner reports loss of device connectivity and
 shows “Connection restored” for 3.5 seconds after reconnecting. It observes
 Expo Network events and refreshes on foreground; an unknown state is silent.
-It reports device connectivity, not backend health or completed synchronization.
+The same connectivity observer drives TanStack’s native online manager, so
+reconnect revalidates stale observed queries without another network listener.
+Transport uses device connectivity to support LAN servers without public Internet;
+the banner still reports Internet reachability. It reports device connectivity,
+not backend health or completed synchronization.
 
 Debug offers a session-only disconnection simulation switch for previewing the
 offline/recovery banner. It overrides the displayed connectivity state while

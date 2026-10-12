@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import { queryStaleTime } from './query-freshness.js'
 import { startOfflineCache, type OfflineCacheStorage } from './offline-cache.js'
 import { fakeSession } from '../../infrastructure/fake/fixtures/session.fixture.js'
 import { fakeHousehold } from '../../infrastructure/fake/fixtures/household.fixture.js'
@@ -59,6 +60,48 @@ test('cold start restores context, inventory and shopping before any network rea
   expect(client.getQueryData(['shopping-items'])).toEqual(fakeShoppingItems)
   await expect(client.fetchQuery({ queryKey: ['products', {}], queryFn: async () => { throw new Error('offline') } })).rejects.toThrow('offline')
   expect(client.getQueryData(['products', {}])).toEqual(fakeProducts)
+})
+
+test('cold-start freshness uses persisted timestamps and a failed refresh survives another restart', async () => {
+  const first = await boot()
+  await load(first.client)
+  const shoppingUpdatedAt = first.client.getQueryState(['shopping-items'])!.dataUpdatedAt
+  first.stop()
+  const next = await boot()
+  let reject!: (error: Error) => void
+  const readProducts = jest.fn(() => new Promise<typeof fakeProducts>((_resolve, fail) => { reject = fail }))
+  const readShopping = jest.fn(async () => fakeShoppingItems)
+  const products = new QueryObserver(next.client, {
+    queryKey: ['products', {}], queryFn: readProducts, staleTime: queryStaleTime(['products']),
+  })
+  const shopping = new QueryObserver(next.client, {
+    queryKey: ['shopping-items'], queryFn: readShopping, staleTime: queryStaleTime(['shopping-items']),
+  })
+  const unsubscribeProducts = products.subscribe(() => {})
+  const unsubscribeShopping = shopping.subscribe(() => {})
+  try {
+    // The old inventory timestamp is stale; the just-written shopping list is fresh.
+    expect(products.getCurrentResult().data).toEqual(fakeProducts)
+    expect(products.getCurrentResult().isPending).toBe(false)
+    expect(products.getCurrentResult().isFetching).toBe(true)
+    expect(readProducts).toHaveBeenCalledTimes(1)
+    expect(shopping.getCurrentResult().data).toEqual(fakeShoppingItems)
+    expect(readShopping).not.toHaveBeenCalled()
+    expect(next.client.getQueryState(['shopping-items'])!.dataUpdatedAt).toBe(shoppingUpdatedAt)
+    reject(new Error('temporarily unavailable'))
+    await jest.advanceTimersByTimeAsync(1000)
+    expect(products.getCurrentResult().isRefetchError).toBe(true)
+    expect(products.getCurrentResult().data).toEqual(fakeProducts)
+    expect(next.client.getQueryState(['products', {}])!.dataUpdatedAt).toBe(1234)
+    next.stop()
+    const restored = await boot()
+    expect(restored.client.getQueryData(['products', {}])).toEqual(fakeProducts)
+    expect(restored.client.getQueryState(['products', {}])!.dataUpdatedAt).toBe(1234)
+    expect(restored.client.getQueryState(['products', {}])!.status).toBe('success')
+  } finally {
+    unsubscribeProducts()
+    unsubscribeShopping()
+  }
 })
 
 test('allowlist excludes credentials, invites, integrations, settings, jobs and mutations', async () => {

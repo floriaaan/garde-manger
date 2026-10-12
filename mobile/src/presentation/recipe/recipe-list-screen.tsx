@@ -123,7 +123,7 @@ export function RecipeListScreen() {
    * claiming "0 sur 6 chez toi" because the products query has not answered yet
    * is a false statement about a shared fridge, not a loading state.
    */
-  const pantryKnown = !productsQuery.isPending && !productsQuery.isError
+  const pantryKnown = !productsQuery.isPending && !productsQuery.isLoadingError
   const matches = useMemo(() => {
     if (!pantryKnown) return new Map<string, PantryMatch>()
     return new Map(library.map((recipe) => [recipe.id, matchPantry(recipe, products)]))
@@ -247,7 +247,7 @@ export function RecipeListScreen() {
           // parent height to grow into — the list stays shrink-wrapped to
           // its own content and the empty state never gets room to center.
           style={{ flex: 1 }}
-          data={recipesQuery.isPending || recipesQuery.isError ? [] : library}
+          data={recipesQuery.isPending || recipesQuery.isLoadingError ? [] : library}
           keyExtractor={(recipe) => recipe.id}
           // The gap between rows belongs to the list, not to a wrapper View
           // allocated per row — and a virtualized list that knows nothing about
@@ -277,7 +277,7 @@ export function RecipeListScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={pullToRefreshControl(refresh, palette)}
           ListHeaderComponent={
-            recipesQuery.isError ? null : (
+            recipesQuery.isLoadingError ? null : (
               <YStack>
                 {tonight.length > 0 ? (
                   <YStack marginBottom="$5">
@@ -290,7 +290,7 @@ export function RecipeListScreen() {
                     to degrade in total silence — no band, no counts, no word —
                     and a diminished screen that says nothing is indistinguishable
                     from a foyer with nothing due. */}
-                {productsQuery.isError ? (
+                {productsQuery.isLoadingError ? (
                   <YStack marginBottom="$4" gap="$2" backgroundColor={palette.cream} padding="$4" borderRadius={18}>
                     <Text fontSize={13} fontWeight="700" color={palette.ink}>{t('dashboard.pantry_unavailable')}</Text>
                     <Text fontSize={12} fontWeight="500" color={palette.inkSecondary} lineHeight={17}>{t('recipe.we_can_t_see_what_you_have_tonight_and_ingredient')}</Text>
@@ -325,7 +325,7 @@ export function RecipeListScreen() {
                 <SkeletonCard height={96} />
                 <SkeletonCard height={96} />
               </SkeletonGroup>
-            ) : recipesQuery.isError ? (
+            ) : recipesQuery.isLoadingError ? (
               // Before emptiness, always: a failed read is not an empty
               // library, and telling a foyer it has no recipes because the
               // server did not answer is a confident false claim.

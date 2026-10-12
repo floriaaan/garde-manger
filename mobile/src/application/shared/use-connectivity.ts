@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { AppState } from 'react-native'
+import { AppState, Platform } from 'react-native'
+import { onlineManager } from '@tanstack/react-query'
 import { addNetworkStateListener, getNetworkStateAsync, type NetworkState } from 'expo-network'
 import { getTelemetry } from './telemetry.js'
 import { useOfflineSimulation } from './connectivity-simulation.js'
@@ -12,6 +13,11 @@ export function useConnectivity(includeSimulation = true): boolean | undefined {
     let active = true
     let revision = 0
     function update(state: NetworkState) {
+      // Drive queries from real device connectivity, never the visual debug override.
+      // A connected LAN can reach a self-hosted server without public Internet.
+      if (Platform.OS !== 'web' && typeof state.isConnected === 'boolean') {
+        onlineManager.setOnline(state.isConnected)
+      }
       if (state.isConnected === false || state.isInternetReachable === false) setOnline(false)
       else if (state.isConnected === true || state.isInternetReachable === true) setOnline(true)
     }

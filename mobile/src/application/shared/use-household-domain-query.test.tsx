@@ -140,7 +140,7 @@ test('detail guards and the scanner manual lookup still apply with a household',
 
 test('an enabled callback is preserved and cached household data remains usable offline', async () => {
   const { connector, queryClient, reads, wrapper } = setup()
-  queryClient.setQueryData(['household'], fakeHousehold)
+  queryClient.setQueryData(['household'], fakeHousehold, { updatedAt: Date.now() - 60_001 })
   jest.spyOn(connector, 'getHousehold').mockRejectedValue(new Error('offline'))
   const enabled = jest.fn(() => false)
   await renderHook(() => ({

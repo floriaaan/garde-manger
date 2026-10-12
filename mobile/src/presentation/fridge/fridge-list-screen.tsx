@@ -523,7 +523,7 @@ export function FridgeListScreen({
                   <YStack padding="$3">
                     <SkeletonList rows={4} label={t('dashboard.loading_pantry')} palette={palette} />
                   </YStack>
-                ) : products.isError ? (
+                ) : products.isLoadingError ? (
                   // Before `isEmpty`, and this order is the whole fix: a failed
                   // read used to fall through to the empty state and tell a
                   // foyer its shared fridge held nothing. Every other list

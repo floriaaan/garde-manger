@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
@@ -278,4 +278,29 @@ test('leaving the selection puts the list back to opening products', async () =>
   fireEvent.press(screen.getByTestId('fridge-selection-cancel'))
 
   await waitFor(() => expect(screen.queryByTestId('fridge-selection-cancel')).toBeNull())
+})
+
+test('cached products stay on the shelves during a refresh and after its failure', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const connector = new FakeFridgeConnector()
+  const cached = await connector.getProducts()
+  queryClient.setQueryData(['products', {}], cached, { updatedAt: Date.now() - 30_001 })
+  let rejectRefresh!: (error: Error) => void
+  jest.spyOn(connector, 'getProducts').mockImplementation(() => new Promise((_resolve, reject) => { rejectRefresh = reject }))
+  const view = await render(
+    <ThemeProvider><QueryClientProvider client={queryClient}>
+      <ConnectorProvider connector={connector}><FridgeListScreen /></ConnectorProvider>
+    </QueryClientProvider></ThemeProvider>,
+  )
+  try {
+    await waitFor(() => expect(screen.getByText('Lait demi-écrémé')).toBeTruthy())
+    expect(queryClient.getQueryState(['products', {}])?.fetchStatus).toBe('fetching')
+    await act(async () => { rejectRefresh(new Error('server temporarily unavailable')) })
+    await waitFor(() => expect(queryClient.getQueryState(['products', {}])?.status).toBe('error'))
+    expect(screen.getByText('Lait demi-écrémé')).toBeTruthy()
+    expect(screen.queryByTestId('fridge-retry')).toBeNull()
+  } finally {
+    await view.unmount()
+    queryClient.clear()
+  }
 })

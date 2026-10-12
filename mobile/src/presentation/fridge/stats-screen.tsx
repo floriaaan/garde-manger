@@ -136,7 +136,7 @@ export function StatsScreen() {
 
   const data = statsQuery.data
   const loading = statsQuery.isPending
-  const failed = !loading && statsQuery.isError
+  const failed = !loading && statsQuery.isLoadingError
   const empty = !loading && !failed && data !== undefined && data.discarded.count === 0 && data.consumed.count === 0
 
   const header = (

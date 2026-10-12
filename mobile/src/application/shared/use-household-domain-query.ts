@@ -3,6 +3,7 @@ import type { UseQueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useHouseholdQuery } from '../identity/household.query.js'
 import { useConnector } from './connector-context.js'
 import type { FridgeConnector } from '../../domain/interfaces/fridge-connector.js'
+import { queryStaleTime } from './query-freshness.js'
 
 /** Household reads also guard pushed screens, which live outside the tabs' gate. */
 export function useHouseholdDomainQuery<TData, TSelected = TData>(
@@ -15,6 +16,7 @@ export function useHouseholdDomainQuery<TData, TSelected = TData>(
   const hasHousehold = Boolean(household.data?.id)
 
   return useQuery<TData, Error, TSelected>({
+    staleTime: queryStaleTime(queryKey),
     ...options,
     queryKey,
     // `enabled` alone lets a manual refetch bypass the household guard.
