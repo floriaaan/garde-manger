@@ -1,6 +1,7 @@
 import { FlatList } from 'react-native'
 import { router } from 'expo-router'
 import { useQueuedActions } from '../../application/sync/mutation-queue-context.js'
+import { isFakeConnector } from '../../application/shared/connector-mode.js'
 import type { QueuedMutation } from '../../application/sync/mutation-queue.js'
 import { formatCurrency, getLocale, useTranslation } from '../../i18n/index.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -78,7 +79,7 @@ export function PendingActionsScreen() {
       <FlatList data={entries} keyExtractor={(entry) => String(entry.id)}
         contentContainerStyle={shellContentStyle(layout)}
         ListHeaderComponent={<Text fontSize={14} lineHeight={21} color={palette.inkSecondary} marginBottom="$3">
-          {t('sync.description')}
+          {t(isFakeConnector ? 'sync.demo_description' : 'sync.description')}
         </Text>}
         ItemSeparatorComponent={() => <YStack height={1} backgroundColor={palette.creamPillEdge} />}
         renderItem={({ item }) => <ActionRow entry={item} />}
