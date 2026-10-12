@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { Animated } from 'react-native'
+import * as Reanimated from 'react-native-reanimated'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { ThemeProvider } from './theme-provider.js'
 import { NetworkStatusBanner } from './network-status-banner.js'
@@ -7,6 +7,8 @@ import { useReduceMotion } from './hover.js'
 
 jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn() }))
 jest.mock('./hover.js', () => ({ useReduceMotion: jest.fn() }))
+
+Reanimated.setUpTests()
 
 beforeEach(() => {
   jest.useFakeTimers()
@@ -83,15 +85,29 @@ test('a new outage interrupts the closing animation without unmounting the alert
 test('Reduce Motion makes opening and closing immediate after measurement', async () => {
   jest.mocked(useReduceMotion).mockReturnValue(true)
   jest.mocked(useConnectivity).mockReturnValue(false)
-  const timing = jest.spyOn(Animated, 'timing')
   const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
   const view = await render(ui())
   await measure()
+  // Shared styles commit on the next UI frame, with no timed interpolation.
+  await act(() => { jest.advanceTimersByTime(17) })
+  expect(screen.getByTestId('network-status-region')).toHaveAnimatedStyle({ height: 110 })
   expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(3500) })
   expect(screen.queryByTestId('network-status-banner')).toBeNull()
-  expect(timing).not.toHaveBeenCalled()
+  await view.unmount()
+})
+
+test('height progresses between measured endpoints instead of jumping', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  const view = await render(<ThemeProvider><NetworkStatusBanner /></ThemeProvider>)
+  await measure()
+  await act(() => { jest.advanceTimersByTime(120) })
+  const { height } = Reanimated.getAnimatedStyle(screen.getByTestId('network-status-region'))
+  expect(height).toBeGreaterThan(0)
+  expect(height).toBeLessThan(110)
+  await act(() => { jest.advanceTimersByTime(200) })
+  expect(screen.getByTestId('network-status-region')).toHaveAnimatedStyle({ height: 110 })
   await view.unmount()
 })

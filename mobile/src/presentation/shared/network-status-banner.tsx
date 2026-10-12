@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { AccessibilityInfo, Animated, Easing, Platform } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AccessibilityInfo, Platform } from 'react-native'
+import Reanimated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { scheduleOnRN } from 'react-native-worklets'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { useTranslation } from '../../i18n/index.js'
@@ -14,10 +16,16 @@ export function NetworkStatusBanner() {
   const { t } = useTranslation()
   const palette = useSoftPalette()
   const reduceMotion = useReduceMotion()
-  const [height] = useState(() => new Animated.Value(0))
+  const height = useSharedValue(0)
+  const animationRevision = useRef(0)
+  const animatedStyle = useAnimatedStyle(() => ({ height: height.value }))
+
   const [contentHeight, setContentHeight] = useState(0)
   const [visible, setVisible] = useState(false)
   const [status, setStatus] = useState<'offline' | 'restored' | null>(null)
+  const finishClosing = useCallback((revision: number) => {
+    if (animationRevision.current === revision) setStatus(null)
+  }, [])
   useEffect(() => {
     if (online === false) { setStatus('offline'); setVisible(true) }
     else if (online === true) setStatus((previous) => previous === 'offline' ? 'restored' : previous)
@@ -34,21 +42,23 @@ export function NetworkStatusBanner() {
     if (!status) return
     const target = visible ? contentHeight : 0
     if (reduceMotion || contentHeight === 0) {
-      height.setValue(target)
+      height.value = target
       if (!visible) setStatus(null)
       return
     }
-    // One small measured region animates in normal flow, including its safe-area inset.
-    // Keeping text opaque preserves contrast while the viewport progressively makes room.
-    const animation = Animated.timing(height, {
-      toValue: target,
+    // Animate on the UI thread; JS-driven height updates compete with navigation.
+    const revision = ++animationRevision.current
+    height.value = withTiming(target, {
       duration: visible ? 240 : 180,
       easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
-      useNativeDriver: false,
+    }, (finished) => {
+      if (finished && !visible) scheduleOnRN(finishClosing, revision)
     })
-    animation.start(({ finished }) => { if (finished && !visible) setStatus(null) })
-    return () => animation.stop()
-  }, [status, visible, contentHeight, reduceMotion, height])
+    return () => {
+      ++animationRevision.current
+      cancelAnimation(height)
+    }
+  }, [status, visible, contentHeight, reduceMotion, height, finishClosing])
   useEffect(() => {
     if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message)
   }, [message])
@@ -57,8 +67,8 @@ export function NetworkStatusBanner() {
   const color = offline ? palette.soonText : palette.freshText
   const Icon = offline ? WifiOffIcon : CircleCheckIcon
   return (
-    <Animated.View style={{ height, overflow: 'hidden', flexShrink: 0,
-      backgroundColor: offline ? palette.soonBg : palette.freshBg }}>
+    <Reanimated.View testID="network-status-region" style={[animatedStyle, { overflow: 'hidden', flexShrink: 0,
+      backgroundColor: offline ? palette.soonBg : palette.freshBg }]}>
       <SafeAreaView testID="network-status-content" edges={['top', 'left', 'right']}
         onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
         style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
@@ -80,6 +90,6 @@ export function NetworkStatusBanner() {
           </YStack>
         </XStack>
       </SafeAreaView>
-    </Animated.View>
+    </Reanimated.View>
   )
 }
