@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHouseholdQuery } from '../identity/household.query.js'
 import { useSessionQuery } from '../identity/session.query.js'
 import type { MutationQueue } from './mutation-queue.js'
+import { useSyncStatus } from './use-sync-status.js'
 import { Result } from '../../domain/shared/result.js'
 import { getServerUrl } from '../shared/server-config.js'
 
@@ -16,6 +17,7 @@ export function MutationQueueProvider({ queue, children }: { queue: MutationQueu
 export function useQueuedActions() {
   const queue = useContext(MutationQueueContext)
   const client = useQueryClient()
+  const status = useSyncStatus(queue)
   const session = useSessionQuery({ enabled: false }).data
   const household = useHouseholdQuery({ enabled: false }).data
   const actions = useQuery({
@@ -30,6 +32,6 @@ export function useQueuedActions() {
   useEffect(() => queue?.subscribe(() => {
     void client.invalidateQueries({ queryKey: ['sync-actions'] })
   }), [queue, client])
-  return { ...actions, cancel: (id: number) => queue ? queue.cancel(id)
+  return { ...actions, status, retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
     : Promise.resolve(Result.err({ type: 'action_unavailable', message: 'Cette action n’est plus disponible.' })) }
 }

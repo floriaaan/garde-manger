@@ -133,7 +133,6 @@ test('concurrent enqueues and overlapping replays do not lose or send duplicate 
   expect(s.disk()).toEqual([])
 })
 
-
 test('a conflict retains dependent intent across restart and permits scoped dismissal', async () => {
   const s = setup()
   s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
@@ -165,7 +164,6 @@ test('acknowledged server versions advance later edits within the same replay', 
   expect(s.send.mock.calls[1][0].base.updatedAt).toBe('next-version')
 })
 
-
 test('explicit recovery rebases retained edits onto a fresh server row', async () => {
   const s = setup()
   s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
@@ -188,7 +186,6 @@ test('a matching lost response cannot rebase later intent over unrelated remote 
   await s.queue.flush()
   expect(s.send.mock.calls[1][0].base.updatedAt).toBe(item.updatedAt)
 })
-
 
 test('cancellation persists and rebases later snapshots without removing their intent', async () => {
   const s = setup()
@@ -253,4 +250,122 @@ test('replay waits for a pending cancellation write instead of sending removed i
   await replay
   expect(s.send).not.toHaveBeenCalled()
   expect(s.disk()).toEqual([])
+})
+
+test('failed edits remain inspectable after restart and explicit retry sends the saved patch', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  const patch = { checked: true }
+  await s.queue.enqueue('shopping-items', item, patch)
+  await s.queue.flush()
+  const restarted = s.create()
+  expect(await restarted.overlay('shopping-items', [item])).toEqual([item])
+  expect((await restarted.failures())[0].patch).toEqual(patch)
+  const entry = restarted.status().entries[0]
+  expect(entry.error?.type).toBe('forbidden')
+  await restarted.retry(entry.id)
+  expect(s.send.mock.calls[1][0].patch).toEqual(patch)
+  expect(restarted.status().entries).toEqual([])
+})
+
+test('status observes durable writes and actual delivery, but stays pending during backoff', async () => {
+  const s = setup()
+  const changed = jest.fn()
+  const stop = s.queue.subscribe(changed)
+  await s.queue.enqueue('shopping-items', item, null)
+  expect(changed).toHaveBeenCalled()
+  let release!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => { release = resolve; started() })
+    return Result.err({ type: 'network_error', message: 'Unavailable' })
+  })
+  const flush = s.queue.flush()
+  await sending
+  expect(s.queue.status().syncing).toBe(true)
+  release()
+  await flush
+  const after = changed.mock.calls.length
+  await s.queue.flush()
+  expect(s.queue.status().syncing).toBe(false)
+  expect(s.queue.status().entries[0].attempts).toBe(1)
+  expect(changed.mock.calls.length).toBeGreaterThan(after)
+  await s.queue.retry()
+  expect(s.queue.status().entries).toEqual([])
+  stop()
+})
+
+test('another scope cannot inspect or retry a failed action; retry write failures retain it', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.flush()
+  const id = s.disk()[0].id
+  s.setScope({ ...initialScope, userId: 'someone-else' })
+  expect(s.queue.status().entries).toEqual([])
+  await s.queue.retry(id)
+  expect(s.send).toHaveBeenCalledTimes(1)
+  s.setScope(initialScope)
+  jest.mocked(s.storage.write).mockRejectedValueOnce(new Error('Disk full'))
+  await expect(s.queue.retry(id)).rejects.toThrow('Disk full')
+  expect(s.disk()[0]).toMatchObject({ error: { type: 'forbidden' }, patch: { checked: true } })
+  expect(s.send).toHaveBeenCalledTimes(1)
+})
+
+test('a failed edit blocks newer edits on its entity until retry, while unrelated actions continue', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 2, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 3, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { checked: true })
+  await s.queue.flush()
+  expect(s.send.mock.calls.map(([entry]) => entry.entityId)).toEqual(['milk', 'bread'])
+  await s.queue.flush(true)
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect((await s.queue.failures())[1].patch).toEqual({ quantity: { amount: 3, unit: 'L' } })
+  const failed = s.queue.status().entries[0]
+  await s.queue.retry(failed.id)
+  expect(s.send.mock.calls.slice(2).map(([entry]) => entry.patch)).toEqual([
+    { quantity: { amount: 2, unit: 'L' } }, { quantity: { amount: 3, unit: 'L' } },
+  ])
+  expect(s.queue.status().entries).toEqual([])
+})
+
+
+test.each(['sync_conflict', 'shopping_item_not_found'])('ordinary retry never bypasses %s recovery', async (type) => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type, message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.flush()
+  await s.queue.retry(s.disk()[0].id)
+  expect(s.send).toHaveBeenCalledTimes(1)
+  expect((await s.queue.failures())[0].patch).toEqual({ checked: true })
+})
+
+
+test('retrying a dependent failure first retries its earlier ordinary failure in order', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 2, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.flush()
+  const dependent = (await s.queue.failures())[1]
+  await s.queue.retry(dependent.id)
+  expect(s.send.mock.calls.slice(1).map(([entry]) => entry.patch)).toEqual([
+    { quantity: { amount: 2, unit: 'L' } }, { checked: true },
+  ])
+  expect(await s.queue.failures()).toEqual([])
+})
+
+test.each([{ name: 'Fresh edit' }, null])('retained conflicts permit fresh edits and deletion following #85 recovery: %j', async (patch) => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.flush()
+  await s.queue.enqueue('shopping-items', { ...item, updatedAt: 'fresh-version' }, patch)
+  await s.queue.flush()
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(s.send.mock.calls[1][0]).toMatchObject({ patch, base: { updatedAt: 'fresh-version' } })
+  expect(await s.queue.failures()).toHaveLength(1)
 })

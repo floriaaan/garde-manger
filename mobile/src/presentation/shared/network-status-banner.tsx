@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Platform } from 'react-native'
 import { router } from 'expo-router'
-import { Pressable } from './pressable.js'
+import type { MutationQueue } from '../../application/sync/mutation-queue.js'
+import { useSyncStatus } from '../../application/sync/use-sync-status.js'
+import { PillButton } from './pill-button.js'
+import { AccessibilityInfo, Platform } from 'react-native'
 import Reanimated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { useTranslation } from '../../i18n/index.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { ChevronRightIcon, CircleCheckIcon, WifiOffIcon } from '../dashboard/dashboard-icons.js'
+import { CircleCheckIcon, WifiOffIcon, RefreshIcon, TriangleAlertIcon, ClockIcon } from '../dashboard/dashboard-icons.js'
 import { useReduceMotion } from './hover.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 
 /** Reserve space instead of covering navigation or blocking touches with an overlay. */
-export function NetworkStatusBanner() {
+export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | null }) {
+  const sync = useSyncStatus(queue)
+  const failures = sync.entries.filter((entry) => entry.error).length
   const online = useConnectivity()
   const { t } = useTranslation()
   const palette = useSoftPalette()
@@ -37,26 +41,33 @@ export function NetworkStatusBanner() {
     }, 3500)
     return () => clearTimeout(timer)
   }, [status, reduceMotion])
-  const title = status ? t(`shared.network_${status}`) : ''
-  const description = status === 'offline' ? t('shared.network_offline_description') : ''
+  const syncState = sync.storageUnavailable ? 'storage_error' : failures ? 'failed' :
+    sync.syncing ? 'syncing' : sync.entries.length ? 'pending' : null
+  const activeStatus = status === 'offline' ? 'offline' : syncState ?? status
+  const shown = Boolean(syncState) || visible
+  const title = activeStatus ? t(`shared.network_${activeStatus}`) : ''
+  const description = sync.entries.length
+    ? t('sync.pending_count', { count: sync.entries.length })
+    : activeStatus === 'offline' ? t('shared.network_offline_description')
+    : activeStatus === 'storage_error' ? t('sync.storage_error_description') : ''
   const message = description ? `${title}. ${description}` : title
   useEffect(() => {
-    if (!status) { height.set(0); return }
-    const target = visible ? contentHeight : 0
+    if (!activeStatus) { height.set(0); return }
+    const target = shown ? contentHeight : 0
     if (reduceMotion) { height.set(target); return }
     // Animate on the UI thread; JS-driven height updates compete with navigation.
     const revision = ++animationRevision.current
     height.set(withTiming(target, {
-      duration: contentHeight === 0 ? 0 : visible ? 240 : 180,
-      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
+      duration: contentHeight === 0 ? 0 : shown ? 240 : 180,
+      easing: shown ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
     }, (finished) => {
-      if (finished && !visible) scheduleOnRN(finishClosing, revision)
+      if (finished && !shown) scheduleOnRN(finishClosing, revision)
     }))
     return () => {
       ++animationRevision.current
       cancelAnimation(height)
     }
-  }, [status, visible, contentHeight, reduceMotion, height, finishClosing])
+  }, [activeStatus, shown, contentHeight, reduceMotion, height, finishClosing])
   useEffect(() => {
     if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message)
   }, [message])
@@ -66,27 +77,21 @@ export function NetworkStatusBanner() {
     if (online === false) { setStatus('offline'); setVisible(true) }
     else if (online === true && status === 'offline') setStatus('restored')
   }
-  if (!status) return null
-  const offline = status === 'offline'
-  const color = offline ? palette.soonText : palette.freshText
-  const Icon = offline ? WifiOffIcon : CircleCheckIcon
+  if (!activeStatus) return null
+  const warning = ['offline', 'pending', 'failed', 'storage_error'].includes(activeStatus)
+  const color = warning ? palette.soonText : palette.freshText
+  const Icon = activeStatus === 'offline' ? WifiOffIcon : activeStatus === 'syncing' ? RefreshIcon :
+    activeStatus === 'pending' ? ClockIcon : activeStatus === 'restored' ? CircleCheckIcon : TriangleAlertIcon
   return (
     <Reanimated.View testID="network-status-region" style={[animatedStyle, { overflow: 'hidden', flexShrink: 0,
-      backgroundColor: offline ? palette.soonBg : palette.freshBg }]}>
+      backgroundColor: warning ? palette.soonBg : palette.freshBg }]}>
       <SafeAreaView testID="network-status-content" edges={['top', 'left', 'right']}
         onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
         style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-        <Pressable testID="network-status-button" disabled={!offline}
-          accessible={offline}
-          onPress={() => router.push('/pending-actions')}
-          accessibilityRole={offline ? 'button' : undefined}
-          accessibilityLabel={offline ? `${message}. ${t('sync.view_actions')}` : undefined}
-          accessibilityHint={offline ? t('sync.open_hint') : undefined}
-          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
-          <XStack testID="network-status-banner" role="status" accessible={!offline}
-            accessibilityLabel={message} accessibilityLiveRegion="polite"
-            paddingHorizontal={24} paddingVertical={12} gap={12} alignItems="center"
-            alignSelf="center" width="100%" maxWidth={640}>
+        <XStack paddingHorizontal={24} paddingVertical={12} gap={12} alignItems="center"
+          alignSelf="center" width="100%" maxWidth={640} flexWrap="wrap">
+          <XStack testID="network-status-banner" role="status" accessible
+            accessibilityLabel={message} accessibilityLiveRegion="polite" flex={1} gap={12} alignItems="center">
             <YStack flexShrink={0} accessible={false} accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants" aria-hidden>
               <Icon size={22} color={color} />
@@ -99,9 +104,10 @@ export function NetworkStatusBanner() {
                 {description}
               </Text> : null}
             </YStack>
-            {offline ? <YStack accessible={false} aria-hidden><ChevronRightIcon size={18} color={color} /></YStack> : null}
           </XStack>
-        </Pressable>
+          {activeStatus === 'offline' || sync.entries.length || sync.storageUnavailable ? <PillButton label={t('sync.details')} palette={palette}
+            tone="quiet" onPress={() => router.push('/pending-actions')} accessibilityLabel={t('sync.open_details')} /> : null}
+        </XStack>
       </SafeAreaView>
     </Reanimated.View>
   )

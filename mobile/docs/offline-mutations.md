@@ -37,8 +37,7 @@ Creation, imports, product outcomes, scans, and AI jobs remain online operations
 Full offline cold starts reuse the local-first engine already on `develop`:
 session, household, and unrelated cached rows stay in its read snapshot. Failed
 household reads reject so TanStack retains that snapshot instead of saving an
-empty list. Persistent sync status remains a separate concern (#86). Conflict
-policy is defined in
+empty list. Conflict policy is defined in
 [household-sync-conflicts.md](household-sync-conflicts.md).
 
 The offline banner opens `/pending-actions` as a native modal. Its local-only
@@ -74,3 +73,21 @@ household cache observers reuse their domain query functions with `enabled: fals
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,
 builds, lint, and typechecks are not executed automatically.
+
+## Synchronization status (#86)
+
+The measured network banner also shows scoped pending changes, actual delivery,
+and action-required failures, with French/English copy and accessible live status.
+It remains absent during normal online use with an empty queue. Temporary transport
+failures stay pending and never request sign-in. Details reuse `/pending-actions`,
+including its existing field comparison, filters and cancellation workflow.
+
+A quiet retry is available after automatic delivery fails. It preserves the saved
+patch/deletion and clears ordinary failures durably before replaying dependent
+changes in order. Buttons wait while offline or sending. Conflict and deleted-row
+recovery retain #85's authoritative-row policy and explicit reapplication flow;
+blind retry cannot bypass those safeguards. Saved intent remains inspectable after
+a restart even when it is no longer overlaid onto the authoritative row.
+
+Focused coverage is authored in the queue, banner and pending-actions tests.
+No tests, build, lint, typecheck or native rendering were run for this rebase.

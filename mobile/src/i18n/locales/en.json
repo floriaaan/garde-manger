@@ -1051,7 +1051,11 @@
     "trying_again": "Trying again…",
     "loading": "Loading",
     "save": "Save",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "network_pending": "Waiting to sync",
+    "network_syncing": "Syncing changes",
+    "network_failed": "Sync needs your attention",
+    "network_storage_error": "Sync unavailable"
   },
   "shopping-list": {
     "add_an_item": "Add an item",
@@ -1174,6 +1178,14 @@
     "cancel_action_syncing": "This action is already being sent. Wait for synchronization to finish.",
     "cancel_storage_error": "Could not save the cancellation. Your change remains in the queue.",
     "cancel_error": "Could not cancel this action right now.",
-    "cancel_cache_update_error": "The change was removed. Refresh the list to update the displayed values."
+    "cancel_cache_update_error": "The change was removed. Refresh the list to update the displayed values.",
+    "details": "Details",
+    "open_details": "View changes waiting to sync",
+    "pending_count_one": "{{count}} change saved on this device, waiting to sync.",
+    "pending_count_other": "{{count}} changes saved on this device, waiting to sync.",
+    "storage_error_description": "The local queue is unavailable. Saved data has not been erased. Try reopening the app.",
+    "retry": "Retry",
+    "retry_item": "Retry syncing {{name}}",
+    "retry_error": "Unable to retry right now. Your change is still saved."
   }
 }

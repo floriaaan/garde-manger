@@ -1,5 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { router } from 'expo-router'
+import { MutationQueue } from '../../application/sync/mutation-queue.js'
+import { Result } from '../../domain/shared/result.js'
+import { fakeShoppingItems } from '../../infrastructure/fake/fixtures/shopping-item.fixture.js'
 import * as Reanimated from 'react-native-reanimated'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { ThemeProvider } from './theme-provider.js'
@@ -7,8 +10,7 @@ import { NetworkStatusBanner } from './network-status-banner.js'
 import { useReduceMotion } from './hover.js'
 
 jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn() }))
-jest.mock('./hover.js', () => ({ useReduceMotion: jest.fn() }))
-
+jest.mock('./hover.js', () => ({ ...jest.requireActual('./hover.js'), useReduceMotion: jest.fn() }))
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }))
 
 Reanimated.setUpTests()
@@ -36,13 +38,13 @@ test('unknown and initial online states are silent; offline persists and recover
   jest.mocked(useConnectivity).mockReturnValue(false)
   await view.rerender(ui())
   await measure()
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   await act(() => { jest.advanceTimersByTime(10000) })
   expect(screen.getByTestId('network-status-banner')).toBeTruthy()
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await measure(88)
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent('Connexion rétablie')
+  expect(screen.getByRole('status')).toHaveTextContent('Connexion rétablie')
   await act(() => { jest.advanceTimersByTime(3500) })
   expect(screen.getByTestId('network-status-banner')).toBeTruthy()
   await act(() => { jest.advanceTimersByTime(250) })
@@ -55,14 +57,14 @@ test('an offline cold start alerts immediately; another outage cancels recovery 
   const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
   const view = await render(ui())
   await measure()
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(1000) })
   jest.mocked(useConnectivity).mockReturnValue(false)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(5000) })
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   await view.unmount()
 })
 
@@ -81,7 +83,7 @@ test('a new outage interrupts the closing animation without unmounting the alert
   await view.rerender(ui())
   await measure()
   await act(() => { jest.advanceTimersByTime(1000) })
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   await view.unmount()
 })
 
@@ -94,7 +96,7 @@ test('Reduce Motion makes opening and closing immediate after measurement', asyn
   // Shared styles commit on the next UI frame, with no timed interpolation.
   await act(() => { jest.advanceTimersByTime(17) })
   expect(screen.getByTestId('network-status-region')).toHaveAnimatedStyle({ height: 110 })
-  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(3500) })
@@ -115,10 +117,54 @@ test('height progresses between measured endpoints instead of jumping', async ()
   await view.unmount()
 })
 
+test('queued edits expose details and actual synchronization; success removes persistent chrome', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  const queue = new MutationQueue({ read: async () => [], write: async () => {} },
+    () => ({ server: 'server', userId: 'user', householdId: 'home' }),
+    async () => { await new Promise<void>((resolve) => { finish = resolve; started() }); return Result.ok(undefined) },
+    () => {}, () => {})
+  const view = await render(<ThemeProvider><NetworkStatusBanner queue={queue} /></ThemeProvider>)
+  expect(screen.queryByRole('status')).toBeNull()
+  await act(async () => { await queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+  await measure()
+  expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en attente')
+  expect(screen.getByRole('status')).toHaveTextContent('1 changement enregistré')
+  await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
+  expect(router.push).toHaveBeenCalledWith('/pending-actions')
+  let flushing!: Promise<void>
+  await act(async () => { flushing = queue.flush(); await sending })
+  expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en cours')
+  await act(async () => { finish(); await flushing })
+  expect(screen.queryByRole('status')).toBeNull()
+  await view.unmount()
+})
 
-test('the offline banner opens the pending-actions modal', async () => {
+test('temporary outages stay pending; permanent refusals require attention and retain local edits', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const send = jest.fn().mockResolvedValueOnce(Result.err({ type: 'network_error', message: 'Unavailable' }))
+    .mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  const queue = new MutationQueue({ read: async () => [], write: async () => {} },
+    () => ({ server: 'server', userId: 'user', householdId: 'home' }), send, () => {}, () => {})
+  const view = await render(<ThemeProvider><NetworkStatusBanner queue={queue} /></ThemeProvider>)
+  await act(async () => {
+    await queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+    await queue.flush()
+  })
+  expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en attente')
+  expect(screen.getByRole('status')).not.toHaveTextContent(/session|Reconnectez/)
+  await act(async () => { await queue.flush(true) })
+  expect(screen.getByRole('status')).toHaveTextContent('Action requise pour synchroniser')
+  expect((await queue.failures())[0].patch).toEqual({ checked: true })
+  await view.unmount()
+})
+
+
+test('offline details reuse the existing pending-actions modal even with no queued actions', async () => {
   jest.mocked(useConnectivity).mockReturnValue(false)
   await render(<ThemeProvider><NetworkStatusBanner /></ThemeProvider>)
-  await fireEvent.press(screen.getByRole('button', { name: /Voir les actions en attente/ }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
   expect(router.push).toHaveBeenCalledWith('/pending-actions')
 })

@@ -1090,7 +1090,11 @@
     "trying_again": "Nouvelle tentative…",
     "loading": "Chargement",
     "save": "Sauvegarder",
-    "saving": "Sauvegarde..."
+    "saving": "Sauvegarde...",
+    "network_pending": "Synchronisation en attente",
+    "network_syncing": "Synchronisation en cours",
+    "network_failed": "Action requise pour synchroniser",
+    "network_storage_error": "Synchronisation indisponible"
   },
   "shopping-list": {
     "add_an_item": "Ajouter un article",
@@ -1213,6 +1217,14 @@
     "cancel_action_syncing": "Cette action est déjà en cours d’envoi. Attends la fin de la synchronisation.",
     "cancel_storage_error": "Impossible d’enregistrer l’annulation. Ta modification reste dans la file.",
     "cancel_error": "Impossible d’annuler cette action pour le moment.",
-    "cancel_cache_update_error": "La modification a été retirée. Recharge la liste pour actualiser les valeurs affichées."
+    "cancel_cache_update_error": "La modification a été retirée. Recharge la liste pour actualiser les valeurs affichées.",
+    "details": "Détails",
+    "open_details": "Voir les changements à synchroniser",
+    "pending_count_one": "{{count}} changement enregistré sur cet appareil, en attente de synchronisation.",
+    "pending_count_other": "{{count}} changements enregistrés sur cet appareil, en attente de synchronisation.",
+    "storage_error_description": "La file locale est indisponible. Les données conservées n’ont pas été effacées. Réessayez en rouvrant l’application.",
+    "retry": "Réessayer",
+    "retry_item": "Réessayer la synchronisation de {{name}}",
+    "retry_error": "Impossible de réessayer pour le moment. Votre modification reste conservée."
   }
 }

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { MutationQueue, type QueuedMutation, type SyncScope } from '../../application/sync/mutation-queue.js'
@@ -6,6 +7,7 @@ import { MutationQueueProvider } from '../../application/sync/mutation-queue-con
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { createFakeMutationQueueStorage } from '../../infrastructure/fake/fake-mutation-queue.js'
+import type { ApiError } from '../../domain/shared/api-error.js'
 import { Result } from '../../domain/shared/result.js'
 import { fakeShoppingItems } from '../../infrastructure/fake/fixtures/shopping-item.fixture.js'
 import { fakeSession } from '../../infrastructure/fake/fixtures/session.fixture.js'
@@ -16,14 +18,16 @@ import { PendingActionsScreen } from './pending-actions-screen.js'
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn(), canGoBack: () => true }, useFocusEffect: jest.fn(),
 }))
-jest.mock('../../application/shared/server-config.js', () => ({ getServerUrl: () => 'https://server.example' }))
+jest.mock('../../application/shared/server-config.js', () => ({ getServerUrl: () => 'https://server.example', onServerUrlChange: () => () => {} }))
+jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn(() => true) }))
 
 function setup(demo = false) {
   let disk: QueuedMutation[] = []
   let scope: SyncScope = { server: 'https://server.example', userId: fakeSession.user.id, householdId: fakeHousehold.id }
   const storage = demo ? createFakeMutationQueueStorage(scope.server) : { read: async () => disk, write: async (entries: QueuedMutation[]) => { disk = entries } }
+  const send = jest.fn(async (_entry: QueuedMutation): Promise<Result<unknown, ApiError>> => Result.ok(undefined))
   const queue = new MutationQueue(storage,
-    () => scope, async () => Result.ok(undefined), () => {}, () => {})
+    () => scope, send, () => {}, () => {})
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
   client.setQueryData(['session'], fakeSession)
   client.setQueryData(['household'], fakeHousehold)
@@ -35,7 +39,7 @@ function setup(demo = false) {
     <MutationQueueProvider queue={queue}><PendingActionsScreen /></MutationQueueProvider>
     </ConnectorProvider>
   </QueryClientProvider></ThemeProvider>)
-  return { queue, client, getSession, getHousehold, changeHousehold: () => {
+  return { queue, send, client, getSession, getHousehold, changeHousehold: () => {
     scope = { ...scope, householdId: 'other' }
     client.setQueryData(['household'], { ...fakeHousehold, id: 'other' })
   } }
@@ -92,7 +96,6 @@ test('fake mode previews waiting, retrying, deletion and blocked actions', async
   expect(screen.queryByText(/démo/i)).toBeNull()
 })
 
-
 test('retained failures stay separate after pending work drains, without promising automatic delivery', async () => {
   const s = setup(true)
   await waitFor(() => expect(screen.getByLabelText('Quantité : 1 L, puis 2 L.')).toBeTruthy())
@@ -106,7 +109,6 @@ test('retained failures stay separate after pending work drains, without promisi
   expect(screen.queryByTestId('queued-action-4')).toBeNull()
 })
 
-
 test('status filters retain counts and show every assignment without expanding a row', async () => {
   setup(true)
   await waitFor(() => expect(screen.getByRole('button', { name: 'Tout 12' })).toBeTruthy())
@@ -118,7 +120,6 @@ test('status filters retain counts and show every assignment without expanding a
   await fireEvent.press(screen.getByRole('button', { name: 'À envoyer 9' }))
   await waitFor(() => expect(screen.queryByTestId('queued-action-4')).toBeNull())
 })
-
 
 test('cancelling a change requires confirmation and updates scoped counts live', async () => {
   const s = setup(true)
@@ -133,4 +134,25 @@ test('cancelling a change requires confirmation and updates scoped counts live',
   expect(screen.getByRole('button', { name: 'Tout 11' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'À envoyer 8' })).toBeTruthy()
   expect(await s.queue.failures()).toHaveLength(3)
+})
+
+test('retry sends the saved action and remains disabled during an outage', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  await act(async () => {
+    await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+    await s.queue.flush()
+  })
+  const entry = (await s.queue.failures())[0]
+  await waitFor(() => expect(screen.getByTestId(`queued-retry-${entry.id}`)).toBeTruthy())
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  await act(async () => { await s.queue.flush() })
+  expect(screen.getByTestId(`queued-retry-${entry.id}`)).toBeDisabled()
+  await fireEvent.press(screen.getByTestId(`queued-retry-${entry.id}`))
+  expect(s.send).toHaveBeenCalledTimes(1)
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await act(async () => { await s.queue.flush() })
+  await fireEvent.press(screen.getByTestId(`queued-retry-${entry.id}`))
+  await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
+  expect(s.send).toHaveBeenCalledTimes(2)
 })

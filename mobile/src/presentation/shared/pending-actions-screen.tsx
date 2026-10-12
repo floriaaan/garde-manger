@@ -3,6 +3,8 @@ import { useMutation } from '@tanstack/react-query'
 import { ActivityIndicator, Animated, FlatList } from 'react-native'
 import { router } from 'expo-router'
 import { showToast } from '../../application/shared/toast.js'
+import { useConnectivity } from '../../application/shared/use-connectivity.js'
+import { isFakeConnector } from '../../application/shared/connector-mode.js'
 import { useQueuedActions } from '../../application/sync/mutation-queue-context.js'
 import type { QueuedMutation } from '../../application/sync/mutation-queue.js'
 import { formatCurrency, getLocale, t as translate, useTranslation } from '../../i18n/index.js'
@@ -37,8 +39,8 @@ function valueLabel(field: string, value: unknown, before = false): string {
   return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
-function ActionRow({ entry, index, onCancel, cancelling, disabled }: { entry: QueuedMutation; index: number;
-  onCancel: () => void; cancelling: boolean; disabled: boolean }) {
+function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retryDisabled, retrying }: { entry: QueuedMutation; index: number;
+  onCancel: () => void; cancelling: boolean; disabled: boolean; onRetry: () => void; retryDisabled: boolean; retrying: boolean }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
   const secondaryInk = palette.creamText
@@ -98,6 +100,12 @@ function ActionRow({ entry, index, onCancel, cancelling, disabled }: { entry: Qu
                 : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
             )}</Text> : null}
           </YStack>
+          {(entry.error && !['sync_conflict', 'product_not_found', 'shopping_item_not_found', 'unauthenticated'].includes(entry.error.type)) || (!entry.error && entry.attempts > 0) ?
+            <PillButton testID={`queued-retry-${entry.id}`} label={t('sync.retry')}
+              accessibilityLabel={t('sync.retry_item', { name: entry.base.name })}
+              palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge
+              disabled={retryDisabled} busy={retrying} onPress={onRetry}
+              icon={(color) => <RefreshIcon size={15} color={color} />} /> : null}
           <PillButton testID={`queued-cancel-${entry.id}`} label={t('sync.cancel')}
             accessibilityLabel={t('sync.cancel_named', { name: entry.base.name })}
             palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge onPress={onCancel}
@@ -113,6 +121,10 @@ export function PendingActionsScreen() {
   const palette = useSoftPalette()
   const closeHover = useHoverPress()
   const actions = useQueuedActions()
+  const online = useConnectivity(isFakeConnector)
+  const retry = useMutation({ mutationFn: actions.retry, networkMode: 'always',
+    onError: () => showToast(t('sync.retry_error'), 'error') })
+  const retryDisabled = online === false || actions.status.syncing || actions.status.storageUnavailable || retry.isPending
   const [selected, setSelected] = useState<QueuedMutation | null>(null)
   const cancellation = useMutation({
     mutationFn: actions.cancel, networkMode: 'always',
@@ -175,7 +187,9 @@ export function PendingActionsScreen() {
             color={palette.inkSecondary} marginBottom="$2">{t('sync.needs_attention')}</Text> : null}
           ItemSeparatorComponent={() => <YStack height={24} />}
           renderItem={({ item, index }) => <ActionRow entry={item} index={index}
-            onCancel={() => setSelected(item)} disabled={cancellation.isPending}
+            onCancel={() => setSelected(item)} disabled={cancellation.isPending || retry.isPending}
+            onRetry={() => { if (!retryDisabled) retry.mutate(item.id) }} retryDisabled={retryDisabled || cancellation.isPending}
+            retrying={retry.isPending && retry.variables === item.id}
             cancelling={cancellation.isPending && cancellation.variables === item.id} />}
           ListEmptyComponent={<YStack paddingVertical="$6" paddingHorizontal="$2" gap="$3" alignItems="center">
             {actions.isPending ? <SkeletonList palette={palette} rows={3} label={t('sync.loading')} /> : <Text fontSize={16} fontWeight="700" textAlign="center" color={palette.ink}>
