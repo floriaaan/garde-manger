@@ -14,6 +14,16 @@ jest.mock('../auth/auth-client.js', () => ({
 
 const originalFetch = globalThis.fetch
 
+test.each([408, 429, 500, 503])('HTTP %s remains retryable even with a non-JSON proxy response', async (status) => {
+  globalThis.fetch = jest.fn().mockResolvedValue({ status, ok: false, json: async () => { throw new SyntaxError('HTML') } })
+  expect(await apiFetch('/api/products')).toEqual({ ok: false, error: { type: 'temporary_error', message: expect.any(String) } })
+})
+
+test('a malformed permanent refusal is not mistaken for a retryable network failure', async () => {
+  globalThis.fetch = jest.fn().mockResolvedValue({ status: 422, ok: false, json: async () => { throw new SyntaxError('HTML') } })
+  expect(await apiFetch('/api/products')).toEqual({ ok: false, error: { type: 'invalid_response', message: expect.any(String) } })
+})
+
 afterEach(() => {
   globalThis.fetch = originalFetch
   queryClient.clear()

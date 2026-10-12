@@ -128,6 +128,9 @@ export async function apiFetch<T>(
   init?: RequestInit,
   context?: ActionContext,
 ): Promise<Result<T, ApiError>> {
+  let status = 0
+  const temporaryError = () => Result.err({ type: 'temporary_error', message: 'Le serveur est temporairement indisponible.' })
+  const isTemporary = () => status >= 500 || status === 408 || status === 429
   try {
     const { response, span } = await tracedFetch(
       path,
@@ -139,6 +142,7 @@ export async function apiFetch<T>(
       },
       context,
     )
+    status = response.status
     // A 204 always means "success, no body" — nothing to parse.
     if (response.status === 204) return Result.ok(undefined as T)
     const body = await readResponse(response, span, context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`)
@@ -150,10 +154,15 @@ export async function apiFetch<T>(
         ...(span ? { span } : null),
       })
       if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
-      return Result.err(error)
+      return isTemporary() ? temporaryError() : Result.err(error)
     }
     return Result.ok(body as T)
   } catch {
+    // Proxies may return HTML for outages; JSON parsing must not hide the status.
+    if (isTemporary()) return temporaryError()
+    if (status >= 400 && status < 500) {
+      return Result.err({ type: 'invalid_response', message: 'Le serveur a refusé cette action.' })
+    }
     return networkErrorResult<T>()
   }
 }

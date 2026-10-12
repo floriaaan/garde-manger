@@ -15,7 +15,7 @@ import { NetworkStatusBanner } from '../presentation/shared/network-status-banne
 import { ErrorBoundary } from '../presentation/shared/error-boundary.js'
 import { ConnectorProvider } from '../application/shared/connector-context.js'
 import { queryClient } from '../application/shared/query-client.js'
-import { createConnector } from '../../providers/create-connector.js'
+import { createConnector, startConnectorSync } from '../../providers/create-connector.js'
 import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
 import { wireFocusManager } from '../application/shared/wire-focus-manager.js'

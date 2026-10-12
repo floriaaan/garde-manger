@@ -4,4 +4,5 @@ import type { UpdateShoppingItemInput } from '../../domain/shopping-list/shoppin
 export const useUpdateShoppingItemMutation = defineMutation(
   (connector, variables: { itemId: string; patch: UpdateShoppingItemInput }) =>
     connector.updateShoppingItem(variables.itemId, variables.patch),
+  { networkMode: 'always' },
 )
