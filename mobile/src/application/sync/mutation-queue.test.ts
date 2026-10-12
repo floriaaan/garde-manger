@@ -495,3 +495,32 @@ test('idle or blocked replay preserves the observable snapshot without notifying
   expect(changed).not.toHaveBeenCalled()
   stop()
 })
+
+test.each(['server', 'userId', 'householdId'] as const)('switching %s during replay ignores the old response and stops the next write', async (key) => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { checked: true })
+  s.changed.mockClear()
+  let finish!: () => void
+  const response = new Promise<void>((resolve) => { finish = resolve })
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    started()
+    await response
+    return Result.ok(undefined)
+  })
+  const replay = s.queue.flush()
+  await sending
+  s.setScope({ ...initialScope, [key]: 'different' })
+  finish()
+  await replay
+  expect(s.send).toHaveBeenCalledTimes(1)
+  expect(s.changed).not.toHaveBeenCalled()
+  expect(s.disk()).toHaveLength(1)
+  expect(await s.queue.pending()).toEqual([])
+  s.setScope(initialScope)
+  await s.create().flush()
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(s.disk()).toEqual([])
+})

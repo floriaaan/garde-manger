@@ -82,6 +82,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:offline": "jest --ci --runInBand --runTestsByPath src/application/sync/offline-reliability.test.ts src/application/sync/mutation-queue.test.ts src/application/sync/offline-connector.test.ts src/application/sync/wire-mutation-queue.test.ts src/application/shared/offline-cache.test.ts src/application/shared/query-freshness.test.tsx src/application/shared/use-connectivity.test.tsx src/application/identity/session.query.test.tsx src/infrastructure/http/http-client.test.ts src/infrastructure/http/http-fridge-connector.test.ts src/infrastructure/storage/offline-cache-storage.test.ts src/infrastructure/storage/mutation-queue-storage.test.ts",
     "boundaries": "depcruise --config .dependency-cruiser.cjs src"
   },
   "private": true,

@@ -135,3 +135,6 @@ row (or its idle preparation) displays item progress. Status announcements are
 phase-based; counters stay readable without announcing every acknowledgement.
 Idle/backoff/conflict-only replay does not notify observers, and the local action
 list refetches only when its entry references change, not for sending-state changes.
+
+See [offline reliability](offline-reliability.md) for the focused CI suite,
+coverage map, conflict contract and iOS/Android device QA matrix.
