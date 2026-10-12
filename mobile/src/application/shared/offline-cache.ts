@@ -12,8 +12,8 @@ import { hasHouseholdMembership, isValidHousehold, isValidSession } from './offl
 
 export interface OfflineCacheStorage {
   read(): Promise<string | null>
-  write(value: string): void
-  clear(): void
+  write(value: string): Promise<void> | void
+  clear(): Promise<void> | void
 }
 
 const VERSION = 2
@@ -51,15 +51,24 @@ export async function startOfflineCache(
   }
   let generation = 0
   let changingContext = false
+  let pendingStorage = Promise.resolve()
+  function enqueueStorage(action: () => Promise<void> | void): Promise<void> {
+    const operation = pendingStorage.then(action)
+    pendingStorage = operation.catch(() => {})
+    return operation
+  }
   function clearStorage() {
-    try { storage.clear() } catch (error) { reportError(error) }
+    // An invalidation must complete after any asynchronous write already in flight.
+    return enqueueStorage(() => storage.clear()).catch(reportError)
   }
   const asyncPersister = createAsyncStoragePersister({
     throttleTime: 100,
     storage: {
       getItem: () => storage.read(),
       // Throttled writes from a previous context must never recreate its snapshot.
-      setItem: (_key, value) => { if (JSON.parse(value).generation === generation) storage.write(value) },
+      setItem: (_key, value) => enqueueStorage(() => {
+        if (JSON.parse(value).generation === generation) return storage.write(value)
+      }),
       removeItem: clearStorage,
     },
     retry: ({ error }) => { reportError(error); return undefined },

@@ -1010,6 +1010,8 @@
     "unavailable": "unavailable"
   },
   "shared": {
+    "network_offline": "Offline · Previously loaded data remains available.",
+    "network_restored": "Connection restored",
     "cancel": "Cancel",
     "scan_a_product_or_receipt": "Scan a product or receipt",
     "scan_the_fridge_a_product_or_a_receipt": "Scan the fridge, a product or a receipt",

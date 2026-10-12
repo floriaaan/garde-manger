@@ -15,9 +15,10 @@ lists (including filters), product details, outcome statistics and shopping
 items, preserving each read's update timestamp. Only previously loaded data is
 available offline. Images are not downloaded by this cache.
 
-Native storage uses an app document file through the existing Expo FileSystem
-dependency; web uses localStorage. The file is private to the app but is not an
-encrypted credential store. Authentication cookies/tokens, passwords, invite
+Storage uses `@react-native-async-storage/async-storage` on native and web,
+with its Expo SDK-compatible version. Reads, writes and removal are asynchronous.
+Writes/removals are serialized so sign-out cannot be followed by a stale write
+that was already in flight. This is an unencrypted cache, not a credential store. Authentication cookies/tokens, passwords, invite
 codes, provider credentials, Home Assistant configuration, linked accounts,
 receipt/scan payloads, jobs and mutation state must never enter this snapshot.
 Fake/demo mode does not read or write the production snapshot.
@@ -40,3 +41,8 @@ snapshots are discarded, never partially migrated. Any incompatible change to
 the read DTOs or snapshot layout must increment the version; the server then
 repopulates it through normal reads. Future migrations must validate the full
 context before restoring data.
+
+A persistent, translated status banner reports loss of device connectivity and
+shows “Connection restored” for 3.5 seconds after reconnecting. It observes
+Expo Network events and refreshes on foreground; an unknown state is silent.
+It reports device connectivity, not backend health or completed synchronization.

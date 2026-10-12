@@ -10,6 +10,7 @@ import { AuthBackgroundFrame } from '../presentation/identity/auth-background-fr
 import { ConfettiHost } from '../presentation/shared/confetti.js'
 import { ThemeProvider } from '../presentation/shared/theme-provider.js'
 import { ToastHost } from '../presentation/shared/toast.js'
+import { NetworkStatusBanner } from '../presentation/shared/network-status-banner.js'
 import { ErrorBoundary } from '../presentation/shared/error-boundary.js'
 import { ConnectorProvider } from '../application/shared/connector-context.js'
 import { queryClient } from '../application/shared/query-client.js'
@@ -85,6 +86,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
+        <NetworkStatusBanner />
         <QueryClientProvider client={queryClient}>
           <ConnectorProvider connector={connector}>
             <ErrorBoundary>

@@ -18,8 +18,8 @@ beforeEach(() => {
   stops = []
   storage = {
     read: jest.fn(async () => value),
-    write: jest.fn((next) => { value = next }),
-    clear: jest.fn(() => { value = null }),
+    write: jest.fn(async (next) => { value = next }),
+    clear: jest.fn(async () => { value = null }),
   }
 })
 
@@ -106,7 +106,7 @@ test.each(['sign-out', 'clear', 'household', 'account', 'server'])('%s cancels o
   if (kind === 'household') cache.client.setQueryData(['household'], null)
   if (kind === 'account') cache.client.setQueryData(['session'], { user: { ...fakeSession.user, id: 'other-user' } })
   if (kind === 'server') cache.changeServer('https://other.example.com')
-  expect(value).toBeNull()
+  expect(cache.client.getQueryData(['products', {}])).toBeUndefined()
   resolve(fakeProducts)
   await request
   await jest.advanceTimersByTimeAsync(1000)
@@ -128,8 +128,8 @@ test('a new household and a new server persist only their own reads', async () =
 
 test('unavailable storage does not block boot or online reads', async () => {
   storage.read = async () => { throw new Error('unavailable') }
-  storage.write = () => { throw new Error('full') }
-  storage.clear = () => { throw new Error('unavailable') }
+  storage.write = async () => { throw new Error('full') }
+  storage.clear = async () => { throw new Error('unavailable') }
   const { client } = await boot()
   await expect(load(client)).resolves.toBeUndefined()
   expect(client.getQueryData(['products', {}])).toEqual(fakeProducts)
@@ -142,7 +142,7 @@ test.each(['sign-out', 'server', 'stop'])('a throttled write cannot recreate old
   cache.client.setQueryData(['shopping-items'], [])
   if (kind === 'sign-out') cache.client.setQueryData(['session'], null)
   if (kind === 'server') cache.changeServer('https://other.example.com')
-  if (kind === 'stop') { cache.stop(); storage.clear() }
+  if (kind === 'stop') { cache.stop(); await storage.clear() }
   await jest.advanceTimersByTimeAsync(1000)
   expect(value).toBeNull()
 })
@@ -165,5 +165,27 @@ test('the previous custom snapshot schema is discarded', async () => {
   value = JSON.stringify({ version: 1, server: SERVER, session: fakeSession, household: fakeHousehold, queries: [] })
   const { client } = await boot()
   expect(client.getQueryData(['session'])).toBeUndefined()
+  expect(value).toBeNull()
+})
+
+
+test.each(['sign-out', 'server', 'household'])('removal waits for an in-flight asynchronous write on %s', async (kind) => {
+  const cache = await boot()
+  await load(cache.client)
+  let finishWrite!: () => void
+  storage.write = jest.fn((next) => new Promise<void>((done) => {
+    finishWrite = () => { value = next; done() }
+  }))
+  jest.mocked(storage.clear).mockClear()
+  cache.client.setQueryData(['shopping-items'], [])
+  await jest.advanceTimersByTimeAsync(0)
+  expect(storage.write).toHaveBeenCalled()
+  if (kind === 'sign-out') cache.client.setQueryData(['session'], null)
+  if (kind === 'server') cache.changeServer('https://other.example.com')
+  if (kind === 'household') cache.client.setQueryData(['household'], null)
+  expect(storage.clear).not.toHaveBeenCalled()
+  finishWrite()
+  await jest.advanceTimersByTimeAsync(1000)
+  expect(storage.clear).toHaveBeenCalled()
   expect(value).toBeNull()
 })
