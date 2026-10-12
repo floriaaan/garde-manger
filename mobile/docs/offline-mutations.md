@@ -5,16 +5,20 @@ quantity changes), shopping-item deletions, product edits, and product deletions
 These hooks run with `networkMode: 'always'`, so local actions remain available
 when TanStack Query knows the device is disconnected. Fake/demo mode is unchanged.
 
-The queue is stored in the native document directory or browser localStorage.
-Storage errors refuse the action instead of pretending it was saved. Native
-writes use a temporary file; startup recovers that file if a replacement was
-interrupted. A corrupt queue is preserved and reported, never silently reset.
+The queue reuses the local-first AsyncStorage adapter on native and web, under
+`garde-manger.mutation-queue-v1`, separate from the read-cache snapshot. Storage
+errors refuse the action instead of pretending it was saved. A corrupt queue
+is preserved and reported, never silently reset.
 Each entry includes its server, user, household, original row, absolute patch
 (or deletion), retry count, and retry deadline. Pending rows are restored into
-the query cache once session and household are available, and overlaid on reads.
+the query cache after the existing read-cache restoration and before query
+observers mount. Scope validation reuses the cache's session, household, and
+membership checks. Pending changes are overlaid on later reads.
 
 Replay runs serially on reconnect, foreground, session/household restoration,
-and a five-second foreground timer. Temporary transport errors and HTTP
+and a five-second foreground timer. Connectivity comes from the existing Expo
+Network hook, which also handles foreground refresh and stale network events.
+The debug simulation remains visual only. Temporary transport errors and HTTP
 408/429/5xx retry with exponential backoff capped at five minutes. Later actions
 on the same entity wait behind a retrying action. Unrelated actions can continue
 after a permanent refusal, which is saved and shown in a toast; the affected row
@@ -29,9 +33,11 @@ cannot create duplicate entities. Failed entries remain for diagnosis and are
 not automatically retried; the user can submit a corrected action.
 
 Creation, imports, product outcomes, scans, and AI jobs remain online operations.
-Full offline cold starts (including session/household and unrelated cached rows)
-depend on #82. Freshness and conflict policy belong to #83/#85, and persistent
-sync status UI belongs to #86.
+Full offline cold starts reuse the local-first engine already on `develop`:
+session, household, and unrelated cached rows stay in its read snapshot. Failed
+household reads reject so TanStack retains that snapshot instead of saving an
+empty list. Read freshness, conflict policy, and persistent sync status remain
+separate concerns.
 
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,

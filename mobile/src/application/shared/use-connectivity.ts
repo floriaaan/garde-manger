@@ -5,7 +5,7 @@ import { getTelemetry } from './telemetry.js'
 import { useOfflineSimulation } from './connectivity-simulation.js'
 
 /** Unknown stays unknown; a failed device-state read is not evidence of a lost connection. */
-export function useConnectivity(): boolean | undefined {
+export function useConnectivity(includeSimulation = true): boolean | undefined {
   const [online, setOnline] = useState<boolean>()
   const simulatedOffline = useOfflineSimulation()
   useEffect(() => {
@@ -34,5 +34,6 @@ export function useConnectivity(): boolean | undefined {
     void refresh()
     return () => { active = false; network.remove(); foreground.remove() }
   }, [])
-  return simulatedOffline ? false : online
+  // Transport consumers use the real state; debug simulation remains visual only.
+  return includeSimulation && simulatedOffline ? false : online
 }

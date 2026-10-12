@@ -5,8 +5,10 @@ mounting query observers. The official `@tanstack/react-query-persist-client`
 restore/subscribe APIs and `@tanstack/query-async-storage-persister` handle
 hydration, dehydration and throttled storage writes. Normal TanStack Query
 revalidation follows hydration;
-failed requests keep the restored data. This cache does not queue mutations or
-grant server permissions: every write still requires server authorization.
+failed requests keep the restored data. The read snapshot does not contain
+mutations or grant server permissions. The separate mutation queue described
+in [offline-mutations.md](offline-mutations.md) restores pending edits after this
+snapshot and replays them with server authorization on reconnect.
 
 The version 2 snapshot contains the last active server URL, account ID and
 household ID. Identity fields are projected explicitly, and the account must
@@ -20,7 +22,8 @@ with its Expo SDK-compatible version. Reads, writes and removal are asynchronous
 Writes/removals are serialized so sign-out cannot be followed by a stale write
 that was already in flight. This is an unencrypted cache, not a credential store. Authentication cookies/tokens, passwords, invite
 codes, provider credentials, Home Assistant configuration, linked accounts,
-receipt/scan payloads, jobs and mutation state must never enter this snapshot.
+receipt/scan payloads, jobs and mutation state must never enter this read snapshot;
+queued mutations use a separate AsyncStorage key through the same adapter.
 Fake/demo mode does not read or write the production snapshot.
 
 Only one active context is retained. Sign-out, confirmed session absence,

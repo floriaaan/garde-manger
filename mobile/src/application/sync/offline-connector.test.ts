@@ -8,6 +8,7 @@ import { fakeHousehold } from '../../infrastructure/fake/fixtures/household.fixt
 import { Result } from '../../domain/shared/result.js'
 import { subscribeToast } from '../shared/toast.js'
 import type { QueuedMutation } from './mutation-queue.js'
+import { startOfflineCache } from '../shared/offline-cache.js'
 
 jest.mock('../shared/server-config.js', () => ({ getServerUrl: () => 'https://server.example' }))
 
@@ -63,6 +64,48 @@ test('offline location changes move a product between filtered cached lists', as
   await s.connector.updateProduct(product.id, { location: 'freezer' })
   expect(queryClient.getQueryData(['products', { location: 'fridge' }])).toEqual([])
   expect(queryClient.getQueryData(['products', { location: 'freezer' }])).toEqual([{ ...product, location: 'freezer' }])
+})
+
+test('cold start restores the local-first read snapshot before applying durable pending mutations', async () => {
+  jest.useFakeTimers()
+  const s = setup()
+  let snapshot: string | null = null
+  const cacheStorage = {
+    read: async () => snapshot,
+    write: async (value: string) => { snapshot = value },
+    clear: async () => { snapshot = null },
+  }
+  const stops: (() => void)[] = []
+  try {
+    const first = await startOfflineCache(queryClient, cacheStorage, 'https://server.example', jest.fn())
+    stops.push(first.stop)
+    // Simulate a crash before the read persister saves the newest optimistic change.
+    queryClient.setQueryData(['shopping-items'], fakeShoppingItems)
+    await jest.advanceTimersByTimeAsync(1000)
+    first.stop()
+    await s.connector.updateShoppingItem(fakeShoppingItems[0].id, { checked: true })
+    queryClient.clear()
+    const second = await startOfflineCache(queryClient, cacheStorage, 'https://server.example', jest.fn())
+    stops.push(second.stop)
+    const restarted = withOfflineMutations(new FakeFridgeConnector(), s.storage)
+    await restarted.restorePending()
+    expect(queryClient.getQueryData(['session'])).toEqual(fakeSession)
+    expect(queryClient.getQueryData(['shopping-items'])).toEqual(fakeShoppingItems.map((row, index) =>
+      index === 0 ? { ...row, checked: true } : row,
+    ))
+    expect(s.sendItem).not.toHaveBeenCalled()
+  } finally {
+    stops.forEach((stop) => stop())
+    jest.useRealTimers()
+  }
+})
+
+test('pending writes are refused when the cached account is not a household member', async () => {
+  const s = setup()
+  queryClient.setQueryData(['household'], { ...fakeHousehold, members: [] })
+  const result = await s.connector.updateShoppingItem(fakeShoppingItems[0].id, { checked: true })
+  expect(result.ok).toBe(false)
+  expect(s.disk()).toEqual([])
 })
 
 test('a rejected deletion restores its row, reports the failure, and retains it for diagnosis', async () => {

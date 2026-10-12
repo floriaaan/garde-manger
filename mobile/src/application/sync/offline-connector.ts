@@ -7,6 +7,7 @@ import { Result } from '../../domain/shared/result.js'
 import { queryClient } from '../shared/query-client.js'
 import { getServerUrl } from '../shared/server-config.js'
 import { showToast } from '../shared/toast.js'
+import { hasHouseholdMembership, isValidHousehold, isValidSession } from '../shared/offline-cache/verifications.js'
 import { MutationQueue, sameScope, type QueueStorage, type QueuedMutation } from './mutation-queue.js'
 
 type ProductFilters = Parameters<FridgeConnector['getProducts']>[0]
@@ -39,9 +40,9 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
     }
   }
   const scope = () => {
-    const session = queryClient.getQueryData<Session | null>(['session'])
-    const household = queryClient.getQueryData<Household | null>(['household'])
-    return session?.user.id && household?.id
+    const session = queryClient.getQueryData<Session>(['session'])
+    const household = queryClient.getQueryData<Household>(['household'])
+    return isValidSession(session) && isValidHousehold(household) && hasHouseholdMembership(session, household)
       ? { server: getServerUrl(), userId: session.user.id, householdId: household.id }
       : null
   }

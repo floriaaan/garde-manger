@@ -1,46 +1,30 @@
-import { Platform } from 'react-native'
-import * as FileSystem from 'expo-file-system/legacy'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { mutationQueueStorage } from './mutation-queue-storage.js'
 
-jest.mock('expo-file-system/legacy', () => ({
-  documentDirectory: 'file:///documents/',
-  getInfoAsync: jest.fn(), readAsStringAsync: jest.fn(),
-  writeAsStringAsync: jest.fn(), moveAsync: jest.fn(),
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn() },
 }))
 
-const originalOS = Platform.OS
-afterEach(() => { Platform.OS = originalOS; jest.resetAllMocks() })
+beforeEach(() => jest.resetAllMocks())
 
-test('native queue replacement writes the temporary file before moving it', async () => {
-  Platform.OS = 'ios'
-  jest.mocked(FileSystem.writeAsStringAsync).mockResolvedValue(undefined)
-  jest.mocked(FileSystem.moveAsync).mockResolvedValue(undefined)
-  await mutationQueueStorage.write([])
-  expect(FileSystem.writeAsStringAsync).toHaveBeenCalledWith('file:///documents/household-mutation-queue-v1.json.tmp', '[]')
-  expect(FileSystem.moveAsync).toHaveBeenCalledWith({ from: 'file:///documents/household-mutation-queue-v1.json.tmp', to: 'file:///documents/household-mutation-queue-v1.json' })
-  expect(jest.mocked(FileSystem.writeAsStringAsync).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(FileSystem.moveAsync).mock.invocationCallOrder[0])
-})
-
-test('restart recovers a fully written temp file after an interrupted native replacement', async () => {
-  Platform.OS = 'ios'
-  jest.mocked(FileSystem.getInfoAsync).mockResolvedValueOnce({ exists: false, uri: '', isDirectory: false })
-  jest.mocked(FileSystem.getInfoAsync).mockResolvedValueOnce({ exists: true, uri: '', isDirectory: false, size: 2, modificationTime: 0 })
-  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue('[]')
+test('uses the local-first storage adapter with a separate mutation key', async () => {
+  jest.mocked(AsyncStorage.getItem).mockResolvedValue('[]')
   expect(await mutationQueueStorage.read()).toEqual([])
-  expect(FileSystem.readAsStringAsync).toHaveBeenCalledWith('file:///documents/household-mutation-queue-v1.json.tmp')
+  await mutationQueueStorage.write([])
+  expect(AsyncStorage.getItem).toHaveBeenCalledWith('garde-manger.mutation-queue-v1')
+  expect(AsyncStorage.setItem).toHaveBeenCalledWith('garde-manger.mutation-queue-v1', '[]')
+  expect(AsyncStorage.removeItem).not.toHaveBeenCalled()
 })
 
-test('corrupt storage is reported without overwriting the file', async () => {
-  Platform.OS = 'android'
-  jest.mocked(FileSystem.getInfoAsync).mockResolvedValue({ exists: true, uri: '', isDirectory: false, size: 2, modificationTime: 0 })
-  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue('{broken')
+test('corrupt storage is reported without overwriting or removing queued actions', async () => {
+  jest.mocked(AsyncStorage.getItem).mockResolvedValue('{broken')
   await expect(mutationQueueStorage.read()).rejects.toThrow()
-  expect(FileSystem.writeAsStringAsync).not.toHaveBeenCalled()
+  expect(AsyncStorage.setItem).not.toHaveBeenCalled()
+  expect(AsyncStorage.removeItem).not.toHaveBeenCalled()
 })
 
 test('a storage failure propagates instead of confirming a durable write', async () => {
-  Platform.OS = 'android'
-  jest.mocked(FileSystem.writeAsStringAsync).mockRejectedValue(new Error('Full disk'))
+  jest.mocked(AsyncStorage.setItem).mockRejectedValue(new Error('Full disk'))
   await expect(mutationQueueStorage.write([])).rejects.toThrow('Full disk')
-  expect(FileSystem.moveAsync).not.toHaveBeenCalled()
 })

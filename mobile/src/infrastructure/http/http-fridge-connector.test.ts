@@ -86,7 +86,7 @@ test('signOut() swallows an authClient failure and reports it instead of throwin
   spy.mockRestore()
 })
 
-test('getProducts() returns [] when the request fails', async () => {
+test.each(['products', 'shopping-items', 'product'] as const)('%s read failure rejects so local-first data is retained', async (read) => {
   globalThis.fetch = jest.fn().mockResolvedValue({
     status: 500,
     ok: false,
@@ -94,7 +94,9 @@ test('getProducts() returns [] when the request fails', async () => {
   }) as unknown as typeof fetch
 
   const connector = new HttpFridgeConnector()
-  expect(await connector.getProducts()).toEqual([])
+  const request = read === 'products' ? connector.getProducts()
+    : read === 'shopping-items' ? connector.getShoppingItems() : connector.getProduct('some-id')
+  await expect(request).rejects.toThrow('Le serveur est temporairement indisponible.')
 
   globalThis.fetch = originalFetch
 })
@@ -115,6 +117,15 @@ test('getProducts() builds the query string from location/expiringWithinDays', a
     expect.anything(),
   )
 
+  globalThis.fetch = originalFetch
+})
+
+test('a confirmed missing product still returns null', async () => {
+  globalThis.fetch = jest.fn().mockResolvedValue({
+    status: 404, ok: false,
+    json: async () => ({ error: { type: 'product_not_found', message: 'Gone' } }),
+  }) as unknown as typeof fetch
+  expect(await new HttpFridgeConnector().getProduct('gone')).toBeNull()
   globalThis.fetch = originalFetch
 })
 
