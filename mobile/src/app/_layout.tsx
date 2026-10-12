@@ -18,6 +18,7 @@ import { startTelemetry } from '../../providers/start-telemetry.js'
 import { wireTelemetry } from '../../providers/wire-telemetry.js'
 import { wireFocusManager } from '../application/shared/wire-focus-manager.js'
 import { loadStoredServerUrl } from '../application/shared/server-config.js'
+import { startAppOfflineCache } from '../../providers/start-offline-cache.js'
 
 // Module load, not an effect: this only assigns a reference (see
 // `wire-telemetry.ts`) — nothing to defer past the first frame, and every
@@ -58,7 +59,13 @@ export default function RootLayout() {
   // against the default URL on a device that chose a different server.
   const [serverReady, setServerReady] = useState(false)
   useEffect(() => {
-    loadStoredServerUrl().then(() => setServerReady(true))
+    let disposed = false
+    let cleanup: (() => void) | undefined
+    loadStoredServerUrl().then(startAppOfflineCache).then((stop) => {
+      if (disposed) stop()
+      else { cleanup = stop; setServerReady(true) }
+    })
+    return () => { disposed = true; cleanup?.() }
   }, [])
 
   // A PDF shared into the app from another app (Mail, Files…) lands here as
