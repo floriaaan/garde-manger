@@ -1,12 +1,25 @@
-import { act, render, screen } from '@testing-library/react-native'
+import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { Animated } from 'react-native'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { ThemeProvider } from './theme-provider.js'
 import { NetworkStatusBanner } from './network-status-banner.js'
+import { useReduceMotion } from './hover.js'
 
 jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn() }))
+jest.mock('./hover.js', () => ({ useReduceMotion: jest.fn() }))
 
-beforeEach(() => { jest.useFakeTimers(); jest.mocked(useConnectivity).mockReturnValue(undefined) })
-afterEach(() => jest.useRealTimers())
+beforeEach(() => {
+  jest.useFakeTimers()
+  jest.mocked(useConnectivity).mockReturnValue(undefined)
+  jest.mocked(useReduceMotion).mockReturnValue(false)
+})
+afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers() })
+
+async function measure(height = 110) {
+  await fireEvent(screen.getByTestId('network-status-content'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 390, height } },
+  })
+}
 
 test('unknown and initial online states are silent; offline persists and recovery dismisses', async () => {
   const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
@@ -17,13 +30,17 @@ test('unknown and initial online states are silent; offline persists and recover
   expect(screen.queryByTestId('network-status-banner')).toBeNull()
   jest.mocked(useConnectivity).mockReturnValue(false)
   await view.rerender(ui())
+  await measure()
   expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   await act(() => { jest.advanceTimersByTime(10000) })
   expect(screen.getByTestId('network-status-banner')).toBeTruthy()
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
+  await measure(88)
   expect(screen.getByRole('status')).toHaveTextContent('Connexion rétablie')
   await act(() => { jest.advanceTimersByTime(3500) })
+  expect(screen.getByTestId('network-status-banner')).toBeTruthy()
+  await act(() => { jest.advanceTimersByTime(250) })
   expect(screen.queryByTestId('network-status-banner')).toBeNull()
   await view.unmount()
 })
@@ -32,6 +49,7 @@ test('an offline cold start alerts immediately; another outage cancels recovery 
   jest.mocked(useConnectivity).mockReturnValue(false)
   const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
   const view = await render(ui())
+  await measure()
   expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
@@ -40,5 +58,40 @@ test('an offline cold start alerts immediately; another outage cancels recovery 
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(5000) })
   expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  await view.unmount()
+})
+
+test('a new outage interrupts the closing animation without unmounting the alert', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
+  const view = await render(ui())
+  await measure()
+  await act(() => { jest.advanceTimersByTime(300) })
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await view.rerender(ui())
+  await measure(88)
+  await act(() => { jest.advanceTimersByTime(3500) })
+  await act(() => { jest.advanceTimersByTime(90) })
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  await view.rerender(ui())
+  await measure()
+  await act(() => { jest.advanceTimersByTime(1000) })
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  await view.unmount()
+})
+
+test('Reduce Motion makes opening and closing immediate after measurement', async () => {
+  jest.mocked(useReduceMotion).mockReturnValue(true)
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  const timing = jest.spyOn(Animated, 'timing')
+  const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
+  const view = await render(ui())
+  await measure()
+  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await view.rerender(ui())
+  await act(() => { jest.advanceTimersByTime(3500) })
+  expect(screen.queryByTestId('network-status-banner')).toBeNull()
+  expect(timing).not.toHaveBeenCalled()
   await view.unmount()
 })
