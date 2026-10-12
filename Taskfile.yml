@@ -191,6 +191,7 @@ tasks:
       - task: mobile:lint
       - task: mobile:typecheck
       # - task: mobile:test - Disabled for now - cause : When testing, code that causes React state updates should be wrapped into act(...):
+      - pnpm --filter {{.MOBILE}} run test:offline
       - task: mobile:boundaries
 
   landing:dev:

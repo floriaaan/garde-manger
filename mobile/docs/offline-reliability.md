@@ -3,8 +3,9 @@
 ## Automated coverage
 
 The focused command is `pnpm --filter garde-manger-mobile run test:offline`.
-The `mobile-check` CI job runs it explicitly because `task mobile:check`
-currently skips the general mobile test suite. No backend, device, credentials,
+`task mobile:check` includes this focused suite, so the `mobile-check` CI job
+runs it through the same command. The general mobile test suite remains
+disabled in that task. No backend, device, credentials,
 or real network connection is required: HTTP responses and transport failures
 are injected at `fetch`, storage round-trips through JSON, and timers/reconnect
 signals are controlled by the tests.

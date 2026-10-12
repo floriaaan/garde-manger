@@ -106,9 +106,6 @@ jobs:
       - name: Run checks (lint + typecheck + tests + boundary lint)
         run: task mobile:check
 
-      - name: Run deterministic offline and reconnect regression tests
-        run: pnpm --filter garde-manger-mobile run test:offline
-
   landing-check:
     name: Landing — typecheck, tests, boundaries
     runs-on: ubuntu-latest
