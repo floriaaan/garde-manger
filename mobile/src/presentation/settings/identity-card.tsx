@@ -45,6 +45,7 @@ export function IdentityCard({
   onPress,
   accessibilityLabel,
   emphasizeLabel = false,
+  subtleShadow = false,
 }: {
   testID?: string
   bg: string
@@ -67,6 +68,8 @@ export function IdentityCard({
   accessibilityLabel?: string
   /** Navigation cards emphasize their destination rather than a generic status. */
   emphasizeLabel?: boolean
+  /** Quiet grouping on the pending-actions surface; existing cards keep their elevation. */
+  subtleShadow?: boolean
 }) {
   const hover = useHoverPress()
   // Wider than StatCard's sets, because these cards are wider — a 26pt
@@ -84,7 +87,7 @@ export function IdentityCard({
       padding="$4"
       gap="$3"
       overflow="hidden"
-      style={{ ...radii, shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 3 }}
+      style={{ ...radii, shadowColor: palette.shadowCool, shadowOffset: { width: 0, height: subtleShadow ? 6 : 10 }, shadowOpacity: subtleShadow ? 0.06 : 0.1, shadowRadius: subtleShadow ? 12 : 18, elevation: subtleShadow ? 1 : 3 }}
     >
       {/* A flat pastel fill under flat pastel fills is where "terne" came
           from — the same top-light sheen `welcome-screen.tsx`'s vignette and

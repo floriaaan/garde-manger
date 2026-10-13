@@ -66,11 +66,8 @@ export interface TakeOut {
 }
 
 /**
- * `updatedAt` is carried for DTO purposes only — `update()` stamps it from a
- * caller-supplied `Date` (the use-case passes `Clock.now()`) so the response
- * of the same request that triggered the update reflects it immediately;
- * the DB row's real value (Lucid's `autoUpdate`, cf. product.lucid.ts,
- * Task 5) is the source of truth on every subsequent read.
+ * PATCH persists the monotonically advancing `updatedAt` through an atomic
+ * conditional update. It is also the mobile queue's optimistic concurrency token.
  */
 export class Product extends AggregateRoot<string> {
   private props: ProductProps

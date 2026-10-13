@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { router } from 'expo-router'
 import * as Reanimated from 'react-native-reanimated'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { ThemeProvider } from './theme-provider.js'
@@ -7,6 +8,8 @@ import { useReduceMotion } from './hover.js'
 
 jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn() }))
 jest.mock('./hover.js', () => ({ useReduceMotion: jest.fn() }))
+
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }))
 
 Reanimated.setUpTests()
 
@@ -33,13 +36,13 @@ test('unknown and initial online states are silent; offline persists and recover
   jest.mocked(useConnectivity).mockReturnValue(false)
   await view.rerender(ui())
   await measure()
-  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
   await act(() => { jest.advanceTimersByTime(10000) })
   expect(screen.getByTestId('network-status-banner')).toBeTruthy()
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await measure(88)
-  expect(screen.getByRole('status')).toHaveTextContent('Connexion rétablie')
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent('Connexion rétablie')
   await act(() => { jest.advanceTimersByTime(3500) })
   expect(screen.getByTestId('network-status-banner')).toBeTruthy()
   await act(() => { jest.advanceTimersByTime(250) })
@@ -52,14 +55,14 @@ test('an offline cold start alerts immediately; another outage cancels recovery 
   const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
   const view = await render(ui())
   await measure()
-  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(1000) })
   jest.mocked(useConnectivity).mockReturnValue(false)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(5000) })
-  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
   await view.unmount()
 })
 
@@ -78,7 +81,7 @@ test('a new outage interrupts the closing animation without unmounting the alert
   await view.rerender(ui())
   await measure()
   await act(() => { jest.advanceTimersByTime(1000) })
-  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
   await view.unmount()
 })
 
@@ -91,7 +94,7 @@ test('Reduce Motion makes opening and closing immediate after measurement', asyn
   // Shared styles commit on the next UI frame, with no timed interpolation.
   await act(() => { jest.advanceTimersByTime(17) })
   expect(screen.getByTestId('network-status-region')).toHaveAnimatedStyle({ height: 110 })
-  expect(screen.getByRole('status')).toHaveTextContent(/Hors connexion/)
+  expect(screen.getByTestId('network-status-banner')).toHaveTextContent(/Hors connexion/)
   jest.mocked(useConnectivity).mockReturnValue(true)
   await view.rerender(ui())
   await act(() => { jest.advanceTimersByTime(3500) })
@@ -110,4 +113,12 @@ test('height progresses between measured endpoints instead of jumping', async ()
   await act(() => { jest.advanceTimersByTime(200) })
   expect(screen.getByTestId('network-status-region')).toHaveAnimatedStyle({ height: 110 })
   await view.unmount()
+})
+
+
+test('the offline banner opens the pending-actions modal', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  await render(<ThemeProvider><NetworkStatusBanner /></ThemeProvider>)
+  await fireEvent.press(screen.getByRole('button', { name: /Voir les actions en attente/ }))
+  expect(router.push).toHaveBeenCalledWith('/pending-actions')
 })

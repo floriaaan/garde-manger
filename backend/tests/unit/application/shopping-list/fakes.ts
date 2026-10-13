@@ -1,17 +1,35 @@
 import type { ShoppingItemRepository } from '#domain/shopping-list/interfaces/shopping-item-repository.interface'
-import type { ShoppingItem } from '#domain/shopping-list/shopping-item.entity'
+import { ShoppingItem } from '#domain/shopping-list/shopping-item.entity'
 
 export class FakeShoppingItemRepository implements ShoppingItemRepository {
   private items = new Map<string, ShoppingItem>()
 
   async findById(id: string) {
-    return this.items.get(id) ?? null
+    const entity = this.items.get(id)
+    return entity
+      ? ShoppingItem.reconstruct(id, {
+          householdId: entity.householdId,
+          name: entity.name,
+          quantity: entity.quantity,
+          createdAt: entity.createdAt,
+          updatedAt: entity.updatedAt,
+          checked: entity.checked,
+          source: entity.source,
+          haUid: entity.haUid,
+          haSyncedAt: entity.haSyncedAt,
+        })
+      : null
   }
   async findByHousehold(householdId: string) {
     return [...this.items.values()].filter((item) => item.householdId === householdId)
   }
   async save(item: ShoppingItem) {
     this.items.set(item.id, item)
+  }
+  async saveIfUnchanged(entity: ShoppingItem, updatedAt: Date) {
+    if (this.items.get(entity.id)?.updatedAt.getTime() !== updatedAt.getTime()) return false
+    await this.save(entity)
+    return true
   }
   async delete(id: string) {
     this.items.delete(id)

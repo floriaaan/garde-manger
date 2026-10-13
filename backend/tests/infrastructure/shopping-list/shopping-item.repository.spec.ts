@@ -107,4 +107,26 @@ test.group('LucidShoppingItemRepository', (group) => {
     assert.isNull(cleared?.haUid)
     assert.isNull(cleared?.haSyncedAt)
   })
+
+  test('conditional writes reject stale versions and never recreate deleted rows', async ({
+    assert,
+  }) => {
+    await createUser('u_sync', 'sync@example.com')
+    await createHousehold('h_sync', 'u_sync')
+    const repository = new LucidShoppingItemRepository()
+    await repository.save(buildItem('sync_1', 'h_sync'))
+    const first = (await repository.findById('sync_1'))!
+    const stale = (await repository.findById('sync_1'))!
+    const version = first.updatedAt
+    first.update({ name: 'First edit' }, new Date(version.getTime() + 1))
+    assert.isTrue(await repository.saveIfUnchanged(first, version))
+    stale.update({ name: 'Stale edit' }, new Date(version.getTime() + 2))
+    assert.isFalse(await repository.saveIfUnchanged(stale, version))
+    const saved = await repository.findById('sync_1')
+    assert.equal(saved?.name, 'First edit')
+    assert.equal(saved?.updatedAt.getTime(), version.getTime() + 1)
+    await repository.delete('sync_1')
+    assert.isFalse(await repository.saveIfUnchanged(first, first.updatedAt))
+    assert.isNull(await repository.findById('sync_1'))
+  })
 })

@@ -24,6 +24,7 @@ import { Animated, Platform } from 'react-native'
 import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
 import { pointerCursor, useHoverPress } from './hover.js'
+import { ripple, rippleClip } from './material.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
 /** Drawn height/type per `size` — `dense` is `Chip`'s own compact recipe
@@ -41,6 +42,7 @@ export function PillButton({
   icon,
   accessibilityLabel,
   tone = 'accent',
+  creamSurfaceEdge = false,
   size = 'default',
   centered = false,
   disabled = false,
@@ -52,6 +54,8 @@ export function PillButton({
   palette: SoftPalette
   /** `accent` is the lime primary; `quiet` is the cream secondary that sits beside it (the empty fridge's two ways in). */
   tone?: 'accent' | 'quiet'
+  /** Required when a cream pill sits on a cream card; see DESIGN.md surface contrast tokens. */
+  creamSurfaceEdge?: boolean
   /** Called with the label colour so the glyph always matches the text beside it. */
   icon?: (color: string) => ReactNode
   /** Announced instead of `label` when the label alone is not a sentence ("Réessayer"). */
@@ -78,7 +82,8 @@ export function PillButton({
       hitSlop={{ top: slop, bottom: slop, left: 6, right: 6 }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      style={[pointerCursor, { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
+      android_ripple={ripple(tone === 'accent' ? palette.accentLimeText : palette.ink)}
+      style={[pointerCursor, rippleClip(999), { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: disabled ? 0.6 : 1 }}>
         <XStack
@@ -89,6 +94,8 @@ export function PillButton({
           borderRadius={999}
           justifyContent="center"
           backgroundColor={tone === 'accent' ? palette.accentLime : palette.cream}
+          borderWidth={creamSurfaceEdge ? 1 : 0}
+          borderColor={creamSurfaceEdge ? palette.creamPillEdge : 'transparent'}
         >
           {icon ? icon(tone === 'accent' ? palette.accentLimeText : palette.ink) : null}
           <Text

@@ -5,6 +5,7 @@ import { addNetworkStateListener, getNetworkStateAsync, type NetworkState } from
 import { useConnectivity } from './use-connectivity.js'
 import { setOfflineSimulation } from './connectivity-simulation.js'
 
+jest.mock('./connector-mode.js', () => ({ isFakeConnector: false }))
 jest.mock('expo-network', () => ({ addNetworkStateListener: jest.fn(), getNetworkStateAsync: jest.fn() }))
 jest.mock('./telemetry.js', () => ({ getTelemetry: () => ({ recordError: jest.fn() }) }))
 
@@ -135,4 +136,20 @@ test('a device-state read resolving after unmount does not change query connecti
   await view.unmount()
   await act(async () => { resolve({ isConnected: false }) })
   expect(onlineManager.isOnline()).toBe(true)
+})
+
+
+test('fake transport keeps root-managed offline state when native network events arrive', async () => {
+  const mode = jest.requireMock('./connector-mode.js') as { isFakeConnector: boolean }
+  mode.isFakeConnector = true
+  try {
+    jest.mocked(getNetworkStateAsync).mockResolvedValue({ isConnected: true })
+    const view = await renderHook(() => useConnectivity())
+    await act(() => onlineManager.setOnline(false))
+    await act(() => onNetwork({ isConnected: true }))
+    expect(onlineManager.isOnline()).toBe(false)
+    await view.unmount()
+  } finally {
+    mode.isFakeConnector = false
+  }
 })

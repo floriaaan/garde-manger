@@ -53,24 +53,83 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
       void queryClient.invalidateQueries({ queryKey: ['product', entry.entityId] })
     }
   }
-  const queue = new MutationQueue(storage, scope, (entry) => {
-    if (entry.collection === 'products') {
-      return entry.patch === null ? deleteProduct(entry.entityId) : updateProduct(entry.entityId, entry.patch)
+  const queue = new MutationQueue(storage, scope, async (entry) => {
+    if (entry.patch === null) {
+      return entry.collection === 'products' ? deleteProduct(entry.entityId) : deleteItem(entry.entityId)
     }
-    return entry.patch === null ? deleteItem(entry.entityId) : updateItem(entry.entityId, entry.patch)
+    // Read through the original connector, never through the optimistic overlay.
+    const current = entry.collection === 'products'
+      ? await getProduct(entry.entityId)
+      : (await getItems()).find((item) => item.id === entry.entityId) ?? null
+    if (!sameScope(entry.scope, scope())) return Result.err({ type: 'session_changed', message: 'Le compte ou le foyer a changé.' })
+    if (!current) return Result.err({
+      type: entry.collection === 'products' ? 'product_not_found' : 'shopping_item_not_found',
+      message: 'Cet élément a été supprimé sur un autre appareil.',
+    })
+    // Lost acknowledgement: the requested absolute assignments already exist.
+    const matches = Object.entries(entry.patch).filter(([key]) => key !== 'expectedUpdatedAt')
+      .every(([key, value]) => JSON.stringify(current[key as keyof typeof current]) === JSON.stringify(value))
+    if (matches) return Result.ok(current)
+    if (current.updatedAt !== entry.base.updatedAt) {
+      if (entry.collection === 'products') cacheProduct(entry.entityId, current as Product)
+      else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) =>
+        rows ? [...rows.filter((row) => row.id !== entry.entityId), current as ShoppingItem] : [current as ShoppingItem],
+      )
+      return Result.err({ type: 'sync_conflict', message: 'Cet élément a changé sur un autre appareil. Rechargez-le avant de réappliquer votre modification.' })
+    }
+    const patch = { ...entry.patch, expectedUpdatedAt: current.updatedAt }
+    return entry.collection === 'products' ? updateProduct(entry.entityId, patch) : updateItem(entry.entityId, patch)
   }, refresh, (entry) => {
     if (entry.error?.type === 'unauthenticated') {
       showToast('Votre session a été révoquée. Reconnectez-vous avant de modifier vos données.')
       return
     }
     if (!sameScope(entry.scope, scope())) return
-    // Restore the last local base immediately; pending later edits are reapplied by reads.
-    if (entry.collection === 'products') cacheProduct(entry.entityId, entry.base as Product)
-    else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) =>
-      rows ? [...rows.filter((row) => row.id !== entry.entityId), entry.base as ShoppingItem] : rows,
+    const deleted = ['product_not_found', 'shopping_item_not_found'].includes(entry.error?.type ?? '')
+    if (deleted) {
+      if (entry.collection === 'products') cacheProduct(entry.entityId, null)
+      else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) => rows?.filter((row) => row.id !== entry.entityId))
+    } else if (entry.error?.type !== 'sync_conflict') {
+      if (entry.collection === 'products') cacheProduct(entry.entityId, entry.base as Product)
+      else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) =>
+        rows ? [...rows.filter((row) => row.id !== entry.entityId), entry.base as ShoppingItem] : rows,
+      )
+    }
+    showToast(`Synchronisation impossible pour « ${entry.base.name} » : ${entry.error?.message}`, 'error',
+      entry.error?.type === 'sync_conflict' ? { label: 'Réappliquer', onPress: () => { void reapply(entry) } } : undefined,
     )
-    showToast(`Synchronisation impossible pour « ${entry.base.name} » : ${entry.error?.message}`)
+  }, undefined, (entry, row) => {
+    if (!sameScope(entry.scope, scope())) return
+    // Failed intent is not overlaid; preserve the authoritative row already refreshed on refusal.
+    const current = entry.collection === 'products' ? findProduct(entry.entityId) : findItem(entry.entityId)
+    if (!entry.error && (!current || current.updatedAt === entry.base.updatedAt)) {
+      if (entry.collection === 'products') cacheProduct(entry.entityId, row as Product | null)
+      else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) => {
+        const next = (rows ?? []).filter((item) => item.id !== entry.entityId)
+        return row ? [...next, row as ShoppingItem] : next
+      })
+    }
+    refresh(entry)
   })
+
+  async function reapply(entry: QueuedMutation): Promise<void> {
+    try {
+      if (!sameScope(entry.scope, scope())) return
+      const current = entry.collection === 'products'
+        ? await getProduct(entry.entityId)
+        : (await getItems()).find((item) => item.id === entry.entityId) ?? null
+      if (!sameScope(entry.scope, scope())) return
+      if (!current) {
+        showToast('Cet élément a été supprimé. Votre modification reste conservée sur cet appareil.')
+        return
+      }
+      await queue.reapplyConflicts(entry.collection, current)
+      await restorePending()
+      await queue.flush(true)
+    } catch {
+      showToast('Impossible de réappliquer pour le moment. Votre modification reste conservée sur cet appareil.')
+    }
+  }
 
   function findProduct(id: string): Product | undefined {
     return queryClient.getQueryData<Product>(['product', id]) ??
@@ -135,6 +194,14 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
   }
   const restorePending = async () => {
     const before = scope()
+    for (const entry of await queue.failures()) {
+      if (!sameScope(before, scope())) return
+      if (['product_not_found', 'shopping_item_not_found'].includes(entry.error?.type ?? '')) {
+        if (entry.collection === 'products') cacheProduct(entry.entityId, null)
+        else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) => rows?.filter((row) => row.id !== entry.entityId))
+      }
+      refresh(entry)
+    }
     const pending = await queue.pending()
     if (!sameScope(before, scope())) return
     for (const collection of ['products', 'shopping-items'] as const) {

@@ -3,7 +3,7 @@
 The real mobile connector queues shopping-item edits (including checkbox and
 quantity changes), shopping-item deletions, product edits, and product deletions.
 These hooks run with `networkMode: 'always'`, so local actions remain available
-when TanStack Query knows the device is disconnected. Fake/demo mode is unchanged.
+when TanStack Query knows the device is disconnected. Fake mode uses the same queue and replay pipeline with in-memory fixture storage.
 
 The queue reuses the local-first AsyncStorage adapter on native and web, under
 `garde-manger.mutation-queue-v1`, separate from the read-cache snapshot. Storage
@@ -18,11 +18,12 @@ membership checks. Pending changes are overlaid on later reads.
 Replay runs serially on reconnect, foreground, session/household restoration,
 and a five-second foreground timer. Connectivity comes from the existing Expo
 Network hook, which also handles foreground refresh and stale network events.
-The debug simulation remains visual only. Temporary transport errors and HTTP
+The debug simulation remains visual only for real transport and pauses fake
+replay for offline interaction checks. Temporary transport errors and HTTP
 408/429/5xx retry with exponential backoff capped at five minutes. Later actions
 on the same entity wait behind a retrying action. Unrelated actions can continue
-after a permanent refusal, which is saved and shown in a toast; the affected row
-is restored locally. Confirmed authentication revocation still invalidates the
+after a permanent refusal, which is saved and shown in a toast. The authoritative
+row is refreshed and the local intent is retained for recovery. Confirmed authentication revocation still invalidates the
 session and stops replay. Queues from another account, household, or server are
 neither displayed nor replayed.
 
@@ -36,8 +37,39 @@ Creation, imports, product outcomes, scans, and AI jobs remain online operations
 Full offline cold starts reuse the local-first engine already on `develop`:
 session, household, and unrelated cached rows stay in its read snapshot. Failed
 household reads reject so TanStack retains that snapshot instead of saving an
-empty list. Read freshness, conflict policy, and persistent sync status remain
-separate concerns.
+empty list. Persistent sync status remains a separate concern (#86). Conflict
+policy is defined in
+[household-sync-conflicts.md](household-sync-conflicts.md).
+
+The offline banner opens `/pending-actions` as a native modal. Its local-only
+query lists scoped pending and failed intent and updates after durable queue edits.
+The modal uses AppShell's shared `BlobBackground` with standard
+ink and cream tokens. The shared `ScreenHeader` aligns its icon, title/count
+and trailing 48pt Close; “Tes changements sont conservés” follows below.
+Shared chips stay pinned above the list and distinguish all actions,
+“À envoyer” and “À vérifier” with Layers, Clock and TriangleAlert icons.
+`IdentityCard` rows use cream surfaces in both themes, with matching supporting
+text and icon-chip tokens; the displayed changes remain read-only.
+Mirrored asymmetric corners and 24pt spacing separate cards on the shared ground. Every modified field
+is visible with labeled “Avant” and “Ta modification” values; deletion names
+the affected collection. Delivery states pair an icon, semantic color and word,
+and retained failures show their reason. The modal remains open as connectivity
+returns, so completed actions disappear from the list. Source inspection confirms the shared design
+components; fresh native rendering and transition fidelity remain unverified.
+Each card offers a quiet cancellation button confirmed through `ActionSheet`.
+Cancellation removes that scoped intent only after the queue write succeeds,
+restores its cached item while preserving later pending field assignments, and
+updates the modal. Retained failures preserve the authoritative cached row.
+An action already being sent cannot be cancelled. Storage failure retains the
+intent and reports an error; cancellation does not undo a server change that
+may already have been applied before a lost acknowledgement. Tests were authored
+but not run, and no fresh native rendering was performed.
+Fake mode supplies twelve initial in-memory actions (nine pending, three conflicts),
+covering quantities, checkboxes, locations, dates, prices, names and deletion,
+and uses the same overlays,
+local mutations and reconnect replay as the real connector. Its offline simulation
+pauses replay until connectivity is restored. Session and
+household cache observers reuse their domain query functions with `enabled: false`.
 
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,

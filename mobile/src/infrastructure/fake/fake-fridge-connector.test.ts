@@ -347,3 +347,23 @@ test('request latency can be disabled without scheduling timers', async () => {
     jest.useRealTimers()
   }
 })
+
+
+test('fake PATCH rejects stale versions and keeps preconditions out of returned rows', async () => {
+  const connector = new FakeFridgeConnector()
+  const [product] = await connector.getProducts()
+  const version = product.updatedAt
+  const accepted = await connector.updateProduct(product.id, { name: 'First edit', expectedUpdatedAt: version })
+  expect(accepted.ok).toBe(true)
+  if (accepted.ok) expect(accepted.value).not.toHaveProperty('expectedUpdatedAt')
+  const rejected = await connector.updateProduct(product.id, { name: 'Stale edit', expectedUpdatedAt: version })
+  expect(rejected).toEqual({ ok: false, error: expect.objectContaining({ type: 'sync_conflict' }) })
+  expect((await connector.getProduct(product.id))?.name).toBe('First edit')
+  expect(product.name).not.toBe('First edit')
+  expect(product.updatedAt).toBe(version)
+  const [item] = await connector.getShoppingItems()
+  const itemVersion = item.updatedAt
+  await connector.updateShoppingItem(item.id, { checked: true, expectedUpdatedAt: itemVersion })
+  expect(await connector.updateShoppingItem(item.id, { checked: false, expectedUpdatedAt: itemVersion }))
+    .toEqual({ ok: false, error: expect.objectContaining({ type: 'sync_conflict' }) })
+})

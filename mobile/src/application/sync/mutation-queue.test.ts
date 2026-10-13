@@ -132,3 +132,125 @@ test('concurrent enqueues and overlapping replays do not lose or send duplicate 
   expect(s.send).toHaveBeenCalledTimes(2)
   expect(s.disk()).toEqual([])
 })
+
+
+test('a conflict retains dependent intent across restart and permits scoped dismissal', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 2, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { checked: true })
+  await s.queue.flush()
+  const restarted = s.create()
+  await restarted.flush(true)
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(await restarted.overlay('shopping-items', [])).toEqual([])
+  const failures = await restarted.failures()
+  expect(failures).toHaveLength(2)
+  expect(failures[0].patch).toEqual({ quantity: { amount: 2, unit: 'L' } })
+  s.setScope({ ...initialScope, userId: 'other' })
+  await restarted.discardFailure(failures[0].id)
+  expect(s.disk()).toHaveLength(2)
+  s.setScope(initialScope)
+  await restarted.discardFailure(failures[0].id)
+  expect(await restarted.failures()).toHaveLength(1)
+})
+
+test('acknowledged server versions advance later edits within the same replay', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.ok({ ...item, checked: true, updatedAt: 'next-version' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', item, { name: 'Milk edited' })
+  await s.queue.flush()
+  expect(s.send.mock.calls[1][0].base.updatedAt).toBe('next-version')
+})
+
+
+test('explicit recovery rebases retained edits onto a fresh server row', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { name: 'Local name' })
+  await s.queue.enqueue('shopping-items', { ...item, name: 'Local name' }, { checked: true })
+  await s.queue.flush()
+  await s.queue.reapplyConflicts('shopping-items', { ...item, quantity: { amount: 7, unit: 'L' }, updatedAt: 'fresh-version' })
+  expect(await s.queue.failures()).toEqual([])
+  const restarted = s.create()
+  expect(await restarted.overlay('shopping-items', [])).toEqual([
+    { ...item, name: 'Local name', checked: true, quantity: { amount: 7, unit: 'L' }, updatedAt: 'fresh-version' },
+  ])
+})
+
+test('a matching lost response cannot rebase later intent over unrelated remote changes', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.ok({ ...item, checked: true, quantity: { amount: 7, unit: 'L' }, updatedAt: 'remote-version' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, checked: true }, { quantity: { amount: 3, unit: 'L' } })
+  await s.queue.flush()
+  expect(s.send.mock.calls[1][0].base.updatedAt).toBe(item.updatedAt)
+})
+
+
+test('cancellation persists and rebases later snapshots without removing their intent', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { quantity: { amount: 2, unit: 'L' } })
+  await s.queue.enqueue('shopping-items', { ...item, quantity: { amount: 2, unit: 'L' } }, { checked: true })
+  const [first] = await s.queue.pending()
+  expect(await s.queue.cancel(first.id)).toEqual(Result.ok(undefined))
+  const restarted = s.create()
+  expect(await restarted.overlay('shopping-items', [])).toEqual([{ ...item, checked: true }])
+  expect((await restarted.pending())[0].base.quantity.amount).toBe(1)
+  await restarted.flush()
+  expect(s.send).toHaveBeenCalledTimes(1)
+  expect(s.send.mock.calls[0][0].patch).toEqual({ checked: true })
+})
+
+test('cancellation refuses another scope and preserves intent on storage failure', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  const [entry] = await s.queue.pending()
+  s.setScope({ ...initialScope, householdId: 'other' })
+  expect(await s.queue.cancel(entry.id)).toEqual(Result.err(expect.objectContaining({ type: 'action_unavailable' })))
+  s.setScope(initialScope)
+  jest.mocked(s.storage.write).mockRejectedValueOnce(new Error('Full disk'))
+  expect(await s.queue.cancel(entry.id)).toEqual(Result.err(expect.objectContaining({ type: 'storage_error' })))
+  expect(await s.queue.pending()).toHaveLength(1)
+  expect(s.disk()).toHaveLength(1)
+})
+
+test('an action being sent cannot be cancelled before its acknowledgement is persisted', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  const [entry] = await s.queue.pending()
+  let release!: () => void
+  let started!: () => void
+  const ready = new Promise<void>((resolve) => { started = resolve })
+  const response = new Promise<void>((resolve) => { release = resolve })
+  s.send.mockImplementationOnce(async () => { started(); await response; return Result.ok(undefined) })
+  const replay = s.queue.flush()
+  await ready
+  expect(await s.queue.cancel(entry.id)).toEqual(Result.err(expect.objectContaining({ type: 'action_syncing' })))
+  expect(await s.queue.pending()).toHaveLength(1)
+  release()
+  await replay
+  expect(await s.queue.pending()).toEqual([])
+})
+
+test('replay waits for a pending cancellation write instead of sending removed intent', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  const [entry] = await s.queue.pending()
+  let release!: () => void
+  let started!: () => void
+  const ready = new Promise<void>((resolve) => { started = resolve })
+  const writing = new Promise<void>((resolve) => { release = resolve })
+  const persist = jest.mocked(s.storage.write).getMockImplementation()!
+  jest.mocked(s.storage.write).mockImplementationOnce(async (entries) => { started(); await writing; await persist(entries) })
+  const cancellation = s.queue.cancel(entry.id)
+  await ready
+  const replay = s.queue.flush()
+  release()
+  await cancellation
+  await replay
+  expect(s.send).not.toHaveBeenCalled()
+  expect(s.disk()).toEqual([])
+})

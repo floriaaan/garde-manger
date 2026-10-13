@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Platform } from 'react-native'
+import { router } from 'expo-router'
+import { Pressable } from './pressable.js'
 import Reanimated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
 import { useTranslation } from '../../i18n/index.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { CircleCheckIcon, WifiOffIcon } from '../dashboard/dashboard-icons.js'
+import { ChevronRightIcon, CircleCheckIcon, WifiOffIcon } from '../dashboard/dashboard-icons.js'
 import { useReduceMotion } from './hover.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 
@@ -74,23 +76,32 @@ export function NetworkStatusBanner() {
       <SafeAreaView testID="network-status-content" edges={['top', 'left', 'right']}
         onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
         style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-        <XStack testID="network-status-banner" role="status" accessible
-          accessibilityLabel={message} accessibilityLiveRegion="polite"
-          paddingHorizontal={24} paddingVertical={12} gap={12} alignItems="center"
-          alignSelf="center" width="100%" maxWidth={640}>
-          <YStack flexShrink={0} accessible={false} accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants" aria-hidden>
-            <Icon size={22} color={color} />
-          </YStack>
-          <YStack flex={1} minWidth={0} gap={2}>
-            <Text fontSize={14} fontWeight="800" lineHeight={20} color={color}>
-              {title}
-            </Text>
-            {description ? <Text fontSize={13} fontWeight="500" lineHeight={18} color={color}>
-              {description}
-            </Text> : null}
-          </YStack>
-        </XStack>
+        <Pressable testID="network-status-button" disabled={!offline}
+          accessible={offline}
+          onPress={() => router.push('/pending-actions')}
+          accessibilityRole={offline ? 'button' : undefined}
+          accessibilityLabel={offline ? `${message}. ${t('sync.view_actions')}` : undefined}
+          accessibilityHint={offline ? t('sync.open_hint') : undefined}
+          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
+          <XStack testID="network-status-banner" role="status" accessible={!offline}
+            accessibilityLabel={message} accessibilityLiveRegion="polite"
+            paddingHorizontal={24} paddingVertical={12} gap={12} alignItems="center"
+            alignSelf="center" width="100%" maxWidth={640}>
+            <YStack flexShrink={0} accessible={false} accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants" aria-hidden>
+              <Icon size={22} color={color} />
+            </YStack>
+            <YStack flex={1} minWidth={0} gap={2}>
+              <Text fontSize={14} fontWeight="800" lineHeight={20} color={color}>
+                {title}
+              </Text>
+              {description ? <Text fontSize={13} fontWeight="500" lineHeight={18} color={color}>
+                {description}
+              </Text> : null}
+            </YStack>
+            {offline ? <YStack accessible={false} aria-hidden><ChevronRightIcon size={18} color={color} /></YStack> : null}
+          </XStack>
+        </Pressable>
       </SafeAreaView>
     </Reanimated.View>
   )

@@ -25,6 +25,7 @@ export const createProductValidator = vine.compile(
 
 export const updateProductValidator = vine.compile(
   vine.object({
+    expectedUpdatedAt: vine.date({ formats: { utc: true } }).optional(),
     name: vine.string().trim().minLength(1).maxLength(120).optional(),
     quantity: quantitySchema.optional(),
     location: locationSchema.optional(),

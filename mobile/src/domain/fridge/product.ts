@@ -33,6 +33,7 @@ export interface CreateProductInput {
 
 /** Mirrors `updateProductValidator` — every field optional, `null` allowed where the backend allows clearing it. */
 export interface UpdateProductInput {
+  expectedUpdatedAt?: string
   name?: string
   quantity?: { amount: number; unit: string }
   location?: LocationValue
