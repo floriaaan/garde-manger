@@ -87,7 +87,8 @@ including its existing field comparison, filters and cancellation workflow.
 
 A quiet retry is available after automatic delivery fails. It preserves the saved
 patch/deletion and clears ordinary failures durably before replaying dependent
-changes in order. Buttons wait while offline or sending. Conflict cards expose an explicit Overwrite button which reuses #85’s fresh-row
+changes in order. Buttons wait while offline or sending. Conflict cards show their explicit Overwrite button only when connectivity is
+confirmed online. Cancellation stays available offline. Overwrite reuses #85’s fresh-row
 reapplication flow: saved fields overwrite current server fields, while unrelated
 values remain intact. Reconnect alone never invokes it. Deleted-row recovery
 remains separate; a missing row is never recreated by overwrite. Action buttons

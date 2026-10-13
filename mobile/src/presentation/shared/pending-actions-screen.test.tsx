@@ -158,20 +158,27 @@ test('retry sends the saved action and remains disabled during an outage', async
 })
 
 
-test('conflict cards expose an explicit overwrite action beside cancellation', async () => {
+test('conflict overwrite is hidden offline or while connectivity is unknown and enabled after reconnection', async () => {
   jest.mocked(useConnectivity).mockReturnValue(true)
   const s = setup(true)
   const overwrite = jest.spyOn(s.queue, 'overwrite').mockResolvedValue(undefined)
   await waitFor(() => expect(screen.getByTestId('queued-overwrite-4')).toBeTruthy())
   expect(screen.getByTestId('queued-cancel-4')).toBeTruthy()
+  expect(screen.getByTestId('queued-overwrite-4')).toBeEnabled()
   expect(overwrite).not.toHaveBeenCalled()
   await fireEvent.press(screen.getByTestId('queued-overwrite-4'))
   await waitFor(() => expect(overwrite).toHaveBeenCalledWith(4))
   jest.mocked(useConnectivity).mockReturnValue(false)
   await act(async () => { await s.queue.flush(true) })
-  expect(screen.getByTestId('queued-overwrite-4')).toBeDisabled()
-  overwrite.mockRestore()
+  expect(screen.queryByTestId('queued-overwrite-4')).toBeNull()
+  expect(screen.getByTestId('queued-cancel-4')).toBeTruthy()
+  jest.mocked(useConnectivity).mockReturnValue(undefined)
+  await act(async () => { await s.queue.flush(true) })
+  expect(screen.queryByTestId('queued-overwrite-4')).toBeNull()
   jest.mocked(useConnectivity).mockReturnValue(true)
+  await act(async () => { await s.queue.flush(true) })
+  await waitFor(() => expect(screen.getByTestId('queued-overwrite-4')).toBeEnabled())
+  overwrite.mockRestore()
 })
 
 

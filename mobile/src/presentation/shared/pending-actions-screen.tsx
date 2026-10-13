@@ -40,8 +40,8 @@ function valueLabel(field: string, value: unknown, before = false): string {
   return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
-function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retryDisabled, retrying, onOverwrite, sending }: { entry: QueuedMutation; index: number;
-  onCancel: () => void; cancelling: boolean; disabled: boolean; onRetry: () => void; retryDisabled: boolean; retrying: boolean; onOverwrite: () => void; sending: boolean }) {
+function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retryDisabled, retrying, onOverwrite, sending, connected }: { entry: QueuedMutation; index: number;
+  onCancel: () => void; cancelling: boolean; disabled: boolean; onRetry: () => void; retryDisabled: boolean; retrying: boolean; onOverwrite: () => void; sending: boolean; connected: boolean }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
   const secondaryInk = palette.creamText
@@ -104,7 +104,7 @@ function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retr
           {sending ? <ProgressBar testID={`queued-progress-${entry.id}`} palette={{ ...palette, fresh: palette.freshText }}
             label={t('sync.item_progress', { name: entry.base.name })} /> : null}
           <XStack gap="$3" flexWrap="wrap" alignItems="center" paddingVertical="$2">
-            {entry.error?.type === 'sync_conflict' ? <PillButton testID={`queued-overwrite-${entry.id}`}
+            {connected && entry.error?.type === 'sync_conflict' ? <PillButton testID={`queued-overwrite-${entry.id}`}
               label={t('sync.overwrite')} accessibilityLabel={t('sync.overwrite_named', { name: entry.base.name })}
               palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge size="dense"
               disabled={retryDisabled} busy={retrying} onPress={onOverwrite}
@@ -207,6 +207,7 @@ export function PendingActionsScreen() {
             onCancel={() => setSelected(item)} disabled={cancellation.isPending || retry.isPending}
             onRetry={() => { if (!retryDisabled) retry.mutate({ id: item.id }) }} retryDisabled={retryDisabled || cancellation.isPending}
             onOverwrite={() => { if (!retryDisabled && !cancellation.isPending) retry.mutate({ id: item.id, overwrite: true }) }}
+            connected={online === true}
             sending={actions.status.sendingId === item.id}
             retrying={retry.isPending && retry.variables?.id === item.id}
             cancelling={cancellation.isPending && cancellation.variables === item.id} />}
