@@ -87,10 +87,21 @@ including its existing field comparison, filters and cancellation workflow.
 
 A quiet retry is available after automatic delivery fails. It preserves the saved
 patch/deletion and clears ordinary failures durably before replaying dependent
-changes in order. Buttons wait while offline or sending. Conflict and deleted-row
-recovery retain #85's authoritative-row policy and explicit reapplication flow;
-blind retry cannot bypass those safeguards. Saved intent remains inspectable after
+changes in order. Buttons wait while offline or sending. Conflict cards expose an explicit Overwrite button which reuses #85’s fresh-row
+reapplication flow: saved fields overwrite current server fields, while unrelated
+values remain intact. Reconnect alone never invokes it. Deleted-row recovery
+remains separate; a missing row is never recreated by overwrite. Action buttons
+use the compact shared pill size and sit together in a wrapping row. Saved intent remains inspectable after
 a restart even when it is no longer overlaid onto the authoritative row.
 
 Focused coverage is authored in the queue, banner and pending-actions tests.
 No tests, build, lint, typecheck or native rendering were run for this rebase.
+
+The modal displays global acknowledged delivery progress for the current in-memory
+queue batch. Conflicts and temporary failures remain incomplete; cancellation
+removes the cancelled action from the total. A new batch resets completed counts,
+and accounts/households/servers have separate counters. Restarts begin a new
+progress count for retained actions. Each row has a progress bar: waiting or
+blocked actions stay at zero, the sending action is indeterminate because the
+atomic endpoint reports no intermediate percentage, and acknowledged rows leave
+the list. Existing shared progress bars preserve accessible values and Reduce Motion.

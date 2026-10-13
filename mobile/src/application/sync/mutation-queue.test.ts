@@ -369,3 +369,51 @@ test.each([{ name: 'Fresh edit' }, null])('retained conflicts permit fresh edits
   expect(s.send.mock.calls[1][0]).toMatchObject({ patch, base: { updatedAt: 'fresh-version' } })
   expect(await s.queue.failures()).toHaveLength(1)
 })
+
+
+test('overwrite invokes recovery only for a conflict in the current scope', async () => {
+  let scope = initialScope
+  const recover = jest.fn(async () => {})
+  const send = jest.fn(async () => Result.err({ type: 'sync_conflict', message: 'Remote edit' }))
+  const queue = new MutationQueue({ read: async () => [], write: async () => {} }, () => scope, send,
+    () => {}, () => {}, Date.now, undefined, recover)
+  await queue.enqueue('shopping-items', item, { checked: true })
+  await queue.flush()
+  const [conflict] = await queue.failures()
+  scope = { ...initialScope, userId: 'other-user' }
+  await queue.overwrite(conflict.id)
+  expect(recover).not.toHaveBeenCalled()
+  scope = initialScope
+  await queue.overwrite(conflict.id)
+  expect(recover).toHaveBeenCalledWith(expect.objectContaining({ id: conflict.id, patch: { checked: true } }))
+})
+
+
+test('global progress counts only persisted acknowledgements and keeps conflicts incomplete', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.ok(undefined))
+    .mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { name: 'Local bread' })
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 2 })
+  await s.queue.flush()
+  expect(s.queue.status().progress).toEqual({ done: 1, total: 2 })
+  await s.queue.flush(true)
+  expect(s.queue.status().progress).toEqual({ done: 1, total: 2 })
+  s.setScope({ ...initialScope, userId: 'someone-else' })
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 0 })
+  s.setScope(initialScope)
+  const [conflict] = await s.queue.failures()
+  await s.queue.cancel(conflict.id)
+  expect(s.queue.status().progress).toEqual({ done: 1, total: 1 })
+  await s.queue.enqueue('shopping-items', item, { checked: false })
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
+})
+
+test('failed acknowledgement persistence never increments progress', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  jest.mocked(s.storage.write).mockRejectedValueOnce(new Error('Disk full'))
+  await expect(s.queue.flush()).rejects.toThrow('Disk full')
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
+})

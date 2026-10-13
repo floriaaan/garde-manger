@@ -156,3 +156,48 @@ test('retry sends the saved action and remains disabled during an outage', async
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
   expect(s.send).toHaveBeenCalledTimes(2)
 })
+
+
+test('conflict cards expose an explicit overwrite action beside cancellation', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup(true)
+  const overwrite = jest.spyOn(s.queue, 'overwrite').mockResolvedValue(undefined)
+  await waitFor(() => expect(screen.getByTestId('queued-overwrite-4')).toBeTruthy())
+  expect(screen.getByTestId('queued-cancel-4')).toBeTruthy()
+  expect(overwrite).not.toHaveBeenCalled()
+  await fireEvent.press(screen.getByTestId('queued-overwrite-4'))
+  await waitFor(() => expect(overwrite).toHaveBeenCalledWith(4))
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  await act(async () => { await s.queue.flush(true) })
+  expect(screen.getByTestId('queued-overwrite-4')).toBeDisabled()
+  overwrite.mockRestore()
+  jest.mocked(useConnectivity).mockReturnValue(true)
+})
+
+
+test('global progress advances after delivery and only the sending item is indeterminate', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup()
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => { finish = resolve; started() })
+    return Result.ok(undefined)
+  }).mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed elsewhere' }))
+  await act(async () => {
+    await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+    await s.queue.enqueue('shopping-items', { ...fakeShoppingItems[1], id: 'bread' }, { checked: true })
+  })
+  const [first, second] = await s.queue.pending()
+  await waitFor(() => expect(screen.getByTestId('queued-global-progress')).toHaveAccessibilityValue({ min: 0, max: 2, now: 0 }))
+  await waitFor(() => expect(screen.getByTestId(`queued-progress-${second.id}`)).toBeTruthy())
+  let replay!: Promise<void>
+  await act(async () => { replay = s.queue.flush(); await sending })
+  expect(screen.getByTestId(`queued-progress-${first.id}`).props.accessibilityValue).toBeUndefined()
+  expect(screen.getByTestId(`queued-progress-${second.id}`)).toHaveAccessibilityValue({ min: 0, max: 1, now: 0 })
+  await act(async () => { finish(); await replay })
+  await waitFor(() => expect(screen.getByTestId('queued-global-progress')).toHaveAccessibilityValue({ min: 0, max: 2, now: 1 }))
+  expect(screen.getByText('1 sur 2 actions synchronisées')).toBeTruthy()
+  expect(screen.getByTestId(`queued-progress-${second.id}`)).toHaveAccessibilityValue({ min: 0, max: 1, now: 0 })
+})

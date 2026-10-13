@@ -32,6 +32,7 @@ export class MutationQueue {
   private replaying = false
   private sendingId: number | null = null
   private revision = 0
+  private delivered = new Map<string, number>()
   private storageUnavailable = false
   private listeners = new Set<() => void>()
 
@@ -47,8 +48,11 @@ export class MutationQueue {
   }
   status() {
     const entries = this.entries.filter((entry) => sameScope(entry.scope, this.scope()))
-    return { entries, syncing: this.sendingId !== null && entries.some((entry) => entry.id === this.sendingId),
-      storageUnavailable: this.storageUnavailable }
+    const scope = this.scope()
+    const done = scope ? this.delivered.get(JSON.stringify(scope)) ?? 0 : 0
+    const sendingId = entries.some((entry) => entry.id === this.sendingId) ? this.sendingId : null
+    return { entries, syncing: sendingId !== null, sendingId,
+      progress: { done, total: done + entries.length }, storageUnavailable: this.storageUnavailable }
   }
 
   /** Conflicts keep their explicit fresh-row recovery; retry only ordinary delivery failures. */
@@ -68,6 +72,14 @@ export class MutationQueue {
     await this.flush(true)
   }
 
+  /** Explicit human recovery only; ordinary reconnect replay never calls this. */
+  async overwrite(id: number): Promise<void> {
+    await this.ready
+    if (this.replaying) return
+    const entry = this.entries.find((item) => item.id === id && item.error?.type === 'sync_conflict' && sameScope(item.scope, this.scope()))
+    if (entry) await this.recoverConflict?.(entry)
+  }
+
   constructor(
     private storage: QueueStorage,
     private scope: () => SyncScope | null,
@@ -76,6 +88,7 @@ export class MutationQueue {
     private failed: (entry: QueuedMutation) => void,
     private now: () => number = Date.now,
     private cancelled?: (entry: QueuedMutation, row: Product | ShoppingItem | null) => void,
+    private recoverConflict?: (entry: QueuedMutation) => Promise<void>,
   ) {
     this.ready = storage.read().then((entries) => { this.entries = entries; this.notify() }, (error) => {
       this.storageUnavailable = true
@@ -108,14 +121,16 @@ export class MutationQueue {
     const scope = this.scope()
     if (!scope) return Result.err({ type: 'unauthenticated', message: 'Session ou foyer indisponible.' })
     let entry!: QueuedMutation
+    let startsBatch = false
     try {
       await this.edit((entries) => {
+        startsBatch = !entries.some((item) => sameScope(item.scope, scope))
         entry = {
           id: Math.max(this.now(), ...entries.map((item) => item.id + 1)),
           scope, collection, entityId: base.id, base, patch, attempts: 0, retryAt: 0,
         }
         return [...entries, entry]
-      })
+      }, () => { if (startsBatch) this.delivered.delete(JSON.stringify(scope)) })
     } catch {
       return Result.err({ type: 'storage_error', message: 'Impossible de sauvegarder cette modification sur cet appareil.' })
     }
@@ -258,7 +273,10 @@ export class MutationQueue {
             const unchanged = fields.every((field) => JSON.stringify(actual[field]) === JSON.stringify(expected[field]))
             return unchanged && item.base.updatedAt === entry.base.updatedAt && sameScope(item.scope, scope) && item.collection === entry.collection && item.entityId === entry.entityId && !item.error
               ? { ...item, base: { ...item.base, updatedAt: result.value.updatedAt as string } } : item
-          }))
+          }), () => {
+            const key = JSON.stringify(entry.scope)
+            this.delivered.set(key, (this.delivered.get(key) ?? 0) + 1)
+          })
         } else if (['network_error', 'temporary_error'].includes(result.error.type)) {
           const error = result.error
           await this.edit((entries) => entries.map((item) => item.id === entry.id ? {

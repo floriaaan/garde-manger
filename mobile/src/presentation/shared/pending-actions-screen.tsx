@@ -19,6 +19,7 @@ import { pointerCursor, useHoverPress } from './hover.js'
 import { ripple, rippleClip } from './material.js'
 import { SkeletonList } from './skeleton.js'
 import { Pressable } from './pressable.js'
+import { ProgressBar } from './progress-bar.js'
 import { PillButton } from './pill-button.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
 
@@ -39,14 +40,14 @@ function valueLabel(field: string, value: unknown, before = false): string {
   return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
-function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retryDisabled, retrying }: { entry: QueuedMutation; index: number;
-  onCancel: () => void; cancelling: boolean; disabled: boolean; onRetry: () => void; retryDisabled: boolean; retrying: boolean }) {
+function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retryDisabled, retrying, onOverwrite, sending }: { entry: QueuedMutation; index: number;
+  onCancel: () => void; cancelling: boolean; disabled: boolean; onRetry: () => void; retryDisabled: boolean; retrying: boolean; onOverwrite: () => void; sending: boolean }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
   const secondaryInk = palette.creamText
   const fields = Object.entries(entry.patch ?? {}).filter(([field]) => field !== 'expectedUpdatedAt')
-  const status = t(entry.error ? 'sync.attention' : entry.attempts > 0 ? 'sync.retrying' : 'sync.to_send')
-  const StatusIcon = entry.error ? TriangleAlertIcon : entry.attempts > 0 ? RefreshIcon : ClockIcon
+  const status = t(entry.error ? 'sync.attention' : sending ? 'shared.network_syncing' : entry.attempts > 0 ? 'sync.retrying' : 'sync.to_send')
+  const StatusIcon = entry.error ? TriangleAlertIcon : sending || entry.attempts > 0 ? RefreshIcon : ClockIcon
   const statusColor = entry.error ? palette.expiredText : palette.soonText
   const statusBackground = entry.error ? palette.expiredBg : palette.soonBg
   const field = fields.length === 1 ? fields[0][0] : undefined
@@ -100,17 +101,27 @@ function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retr
                 : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
             )}</Text> : null}
           </YStack>
-          {(entry.error && !['sync_conflict', 'product_not_found', 'shopping_item_not_found', 'unauthenticated'].includes(entry.error.type)) || (!entry.error && entry.attempts > 0) ?
-            <PillButton testID={`queued-retry-${entry.id}`} label={t('sync.retry')}
-              accessibilityLabel={t('sync.retry_item', { name: entry.base.name })}
-              palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge
-              disabled={retryDisabled} busy={retrying} onPress={onRetry}
-              icon={(color) => <RefreshIcon size={15} color={color} />} /> : null}
-          <PillButton testID={`queued-cancel-${entry.id}`} label={t('sync.cancel')}
-            accessibilityLabel={t('sync.cancel_named', { name: entry.base.name })}
-            palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge onPress={onCancel}
-            disabled={disabled} busy={cancelling} icon={(color) => cancelling
-              ? <ActivityIndicator size="small" color={color} /> : <XIcon size={15} color={color} />} />
+          <ProgressBar testID={`queued-progress-${entry.id}`} palette={{ ...palette, fresh: palette.freshText }}
+            value={sending ? undefined : 0} total={sending ? undefined : 1}
+            label={t('sync.item_progress', { name: entry.base.name })} />
+          <XStack gap="$3" flexWrap="wrap" alignItems="center" paddingVertical="$2">
+            {entry.error?.type === 'sync_conflict' ? <PillButton testID={`queued-overwrite-${entry.id}`}
+              label={t('sync.overwrite')} accessibilityLabel={t('sync.overwrite_named', { name: entry.base.name })}
+              palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge size="dense"
+              disabled={retryDisabled} busy={retrying} onPress={onOverwrite}
+              icon={(color) => <RefreshIcon size={13} color={color} />} /> : null}
+            {(entry.error && !['sync_conflict', 'product_not_found', 'shopping_item_not_found', 'unauthenticated'].includes(entry.error.type)) || (!entry.error && entry.attempts > 0) ?
+              <PillButton testID={`queued-retry-${entry.id}`} label={t('sync.retry')} size="dense"
+                accessibilityLabel={t('sync.retry_item', { name: entry.base.name })}
+                palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge
+                disabled={retryDisabled} busy={retrying} onPress={onRetry}
+                icon={(color) => <RefreshIcon size={15} color={color} />} /> : null}
+            <PillButton testID={`queued-cancel-${entry.id}`} label={t('sync.cancel')} size="dense"
+              accessibilityLabel={t('sync.cancel_named', { name: entry.base.name })}
+              palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge onPress={onCancel}
+              disabled={disabled} busy={cancelling} icon={(color) => cancelling
+                ? <ActivityIndicator size="small" color={color} /> : <XIcon size={13} color={color} />} />
+          </XStack>
         </YStack>
       } />
   )
@@ -122,7 +133,7 @@ export function PendingActionsScreen() {
   const closeHover = useHoverPress()
   const actions = useQueuedActions()
   const online = useConnectivity(isFakeConnector)
-  const retry = useMutation({ mutationFn: actions.retry, networkMode: 'always',
+  const retry = useMutation({ mutationFn: ({ id, overwrite }: { id: number; overwrite?: boolean }) => overwrite ? actions.overwrite(id) : actions.retry(id), networkMode: 'always',
     onError: () => showToast(t('sync.retry_error'), 'error') })
   const retryDisabled = online === false || actions.status.syncing || actions.status.storageUnavailable || retry.isPending
   const [selected, setSelected] = useState<QueuedMutation | null>(null)
@@ -170,6 +181,13 @@ export function PendingActionsScreen() {
           <YStack flexShrink={0} accessible={false} aria-hidden><SmartphoneCheckIcon size={25} color={palette.ink} /></YStack>
           <Text flex={1} minWidth={0} fontSize={14} lineHeight={20} fontWeight="600" color={palette.ink}>{t('sync.on_device')}</Text>
         </XStack> : null}
+        {actions.status.progress.total > 0 ? <YStack gap="$2">
+          <Text fontSize={13} fontWeight="600" color={palette.ink} accessibilityLiveRegion="polite">
+            {t('sync.global_progress', { done: actions.status.progress.done, total: actions.status.progress.total })}
+          </Text>
+          <ProgressBar testID="queued-global-progress" palette={{ ...palette, fresh: palette.freshText }}
+            value={actions.status.progress.done} total={actions.status.progress.total} label={t('sync.progress')} />
+        </YStack> : null}
       </YStack>
     }>
       <YStack flex={1} minHeight={0}>
@@ -188,8 +206,10 @@ export function PendingActionsScreen() {
           ItemSeparatorComponent={() => <YStack height={24} />}
           renderItem={({ item, index }) => <ActionRow entry={item} index={index}
             onCancel={() => setSelected(item)} disabled={cancellation.isPending || retry.isPending}
-            onRetry={() => { if (!retryDisabled) retry.mutate(item.id) }} retryDisabled={retryDisabled || cancellation.isPending}
-            retrying={retry.isPending && retry.variables === item.id}
+            onRetry={() => { if (!retryDisabled) retry.mutate({ id: item.id }) }} retryDisabled={retryDisabled || cancellation.isPending}
+            onOverwrite={() => { if (!retryDisabled && !cancellation.isPending) retry.mutate({ id: item.id, overwrite: true }) }}
+            sending={actions.status.sendingId === item.id}
+            retrying={retry.isPending && retry.variables?.id === item.id}
             cancelling={cancellation.isPending && cancellation.variables === item.id} />}
           ListEmptyComponent={<YStack paddingVertical="$6" paddingHorizontal="$2" gap="$3" alignItems="center">
             {actions.isPending ? <SkeletonList palette={palette} rows={3} label={t('sync.loading')} /> : <Text fontSize={16} fontWeight="700" textAlign="center" color={palette.ink}>

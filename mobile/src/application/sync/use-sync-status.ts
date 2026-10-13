@@ -15,5 +15,5 @@ export function useSyncStatus(queue: MutationQueue | null) {
   }, [queue])
   const snapshot = useCallback(() => queue?.getSnapshot() ?? '', [queue])
   useSyncExternalStore(subscribe, snapshot, snapshot)
-  return queue?.status() ?? { entries: [], syncing: false, storageUnavailable: false }
+  return queue?.status() ?? { entries: [], syncing: false, sendingId: null, progress: { done: 0, total: 0 }, storageUnavailable: false }
 }

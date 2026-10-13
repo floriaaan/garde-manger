@@ -253,3 +253,29 @@ test('abandoning a conflict retains the authoritative remote row', async () => {
   expect(queryClient.getQueryData(['shopping-items'])).toContainEqual(remote)
   expect(await offline.queue.failures()).toEqual([])
 })
+
+
+test('explicit overwrite rebases conflict fields onto the latest server row without replacing unrelated fields', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  let current = { ...item, name: 'Remote name', quantity: { ...item.quantity, amount: 7 }, updatedAt: 'remote-version' }
+  const raw = new FakeFridgeConnector()
+  jest.spyOn(raw, 'getShoppingItems').mockImplementation(async () => [current])
+  const send = jest.spyOn(raw, 'updateShoppingItem').mockImplementation(async (_id, patch) => {
+    const { expectedUpdatedAt, ...fields } = patch
+    expect(expectedUpdatedAt).toBe(current.updatedAt)
+    current = { ...current, ...fields, updatedAt: 'overwritten-version' }
+    return Result.ok(current)
+  })
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { name: 'My name' })
+  await offline.queue.flush()
+  const [conflict] = await offline.queue.failures()
+  await offline.queue.flush(true)
+  expect(send).not.toHaveBeenCalled()
+  await offline.queue.overwrite(conflict.id)
+  expect(send).toHaveBeenCalledWith(item.id, { name: 'My name', expectedUpdatedAt: 'remote-version' })
+  expect(current.quantity.amount).toBe(7)
+  expect(current.name).toBe('My name')
+  expect(await offline.queue.failures()).toEqual([])
+})

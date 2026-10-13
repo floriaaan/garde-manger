@@ -110,7 +110,7 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
       })
     }
     refresh(entry)
-  })
+  }, reapply)
 
   async function reapply(entry: QueuedMutation): Promise<void> {
     try {

@@ -1225,6 +1225,11 @@
     "storage_error_description": "La file locale est indisponible. Les données conservées n’ont pas été effacées. Réessayez en rouvrant l’application.",
     "retry": "Réessayer",
     "retry_item": "Réessayer la synchronisation de {{name}}",
-    "retry_error": "Impossible de réessayer pour le moment. Votre modification reste conservée."
+    "retry_error": "Impossible de réessayer pour le moment. Votre modification reste conservée.",
+    "overwrite": "Écraser",
+    "overwrite_named": "Réappliquer mes valeurs et écraser les champs en conflit de {{name}}",
+    "progress": "Synchronisation",
+    "global_progress": "{{done}} sur {{total}} actions synchronisées",
+    "item_progress": "Synchronisation de {{name}}"
   }
 }

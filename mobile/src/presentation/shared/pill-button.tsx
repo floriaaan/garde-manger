@@ -23,7 +23,7 @@ import type { ReactNode } from 'react'
 import { Animated, Platform } from 'react-native'
 import { Pressable } from './pressable.js'
 import { Text, XStack } from './tamagui-typed.js'
-import { pointerCursor, useHoverPress } from './hover.js'
+import { pointerCursor, pressAreaSlop, useHoverPress } from './hover.js'
 import { ripple, rippleClip } from './material.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 
@@ -83,7 +83,7 @@ export function PillButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       android_ripple={ripple(tone === 'accent' ? palette.accentLimeText : palette.ink)}
-      style={[pointerCursor, rippleClip(999), { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
+      style={[pointerCursor, rippleClip(999), pressAreaSlop(slop, 0), { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: disabled ? 0.6 : 1 }}>
         <XStack

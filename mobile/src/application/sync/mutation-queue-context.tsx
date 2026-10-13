@@ -32,6 +32,6 @@ export function useQueuedActions() {
   useEffect(() => queue?.subscribe(() => {
     void client.invalidateQueries({ queryKey: ['sync-actions'] })
   }), [queue, client])
-  return { ...actions, status, retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
+  return { ...actions, status, overwrite: (id: number) => queue ? queue.overwrite(id) : Promise.resolve(), retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
     : Promise.resolve(Result.err({ type: 'action_unavailable', message: 'Cette action n’est plus disponible.' })) }
 }

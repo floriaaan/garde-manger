@@ -1186,6 +1186,11 @@
     "storage_error_description": "The local queue is unavailable. Saved data has not been erased. Try reopening the app.",
     "retry": "Retry",
     "retry_item": "Retry syncing {{name}}",
-    "retry_error": "Unable to retry right now. Your change is still saved."
+    "retry_error": "Unable to retry right now. Your change is still saved.",
+    "overwrite": "Overwrite",
+    "overwrite_named": "Reapply my values and overwrite conflicting fields for {{name}}",
+    "progress": "Synchronization",
+    "global_progress": "{{done}} of {{total}} actions synchronized",
+    "item_progress": "Syncing {{name}}"
   }
 }
