@@ -119,26 +119,26 @@ export function PendingActionsScreen() {
   ]
   const close = () => { if (router.canGoBack()) router.back(); else router.replace('/') }
   return (
-    <AppShell nav={{ kind: 'modal' }} surfaceColor={palette.brandDeep} scrollable={false} header={
+    <AppShell nav={{ kind: 'modal' }} scrollable={false} header={
       <YStack gap="$3">
         <XStack justifyContent="flex-end">
           <Animated.View style={{ transform: [{ scale: closeHover.scale }] }}>
             <Pressable accessibilityRole="button" accessibilityLabel={t('shared.close')} onPress={close}
               onHoverIn={closeHover.onHoverIn} onHoverOut={closeHover.onHoverOut}
               onPressIn={closeHover.onPressIn} onPressOut={closeHover.onPressOut}
-              android_ripple={ripple(palette.onDark)}
+              android_ripple={ripple(palette.ink)}
               style={[pointerCursor, rippleClip(999), { width: 48, height: 48, borderRadius: 999,
-                backgroundColor: palette.heroPillFill, alignItems: 'center', justifyContent: 'center' }]}>
-              <XIcon size={22} color={palette.onDark} />
+                backgroundColor: palette.cream, alignItems: 'center', justifyContent: 'center' }]}>
+              <XIcon size={22} color={palette.ink} />
             </Pressable>
           </Animated.View>
         </XStack>
-        <ScreenHeader palette={{ ...palette, ink: palette.onDark, inkSecondary: palette.onDarkSecondary }}
-          tint={palette.heroPillFill} icon={(color) => <ClockIcon size={20} color={color} />}
+        <ScreenHeader palette={palette}
+          icon={(color) => <ClockIcon size={20} color={color} />}
           title={t('sync.title')} subtitle={actions.data !== undefined ? t('sync.count', { count: entries.length }) : undefined} />
         {entries.length > 0 ? <XStack gap="$2.5" alignItems="center" paddingTop="$1" paddingBottom="$1">
-          <YStack flexShrink={0} accessible={false} aria-hidden><SmartphoneCheckIcon size={25} color={palette.onDark} /></YStack>
-          <Text flex={1} minWidth={0} fontSize={14} lineHeight={20} fontWeight="600" color={palette.onDark}>{t('sync.on_device')}</Text>
+          <YStack flexShrink={0} accessible={false} aria-hidden><SmartphoneCheckIcon size={25} color={palette.ink} /></YStack>
+          <Text flex={1} minWidth={0} fontSize={14} lineHeight={20} fontWeight="600" color={palette.ink}>{t('sync.on_device')}</Text>
         </XStack> : null}
       </YStack>
     }>

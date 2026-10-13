@@ -6,11 +6,11 @@ TARGET: `src/presentation/shared/pending-actions-screen.tsx`, `/pending-actions`
 
 ## Direction contract
 
-THESIS: Le dossier d’envoi replaces the receipt with one mocha canopy, one light pane, pinned status filters and compact disclosure rows.
+THESIS: Le dossier d’envoi replaces the receipt with the shared BlobBackground ground, one light pane, pinned status filters and compact disclosure rows.
 
-AUTHORITY: The user chose the folder comp (candidate 6, seed 8fc8fb71, buildPath comp), then instructed “Fais matcher avec le design.md”. DESIGN.md takes precedence over the comp’s teal, oversized title and segmented controls. The approved comp and provenance remain a composition reference, not a runtime asset.
+AUTHORITY: The user chose the folder comp (candidate 6, seed 8fc8fb71, buildPath comp), then instructed “Fais matcher avec le design.md”. DESIGN.md takes precedence over the comp’s teal, oversized title and segmented controls. The user subsequently requested replacing mocha with BlobBackground; the AppShell default ground now takes precedence. The approved comp and provenance remain a composition reference, not a runtime asset.
 
-OWN-WORLD: Existing brandDeep/onDark tokens, themed light pane, lime selection, native typography and Spectral web ScreenHeader. Shared Chip, useHoverPress and Android ripple. No appliance colors outside the fridge, decorative raster assets or new dependencies.
+OWN-WORLD: Existing AppShell BlobBackground, ink and cream tokens, themed light pane, lime selection, native typography and Spectral web ScreenHeader. Shared Chip, useHoverPress and Android ripple. No appliance colors outside the fridge, decorative raster assets or new dependencies.
 
 STORY: Scan saved changes, filter automatic delivery or retained failures, then expand an action to inspect every recorded before/after assignment. Fake and real queues share the same behavior and copy.
 
