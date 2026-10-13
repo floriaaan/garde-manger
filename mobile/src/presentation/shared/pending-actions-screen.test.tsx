@@ -45,14 +45,14 @@ function setup(demo = false) {
   } }
 }
 
-test('shows saved values and updates to empty as the local queue drains', async () => {
+test('shows saved values then a completion state as the local queue drains', async () => {
   const s = setup()
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
   await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { quantity: { amount: 3, unit: 'L' } }) })
   await waitFor(() => expect(screen.getByLabelText('Quantité : 2 L, puis 3 L.')).toBeTruthy())
   expect(screen.getAllByText('À envoyer')).toHaveLength(1)
   await act(async () => { await s.queue.flush() })
-  await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Tout est réglé')).toBeTruthy())
   await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }))
   expect(router.back).toHaveBeenCalled()
 })
@@ -62,6 +62,7 @@ test('opening the modal observes identity cache without missing-queryFn errors o
   try {
     const s = setup()
     await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
+    expect(screen.queryByText('Tout est réglé')).toBeNull()
     expect(s.getSession).not.toHaveBeenCalled()
     expect(s.getHousehold).not.toHaveBeenCalled()
     expect(errors.mock.calls.filter((args) => args.some((arg) => String(arg).includes('No queryFn')))).toEqual([])
@@ -77,6 +78,7 @@ test('changing households hides the previous household queue', async () => {
   await act(() => s.changeHousehold())
   await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
   expect(screen.queryByText(fakeShoppingItems[0].name)).toBeNull()
+  expect(screen.queryByText('Tout est réglé')).toBeNull()
 })
 
 test('fake mode previews waiting, retrying, deletion and blocked actions', async () => {
@@ -102,6 +104,7 @@ test('retained failures stay separate after pending work drains, without promisi
   await act(async () => { await s.queue.flush(true) })
   await waitFor(() => expect(screen.getByText('Tes modifications sont conservées. Certaines actions nécessitent une vérification.')).toBeTruthy())
   expect(screen.getByRole('button', { name: 'À vérifier 3' })).toBeTruthy()
+  expect(screen.queryByText('Tout est réglé')).toBeNull()
   expect(screen.getByLabelText('Emplacement : Frigo, puis Congélateur.')).toBeTruthy()
   expect(screen.queryByText('Les actions en attente seront envoyées dès que le serveur sera disponible.')).toBeNull()
   await fireEvent.press(screen.getByRole('button', { name: 'À envoyer 0' }))
@@ -153,7 +156,7 @@ test('retry sends the saved action and remains disabled during an outage', async
   jest.mocked(useConnectivity).mockReturnValue(true)
   await act(async () => { await s.queue.flush() })
   await fireEvent.press(screen.getByTestId(`queued-retry-${entry.id}`))
-  await waitFor(() => expect(screen.getByText('Aucune action en attente')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Tout est réglé')).toBeTruthy())
   expect(s.send).toHaveBeenCalledTimes(2)
 })
 
@@ -227,4 +230,16 @@ test('overwrite shows item progress during fresh-row preparation as well as deli
   await act(async () => { finish(); await preparation })
   await waitFor(() => expect(screen.queryByTestId('queued-progress-4')).toBeNull())
   overwrite.mockRestore()
+})
+
+
+test('new actions interrupt the completion state instead of dismissing pending work', async () => {
+  const s = setup()
+  await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+  await waitFor(() => expect(screen.getByTestId('queued-action-' + s.queue.status().entries[0].id)).toBeTruthy())
+  await act(async () => { await s.queue.flush() })
+  await waitFor(() => expect(screen.getByText('Tout est réglé')).toBeTruthy())
+  await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[1], { checked: true }) })
+  await waitFor(() => expect(screen.queryByText('Tout est réglé')).toBeNull())
+  expect(screen.getByTestId('queued-global-progress')).toBeTruthy()
 })

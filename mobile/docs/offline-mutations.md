@@ -106,3 +106,11 @@ progress count for retained actions. Only the action currently being sent or exp
 an indeterminate progress bar, including the fresh-row preparation of overwrite.
 The atomic endpoint reports no intermediate percentage. Waiting and
 blocked actions have no item bar; acknowledged rows leave the list. Existing shared progress bars preserve accessible values and Reduce Motion.
+
+When the modal has observed actions in the current account/household/server and
+that scoped queue becomes empty, it shows a short “All sorted!” checkmark pop,
+then closes after 1.8 seconds. Retained conflicts/errors prevent completion.
+Opening an already-empty queue or changing scopes does not trigger the success
+state. New actions interrupt it and cancel dismissal. The timer runs only while
+the modal is focused; Reduce Motion keeps the success message static, and Close
+lets the user skip the delay.

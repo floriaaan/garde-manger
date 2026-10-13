@@ -1230,6 +1230,7 @@
     "overwrite_named": "Réappliquer mes valeurs et écraser les champs en conflit de {{name}}",
     "progress": "Synchronisation",
     "global_progress": "{{done}} sur {{total}} actions synchronisées",
-    "item_progress": "Synchronisation de {{name}}"
+    "item_progress": "Synchronisation de {{name}}",
+    "all_set": "Tout est réglé"
   }
 }

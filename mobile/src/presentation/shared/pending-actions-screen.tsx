@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { ActivityIndicator, Animated, FlatList } from 'react-native'
 import { router } from 'expo-router'
@@ -19,6 +19,7 @@ import { pointerCursor, useHoverPress } from './hover.js'
 import { ripple, rippleClip } from './material.js'
 import { SkeletonList } from './skeleton.js'
 import { Pressable } from './pressable.js'
+import { SyncCompletion } from './sync-completion.js'
 import { ProgressBar } from './progress-bar.js'
 import { PillButton } from './pill-button.js'
 import { Text, XStack, YStack } from './tamagui-typed.js'
@@ -156,7 +157,13 @@ export function PendingActionsScreen() {
     { id: 'pending', label: t('sync.to_send'), count: pending.length, icon: ClockIcon },
     { id: 'failed', label: t('sync.attention'), count: failed.length, icon: TriangleAlertIcon },
   ]
-  const close = () => { if (router.canGoBack()) router.back(); else router.replace('/') }
+  const close = useCallback(() => { if (router.canGoBack()) router.back(); else router.replace('/') }, [])
+  const [observedScope, setObservedScope] = useState<string | null>(null)
+  if (actions.status.entries.length > 0 && observedScope !== actions.scopeKey) setObservedScope(actions.scopeKey)
+  const completed = observedScope === actions.scopeKey && actions.isSuccess &&
+    actions.status.entries.length === 0 && !actions.status.storageUnavailable &&
+    !actions.status.syncing && !retry.isPending && !cancellation.isPending && selected === null
+  if (completed) return <AppShell nav={{ kind: 'modal' }} scrollable={false}><SyncCompletion onDone={close} /></AppShell>
   return (
     <>
     <AppShell nav={{ kind: 'modal' }} scrollable={false} header={

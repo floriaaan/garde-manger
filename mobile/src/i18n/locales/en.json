@@ -1191,6 +1191,7 @@
     "overwrite_named": "Reapply my values and overwrite conflicting fields for {{name}}",
     "progress": "Synchronization",
     "global_progress": "{{done}} of {{total}} actions synchronized",
-    "item_progress": "Syncing {{name}}"
+    "item_progress": "Syncing {{name}}",
+    "all_set": "All sorted!"
   }
 }
