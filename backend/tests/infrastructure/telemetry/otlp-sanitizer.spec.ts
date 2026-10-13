@@ -199,14 +199,20 @@ test('free-form span status and log bodies do not survive the relay', ({ assert 
   assert.notInclude(JSON.stringify(logs), 'alice@example.com')
 })
 
-test('sync correlation and retry counters survive the relay without accepting free-form strings', ({ assert }) => {
-  const result = sanitizeOtlpPayload('traces', tracePayload([
-    { key: 'sync.mutation_id', value: { intValue: 1234 } },
-    { key: 'sync.attempt', value: { intValue: 2 } },
-    { key: 'sync.retry_delay_ms', value: { intValue: 2000 } },
-    { key: 'sync.attempt', value: { stringValue: 'alice@example.com' } },
-    { key: 'patch', value: { stringValue: 'private-patch' } },
-  ]), attribution)
+test('sync correlation and retry counters survive the relay without accepting free-form strings', ({
+  assert,
+}) => {
+  const result = sanitizeOtlpPayload(
+    'traces',
+    tracePayload([
+      { key: 'sync.mutation_id', value: { intValue: 1234 } },
+      { key: 'sync.attempt', value: { intValue: 2 } },
+      { key: 'sync.retry_delay_ms', value: { intValue: 2000 } },
+      { key: 'sync.attempt', value: { stringValue: 'alice@example.com' } },
+      { key: 'patch', value: { stringValue: 'private-patch' } },
+    ]),
+    attribution,
+  )
   const text = JSON.stringify(result)
   assert.include(text, 'sync.mutation_id')
   assert.include(text, '1234')
