@@ -81,17 +81,26 @@ export class LucidProductRepository implements ProductRepository {
   }
 
   async saveIfUnchanged(product: Product, updatedAt: Date): Promise<boolean> {
-    const rows = await db.from('product')
-      .where('id', product.id).where('household_id', product.householdId)
+    const rows = await db
+      .from('product')
+      .where('id', product.id)
+      .where('household_id', product.householdId)
       .where('updated_at', updatedAt)
       .update({
-        name: product.name, quantity: product.quantity.amount, unit: product.quantity.unit,
-        initial_quantity: product.initialQuantity, location: product.location.value,
-        category: product.category, expires_at: product.expiresAt, opened_at: product.openedAt,
+        name: product.name,
+        quantity: product.quantity.amount,
+        unit: product.quantity.unit,
+        initial_quantity: product.initialQuantity,
+        location: product.location.value,
+        category: product.category,
+        expires_at: product.expiresAt,
+        opened_at: product.openedAt,
         openfoodfact_id: product.openfoodfactId,
         categories: product.categories,
-        price: product.price, updated_at: product.updatedAt,
-      }).returning('id')
+        price: product.price,
+        updated_at: product.updatedAt,
+      })
+      .returning('id')
     return rows.length > 0
   }
 

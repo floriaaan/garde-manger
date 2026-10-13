@@ -65,8 +65,7 @@ export class UpdateProduct implements UseCase<
     }
 
     product.update(patch, new Date(Math.max(this.clock.now().getTime(), version.getTime() + 1)))
-    if (!(await this.products.saveIfUnchanged(product, version)))
-      return Result.err('sync_conflict')
+    if (!(await this.products.saveIfUnchanged(product, version))) return Result.err('sync_conflict')
     return Result.ok(product)
   }
 }

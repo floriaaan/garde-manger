@@ -6,17 +6,19 @@ export class FakeShoppingItemRepository implements ShoppingItemRepository {
 
   async findById(id: string) {
     const entity = this.items.get(id)
-    return entity ? ShoppingItem.reconstruct(id, {
-      householdId: entity.householdId,
-      name: entity.name,
-      quantity: entity.quantity,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-      checked: entity.checked,
-      source: entity.source,
-      haUid: entity.haUid,
-      haSyncedAt: entity.haSyncedAt,
-    }) : null
+    return entity
+      ? ShoppingItem.reconstruct(id, {
+          householdId: entity.householdId,
+          name: entity.name,
+          quantity: entity.quantity,
+          createdAt: entity.createdAt,
+          updatedAt: entity.updatedAt,
+          checked: entity.checked,
+          source: entity.source,
+          haUid: entity.haUid,
+          haSyncedAt: entity.haSyncedAt,
+        })
+      : null
   }
   async findByHousehold(householdId: string) {
     return [...this.items.values()].filter((item) => item.householdId === householdId)

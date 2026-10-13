@@ -111,7 +111,7 @@ test('status filters retain counts and show every assignment without expanding a
   setup(true)
   await waitFor(() => expect(screen.getByRole('button', { name: 'Tout 12' })).toBeTruthy())
   await fireEvent.press(screen.getByRole('button', { name: 'À vérifier 3' }))
-  expect(screen.getByTestId('queued-filter-failed')).toHaveAccessibilityState({ selected: true })
+  expect(screen.getByTestId('queued-filter-failed').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
   await waitFor(() => expect(screen.queryByText('Lait demi-écrémé')).toBeNull())
   expect(screen.getByRole('button', { name: 'À envoyer 9' })).toBeTruthy()
   expect(screen.getByLabelText('Emplacement : Frigo, puis Congélateur.')).toBeTruthy()

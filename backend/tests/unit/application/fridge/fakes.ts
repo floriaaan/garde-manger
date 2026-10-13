@@ -10,23 +10,25 @@ export class FakeProductRepository implements ProductRepository {
 
   async findById(id: string) {
     const entity = this.products.get(id)
-    return entity ? Product.reconstruct(id, {
-      householdId: entity.householdId,
-      name: entity.name,
-      quantity: entity.quantity,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-      receiptId: entity.receiptId,
-      initialQuantity: entity.initialQuantity,
-      location: entity.location,
-      expiresAt: entity.expiresAt,
-      openedAt: entity.openedAt,
-      category: entity.category,
-      openfoodfactId: entity.openfoodfactId,
-      categories: entity.categories,
-      price: entity.price,
-      imageKey: entity.imageKey,
-    }) : null
+    return entity
+      ? Product.reconstruct(id, {
+          householdId: entity.householdId,
+          name: entity.name,
+          quantity: entity.quantity,
+          createdAt: entity.createdAt,
+          updatedAt: entity.updatedAt,
+          receiptId: entity.receiptId,
+          initialQuantity: entity.initialQuantity,
+          location: entity.location,
+          expiresAt: entity.expiresAt,
+          openedAt: entity.openedAt,
+          category: entity.category,
+          openfoodfactId: entity.openfoodfactId,
+          categories: entity.categories,
+          price: entity.price,
+          imageKey: entity.imageKey,
+        })
+      : null
   }
   async findByHousehold(householdId: string) {
     return [...this.products.values()].filter((product) => product.householdId === householdId)

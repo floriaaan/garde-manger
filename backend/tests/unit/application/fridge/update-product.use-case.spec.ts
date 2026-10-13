@@ -10,13 +10,17 @@ test.group('UpdateProduct concurrency', () => {
     const useCase = new UpdateProduct(repository, FIXED_CLOCK)
     const expectedUpdatedAt = entity.updatedAt
     const input = { householdId: 'h_1', productId: entity.id, expectedUpdatedAt }
-    assert.isTrue((await useCase.execute({ ...input, quantity: { amount: 2, unit: 'L' } })).ok)
+    const firstResult = await useCase.execute({ ...input, quantity: { amount: 2, unit: 'L' } })
+    assert.isTrue(firstResult.ok)
     const stale = await useCase.execute({ ...input, quantity: { amount: 3, unit: 'L' } })
     assert.deepEqual(stale, { ok: false, error: 'sync_conflict' })
-    assert.equal((await repository.findById(entity.id))?.quantity.amount, 2)
+    const saved = await repository.findById(entity.id)
+    assert.equal(saved?.quantity.amount, 2)
   })
 
-  test('deletion between read and write returns a conflict without inserting', async ({ assert }) => {
+  test('deletion between read and write returns a conflict without inserting', async ({
+    assert,
+  }) => {
     const repository = new FakeProductRepository()
     const entity = buildProduct()
     await repository.save(entity)
@@ -26,7 +30,9 @@ test.group('UpdateProduct concurrency', () => {
       return original(changed, version)
     }
     const result = await new UpdateProduct(repository, FIXED_CLOCK).execute({
-      householdId: 'h_1', productId: entity.id, name: 'Changed',
+      householdId: 'h_1',
+      productId: entity.id,
+      name: 'Changed',
     })
     assert.deepEqual(result, { ok: false, error: 'sync_conflict' })
     assert.isNull(await repository.findById(entity.id))

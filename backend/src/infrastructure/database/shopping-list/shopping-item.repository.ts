@@ -35,13 +35,19 @@ export class LucidShoppingItemRepository implements ShoppingItemRepository {
   }
 
   async saveIfUnchanged(item: ShoppingItem, updatedAt: Date): Promise<boolean> {
-    const rows = await db.from('shopping_item')
-      .where('id', item.id).where('household_id', item.householdId)
+    const rows = await db
+      .from('shopping_item')
+      .where('id', item.id)
+      .where('household_id', item.householdId)
       .where('updated_at', updatedAt)
       .update({
-        name: item.name, quantity: item.quantity.amount, unit: item.quantity.unit,
-        checked: item.checked, updated_at: item.updatedAt,
-      }).returning('id')
+        name: item.name,
+        quantity: item.quantity.amount,
+        unit: item.quantity.unit,
+        checked: item.checked,
+        updated_at: item.updatedAt,
+      })
+      .returning('id')
     return rows.length > 0
   }
 

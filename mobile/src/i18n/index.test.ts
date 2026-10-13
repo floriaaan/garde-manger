@@ -85,13 +85,21 @@ test('keeps a debug override on foreground and restores system detection on rese
 
 test('every French message has an English translation and matching interpolation values', () => {
   const placeholders = (value: string) => [...value.matchAll(/{{(\w+)}}/g)].map((match) => match[1]).sort()
-  for (const [section, messages] of Object.entries(fr)) {
+  const compareMessages = (messages: unknown, translations: unknown) => {
+    if (!messages || typeof messages !== 'object') return
     for (const [key, value] of Object.entries(messages)) {
       if (key.endsWith('_many')) continue // French has an additional CLDR plural form.
-      const translated = (en as Record<string, Record<string, string>>)[section]?.[key]
-      expect(translated).toBeDefined()
-      // A translation can omit a redundant suffix; it cannot invent an unset value.
-      for (const variable of placeholders(translated)) expect(placeholders(value)).toContain(variable)
+      const translated = translations && typeof translations === 'object'
+        ? (translations as Record<string, unknown>)[key] : undefined
+      if (typeof value === 'string') {
+        expect(typeof translated).toBe('string')
+        if (typeof translated !== 'string') continue
+        // A translation can omit a redundant suffix; it cannot invent an unset value.
+        for (const variable of placeholders(translated)) expect(placeholders(value)).toContain(variable)
+      } else {
+        compareMessages(value, translated)
+      }
     }
   }
+  compareMessages(fr, en)
 })

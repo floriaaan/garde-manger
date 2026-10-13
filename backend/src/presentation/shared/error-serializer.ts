@@ -46,7 +46,8 @@ const STRING_ERROR_STATUS: Record<string, number> = {
 }
 
 const STRING_ERROR_MESSAGES: Record<string, string> = {
-  sync_conflict: 'Cet élément a changé sur un autre appareil. Rechargez-le avant de réappliquer votre modification.',
+  sync_conflict:
+    'Cet élément a changé sur un autre appareil. Rechargez-le avant de réappliquer votre modification.',
   invalid_credentials: 'Email ou mot de passe invalide.',
   already_in_household: 'Vous appartenez déjà à un foyer.',
   invalid_invite_code: "Code d'invitation invalide.",

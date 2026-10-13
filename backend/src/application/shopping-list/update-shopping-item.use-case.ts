@@ -53,8 +53,7 @@ export class UpdateShoppingItem implements UseCase<
     if (Object.keys(patch).length > 0) item.update(patch, now)
     if (input.checked !== undefined && input.checked !== item.checked) item.toggle(now)
 
-    if (!(await this.items.saveIfUnchanged(item, version)))
-      return Result.err('sync_conflict')
+    if (!(await this.items.saveIfUnchanged(item, version))) return Result.err('sync_conflict')
     return Result.ok(item)
   }
 }

@@ -6,24 +6,42 @@ import { CreateShoppingItem } from '#application/shopping-list/create-shopping-i
 test.group('UpdateShoppingItem concurrency', () => {
   test('the first accepted quantity wins; stale device intent is rejected', async ({ assert }) => {
     const repository = new FakeShoppingItemRepository()
-    const created = await new CreateShoppingItem(repository, { next: () => 'p_1' }, FIXED_CLOCK).execute({
-      householdId: 'h_1', name: 'Milk', quantity: { amount: 1, unit: 'L' }, source: 'manual',
+    const created = await new CreateShoppingItem(
+      repository,
+      { next: () => 'p_1' },
+      FIXED_CLOCK,
+    ).execute({
+      householdId: 'h_1',
+      name: 'Milk',
+      quantity: { amount: 1, unit: 'L' },
+      source: 'manual',
     })
     if (!created.ok) throw new Error('Invalid fixture')
     const entity = created.value.item
     const useCase = new UpdateShoppingItem(repository, FIXED_CLOCK)
     const expectedUpdatedAt = entity.updatedAt
     const input = { householdId: 'h_1', itemId: entity.id, expectedUpdatedAt }
-    assert.isTrue((await useCase.execute({ ...input, quantity: { amount: 2, unit: 'L' } })).ok)
+    const firstResult = await useCase.execute({ ...input, quantity: { amount: 2, unit: 'L' } })
+    assert.isTrue(firstResult.ok)
     const stale = await useCase.execute({ ...input, quantity: { amount: 3, unit: 'L' } })
     assert.deepEqual(stale, { ok: false, error: 'sync_conflict' })
-    assert.equal((await repository.findById(entity.id))?.quantity.amount, 2)
+    const saved = await repository.findById(entity.id)
+    assert.equal(saved?.quantity.amount, 2)
   })
 
-  test('deletion between read and write returns a conflict without inserting', async ({ assert }) => {
+  test('deletion between read and write returns a conflict without inserting', async ({
+    assert,
+  }) => {
     const repository = new FakeShoppingItemRepository()
-    const created = await new CreateShoppingItem(repository, { next: () => 'p_1' }, FIXED_CLOCK).execute({
-      householdId: 'h_1', name: 'Milk', quantity: { amount: 1, unit: 'L' }, source: 'manual',
+    const created = await new CreateShoppingItem(
+      repository,
+      { next: () => 'p_1' },
+      FIXED_CLOCK,
+    ).execute({
+      householdId: 'h_1',
+      name: 'Milk',
+      quantity: { amount: 1, unit: 'L' },
+      source: 'manual',
     })
     if (!created.ok) throw new Error('Invalid fixture')
     const entity = created.value.item
@@ -33,7 +51,9 @@ test.group('UpdateShoppingItem concurrency', () => {
       return original(changed, version)
     }
     const result = await new UpdateShoppingItem(repository, FIXED_CLOCK).execute({
-      householdId: 'h_1', itemId: entity.id, name: 'Changed',
+      householdId: 'h_1',
+      itemId: entity.id,
+      name: 'Changed',
     })
     assert.deepEqual(result, { ok: false, error: 'sync_conflict' })
     assert.isNull(await repository.findById(entity.id))

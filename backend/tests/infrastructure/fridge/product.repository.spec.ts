@@ -241,7 +241,9 @@ test.group('LucidProductRepository', (group) => {
     assert.isNotNull(await repository.findById('p_11'))
   })
 
-  test('conditional writes reject stale versions and never recreate deleted rows', async ({ assert }) => {
+  test('conditional writes reject stale versions and never recreate deleted rows', async ({
+    assert,
+  }) => {
     await createUser('u_sync', 'sync@example.com')
     await createHousehold('h_sync', 'u_sync')
     const repository = new LucidProductRepository()
@@ -253,11 +255,11 @@ test.group('LucidProductRepository', (group) => {
     assert.isTrue(await repository.saveIfUnchanged(first, version))
     stale.update({ name: 'Stale edit' }, new Date(version.getTime() + 2))
     assert.isFalse(await repository.saveIfUnchanged(stale, version))
-    assert.equal((await repository.findById('sync_1'))?.name, 'First edit')
-    assert.equal((await repository.findById('sync_1'))?.updatedAt.getTime(), version.getTime() + 1)
+    const saved = await repository.findById('sync_1')
+    assert.equal(saved?.name, 'First edit')
+    assert.equal(saved?.updatedAt.getTime(), version.getTime() + 1)
     await repository.delete('sync_1')
     assert.isFalse(await repository.saveIfUnchanged(first, first.updatedAt))
     assert.isNull(await repository.findById('sync_1'))
   })
-
 })
