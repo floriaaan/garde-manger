@@ -15,6 +15,7 @@ import {
     HomeIcon,
   BellIcon,
   LogOutIcon,
+  RefreshIcon,
     ServerIcon,
   SettingsIcon,
   SparklesIcon,
@@ -272,6 +273,9 @@ export function SettingsScreen() {
           palette={palette}
           onPress={() => router.push('/server-info')}
         />
+        <PillButton testID="settings-sync" label={t('sync.progress')} accessibilityLabel={t('sync.open_summary')}
+          palette={palette} tone="quiet" size="dense" icon={(color) => <RefreshIcon size={14} color={color} />}
+          onPress={() => router.push('/pending-actions')} />
       </YStack>
 
       {/* Dev-only door to `/debug` (also reachable by triple-tapping the logo on the auth screens). Never bundled into a release build. */}

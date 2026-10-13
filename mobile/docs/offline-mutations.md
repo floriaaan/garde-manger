@@ -37,8 +37,7 @@ Creation, imports, product outcomes, scans, and AI jobs remain online operations
 Full offline cold starts reuse the local-first engine already on `develop`:
 session, household, and unrelated cached rows stay in its read snapshot. Failed
 household reads reject so TanStack retains that snapshot instead of saving an
-empty list. Persistent sync status remains a separate concern (#86). Conflict
-policy is defined in
+empty list. Conflict policy is defined in
 [household-sync-conflicts.md](household-sync-conflicts.md).
 
 The offline banner opens `/pending-actions` as a native modal. Its local-only
@@ -74,3 +73,65 @@ household cache observers reuse their domain query functions with `enabled: fals
 Focused coverage is authored in `mutation-queue.test.ts`,
 `offline-connector.test.ts`, `mutation-queue-storage.test.ts`, and `http-client.test.ts`. Per AGENTS.md, these tests,
 builds, lint, and typechecks are not executed automatically.
+
+## Synchronization status (#86)
+
+The measured network banner also shows scoped pending changes, actual delivery,
+and action-required failures, with French/English copy and accessible live status.
+It remains absent during normal online use with an empty queue. After reconnecting,
+dismissal starts only once the queue is empty: pending delivery and retained
+conflicts keep the banner visible. Conflicts require an explicit human decision;
+reconnection never resolves them. Temporary transport
+failures stay pending and never request sign-in. Details reuse `/pending-actions`,
+including its existing field comparison, filters and cancellation workflow.
+
+A quiet retry is available after automatic delivery fails. It preserves the saved
+patch/deletion and clears ordinary failures durably before replaying dependent
+changes in order. Buttons wait while offline or sending. Conflict cards show their explicit Overwrite button only when connectivity is
+confirmed online. Cancellation stays available offline. Overwrite opens the shared
+ActionSheet and reads through the original transport to compare current household
+values with each saved assignment. The human confirms the affected fields before
+#85's reapplication flow runs; a changed server version rejects the reviewed intent
+and asks for another review. Unrelated values remain intact. Reconnect alone never invokes it. Deleted-row recovery
+remains separate; a missing row is never recreated by overwrite. Action buttons
+use the compact shared pill size and sit together in a wrapping row. Saved intent remains inspectable after
+a restart even when it is no longer overlaid onto the authoritative row.
+
+Focused coverage is authored in the queue, banner and pending-actions tests.
+No tests, build, lint, typecheck or native rendering were run for this rebase.
+
+The modal displays global acknowledged delivery progress for the current in-memory
+queue batch. Conflicts and temporary failures remain incomplete; cancellation
+resolves an action without counting it as synchronized. The denominator stays stable
+and the counter names sent and canceled actions separately. A new batch resets completed counts,
+and accounts/households/servers have separate counters. Restarts begin a new
+progress count for retained actions. Only the action currently being sent or explicitly retried/overwritten displays
+an indeterminate progress bar, including the fresh-row preparation of overwrite.
+The atomic endpoint reports no intermediate percentage. Waiting and
+blocked actions have no item bar; acknowledged rows leave the list. Existing shared progress bars preserve accessible values and Reduce Motion.
+
+When the modal has observed actions in the current account/household/server and
+that scoped queue becomes empty, delivery-only completion shows a short “All sorted!”
+checkmark pop. Canceled-only and mixed outcomes use neutral wording and static motion,
+with explicit synchronized/canceled counts. Retained conflicts/errors prevent completion.
+Opening an already-empty queue or changing scopes does not trigger the success
+state. New actions interrupt it and cancel dismissal. The timer runs only while
+the modal is focused. Normal delivery closes after 1.8 seconds, Reduce Motion uses
+3.5 seconds and screen readers get at least 8 seconds; Android respects its recommended
+accessibility timeout. Touching or focusing the confirmation suspends automatic
+navigation, while Close lets the user skip the delay. Settings has a permanent
+Synchronization entry to reopen changes and the last scoped in-memory outcome.
+
+Unavailable local storage explains reopening the app instead of offering an ineffective
+queue reload. Offline/sending guidance explains disabled controls. Expired sessions
+offer an explicit session check and route to sign-in when necessary; only a confirmed
+session in the same account/server/household can retry retained authentication failures.
+Cancellation confirmation also becomes unavailable if delivery starts after it opens.
+
+Audit hardening limits Overwrite to the selected card's retained conflict; other
+conflicts on the same entity remain blocked for their own human decision. Delivery
+status stays continuous across a replay batch, while only the actually sending
+row (or its idle preparation) displays item progress. Status announcements are
+phase-based; counters stay readable without announcing every acknowledgement.
+Idle/backoff/conflict-only replay does not notify observers, and the local action
+list refetches only when its entry references change, not for sending-state changes.

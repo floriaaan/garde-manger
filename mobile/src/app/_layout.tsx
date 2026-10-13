@@ -102,7 +102,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <NetworkStatusBanner />
+        <NetworkStatusBanner queue={getConnectorMutationQueue(connector)} />
         {/* Measure screen insets below the banner, which already consumes the top safe area. */}
         <SafeAreaProvider style={{ flex: 1, minHeight: 0 }}>
           <QueryClientProvider client={queryClient}>
