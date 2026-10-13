@@ -10,9 +10,13 @@ export async function startAppOfflineCache(): Promise<() => void> {
   let cache: Awaited<ReturnType<typeof startOfflineCache>>
   try {
     cache = await startOfflineCache(queryClient, createOfflineCacheStorage(), getServerUrl(),
-      (error) => getTelemetry().recordError('offline cache storage failed', { error }))
+      (error) => getTelemetry().recordError('offline cache storage failed', { error, attributes: {
+        'app.operation': 'offline_cache.storage', 'error.code': 'offline_cache_storage_failed',
+      } }))
   } catch (error) {
-    getTelemetry().recordError('offline cache initialization failed', { error })
+    getTelemetry().recordError('offline cache initialization failed', { error, attributes: {
+      'app.operation': 'offline_cache.initialize', 'error.code': 'offline_cache_initialization_failed',
+    } })
     return () => {}
   }
   // Server changes discard the previous snapshot before resetQueries revalidates.

@@ -32,5 +32,7 @@ export function startConnectorSync(connector: FridgeConnector): () => void {
 /** Restore pending overlays after the read cache, before query observers mount. */
 export async function restoreConnectorMutations(connector: FridgeConnector): Promise<void> {
   try { await queues.get(connector)?.restorePending() }
-  catch (error) { getTelemetry().recordError('mutation queue restore failed', { error }) }
+  catch (error) { getTelemetry().recordError('mutation queue restore failed', { error, attributes: {
+    'app.operation': 'sync.restore', 'error.code': 'queue_restore_failed',
+  } }) }
 }

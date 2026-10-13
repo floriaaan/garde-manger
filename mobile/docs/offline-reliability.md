@@ -23,6 +23,32 @@ signals are controlled by the tests.
 | Concurrent enqueue/replay, persisted backoff and lost-response retries use absolute assignments | `application/sync/mutation-queue.test.ts` |
 | Pending fields overlay remote reads until a version conflict retains intent and exposes the authoritative row; remote deletion completes DELETE and permanently refuses PATCH | `application/sync/offline-reliability.test.ts` |
 | Storage failure/corruption never silently discards a queue or reports an unsaved write as accepted | `application/sync/mutation-queue.test.ts`, `infrastructure/storage/mutation-queue-storage.test.ts`, `infrastructure/storage/offline-cache-storage.test.ts` |
+| Queue lifecycle diagnostics, original failure causes, recovery and safe OTLP export | `application/sync/mutation-queue.test.ts`, `application/sync/wire-mutation-queue.test.ts`, `infrastructure/telemetry/telemetry.test.ts` |
+
+## Synchronization diagnostics
+
+The queue uses the existing telemetry port. Lifecycle events use
+`sync.products.*` / `sync.shopping_items.*` operations: `enqueue`, `replay`,
+`retry_scheduled`, `retry_requested`, `conflict_reapplied` and `cancel`.
+Enqueue, success and recovery events are emitted after the corresponding durable
+write succeeds; idle/backoff-only polls do not produce lifecycle events.
+`sync.mutation_id` remains stable across queue restarts, `sync.attempt` identifies
+the replay attempt (starting at one), and `sync.retry_delay_ms` records backoff.
+The entity id and PATCH/DELETE method identify the affected operation.
+
+Permanent replay refusals, including locally detected conflicts, use WARN with
+the error code. Storage read/write errors and unexpected send, restore, flush
+or cancellation cache-update failures retain their original exception for the
+existing diagnostic sanitizer. Restore/flush failure logs are limited to one
+per consecutive failure period and resume after a successful recovery. HTTP
+failures retain their existing transport diagnostics; queue events describe
+delivery state rather than carrying response payloads.
+
+Names, saved rows, patches, account/household ids and server URLs are not included
+in these new logs. Numeric sync attributes are allowlisted by both the mobile
+exporter and the backend relay; arbitrary text in those fields is redacted.
+Remote export still requires telemetry to be enabled. ERROR diagnostics remain
+available in the local console through the existing logger.
 
 These tests describe the conflict contract introduced by #85:
 pending absolute fields win locally until replay; changed server versions retain

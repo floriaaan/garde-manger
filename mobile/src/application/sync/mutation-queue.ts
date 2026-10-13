@@ -2,6 +2,7 @@ import type { Product, UpdateProductInput } from '../../domain/fridge/product.js
 import type { ShoppingItem, UpdateShoppingItemInput } from '../../domain/shopping-list/shopping-item.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 import { Result } from '../../domain/shared/result.js'
+import { getTelemetry } from '../shared/telemetry.js'
 
 export type SyncScope = { server: string; userId: string; householdId: string }
 export type QueuedMutation = {
@@ -40,6 +41,21 @@ export class MutationQueue {
   private storageUnavailable = false
   private listeners = new Set<() => void>()
 
+  private attributes(entry: QueuedMutation) {
+    return {
+      'entity.id': entry.entityId,
+      'sync.mutation_id': entry.id,
+      'sync.attempt': entry.attempts + 1,
+      'http.request.method': entry.patch === null ? 'DELETE' : 'PATCH',
+    }
+  }
+
+  private event(entry: QueuedMutation, action: string, outcome: 'started' | 'completed' | 'success', extra: Record<string, string | number | boolean> = {}) {
+    getTelemetry().recordEvent?.(`sync.${entry.collection === 'products' ? 'products' : 'shopping_items'}.${action}`, outcome, {
+      attributes: { ...this.attributes(entry), ...extra },
+    })
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
@@ -72,6 +88,7 @@ export class MutationQueue {
     if (this.replaying) return
     const scope = this.scope()
     if (!scope) return
+    const retried: QueuedMutation[] = []
     await this.edit((entries) => {
       const selected = entries.find((entry) => entry.id === id && sameScope(entry.scope, scope))
       if (selected && ['sync_conflict', 'product_not_found', 'shopping_item_not_found'].includes(selected.error?.type ?? '')) return entries
@@ -79,9 +96,13 @@ export class MutationQueue {
         if (!sameScope(entry.scope, scope) || ['sync_conflict', 'product_not_found', 'shopping_item_not_found'].includes(entry.error?.type ?? '') ||
           (entry.error?.type === 'unauthenticated' && selected?.error?.type !== 'unauthenticated')) return entry
         const retry = id === undefined ? !entry.error : selected && entry.collection === selected.collection && entry.entityId === selected.entityId
-        return retry ? { ...entry, error: undefined, retryAt: 0 } : entry
+        if (!retry) return entry
+        const next = { ...entry, error: undefined, retryAt: 0 }
+        retried.push(next)
+        return next
       })
     })
+    for (const entry of retried) this.event(entry, 'retry_requested', 'completed')
     await this.flush(true)
   }
 
@@ -115,6 +136,10 @@ export class MutationQueue {
     private readConflict?: (entry: QueuedMutation) => Promise<Product | ShoppingItem | null>,
   ) {
     this.ready = storage.read().then((entries) => { this.entries = entries; this.notify() }, (error) => {
+      getTelemetry().recordError('mutation queue storage read failed', { error, attributes: {
+        'app.operation': 'sync.storage.read', 'error.code': 'queue_storage_read_failed',
+        'app.storage_key': 'garde-manger.mutation-queue-v1',
+      } })
       this.storageUnavailable = true
       this.notify()
       throw error
@@ -128,7 +153,14 @@ export class MutationQueue {
       await this.ready
       const next = change(this.entries)
       if (next === this.entries) return
-      await this.storage.write(next)
+      try { await this.storage.write(next) }
+      catch (error) {
+        getTelemetry().recordError('mutation queue storage write failed', { error, attributes: {
+          'app.operation': 'sync.storage.write', 'error.code': 'queue_storage_write_failed',
+          'app.storage_key': 'garde-manger.mutation-queue-v1',
+        } })
+        throw error
+      }
       this.entries = next
       try { committed?.() }
       finally { this.notify() }
@@ -158,6 +190,7 @@ export class MutationQueue {
     } catch {
       return Result.err({ type: 'storage_error', message: 'Impossible de sauvegarder cette modification sur cet appareil.' })
     }
+    this.event(entry, 'enqueue', 'success')
     if (!sameScope(scope, this.scope())) {
       return Result.err({ type: 'session_changed', message: 'Le compte ou le foyer a changé pendant la sauvegarde.' })
     }
@@ -181,12 +214,15 @@ export class MutationQueue {
   async reapplyConflicts(collection: QueuedMutation['collection'], base: Product | ShoppingItem, id?: number): Promise<void> {
     const scope = this.scope()
     let nextBase = base
+    const reapplied: QueuedMutation[] = []
     await this.edit((entries) => entries.map((entry) => {
       if (!sameScope(entry.scope, scope) || entry.collection !== collection || entry.entityId !== base.id || entry.error?.type !== 'sync_conflict' || (id !== undefined && entry.id !== id)) return entry
       const next = { ...entry, base: nextBase, error: undefined, attempts: 0, retryAt: 0 }
+      reapplied.push(next)
       if (entry.patch) nextBase = { ...nextBase, ...entry.patch }
       return next
     }))
+    for (const entry of reapplied) this.event(entry, 'conflict_reapplied', 'success')
   }
 
   async discardFailure(id: number): Promise<void> {
@@ -237,10 +273,14 @@ export class MutationQueue {
         if (entry && !refusal) {
           const key = JSON.stringify(entry.scope)
           this.discarded.set(key, (this.discarded.get(key) ?? 0) + 1)
+          this.event(entry, 'cancel', 'success')
         }
         if (entry && !refusal && sameScope(scope, this.scope())) this.cancelled?.(entry, row)
       })
-    } catch {
+    } catch (error) {
+      if (persisted) getTelemetry().recordError('mutation queue cancellation cache update failed', { error, attributes: {
+        'app.operation': 'sync.cancel', 'error.code': 'cache_update_error',
+      } })
       return Result.err(persisted
         ? { type: 'cache_update_error', message: 'Action retirée, mais les données affichées doivent être rechargées.' }
         : { type: 'storage_error', message: 'Impossible de sauvegarder l’annulation sur cet appareil.' })
@@ -285,8 +325,14 @@ export class MutationQueue {
         this.sendingId = entry.id
         this.deliveryScope = scope
         this.notify()
+        this.event(entry, 'replay', 'started')
         try { result = await this.send(entry) }
-        catch { result = Result.err({ type: 'network_error', message: 'Serveur indisponible.' }) }
+        catch (error) {
+          getTelemetry().recordError('mutation queue send failed', { error, attributes: {
+            ...this.attributes(entry), 'app.operation': 'sync.send', 'error.code': 'queue_send_failed',
+          } })
+          result = Result.err({ type: 'network_error', message: 'Serveur indisponible.' })
+        }
         const alreadyDeleted = !result.ok && entry.patch === null &&
           result.error.type === (entry.collection === 'products' ? 'product_not_found' : 'shopping_item_not_found')
         if (result.ok || alreadyDeleted) {
@@ -306,12 +352,15 @@ export class MutationQueue {
             const key = JSON.stringify(entry.scope)
             this.delivered.set(key, (this.delivered.get(key) ?? 0) + 1)
           })
+          this.event(entry, 'replay', 'success')
         } else if (['network_error', 'temporary_error'].includes(result.error.type)) {
           const error = result.error
+          const delay = Math.min(300_000, 1_000 * 2 ** Math.min(entry.attempts, 9))
           await this.edit((entries) => entries.map((item) => item.id === entry.id ? {
             ...item, attempts: item.attempts + 1,
             retryAt: this.now() + Math.min(300_000, 1_000 * 2 ** Math.min(item.attempts, 9)),
           } : item))
+          this.event(entry, 'retry_scheduled', 'completed', { 'error.code': error.type, 'sync.retry_delay_ms': delay })
           blocked.add(key)
           // Transport outage affects the server, not just this entity.
           this.sendingId = null
@@ -323,6 +372,9 @@ export class MutationQueue {
             sameScope(item.scope, scope) && item.collection === entry.collection && item.entityId === entry.entityId && item.id >= entry.id && !item.error
               ? { ...item, error } : item,
           ))
+          getTelemetry().recordError('mutation queue replay refused', { level: 'warn', attributes: {
+            ...this.attributes(entry), 'app.operation': 'sync.replay', 'error.code': error.type,
+          } })
           blocked.add(key)
           this.failed({ ...entry, error })
         }
