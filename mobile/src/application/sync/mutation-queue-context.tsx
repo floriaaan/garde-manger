@@ -29,9 +29,16 @@ export function useQueuedActions() {
     },
     networkMode: 'always', retry: false,
   })
-  useEffect(() => queue?.subscribe(() => {
-    void client.invalidateQueries({ queryKey: ['sync-actions'] })
-  }), [queue, client])
+  useEffect(() => {
+    if (!queue) return
+    let entries = queue.getSnapshot().entries
+    return queue.subscribe(() => {
+      const next = queue.getSnapshot().entries
+      if (next.length === entries.length && next.every((entry, index) => entry === entries[index])) return
+      entries = next
+      void client.invalidateQueries({ queryKey: ['sync-actions'] })
+    })
+  }, [queue, client])
   return { ...actions, scopeKey: JSON.stringify([getServerUrl(), session?.user.id, household?.id]), status, overwrite: (id: number) => queue ? queue.overwrite(id) : Promise.resolve(), retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
     : Promise.resolve(Result.err({ type: 'action_unavailable', message: 'Cette action n’est plus disponible.' })) }
 }

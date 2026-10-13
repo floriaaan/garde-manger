@@ -215,7 +215,7 @@ export function PendingActionsScreen() {
             onRetry={() => { if (!retryDisabled) retry.mutate({ id: item.id }) }} retryDisabled={retryDisabled || cancellation.isPending}
             onOverwrite={() => { if (!retryDisabled && !cancellation.isPending) retry.mutate({ id: item.id, overwrite: true }) }}
             connected={online === true}
-            sending={actions.status.sendingId === item.id || (retry.isPending && retry.variables?.id === item.id)}
+            sending={actions.status.sendingId === item.id || (!actions.status.syncing && retry.isPending && retry.variables?.id === item.id && actions.status.entries.some((entry) => entry.id === item.id))}
             retrying={retry.isPending && retry.variables?.id === item.id}
             cancelling={cancellation.isPending && cancellation.variables === item.id} />}
           ListEmptyComponent={<YStack paddingVertical="$6" paddingHorizontal="$2" gap="$3" alignItems="center">

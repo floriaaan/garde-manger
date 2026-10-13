@@ -31,6 +31,7 @@ export class MutationQueue {
   private writes: Promise<unknown> = Promise.resolve()
   private replaying = false
   private sendingId: number | null = null
+  private deliveryScope: SyncScope | null = null
   private revision = 0
   private snapshotKey = ''
   private snapshot?: ReturnType<MutationQueue['status']>
@@ -60,7 +61,7 @@ export class MutationQueue {
     const scope = this.scope()
     const done = scope ? this.delivered.get(JSON.stringify(scope)) ?? 0 : 0
     const sendingId = entries.some((entry) => entry.id === this.sendingId) ? this.sendingId : null
-    return { entries, syncing: sendingId !== null, sendingId,
+    return { entries, syncing: sameScope(scope, this.deliveryScope) && entries.length > 0, sendingId,
       progress: { done, total: done + entries.length }, storageUnavailable: this.storageUnavailable }
   }
 
@@ -163,11 +164,11 @@ export class MutationQueue {
   }
 
   /** Explicit user recovery after reading the latest server row. */
-  async reapplyConflicts(collection: QueuedMutation['collection'], base: Product | ShoppingItem): Promise<void> {
+  async reapplyConflicts(collection: QueuedMutation['collection'], base: Product | ShoppingItem, id?: number): Promise<void> {
     const scope = this.scope()
     let nextBase = base
     await this.edit((entries) => entries.map((entry) => {
-      if (!sameScope(entry.scope, scope) || entry.collection !== collection || entry.entityId !== base.id || entry.error?.type !== 'sync_conflict') return entry
+      if (!sameScope(entry.scope, scope) || entry.collection !== collection || entry.entityId !== base.id || entry.error?.type !== 'sync_conflict' || (id !== undefined && entry.id !== id)) return entry
       const next = { ...entry, base: nextBase, error: undefined, attempts: 0, retryAt: 0 }
       if (entry.patch) nextBase = { ...nextBase, ...entry.patch }
       return next
@@ -264,6 +265,7 @@ export class MutationQueue {
         if (!force && entry.retryAt > this.now()) { blocked.add(key); continue }
         let result: Result<unknown, ApiError>
         this.sendingId = entry.id
+        this.deliveryScope = scope
         this.notify()
         try { result = await this.send(entry) }
         catch { result = Result.err({ type: 'network_error', message: 'Serveur indisponible.' }) }
@@ -311,9 +313,11 @@ export class MutationQueue {
         this.sendingId = null
       }
     } finally {
+      const wasDelivering = this.deliveryScope !== null
       this.sendingId = null
+      this.deliveryScope = null
       this.replaying = false
-      this.notify()
+      if (wasDelivering) this.notify()
     }
   }
 }

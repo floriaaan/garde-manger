@@ -123,7 +123,7 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
         showToast('Cet élément a été supprimé. Votre modification reste conservée sur cet appareil.')
         return
       }
-      await queue.reapplyConflicts(entry.collection, current)
+      await queue.reapplyConflicts(entry.collection, current, entry.id)
       await restorePending()
       await queue.flush(true)
     } catch {

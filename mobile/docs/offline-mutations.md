@@ -114,3 +114,11 @@ Opening an already-empty queue or changing scopes does not trigger the success
 state. New actions interrupt it and cancel dismissal. The timer runs only while
 the modal is focused; Reduce Motion keeps the success message static, and Close
 lets the user skip the delay.
+
+Audit hardening limits Overwrite to the selected card's retained conflict; other
+conflicts on the same entity remain blocked for their own human decision. Delivery
+status stays continuous across a replay batch, while only the actually sending
+row (or its idle preparation) displays item progress. Status announcements are
+phase-based; counters stay readable without announcing every acknowledgement.
+Idle/backoff/conflict-only replay does not notify observers, and the local action
+list refetches only when its entry references change, not for sending-state changes.

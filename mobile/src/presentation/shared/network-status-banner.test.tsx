@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { AccessibilityInfo, Platform } from 'react-native'
 import { router } from 'expo-router'
 import { MutationQueue } from '../../application/sync/mutation-queue.js'
 import { Result } from '../../domain/shared/result.js'
@@ -134,7 +135,7 @@ test('queued edits expose details and actual synchronization; success removes pe
   await act(async () => { await queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
   await measure()
   expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en attente')
-  expect(screen.getByRole('status')).toHaveTextContent('1 changement enregistré')
+  expect(screen.getByText(/1 changement enregistré/)).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
   expect(router.push).toHaveBeenCalledWith('/pending-actions')
   let flushing!: Promise<void>
@@ -253,4 +254,46 @@ test('fake fixture conflicts keep the action link after the nine pending actions
   expect(send).toHaveBeenCalledTimes(9)
   expect(await queue.failures()).toHaveLength(3)
   await view.unmount()
+})
+
+
+test('announces native phase transitions rather than every remaining-action counter update', async () => {
+  const originalOS = Platform.OS
+  Platform.OS = 'ios'
+  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {})
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  let finishFirst!: () => void
+  let finishSecond!: () => void
+  let startedFirst!: () => void
+  let startedSecond!: () => void
+  const first = new Promise<void>((resolve) => { startedFirst = resolve })
+  const second = new Promise<void>((resolve) => { startedSecond = resolve })
+  const send = jest.fn()
+    .mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => { finishFirst = resolve; startedFirst() })
+      return Result.ok(undefined)
+    })
+    .mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => { finishSecond = resolve; startedSecond() })
+      return Result.ok(undefined)
+    })
+  const queue = new MutationQueue({ read: async () => [], write: async () => {} },
+    () => ({ server: 'server', userId: 'user', householdId: 'home' }), send, () => {}, () => {})
+  try {
+    const view = await render(<ThemeProvider><NetworkStatusBanner queue={queue} /></ThemeProvider>)
+    await act(async () => { await queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+    await act(async () => { await queue.enqueue('shopping-items', { ...fakeShoppingItems[0], id: 'bread' }, { checked: true }) })
+    expect(announce.mock.calls).toEqual([['Synchronisation en attente']])
+    let replay!: Promise<void>
+    await act(async () => { replay = queue.flush(); await first })
+    await act(async () => { finishFirst(); await second })
+    expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en cours')
+    expect(screen.getByText(/1 changement enregistré/)).toBeTruthy()
+    expect(announce.mock.calls).toEqual([['Synchronisation en attente'], ['Synchronisation en cours']])
+    await act(async () => { finishSecond(); await replay })
+    await view.unmount()
+  } finally {
+    Platform.OS = originalOS
+    announce.mockRestore()
+  }
 })

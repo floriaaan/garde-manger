@@ -243,3 +243,52 @@ test('new actions interrupt the completion state instead of dismissing pending w
   await waitFor(() => expect(screen.queryByText('Tout est réglé')).toBeNull())
   expect(screen.getByTestId('queued-global-progress')).toBeTruthy()
 })
+
+
+test('retrying a dependent action shows only its predecessor progress while that predecessor is being sent', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'forbidden', message: 'Denied' }))
+  await act(async () => {
+    await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { quantity: { amount: 3, unit: 'L' } })
+    await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+    await s.queue.flush()
+  })
+  const [first, selected] = await s.queue.failures()
+  await waitFor(() => expect(screen.getByTestId(`queued-retry-${selected.id}`)).toBeEnabled())
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => { finish = resolve; started() })
+    return Result.ok(undefined)
+  })
+  await act(async () => {
+    await fireEvent.press(screen.getByTestId(`queued-retry-${selected.id}`))
+    await sending
+  })
+  expect(screen.getByTestId(`queued-progress-${first.id}`)).toBeTruthy()
+  expect(screen.queryByTestId(`queued-progress-${selected.id}`)).toBeNull()
+  await act(async () => { finish() })
+  await waitFor(() => expect(screen.getByText('Tout est réglé')).toBeTruthy())
+})
+
+test('delivery status updates do not refetch the local action list when its entries are unchanged', async () => {
+  const s = setup()
+  await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+  await waitFor(() => expect(screen.getByTestId('queued-action-' + s.queue.status().entries[0].id)).toBeTruthy())
+  const invalidate = jest.spyOn(s.client, 'invalidateQueries')
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => { finish = resolve; started() })
+    return Result.ok(undefined)
+  })
+  let replay!: Promise<void>
+  await act(async () => { replay = s.queue.flush(); await sending })
+  expect(invalidate).not.toHaveBeenCalled()
+  await act(async () => { finish(); await replay })
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['sync-actions'] })
+  invalidate.mockRestore()
+})

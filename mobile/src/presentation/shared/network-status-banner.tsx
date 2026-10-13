@@ -51,7 +51,6 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
     ? t('sync.pending_count', { count: sync.entries.length })
     : activeStatus === 'offline' ? t('shared.network_offline_description')
     : activeStatus === 'storage_error' ? t('sync.storage_error_description') : ''
-  const message = description ? `${title}. ${description}` : title
   useEffect(() => {
     if (!activeStatus) { height.set(0); return }
     const target = shown ? contentHeight : 0
@@ -70,8 +69,8 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
     }
   }, [activeStatus, shown, contentHeight, reduceMotion, height, finishClosing])
   useEffect(() => {
-    if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message)
-  }, [message])
+    if (title && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(title)
+  }, [title])
   // A guarded render update synchronizes connectivity before committing stale content.
   if (previousOnline !== online) {
     setPreviousOnline(online)
@@ -91,14 +90,14 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
         style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
         <XStack paddingHorizontal={24} paddingVertical={12} gap={12} alignItems="center"
           alignSelf="center" width="100%" maxWidth={640} flexWrap="wrap">
-          <XStack testID="network-status-banner" role="status" accessible
-            accessibilityLabel={message} accessibilityLiveRegion="polite" flex={1} gap={12} alignItems="center">
+          <XStack testID="network-status-banner" flex={1} gap={12} alignItems="center">
             <YStack flexShrink={0} accessible={false} accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants" aria-hidden>
               <Icon size={22} color={color} />
             </YStack>
             <YStack flex={1} minWidth={0} gap={2}>
-              <Text fontSize={14} fontWeight="800" lineHeight={20} color={color}>
+              <Text role="status" accessible accessibilityLabel={title} accessibilityLiveRegion="polite"
+                fontSize={14} fontWeight="800" lineHeight={20} color={color}>
                 {title}
               </Text>
               {description ? <Text fontSize={13} fontWeight="500" lineHeight={18} color={color}>

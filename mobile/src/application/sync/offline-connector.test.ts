@@ -279,3 +279,30 @@ test('explicit overwrite rebases conflict fields onto the latest server row with
   expect(current.name).toBe('My name')
   expect(await offline.queue.failures()).toEqual([])
 })
+
+
+test('overwriting one card never sends another retained conflict on the same item', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  let current = { ...item, name: 'Remote name', quantity: { ...item.quantity, amount: 7 }, updatedAt: 'remote-version' }
+  const raw = new FakeFridgeConnector()
+  jest.spyOn(raw, 'getShoppingItems').mockImplementation(async () => [current])
+  const send = jest.spyOn(raw, 'updateShoppingItem').mockImplementation(async (_id, patch) => {
+    const { expectedUpdatedAt, ...fields } = patch
+    expect(expectedUpdatedAt).toBe(current.updatedAt)
+    current = { ...current, ...fields, updatedAt: 'selected-version' }
+    return Result.ok(current)
+  })
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { quantity: { ...item.quantity, amount: 2 } })
+  await offline.connector.updateShoppingItem(item.id, { name: 'Chosen name' })
+  await offline.queue.flush()
+  const [quantity, name] = await offline.queue.failures()
+  await offline.queue.overwrite(name.id)
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(send).toHaveBeenCalledWith(item.id, { name: 'Chosen name', expectedUpdatedAt: 'remote-version' })
+  expect(current.quantity.amount).toBe(7)
+  expect((await offline.queue.failures()).map((entry) => entry.id)).toEqual([quantity.id])
+  await offline.queue.flush(true)
+  expect(send).toHaveBeenCalledTimes(1)
+})
