@@ -106,7 +106,7 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
               </Text> : null}
             </YStack>
           </XStack>
-          {activeStatus === 'offline' || sync.entries.length || sync.storageUnavailable ? <PillButton label={t('sync.details')} palette={palette}
+          {activeStatus === 'offline' || activeStatus === 'restored' || sync.entries.length || sync.storageUnavailable ? <PillButton label={t('sync.details')} palette={palette}
             tone="quiet" onPress={() => router.push('/pending-actions')} accessibilityLabel={t('sync.open_details')} /> : null}
         </XStack>
       </SafeAreaView>

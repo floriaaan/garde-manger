@@ -2,6 +2,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { router } from 'expo-router'
 import { MutationQueue } from '../../application/sync/mutation-queue.js'
 import { Result } from '../../domain/shared/result.js'
+import { createFakeMutationQueueStorage } from '../../infrastructure/fake/fake-mutation-queue.js'
+import { fakeSession } from '../../infrastructure/fake/fixtures/session.fixture.js'
+import { fakeHousehold } from '../../infrastructure/fake/fixtures/household.fixture.js'
 import { fakeShoppingItems } from '../../infrastructure/fake/fixtures/shopping-item.fixture.js'
 import * as Reanimated from 'react-native-reanimated'
 import { useConnectivity } from '../../application/shared/use-connectivity.js'
@@ -210,5 +213,44 @@ test.each([false, true])('reconnection keeps the banner until delivery completes
   await act(() => { jest.advanceTimersByTime(3500) })
   await act(() => { jest.advanceTimersByTime(250) })
   expect(screen.queryByTestId('network-status-banner')).toBeNull()
+  await view.unmount()
+})
+
+
+test('the restored-connection banner keeps a link to queued actions even during an empty status snapshot', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  const ui = () => <ThemeProvider><NetworkStatusBanner /></ThemeProvider>
+  const view = await render(ui())
+  await measure()
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await view.rerender(ui())
+  expect(screen.getByRole('status')).toHaveTextContent('Connexion rétablie')
+  await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
+  expect(router.push).toHaveBeenCalledWith('/pending-actions')
+  await view.unmount()
+})
+
+test('fake fixture conflicts keep the action link after the nine pending actions are delivered', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  const scope = { server: 'fake-server', userId: fakeSession.user.id, householdId: fakeHousehold.id }
+  const send = jest.fn(async () => Result.ok(undefined))
+  const queue = new MutationQueue(createFakeMutationQueueStorage(scope.server), () => scope, send, () => {}, () => {})
+  await queue.pending()
+  const ui = () => <ThemeProvider><NetworkStatusBanner queue={queue} /></ThemeProvider>
+  const view = await render(ui())
+  await measure()
+  expect(queue.status().entries).toHaveLength(12)
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await view.rerender(ui())
+  await act(async () => { await queue.flush(true); jest.advanceTimersByTime(10000) })
+  expect(send).toHaveBeenCalledTimes(9)
+  expect(await queue.pending()).toEqual([])
+  expect(await queue.failures()).toHaveLength(3)
+  expect(screen.getByRole('status')).toHaveTextContent('Action requise pour synchroniser')
+  await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
+  expect(router.push).toHaveBeenCalledWith('/pending-actions')
+  await act(async () => { await queue.flush(true) })
+  expect(send).toHaveBeenCalledTimes(9)
+  expect(await queue.failures()).toHaveLength(3)
   await view.unmount()
 })
