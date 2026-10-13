@@ -78,7 +78,10 @@ builds, lint, and typechecks are not executed automatically.
 
 The measured network banner also shows scoped pending changes, actual delivery,
 and action-required failures, with French/English copy and accessible live status.
-It remains absent during normal online use with an empty queue. Temporary transport
+It remains absent during normal online use with an empty queue. After reconnecting,
+dismissal starts only once the queue is empty: pending delivery and retained
+conflicts keep the banner visible. Conflicts require an explicit human decision;
+reconnection never resolves them. Temporary transport
 failures stay pending and never request sign-in. Details reuse `/pending-actions`,
 including its existing field comparison, filters and cancellation workflow.
 

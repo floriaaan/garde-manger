@@ -168,3 +168,47 @@ test('offline details reuse the existing pending-actions modal even with no queu
   await fireEvent.press(screen.getByRole('button', { name: 'Voir les changements à synchroniser' }))
   expect(router.push).toHaveBeenCalledWith('/pending-actions')
 })
+
+
+test.each([false, true])('reconnection keeps the banner until delivery completes and conflicts receive a human action (reduce motion: %s)', async (reduceMotion) => {
+  jest.mocked(useReduceMotion).mockReturnValue(reduceMotion)
+  jest.mocked(useConnectivity).mockReturnValue(false)
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  const send = jest.fn()
+    .mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => { finish = resolve; started() })
+      return Result.ok(undefined)
+    })
+    .mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'Changed on another device' }))
+  const queue = new MutationQueue({ read: async () => [], write: async () => {} },
+    () => ({ server: 'server', userId: 'user', householdId: 'home' }), send, () => {}, () => {})
+  await queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+  await queue.enqueue('shopping-items', { ...fakeShoppingItems[0], id: 'conflicting-item' }, { name: 'Local name' })
+  const ui = () => <ThemeProvider><NetworkStatusBanner queue={queue} /></ThemeProvider>
+  const view = await render(ui())
+  await measure()
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  await view.rerender(ui())
+  await act(() => { jest.advanceTimersByTime(10000) })
+  expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en attente')
+  let flushing!: Promise<void>
+  await act(async () => { flushing = queue.flush(true); await sending })
+  await act(() => { jest.advanceTimersByTime(10000) })
+  expect(screen.getByRole('status')).toHaveTextContent('Synchronisation en cours')
+  await act(async () => { finish(); await flushing })
+  const conflict = (await queue.failures())[0]
+  expect(conflict.patch).toEqual({ name: 'Local name' })
+  await act(async () => { await queue.flush(true); jest.advanceTimersByTime(10000) })
+  expect(send).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('status')).toHaveTextContent('Action requise pour synchroniser')
+  expect((await queue.failures())[0].id).toBe(conflict.id)
+  // Only an explicit human decision removes the conflict and starts dismissal.
+  await act(async () => { await queue.cancel(conflict.id) })
+  expect(screen.getByRole('status')).toHaveTextContent('Connexion rétablie')
+  await act(() => { jest.advanceTimersByTime(3500) })
+  await act(() => { jest.advanceTimersByTime(250) })
+  expect(screen.queryByTestId('network-status-banner')).toBeNull()
+  await view.unmount()
+})

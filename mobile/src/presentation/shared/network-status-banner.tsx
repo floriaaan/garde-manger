@@ -33,16 +33,17 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
   const finishClosing = useCallback((revision: number) => {
     if (animationRevision.current === revision) setStatus(null)
   }, [])
+  const syncState = sync.storageUnavailable ? 'storage_error' : failures ? 'failed' :
+    sync.syncing ? 'syncing' : sync.entries.length ? 'pending' : null
   useEffect(() => {
-    if (status !== 'restored') return
+    // Reconnection alone does not finish delivery; failures still need human recovery.
+    if (status !== 'restored' || syncState) return
     const timer = setTimeout(() => {
       setVisible(false)
       if (reduceMotion) setStatus(null)
     }, 3500)
     return () => clearTimeout(timer)
-  }, [status, reduceMotion])
-  const syncState = sync.storageUnavailable ? 'storage_error' : failures ? 'failed' :
-    sync.syncing ? 'syncing' : sync.entries.length ? 'pending' : null
+  }, [status, syncState, reduceMotion])
   const activeStatus = status === 'offline' ? 'offline' : syncState ?? status
   const shown = Boolean(syncState) || visible
   const title = activeStatus ? t(`shared.network_${activeStatus}`) : ''
