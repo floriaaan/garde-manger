@@ -30,6 +30,7 @@ export class MutationQueue {
   private ready: Promise<void>
   private writes: Promise<unknown> = Promise.resolve()
   private replaying = false
+  private sendingId: number | null = null
   private listeners = new Set<() => void>()
 
   subscribe(listener: () => void): () => void {
@@ -44,19 +45,22 @@ export class MutationQueue {
     private changed: (entry: QueuedMutation) => void,
     private failed: (entry: QueuedMutation) => void,
     private now: () => number = Date.now,
+    private cancelled?: (entry: QueuedMutation, row: Product | ShoppingItem | null) => void,
   ) {
     this.ready = storage.read().then((entries) => { this.entries = entries })
     // Retain the rejection for callers, without an unhandled boot-time promise.
     void this.ready.catch(() => {})
   }
 
-  private async edit(change: (entries: QueuedMutation[]) => QueuedMutation[]): Promise<void> {
+  private async edit(change: (entries: QueuedMutation[]) => QueuedMutation[], committed?: () => void): Promise<void> {
     const operation = this.writes.then(async () => {
       await this.ready
       const next = change(this.entries)
+      if (next === this.entries) return
       await this.storage.write(next)
       this.entries = next
-      for (const listener of this.listeners) listener()
+      try { committed?.() }
+      finally { for (const listener of this.listeners) listener() }
     })
     this.writes = operation.catch(() => {})
     await operation
@@ -119,6 +123,54 @@ export class MutationQueue {
     ))
   }
 
+  /** Remove local intent durably; an action already being sent cannot be recalled. */
+  async cancel(id: number): Promise<Result<undefined, ApiError>> {
+    const scope = this.scope()
+    let entry: QueuedMutation | undefined
+    let row: Product | ShoppingItem | null = null
+    let refusal: ApiError | undefined
+    let persisted = false
+    try {
+      await this.edit((entries) => {
+        entry = entries.find((item) => item.id === id && sameScope(item.scope, scope))
+        if (!entry || !sameScope(scope, this.scope())) {
+          refusal = { type: 'action_unavailable', message: 'Cette action n’est plus disponible.' }
+          return entries
+        }
+        if (this.sendingId === id) {
+          refusal = { type: 'action_syncing', message: 'Cette action est déjà en cours de synchronisation.' }
+          return entries
+        }
+        const removed = entry
+        const fields = Object.keys(removed.patch ?? {}).filter((field) => field !== 'expectedUpdatedAt')
+        let base = removed.base
+        const next = entries.filter((item) => item !== removed).map((item) => {
+          if (removed.error || item.id < id || !sameScope(item.scope, scope) || item.collection !== removed.collection ||
+            item.entityId !== removed.entityId || item.base.updatedAt !== removed.base.updatedAt) return item
+          // Later snapshots must not retain the assignment we just removed.
+          const previous = base as unknown as Record<string, unknown>
+          const corrected = { ...item.base, ...Object.fromEntries(fields.map((field) => [field, previous[field]])) }
+          base = item.patch ? { ...corrected, ...item.patch } : corrected
+          return { ...item, base: corrected }
+        })
+        row = removed.base
+        for (const item of next) {
+          if (item.error || !sameScope(item.scope, scope) || item.collection !== removed.collection || item.entityId !== removed.entityId) continue
+          row = item.patch ? { ...(row ?? item.base), ...item.patch } : null
+        }
+        return next
+      }, () => {
+        persisted = true
+        if (entry && !refusal && sameScope(scope, this.scope())) this.cancelled?.(entry, row)
+      })
+    } catch {
+      return Result.err(persisted
+        ? { type: 'cache_update_error', message: 'Action retirée, mais les données affichées doivent être rechargées.' }
+        : { type: 'storage_error', message: 'Impossible de sauvegarder l’annulation sur cet appareil.' })
+    }
+    return refusal ? Result.err(refusal) : Result.ok(undefined)
+  }
+
   async overlay<T extends Product | ShoppingItem>(collection: QueuedMutation['collection'], rows: T[]): Promise<T[]> {
     await this.ready
     const result = new Map(rows.map((row) => [row.id, row]))
@@ -140,6 +192,7 @@ export class MutationQueue {
       if (!scope) return
       const blocked = new Set<string>()
       for (const snapshot of [...this.entries]) {
+        await this.writes
         const entry = this.entries.find((item) => item.id === snapshot.id)
         if (!entry) continue
         if (!sameScope(scope, this.scope())) break
@@ -148,6 +201,7 @@ export class MutationQueue {
         if (blocked.has(key)) continue
         if (!force && entry.retryAt > this.now()) { blocked.add(key); continue }
         let result: Result<unknown, ApiError>
+        this.sendingId = entry.id
         try { result = await this.send(entry) }
         catch { result = Result.err({ type: 'network_error', message: 'Serveur indisponible.' }) }
         const alreadyDeleted = !result.ok && entry.patch === null &&
@@ -174,6 +228,7 @@ export class MutationQueue {
           } : item))
           blocked.add(key)
           // Transport outage affects the server, not just this entity.
+          this.sendingId = null
           if (error.type === 'network_error') break
           continue
         } else {
@@ -187,8 +242,10 @@ export class MutationQueue {
         }
         // A response for an old session must not update the current account's cache.
         if (sameScope(scope, this.scope())) this.changed(entry)
+        this.sendingId = null
       }
     } finally {
+      this.sendingId = null
       this.replaying = false
     }
   }

@@ -98,6 +98,18 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
     showToast(`Synchronisation impossible pour « ${entry.base.name} » : ${entry.error?.message}`, 'error',
       entry.error?.type === 'sync_conflict' ? { label: 'Réappliquer', onPress: () => { void reapply(entry) } } : undefined,
     )
+  }, undefined, (entry, row) => {
+    if (!sameScope(entry.scope, scope())) return
+    // Failed intent is not overlaid; preserve the authoritative row already refreshed on refusal.
+    const current = entry.collection === 'products' ? findProduct(entry.entityId) : findItem(entry.entityId)
+    if (!entry.error && (!current || current.updatedAt === entry.base.updatedAt)) {
+      if (entry.collection === 'products') cacheProduct(entry.entityId, row as Product | null)
+      else queryClient.setQueryData<ShoppingItem[]>(['shopping-items'], (rows) => {
+        const next = (rows ?? []).filter((item) => item.id !== entry.entityId)
+        return row ? [...next, row as ShoppingItem] : next
+      })
+    }
+    refresh(entry)
   })
 
   async function reapply(entry: QueuedMutation): Promise<void> {

@@ -118,3 +118,19 @@ test('status filters retain counts and show every assignment without expanding a
   await fireEvent.press(screen.getByRole('button', { name: 'À envoyer 9' }))
   await waitFor(() => expect(screen.queryByTestId('queued-action-4')).toBeNull())
 })
+
+
+test('cancelling a change requires confirmation and updates scoped counts live', async () => {
+  const s = setup(true)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Tout 12' })).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('queued-cancel-1'))
+  expect(await s.queue.pending()).toHaveLength(9)
+  await fireEvent.press(screen.getByTestId('action-sheet-cancel'))
+  expect(await s.queue.pending()).toHaveLength(9)
+  await fireEvent.press(screen.getByTestId('queued-cancel-1'))
+  await fireEvent.press(screen.getByTestId('queued-cancel-confirm'))
+  await waitFor(() => expect(screen.queryByTestId('queued-action-1')).toBeNull())
+  expect(screen.getByRole('button', { name: 'Tout 11' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'À envoyer 8' })).toBeTruthy()
+  expect(await s.queue.failures()).toHaveLength(3)
+})

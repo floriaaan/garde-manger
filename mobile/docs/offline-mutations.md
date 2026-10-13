@@ -48,14 +48,22 @@ ink and cream tokens. The shared `ScreenHeader` aligns its icon, title/count
 and trailing 48pt Close; “Tes changements sont conservés” follows below.
 Shared chips stay pinned above the list and distinguish all actions,
 “À envoyer” and “À vérifier” with Layers, Clock and TriangleAlert icons.
-Read-only `IdentityCard` rows use white surfaces in light mode and distinct
-cream surfaces in dark mode, with matching supporting text and icon-chip tokens.
+`IdentityCard` rows use cream surfaces in both themes, with matching supporting
+text and icon-chip tokens; the displayed changes remain read-only.
 Mirrored asymmetric corners and 24pt spacing separate cards on the shared ground. Every modified field
 is visible with labeled “Avant” and “Ta modification” values; deletion names
 the affected collection. Delivery states pair an icon, semantic color and word,
 and retained failures show their reason. The modal remains open as connectivity
 returns, so completed actions disappear from the list. Source inspection confirms the shared design
 components; fresh native rendering and transition fidelity remain unverified.
+Each card offers a quiet cancellation button confirmed through `ActionSheet`.
+Cancellation removes that scoped intent only after the queue write succeeds,
+restores its cached item while preserving later pending field assignments, and
+updates the modal. Retained failures preserve the authoritative cached row.
+An action already being sent cannot be cancelled. Storage failure retains the
+intent and reports an error; cancellation does not undo a server change that
+may already have been applied before a lost acknowledgement. Tests were authored
+but not run, and no fresh native rendering was performed.
 Fake mode supplies twelve initial in-memory actions (nine pending, three conflicts),
 covering quantities, checkboxes, locations, dates, prices, names and deletion,
 and uses the same overlays,

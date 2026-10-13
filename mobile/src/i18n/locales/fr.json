@@ -1202,6 +1202,17 @@
     "before": "Avant",
     "your_change": "Ta modification",
     "remove_product": "Retirer ce produit du garde-manger.",
-    "remove_shopping": "Retirer cet article de la liste de courses."
+    "remove_shopping": "Retirer cet article de la liste de courses.",
+    "cancel": "Annuler la modification",
+    "cancel_named": "Annuler la modification de « {{name}} »",
+    "cancel_confirm": "Retirer cette action",
+    "keep": "Garder la modification",
+    "cancel_description": "Cette action sera retirée de la file. Tes autres modifications seront conservées.",
+    "cancel_retry_description": "Cette action ne sera plus réessayée. Si le serveur l’a déjà reçue, son effet sera conservé. Tes autres modifications seront conservées.",
+    "cancel_action_unavailable": "Cette action n’est plus dans la file.",
+    "cancel_action_syncing": "Cette action est déjà en cours d’envoi. Attends la fin de la synchronisation.",
+    "cancel_storage_error": "Impossible d’enregistrer l’annulation. Ta modification reste dans la file.",
+    "cancel_error": "Impossible d’annuler cette action pour le moment.",
+    "cancel_cache_update_error": "La modification a été retirée. Recharge la liste pour actualiser les valeurs affichées."
   }
 }

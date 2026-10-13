@@ -1163,6 +1163,17 @@
     "before": "Before",
     "your_change": "Your change",
     "remove_product": "Remove this product from the pantry.",
-    "remove_shopping": "Remove this item from the shopping list."
+    "remove_shopping": "Remove this item from the shopping list.",
+    "cancel": "Cancel change",
+    "cancel_named": "Cancel the change to “{{name}}”",
+    "cancel_confirm": "Remove this action",
+    "keep": "Keep the change",
+    "cancel_description": "This action will be removed from the queue. Your other changes will be kept.",
+    "cancel_retry_description": "This action will no longer be retried. If the server already received it, its effect will be kept. Your other changes will be kept.",
+    "cancel_action_unavailable": "This action is no longer in the queue.",
+    "cancel_action_syncing": "This action is already being sent. Wait for synchronization to finish.",
+    "cancel_storage_error": "Could not save the cancellation. Your change remains in the queue.",
+    "cancel_error": "Could not cancel this action right now.",
+    "cancel_cache_update_error": "The change was removed. Refresh the list to update the displayed values."
   }
 }

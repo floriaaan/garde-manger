@@ -206,3 +206,50 @@ test('fake fixture actions use normal overlays, replay and subsequent local writ
   await offline.queue.flush(true)
   expect((await getServerProducts()).find((row) => row.id === current.id)?.name).toBe('New local edit')
 })
+
+
+test('cancelling a location change restores cached filters and keeps a later name edit', async () => {
+  const s = setup()
+  const product = fakeProducts[0]
+  queryClient.setQueryData(['products', { location: 'fridge' }], [product])
+  queryClient.setQueryData(['products', { location: 'freezer' }], [])
+  await s.connector.updateProduct(product.id, { location: 'freezer' })
+  await s.connector.updateProduct(product.id, { name: 'Local name' })
+  const [move] = await s.queue.pending()
+  expect((await s.queue.cancel(move.id)).ok).toBe(true)
+  const restored = { ...product, name: 'Local name' }
+  expect(queryClient.getQueryData(['product', product.id])).toEqual(restored)
+  expect(queryClient.getQueryData(['products', { location: 'fridge' }])).toEqual([restored])
+  expect(queryClient.getQueryData(['products', { location: 'freezer' }])).toEqual([])
+  const restarted = withOfflineMutations(new FakeFridgeConnector(), s.storage)
+  await restarted.restorePending()
+  expect(queryClient.getQueryData(['product', product.id])).toEqual(restored)
+  expect(s.sendProduct).not.toHaveBeenCalled()
+})
+
+test('cancelling a pending deletion restores the item without a server write', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  await s.connector.deleteShoppingItem(item.id)
+  const [deletion] = await s.queue.pending()
+  expect(queryClient.getQueryData(['shopping-items'])).not.toContainEqual(item)
+  expect((await s.queue.cancel(deletion.id)).ok).toBe(true)
+  expect(queryClient.getQueryData(['shopping-items'])).toContainEqual(item)
+  expect(s.disk()).toEqual([])
+  expect(s.sendItem).not.toHaveBeenCalled()
+})
+
+test('abandoning a conflict retains the authoritative remote row', async () => {
+  const s = setup()
+  const item = fakeShoppingItems[0]
+  const remote = { ...item, name: 'Remote name', updatedAt: 'remote-version' }
+  const raw = new FakeFridgeConnector()
+  jest.spyOn(raw, 'getShoppingItems').mockResolvedValue([remote])
+  const offline = withOfflineMutations(raw, s.storage)
+  await offline.connector.updateShoppingItem(item.id, { name: 'Local name' })
+  await offline.queue.flush()
+  const [failure] = await offline.queue.failures()
+  expect((await offline.queue.cancel(failure.id)).ok).toBe(true)
+  expect(queryClient.getQueryData(['shopping-items'])).toContainEqual(remote)
+  expect(await offline.queue.failures()).toEqual([])
+})

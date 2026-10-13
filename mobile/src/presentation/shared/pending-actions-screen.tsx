@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
-import { Animated, FlatList } from 'react-native'
+import { useMutation } from '@tanstack/react-query'
+import { ActivityIndicator, Animated, FlatList } from 'react-native'
 import { router } from 'expo-router'
+import { showToast } from '../../application/shared/toast.js'
 import { useQueuedActions } from '../../application/sync/mutation-queue-context.js'
 import type { QueuedMutation } from '../../application/sync/mutation-queue.js'
 import { formatCurrency, getLocale, t as translate, useTranslation } from '../../i18n/index.js'
@@ -8,6 +10,7 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { ArrowRightIcon, ArrowLeftRightIcon, CalendarIcon, CheckIcon, ClockIcon, LayersIcon, PencilIcon, RefreshIcon, ScaleIcon, SmartphoneCheckIcon, TagIcon, TrashIcon, TriangleAlertIcon, WalletIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import { IdentityCard } from '../settings/identity-card.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from './app-shell.js'
+import { ActionSheet } from './action-sheet.js'
 import { Chip } from './chip.js'
 import { ScreenHeader } from './screen-header.js'
 import { pointerCursor, useHoverPress } from './hover.js'
@@ -34,11 +37,11 @@ function valueLabel(field: string, value: unknown, before = false): string {
   return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
-function ActionRow({ entry, index }: { entry: QueuedMutation; index: number }) {
+function ActionRow({ entry, index, onCancel, cancelling, disabled }: { entry: QueuedMutation; index: number;
+  onCancel: () => void; cancelling: boolean; disabled: boolean }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const dark = palette.blurTint === 'dark'
-  const secondaryInk = dark ? palette.creamText : palette.inkSecondary
+  const secondaryInk = palette.creamText
   const fields = Object.entries(entry.patch ?? {}).filter(([field]) => field !== 'expectedUpdatedAt')
   const status = t(entry.error ? 'sync.attention' : entry.attempts > 0 ? 'sync.retrying' : 'sync.to_send')
   const StatusIcon = entry.error ? TriangleAlertIcon : entry.attempts > 0 ? RefreshIcon : ClockIcon
@@ -51,8 +54,8 @@ function ActionRow({ entry, index }: { entry: QueuedMutation; index: number }) {
         : field === 'categories' ? TagIcon : PencilIcon
   return (
     <IdentityCard testID={`queued-action-${entry.id}`} palette={palette}
-      bg={dark ? palette.cream : palette.gradientBottom} labelColor={secondaryInk}
-      chipColor={dark ? palette.creamPill : palette.cream}
+      bg={palette.cream} labelColor={secondaryInk} subtleShadow
+      chipColor={palette.creamPill}
       icon={<ActionIcon size={20} color={palette.ink} />} corner={index % 2 === 0 ? 'a' : 'b'}
       label={entry.base.name} value={t(entry.collection === 'products' ? 'sync.products' : 'sync.shopping')}
       emphasizeLabel footer={
@@ -67,14 +70,14 @@ function ActionRow({ entry, index }: { entry: QueuedMutation; index: number }) {
                 <Text fontSize={13} fontWeight="700" color={palette.ink}>{label}</Text>
                 <XStack alignItems="center" gap="$3">
                   <YStack flex={1} minWidth={0} gap="$1">
-                    <Text fontSize={12} color={secondaryInk}>{t('sync.before')}</Text>
-                    <Text fontSize={14} lineHeight={20} color={secondaryInk}>{oldValue}</Text>
+                    <Text fontSize={12} fontWeight="600" color={secondaryInk}>{t('sync.before')}</Text>
+                    <Text fontSize={14} lineHeight={20} fontWeight="500" color={secondaryInk}>{oldValue}</Text>
                   </YStack>
                   <YStack flexShrink={0} accessible={false} aria-hidden>
                     <ArrowRightIcon size={18} color={secondaryInk} />
                   </YStack>
                   <YStack flex={1} minWidth={0} gap="$1">
-                    <Text fontSize={12} color={secondaryInk}>{t('sync.your_change')}</Text>
+                    <Text fontSize={12} fontWeight="600" color={secondaryInk}>{t('sync.your_change')}</Text>
                     <Text fontSize={20} lineHeight={26} fontWeight="800" color={palette.ink}>{newValue}</Text>
                   </YStack>
                 </XStack>
@@ -95,6 +98,11 @@ function ActionRow({ entry, index }: { entry: QueuedMutation; index: number }) {
                 : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
             )}</Text> : null}
           </YStack>
+          <PillButton testID={`queued-cancel-${entry.id}`} label={t('sync.cancel')}
+            accessibilityLabel={t('sync.cancel_named', { name: entry.base.name })}
+            palette={{ ...palette, cream: palette.creamPill }} tone="quiet" creamSurfaceEdge onPress={onCancel}
+            disabled={disabled} busy={cancelling} icon={(color) => cancelling
+              ? <ActivityIndicator size="small" color={color} /> : <XIcon size={15} color={color} />} />
         </YStack>
       } />
   )
@@ -105,6 +113,15 @@ export function PendingActionsScreen() {
   const palette = useSoftPalette()
   const closeHover = useHoverPress()
   const actions = useQueuedActions()
+  const [selected, setSelected] = useState<QueuedMutation | null>(null)
+  const cancellation = useMutation({
+    mutationFn: actions.cancel, networkMode: 'always',
+    onSuccess: (result) => {
+      if (!result.ok) showToast(t(['action_unavailable', 'action_syncing', 'storage_error', 'cache_update_error'].includes(result.error.type)
+        ? `sync.cancel_${result.error.type}` : 'sync.cancel_error'), 'error')
+    },
+    onError: () => showToast(t('sync.cancel_error'), 'error'),
+  })
   const layout = useAppShellLayout({ kind: 'modal' })
   const [filter, setFilter] = useState<Filter>('all')
   const list = useRef<FlatList<QueuedMutation>>(null)
@@ -119,6 +136,7 @@ export function PendingActionsScreen() {
   ]
   const close = () => { if (router.canGoBack()) router.back(); else router.replace('/') }
   return (
+    <>
     <AppShell nav={{ kind: 'modal' }} scrollable={false} header={
       <YStack gap="$3">
         <ScreenHeader palette={palette}
@@ -156,7 +174,9 @@ export function PendingActionsScreen() {
           ListHeaderComponent={entries.length > 0 && pending.length === 0 ? <Text fontSize={13} lineHeight={19}
             color={palette.inkSecondary} marginBottom="$2">{t('sync.needs_attention')}</Text> : null}
           ItemSeparatorComponent={() => <YStack height={24} />}
-          renderItem={({ item, index }) => <ActionRow entry={item} index={index} />}
+          renderItem={({ item, index }) => <ActionRow entry={item} index={index}
+            onCancel={() => setSelected(item)} disabled={cancellation.isPending}
+            cancelling={cancellation.isPending && cancellation.variables === item.id} />}
           ListEmptyComponent={<YStack paddingVertical="$6" paddingHorizontal="$2" gap="$3" alignItems="center">
             {actions.isPending ? <SkeletonList palette={palette} rows={3} label={t('sync.loading')} /> : <Text fontSize={16} fontWeight="700" textAlign="center" color={palette.ink}>
               {t(actions.isError ? 'sync.load_error'
@@ -169,5 +189,14 @@ export function PendingActionsScreen() {
           </YStack>} />
       </YStack>
     </AppShell>
+    <ActionSheet visible={selected !== null} onClose={() => setSelected(null)}
+      title={selected ? t('sync.cancel_named', { name: selected.base.name }) : undefined}
+      description={t(selected && selected.attempts > 0 ? 'sync.cancel_retry_description' : 'sync.cancel_description')}
+      closeLabel={t('sync.keep')} options={[{
+        testID: 'queued-cancel-confirm', label: t('sync.cancel_confirm'), destructive: true,
+        tint: palette.expired, icon: (color) => <XIcon size={18} color={color} />,
+        onPress: () => { if (selected) { cancellation.mutate(selected.id); setSelected(null) } },
+      }]} />
+    </>
   )
 }
