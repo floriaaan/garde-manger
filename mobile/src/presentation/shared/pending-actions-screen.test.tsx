@@ -175,7 +175,7 @@ test('conflict cards expose an explicit overwrite action beside cancellation', a
 })
 
 
-test('global progress advances after delivery and only the sending item is indeterminate', async () => {
+test('global progress advances after delivery and only the sending item has a progress bar', async () => {
   jest.mocked(useConnectivity).mockReturnValue(true)
   const s = setup()
   let finish!: () => void
@@ -191,13 +191,15 @@ test('global progress advances after delivery and only the sending item is indet
   })
   const [first, second] = await s.queue.pending()
   await waitFor(() => expect(screen.getByTestId('queued-global-progress')).toHaveAccessibilityValue({ min: 0, max: 2, now: 0 }))
-  await waitFor(() => expect(screen.getByTestId(`queued-progress-${second.id}`)).toBeTruthy())
+  await waitFor(() => expect(screen.getByTestId(`queued-action-${second.id}`)).toBeTruthy())
+  expect(screen.queryByTestId(`queued-progress-${first.id}`)).toBeNull()
+  expect(screen.queryByTestId(`queued-progress-${second.id}`)).toBeNull()
   let replay!: Promise<void>
   await act(async () => { replay = s.queue.flush(); await sending })
   expect(screen.getByTestId(`queued-progress-${first.id}`).props.accessibilityValue).toBeUndefined()
-  expect(screen.getByTestId(`queued-progress-${second.id}`)).toHaveAccessibilityValue({ min: 0, max: 1, now: 0 })
+  expect(screen.queryByTestId(`queued-progress-${second.id}`)).toBeNull()
   await act(async () => { finish(); await replay })
   await waitFor(() => expect(screen.getByTestId('queued-global-progress')).toHaveAccessibilityValue({ min: 0, max: 2, now: 1 }))
   expect(screen.getByText('1 sur 2 actions synchronisées')).toBeTruthy()
-  expect(screen.getByTestId(`queued-progress-${second.id}`)).toHaveAccessibilityValue({ min: 0, max: 1, now: 0 })
+  expect(screen.queryByTestId(`queued-progress-${second.id}`)).toBeNull()
 })

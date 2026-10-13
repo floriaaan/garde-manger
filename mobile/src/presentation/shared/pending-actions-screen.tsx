@@ -101,9 +101,8 @@ function ActionRow({ entry, index, onCancel, cancelling, disabled, onRetry, retr
                 : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
             )}</Text> : null}
           </YStack>
-          <ProgressBar testID={`queued-progress-${entry.id}`} palette={{ ...palette, fresh: palette.freshText }}
-            value={sending ? undefined : 0} total={sending ? undefined : 1}
-            label={t('sync.item_progress', { name: entry.base.name })} />
+          {sending ? <ProgressBar testID={`queued-progress-${entry.id}`} palette={{ ...palette, fresh: palette.freshText }}
+            label={t('sync.item_progress', { name: entry.base.name })} /> : null}
           <XStack gap="$3" flexWrap="wrap" alignItems="center" paddingVertical="$2">
             {entry.error?.type === 'sync_conflict' ? <PillButton testID={`queued-overwrite-${entry.id}`}
               label={t('sync.overwrite')} accessibilityLabel={t('sync.overwrite_named', { name: entry.base.name })}
