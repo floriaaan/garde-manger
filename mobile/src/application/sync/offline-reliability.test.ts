@@ -136,8 +136,8 @@ test('a confirmed 401 revokes the session, clears the read snapshot and stops su
   queryClient.setQueryData(['shopping-items'], fakeShoppingItems)
   await jest.advanceTimersByTimeAsync(1000)
   expect(snapshot).not.toBeNull()
-  await s.connector.updateShoppingItem(fakeShoppingItems[0].id, { checked: true })
-  await s.connector.updateShoppingItem(fakeShoppingItems[1].id, { checked: true })
+  await s.connector.deleteShoppingItem(fakeShoppingItems[0].id)
+  await s.connector.deleteShoppingItem(fakeShoppingItems[1].id)
   const fetchMock = jest.fn().mockResolvedValue(response(401, {
     error: { type: 'unauthenticated', message: 'Revoked' },
   }))
@@ -154,20 +154,20 @@ test('a confirmed 401 revokes the session, clears the read snapshot and stops su
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
-test('pending fields overlay concurrent remote fields, and successful replay exposes the server row', async () => {
+test('pending fields overlay remote reads until a version conflict retains intent and exposes the server row', async () => {
   const s = setup()
   const item = fakeShoppingItems[0]
-  const remote = { ...item, name: 'Renamed on another device', quantity: { amount: 5, unit: 'L' } }
+  const remote = { ...item, name: 'Renamed on another device', quantity: { amount: 5, unit: 'L' }, updatedAt: '2026-10-13T12:00:00.000Z' }
   const fetchMock = jest.fn().mockResolvedValue(response(200, { items: [remote] }))
   globalThis.fetch = fetchMock
   await s.connector.updateShoppingItem(item.id, { checked: true })
   expect(await s.connector.getShoppingItems()).toEqual([{ ...remote, checked: true }])
-  fetchMock.mockImplementation((_url: string, init?: RequestInit) => Promise.resolve(response(200,
-    init?.method === 'PATCH' ? { item: { ...remote, checked: true } } : { items: [remote] })))
   await s.queue.flush()
-  fetchMock.mockResolvedValue(response(200, { items: [{ ...remote, checked: true }] }))
-  expect(await s.connector.getShoppingItems()).toEqual([{ ...remote, checked: true }])
-  expect(s.disk()).toEqual([])
+  expect(queryClient.getQueryData(['shopping-items'])).toContainEqual(remote)
+  expect(await s.connector.getShoppingItems()).toEqual([remote])
+  expect(s.disk()).toEqual([expect.objectContaining({ patch: { checked: true }, error: expect.objectContaining({ type: 'sync_conflict' }) })])
+  await s.queue.flush(true)
+  expect(fetchMock.mock.calls.every(([, init]) => init?.method !== 'PATCH')).toBe(true)
 })
 
 test.each(['edit', 'delete'] as const)('remote deletion during a pending %s has an explicit outcome', async (action) => {

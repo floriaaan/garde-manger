@@ -21,13 +21,14 @@ signals are controlled by the tests.
 | Real 401 during replay clears the persisted read snapshot and stops subsequent writes | `application/sync/offline-reliability.test.ts` |
 | Account/household/server switching clears old reads, isolates pending work and ignores an in-flight response from the old scope | `application/shared/offline-cache.test.ts`, `application/sync/mutation-queue.test.ts` |
 | Concurrent enqueue/replay, persisted backoff and lost-response retries use absolute assignments | `application/sync/mutation-queue.test.ts` |
-| Pending fields overlay remote changes without replacing unrelated fields; remote deletion completes DELETE and permanently refuses PATCH | `application/sync/offline-reliability.test.ts` |
+| Pending fields overlay remote reads until a version conflict retains intent and exposes the authoritative row; remote deletion completes DELETE and permanently refuses PATCH | `application/sync/offline-reliability.test.ts` |
 | Storage failure/corruption never silently discards a queue or reports an unsaved write as accepted | `application/sync/mutation-queue.test.ts`, `infrastructure/storage/mutation-queue-storage.test.ts`, `infrastructure/storage/offline-cache-storage.test.ts` |
 
-These tests describe the current conflict contract, not a new merge policy:
-pending absolute fields win locally until replay; a remote not-found response
-for an edit is retained as a permanent failure and the next server read removes
-the row. Same-field conflict resolution remains the scope of #85. Offline
+These tests describe the conflict contract introduced by #85:
+pending absolute fields win locally until replay; changed server versions retain
+intent for explicit review without overwriting remote fields. A remote not-found
+response for an edit is retained as a permanent failure and removes the row.
+See [household-sync-conflicts.md](household-sync-conflicts.md). Offline
 creation, imports, scans and AI jobs are not queued (#84).
 The rejected-timeout cases exercise transport failure handling; the bounded
 session timeout is tested separately in `http-fridge-connector.test.ts`.
@@ -52,7 +53,7 @@ connectivity simulation to prove network behavior: it is visual only.
 | Reconnect while backgrounded, then foreground the app | No background replay is required; foreground revalidates and resumes pending work | ☐ | ☐ |
 | Revoke the session on the server → reconnect | Confirmed refusal prompts login, removes old household reads, stops subsequent queued writes | ☐ | ☐ |
 | Queue an edit in A → switch household/account/server to B → reconnect; return to A | B never displays or sends A's pending data; A's work remains scoped to A | ☐ | ☐ |
-| A edits a checkbox offline; B changes its name/quantity online; A reconnects | Unrelated remote fields remain after revalidation; A's checkbox converges | ☐ | ☐ |
+| A edits a checkbox offline; B changes its name/quantity online; A reconnects | Remote fields remain; A's intent is retained for conflict review rather than silently overwriting B | ☐ | ☐ |
 | A deletes offline; B already deleted online; A reconnects | Delete completes without retry loop or resurrection | ☐ | ☐ |
 | A edits offline; B deletes online; A reconnects | Edit refusal is surfaced, stops retrying, and the next read removes the row | ☐ | ☐ |
 
