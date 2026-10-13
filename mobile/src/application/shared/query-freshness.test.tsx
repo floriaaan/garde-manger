@@ -55,8 +55,10 @@ test('stale cached products render during refresh and survive failure, including
     expect(result.current.data).toEqual(cached)
     expect(result.current.isLoadingError).toBe(false)
     await act(async () => { client.setQueryData(['products', {}], []) })
+    await waitFor(() => expect(result.current.data).toEqual([]))
     jest.mocked(connector.getProducts).mockRejectedValueOnce(new Error('503'))
     await act(async () => { await result.current.refetch() })
+    await waitFor(() => expect(result.current.isRefetchError).toBe(true))
     expect(result.current.data).toEqual([])
     expect(result.current.isLoadingError).toBe(false)
   } finally {
