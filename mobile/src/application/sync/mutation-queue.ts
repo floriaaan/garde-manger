@@ -36,6 +36,7 @@ export class MutationQueue {
   private snapshotKey = ''
   private snapshot?: ReturnType<MutationQueue['status']>
   private delivered = new Map<string, number>()
+  private discarded = new Map<string, number>()
   private storageUnavailable = false
   private listeners = new Set<() => void>()
 
@@ -60,21 +61,23 @@ export class MutationQueue {
     const entries = this.entries.filter((entry) => sameScope(entry.scope, this.scope()))
     const scope = this.scope()
     const done = scope ? this.delivered.get(JSON.stringify(scope)) ?? 0 : 0
+    const cancelled = scope ? this.discarded.get(JSON.stringify(scope)) ?? 0 : 0
     const sendingId = entries.some((entry) => entry.id === this.sendingId) ? this.sendingId : null
     return { entries, syncing: sameScope(scope, this.deliveryScope) && entries.length > 0, sendingId,
-      progress: { done, total: done + entries.length }, storageUnavailable: this.storageUnavailable }
+      progress: { done, total: done + cancelled + entries.length }, cancelled, storageUnavailable: this.storageUnavailable }
   }
 
-  /** Conflicts keep their explicit fresh-row recovery; retry only ordinary delivery failures. */
+  /** Conflicts require review; authentication refusals require an explicit session recovery. */
   async retry(id?: number): Promise<void> {
     if (this.replaying) return
     const scope = this.scope()
     if (!scope) return
     await this.edit((entries) => {
       const selected = entries.find((entry) => entry.id === id && sameScope(entry.scope, scope))
-      if (selected && ['sync_conflict', 'product_not_found', 'shopping_item_not_found', 'unauthenticated'].includes(selected.error?.type ?? '')) return entries
+      if (selected && ['sync_conflict', 'product_not_found', 'shopping_item_not_found'].includes(selected.error?.type ?? '')) return entries
       return entries.map((entry) => {
-        if (!sameScope(entry.scope, scope) || ['sync_conflict', 'product_not_found', 'shopping_item_not_found', 'unauthenticated'].includes(entry.error?.type ?? '')) return entry
+        if (!sameScope(entry.scope, scope) || ['sync_conflict', 'product_not_found', 'shopping_item_not_found'].includes(entry.error?.type ?? '') ||
+          (entry.error?.type === 'unauthenticated' && selected?.error?.type !== 'unauthenticated')) return entry
         const retry = id === undefined ? !entry.error : selected && entry.collection === selected.collection && entry.entityId === selected.entityId
         return retry ? { ...entry, error: undefined, retryAt: 0 } : entry
       })
@@ -83,11 +86,21 @@ export class MutationQueue {
   }
 
   /** Explicit human recovery only; ordinary reconnect replay never calls this. */
-  async overwrite(id: number): Promise<void> {
+  async overwrite(id: number, reviewedUpdatedAt: string): Promise<void> {
     await this.ready
     if (this.replaying) return
     const entry = this.entries.find((item) => item.id === id && item.error?.type === 'sync_conflict' && sameScope(item.scope, this.scope()))
-    if (entry) await this.recoverConflict?.(entry)
+    if (entry) await this.recoverConflict?.(entry, reviewedUpdatedAt)
+  }
+
+  async previewConflict(id: number): Promise<Product | ShoppingItem> {
+    await this.ready
+    const entry = this.entries.find((item) => item.id === id && item.error?.type === 'sync_conflict' && sameScope(item.scope, this.scope()))
+    if (!entry || !this.readConflict) throw new Error('sync.overwrite_unavailable')
+    const current = await this.readConflict(entry)
+    if (!sameScope(entry.scope, this.scope())) throw new Error('sync.overwrite_unavailable')
+    if (!current) throw new Error('sync.deleted')
+    return current
   }
 
   constructor(
@@ -98,7 +111,8 @@ export class MutationQueue {
     private failed: (entry: QueuedMutation) => void,
     private now: () => number = Date.now,
     private cancelled?: (entry: QueuedMutation, row: Product | ShoppingItem | null) => void,
-    private recoverConflict?: (entry: QueuedMutation) => Promise<void>,
+    private recoverConflict?: (entry: QueuedMutation, reviewedUpdatedAt: string) => Promise<void>,
+    private readConflict?: (entry: QueuedMutation) => Promise<Product | ShoppingItem | null>,
   ) {
     this.ready = storage.read().then((entries) => { this.entries = entries; this.notify() }, (error) => {
       this.storageUnavailable = true
@@ -140,7 +154,7 @@ export class MutationQueue {
           scope, collection, entityId: base.id, base, patch, attempts: 0, retryAt: 0,
         }
         return [...entries, entry]
-      }, () => { if (startsBatch) this.delivered.delete(JSON.stringify(scope)) })
+      }, () => { if (startsBatch) { this.delivered.delete(JSON.stringify(scope)); this.discarded.delete(JSON.stringify(scope)) } })
     } catch {
       return Result.err({ type: 'storage_error', message: 'Impossible de sauvegarder cette modification sur cet appareil.' })
     }
@@ -220,6 +234,10 @@ export class MutationQueue {
         return next
       }, () => {
         persisted = true
+        if (entry && !refusal) {
+          const key = JSON.stringify(entry.scope)
+          this.discarded.set(key, (this.discarded.get(key) ?? 0) + 1)
+        }
         if (entry && !refusal && sameScope(scope, this.scope())) this.cancelled?.(entry, row)
       })
     } catch {

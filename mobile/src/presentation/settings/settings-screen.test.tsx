@@ -68,6 +68,12 @@ test('tapping the account card opens Mon compte', async () => {
   expect(router.push).toHaveBeenCalledWith('/account')
 })
 
+test('synchronization details remain reachable after the network banner disappears', async () => {
+  await renderAuthenticated()
+  await fireEvent.press(screen.getByTestId('settings-sync'))
+  expect(router.push).toHaveBeenCalledWith('/pending-actions')
+})
+
 test('shows the app version in the À propos line', async () => {
   await renderAuthenticated()
 

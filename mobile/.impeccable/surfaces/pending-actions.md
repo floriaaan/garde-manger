@@ -21,3 +21,7 @@ FIRST VIEWPORT: Close48 aligned in ScreenHeader.trailing. “Tes changements son
 PROOF: Source/diff review only. Tests updated but not executed per AGENTS.md. Native captures and pixel fidelity remain unverified. Previous generated concepts are proposals, not native-render evidence.
 
 FINISH: Source review found the dark-mode card/ground collision; cards now use cream with creamText supporting ink in both themes; the reviewer scored that fix resolved from source. Final review and documentation apply to this source implementation; global DESIGN.md/design.json remain unchanged.
+
+CONFLICT REVIEW: Compact inline Écraser opens the shared ActionSheet, comparing freshly fetched household values against every proposed field. Confirmation replaces only listed fields; a newer server version requires another review. Session, offline, sending and unavailable-storage states explain their recovery. Cancellation confirmation follows the actual sending state.
+
+RESOLUTION: Delivery and cancellation have separate scoped counts. Only delivery-only completion gets the playful checkmark; canceled-only and mixed outcomes use neutral static feedback. Automatic dismissal adapts to accessibility preferences and pauses on interaction. A permanent quiet Synchronisation pill beneath the Settings server card reopens pending changes and the last scoped in-memory result after the network banner disappears. Proof remains source-only; native appearance and pixel fidelity are unverified.

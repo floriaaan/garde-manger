@@ -18,7 +18,8 @@ export function useQueuedActions() {
   const queue = useContext(MutationQueueContext)
   const client = useQueryClient()
   const status = useSyncStatus(queue)
-  const session = useSessionQuery({ enabled: false }).data
+  const sessionQuery = useSessionQuery({ enabled: false })
+  const session = sessionQuery.data
   const household = useHouseholdQuery({ enabled: false }).data
   const actions = useQuery({
     queryKey: ['sync-actions', getServerUrl(), session?.user.id, household?.id],
@@ -39,6 +40,18 @@ export function useQueuedActions() {
       void client.invalidateQueries({ queryKey: ['sync-actions'] })
     })
   }, [queue, client])
-  return { ...actions, scopeKey: JSON.stringify([getServerUrl(), session?.user.id, household?.id]), status, overwrite: (id: number) => queue ? queue.overwrite(id) : Promise.resolve(), retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
+  return { ...actions, scopeKey: JSON.stringify([getServerUrl(), session?.user.id, household?.id]), status,
+    previewConflict: (id: number) => queue ? queue.previewConflict(id) : Promise.reject(new Error('sync.overwrite_unavailable')),
+    overwrite: (id: number, reviewedUpdatedAt: string) => queue ? queue.overwrite(id, reviewedUpdatedAt) : Promise.resolve(),
+    reconnect: async (id: number) => {
+      const server = getServerUrl()
+      const result = await sessionQuery.refetch()
+      if (result.isError) throw new Error('sync.session_check_error')
+      if (!result.data) return false
+      if (result.data.user.id !== session?.user.id || getServerUrl() !== server ||
+        client.getQueryData<{ id: string }>(['household'])?.id !== household?.id) throw new Error('sync.overwrite_unavailable')
+      await queue?.retry(id)
+      return true
+    }, retry: (id: number) => queue ? queue.retry(id) : Promise.resolve(), cancel: (id: number) => queue ? queue.cancel(id)
     : Promise.resolve(Result.err({ type: 'action_unavailable', message: 'Cette action n’est plus disponible.' })) }
 }

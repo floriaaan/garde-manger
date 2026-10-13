@@ -21,25 +21,27 @@ jest.mock('expo-router', () => ({
 jest.mock('../../application/shared/server-config.js', () => ({ getServerUrl: () => 'https://server.example', onServerUrlChange: () => () => {} }))
 jest.mock('../../application/shared/use-connectivity.js', () => ({ useConnectivity: jest.fn(() => true) }))
 
-function setup(demo = false) {
+function setup(demo = false, unavailable = false, mountNow = true) {
   let disk: QueuedMutation[] = []
   let scope: SyncScope = { server: 'https://server.example', userId: fakeSession.user.id, householdId: fakeHousehold.id }
   const storage = demo ? createFakeMutationQueueStorage(scope.server) : { read: async () => disk, write: async (entries: QueuedMutation[]) => { disk = entries } }
+  if (unavailable) storage.read = async () => { throw new Error('Storage unavailable') }
   const send = jest.fn(async (_entry: QueuedMutation): Promise<Result<unknown, ApiError>> => Result.ok(undefined))
   const queue = new MutationQueue(storage,
-    () => scope, send, () => {}, () => {})
+    () => scope, send, () => {}, () => {}, undefined, undefined, undefined, async (entry) => ({ ...entry.base, updatedAt: 'reviewed-version' }))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
   client.setQueryData(['session'], fakeSession)
   client.setQueryData(['household'], fakeHousehold)
   const connector = new FakeFridgeConnector()
   const getSession = jest.spyOn(connector, 'getSession')
   const getHousehold = jest.spyOn(connector, 'getHousehold')
-  render(<ThemeProvider><QueryClientProvider client={client}>
+  const mount = () => render(<ThemeProvider><QueryClientProvider client={client}>
     <ConnectorProvider connector={connector}>
     <MutationQueueProvider queue={queue}><PendingActionsScreen /></MutationQueueProvider>
     </ConnectorProvider>
   </QueryClientProvider></ThemeProvider>)
-  return { queue, send, client, getSession, getHousehold, changeHousehold: () => {
+  if (mountNow) mount()
+  return { queue, send, client, getSession, getHousehold, mount, changeHousehold: () => {
     scope = { ...scope, householdId: 'other' }
     client.setQueryData(['household'], { ...fakeHousehold, id: 'other' })
   } }
@@ -170,7 +172,11 @@ test('conflict overwrite is hidden offline or while connectivity is unknown and 
   expect(screen.getByTestId('queued-overwrite-4')).toBeEnabled()
   expect(overwrite).not.toHaveBeenCalled()
   await fireEvent.press(screen.getByTestId('queued-overwrite-4'))
-  await waitFor(() => expect(overwrite).toHaveBeenCalledWith(4))
+  await waitFor(() => expect(screen.getByTestId('queued-overwrite-confirm')).toBeEnabled())
+  expect(overwrite).not.toHaveBeenCalled()
+  expect(screen.getByText('Dans le foyer maintenant : Frigo')).toBeTruthy()
+  await fireEvent.press(screen.getByTestId('queued-overwrite-confirm'))
+  await waitFor(() => expect(overwrite).toHaveBeenCalledWith(4, 'reviewed-version'))
   jest.mocked(useConnectivity).mockReturnValue(false)
   await act(async () => { await s.queue.flush(true) })
   expect(screen.queryByTestId('queued-overwrite-4')).toBeNull()
@@ -207,6 +213,7 @@ test('global progress advances after delivery and only the sending item has a pr
   let replay!: Promise<void>
   await act(async () => { replay = s.queue.flush(); await sending })
   expect(screen.getByTestId(`queued-progress-${first.id}`).props.accessibilityValue).toBeUndefined()
+  expect(screen.getByTestId(`queued-cancel-${first.id}`)).toBeDisabled()
   expect(screen.queryByTestId(`queued-progress-${second.id}`)).toBeNull()
   await act(async () => { finish(); await replay })
   await waitFor(() => expect(screen.getByTestId('queued-global-progress')).toHaveAccessibilityValue({ min: 0, max: 2, now: 1 }))
@@ -224,6 +231,9 @@ test('overwrite shows item progress during fresh-row preparation as well as deli
   await waitFor(() => expect(screen.getByTestId('queued-overwrite-4')).toBeEnabled())
   expect(screen.queryByTestId('queued-progress-4')).toBeNull()
   await fireEvent.press(screen.getByTestId('queued-overwrite-4'))
+  await waitFor(() => expect(screen.getByTestId('queued-overwrite-confirm')).toBeEnabled())
+  expect(screen.queryByTestId('queued-progress-4')).toBeNull()
+  await fireEvent.press(screen.getByTestId('queued-overwrite-confirm'))
   await waitFor(() => expect(screen.getByTestId('queued-progress-4')).toBeTruthy())
   expect(s.queue.status().sendingId).toBeNull()
   expect(screen.queryByTestId('queued-progress-11')).toBeNull()
@@ -291,4 +301,75 @@ test('delivery status updates do not refetch the local action list when its entr
   await act(async () => { finish(); await replay })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['sync-actions'] })
   invalidate.mockRestore()
+})
+
+test('canceling the last saved change reports cancellation instead of synchronization', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup()
+  await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+  const [entry] = await s.queue.pending()
+  await waitFor(() => expect(screen.getByTestId(`queued-cancel-${entry.id}`)).toBeEnabled())
+  await fireEvent.press(screen.getByTestId(`queued-cancel-${entry.id}`))
+  await fireEvent.press(screen.getByTestId('queued-cancel-confirm'))
+  await waitFor(() => expect(screen.getByText('Modifications annulées')).toBeTruthy())
+  expect(screen.getByText('1 modification annulée')).toBeTruthy()
+  expect(screen.queryByText('Tout est réglé')).toBeNull()
+  expect(s.send).not.toHaveBeenCalled()
+})
+
+test('unavailable storage explains reopening the app instead of offering an ineffective local reload', async () => {
+  setup(false, true)
+  await waitFor(() => expect(screen.getByTestId('queued-recovery-guidance')).toHaveTextContent('Réessayez en rouvrant l’application.'))
+  expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
+  expect(screen.queryByText('Tout est réglé')).toBeNull()
+})
+
+test('an expired session has explicit recovery and rechecks identity before retrying', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'unauthenticated', message: 'Expired' }))
+  await act(async () => {
+    await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+    await s.queue.flush()
+  })
+  await waitFor(() => expect(screen.getByText(/Ta session a expiré/)).toBeTruthy())
+  expect(s.getSession).not.toHaveBeenCalled()
+  s.getSession.mockResolvedValueOnce(fakeSession)
+  await fireEvent.press(screen.getByRole('button', { name: 'Se reconnecter' }))
+  await waitFor(() => expect(screen.getByText('Tout est réglé')).toBeTruthy())
+  expect(s.getSession).toHaveBeenCalledTimes(1)
+  expect(s.send).toHaveBeenCalledTimes(2)
+})
+
+test('reopening the resolved queue keeps its outcome readable without another timed completion', async () => {
+  const s = setup(false, false, false)
+  await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true })
+  await s.queue.flush()
+  s.mount()
+  await waitFor(() => expect(screen.getByText('1 modification synchronisée')).toBeTruthy())
+  expect(screen.queryByTestId('sync-completion')).toBeNull()
+  expect(screen.getByText('Aucune action en attente')).toBeTruthy()
+})
+
+test('an open cancellation confirmation becomes unavailable when automatic sending starts', async () => {
+  const s = setup()
+  await act(async () => { await s.queue.enqueue('shopping-items', fakeShoppingItems[0], { checked: true }) })
+  const [entry] = await s.queue.pending()
+  await waitFor(() => expect(screen.getByTestId(`queued-cancel-${entry.id}`)).toBeEnabled())
+  await fireEvent.press(screen.getByTestId(`queued-cancel-${entry.id}`))
+  expect(screen.getByTestId('queued-cancel-confirm')).toBeEnabled()
+  let finish!: () => void
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => { finish = resolve; started() })
+    return Result.ok(undefined)
+  })
+  let replay!: Promise<void>
+  await act(async () => { replay = s.queue.flush(); await sending })
+  expect(screen.getByTestId('queued-cancel-confirm')).toBeDisabled()
+  await act(async () => { finish(); await replay })
+  await waitFor(() => expect(screen.getByText('Cette action n’est plus dans la file.')).toBeTruthy())
+  expect(screen.getByTestId('queued-cancel-confirm')).toBeDisabled()
+  expect(s.queue.status().cancelled).toBe(0)
 })

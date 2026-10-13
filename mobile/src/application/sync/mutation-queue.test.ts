@@ -381,11 +381,11 @@ test('overwrite invokes recovery only for a conflict in the current scope', asyn
   await queue.flush()
   const [conflict] = await queue.failures()
   scope = { ...initialScope, userId: 'other-user' }
-  await queue.overwrite(conflict.id)
+  await queue.overwrite(conflict.id, 'reviewed-version')
   expect(recover).not.toHaveBeenCalled()
   scope = initialScope
-  await queue.overwrite(conflict.id)
-  expect(recover).toHaveBeenCalledWith(expect.objectContaining({ id: conflict.id, patch: { checked: true } }))
+  await queue.overwrite(conflict.id, 'reviewed-version')
+  expect(recover).toHaveBeenCalledWith(expect.objectContaining({ id: conflict.id, patch: { checked: true } }), 'reviewed-version')
 })
 
 
@@ -408,6 +408,42 @@ test('global progress counts only persisted acknowledgements and keeps conflicts
   expect(s.queue.status().progress).toEqual({ done: 1, total: 1 })
   await s.queue.enqueue('shopping-items', item, { checked: false })
   expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
+})
+
+test('cancellations resolve work without counting it as synchronized and reset for the next batch', async () => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'other' }, { checked: true })
+  const [first] = await s.queue.pending()
+  jest.mocked(s.storage.write).mockRejectedValueOnce(new Error('Disk full'))
+  expect((await s.queue.cancel(first.id)).ok).toBe(false)
+  expect(s.queue.status().cancelled).toBe(0)
+  expect((await s.queue.cancel(first.id)).ok).toBe(true)
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 2 })
+  expect(s.queue.status().cancelled).toBe(1)
+  await s.queue.flush()
+  expect(s.queue.status().progress).toEqual({ done: 1, total: 2 })
+  s.setScope(null)
+  expect(s.queue.status().cancelled).toBe(0)
+  s.setScope(initialScope)
+  expect(s.queue.status().cancelled).toBe(1)
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  expect(s.queue.status().cancelled).toBe(0)
+  expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
+})
+
+test('automatic replay and general retry leave authentication refusals for explicit session recovery', async () => {
+  const s = setup()
+  s.send.mockResolvedValueOnce(Result.err({ type: 'unauthenticated', message: 'Expired' }))
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.flush()
+  const [failure] = await s.queue.failures()
+  await s.queue.flush(true)
+  await s.queue.retry()
+  expect(s.send).toHaveBeenCalledTimes(1)
+  await s.queue.retry(failure.id)
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(s.queue.status().progress.done).toBe(1)
 })
 
 test('failed acknowledgement persistence never increments progress', async () => {

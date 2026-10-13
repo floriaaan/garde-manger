@@ -47,10 +47,10 @@ export function NetworkStatusBanner({ queue = null }: { queue?: MutationQueue | 
   const activeStatus = status === 'offline' ? 'offline' : syncState ?? status
   const shown = Boolean(syncState) || visible
   const title = activeStatus ? t(`shared.network_${activeStatus}`) : ''
-  const description = sync.entries.length
+  const description = activeStatus === 'storage_error' ? t('sync.storage_error_description') : sync.entries.length
     ? t('sync.pending_count', { count: sync.entries.length })
     : activeStatus === 'offline' ? t('shared.network_offline_description')
-    : activeStatus === 'storage_error' ? t('sync.storage_error_description') : ''
+    : ''
   useEffect(() => {
     if (!activeStatus) { height.set(0); return }
     const target = shown ? contentHeight : 0

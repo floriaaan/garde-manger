@@ -95,9 +95,7 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
         rows ? [...rows.filter((row) => row.id !== entry.entityId), entry.base as ShoppingItem] : rows,
       )
     }
-    showToast(`Synchronisation impossible pour « ${entry.base.name} » : ${entry.error?.message}`, 'error',
-      entry.error?.type === 'sync_conflict' ? { label: 'Réappliquer', onPress: () => { void reapply(entry) } } : undefined,
-    )
+    showToast(`Synchronisation impossible pour « ${entry.base.name} » : ${entry.error?.message}`, 'error')
   }, undefined, (entry, row) => {
     if (!sameScope(entry.scope, scope())) return
     // Failed intent is not overlaid; preserve the authoritative row already refreshed on refusal.
@@ -110,25 +108,23 @@ export function withOfflineMutations(connector: FridgeConnector, storage: QueueS
       })
     }
     refresh(entry)
-  }, reapply)
+  }, reapply, readCurrent)
 
-  async function reapply(entry: QueuedMutation): Promise<void> {
-    try {
-      if (!sameScope(entry.scope, scope())) return
-      const current = entry.collection === 'products'
-        ? await getProduct(entry.entityId)
-        : (await getItems()).find((item) => item.id === entry.entityId) ?? null
-      if (!sameScope(entry.scope, scope())) return
-      if (!current) {
-        showToast('Cet élément a été supprimé. Votre modification reste conservée sur cet appareil.')
-        return
-      }
-      await queue.reapplyConflicts(entry.collection, current, entry.id)
-      await restorePending()
-      await queue.flush(true)
-    } catch {
-      showToast('Impossible de réappliquer pour le moment. Votre modification reste conservée sur cet appareil.')
-    }
+  async function readCurrent(entry: QueuedMutation): Promise<Product | ShoppingItem | null> {
+    return entry.collection === 'products' ? getProduct(entry.entityId)
+      : (await getItems()).find((item) => item.id === entry.entityId) ?? null
+  }
+
+  async function reapply(entry: QueuedMutation, reviewedUpdatedAt: string): Promise<void> {
+    if (!sameScope(entry.scope, scope())) throw new Error('sync.overwrite_unavailable')
+    const current = await readCurrent(entry)
+    if (!sameScope(entry.scope, scope())) throw new Error('sync.overwrite_unavailable')
+    if (!current) throw new Error('sync.deleted')
+    // Do not silently approve edits made after the human reviewed the values.
+    if (current.updatedAt !== reviewedUpdatedAt) throw new Error('sync.overwrite_changed')
+    await queue.reapplyConflicts(entry.collection, current, entry.id)
+    await restorePending()
+    await queue.flush(true)
   }
 
   function findProduct(id: string): Product | undefined {
