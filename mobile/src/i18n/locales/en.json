@@ -1119,7 +1119,7 @@
     "delete_requested": "Deletion requested on this device.",
     "empty_pending": "No actions to send",
     "empty_failed": "No actions need attention",
-    "on_device": "On this device",
+    "on_device": "Your changes are saved",
     "send_when_available": "Pending actions will be sent when the server is available.",
     "needs_attention": "Your changes are saved. Some actions need attention.",
     "attention": "Needs attention",
@@ -1159,6 +1159,10 @@
       "openfoodfactId": "Barcode",
       "categories": "Categories",
       "price": "Price"
-    }
+    },
+    "before": "Before",
+    "your_change": "Your change",
+    "remove_product": "Remove this product from the pantry.",
+    "remove_shopping": "Remove this item from the shopping list."
   }
 }

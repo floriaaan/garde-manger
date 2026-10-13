@@ -6,16 +6,16 @@ TARGET: `src/presentation/shared/pending-actions-screen.tsx`, `/pending-actions`
 
 ## Direction contract
 
-THESIS: Le dossier d’envoi replaces the receipt with the shared BlobBackground ground, one light pane, pinned status filters and compact disclosure rows.
+THESIS: Pending intent uses the application’s IdentityCard material on the shared BlobBackground. Every field change is immediately understandable without disclosure controls.
 
-AUTHORITY: The user chose the folder comp (candidate 6, seed 8fc8fb71, buildPath comp), then instructed “Fais matcher avec le design.md”. DESIGN.md takes precedence over the comp’s teal, oversized title and segmented controls. The user subsequently requested replacing mocha with BlobBackground; the AppShell default ground now takes precedence. The approved comp and provenance remain a composition reference, not a runtime asset.
+AUTHORITY: The user chose an earlier folder comp, then required DESIGN.md alignment, replaced mocha with BlobBackground, requested aligned header/Close and filter icons, and rejected the modification rows as below the app’s visual standard. This local replacement inherits the system and uses its existing IdentityCard rather than treating the superseded folder raster as literal authority.
 
-OWN-WORLD: Existing AppShell BlobBackground, ink and cream tokens, themed light pane, lime selection, native typography and Spectral web ScreenHeader. Shared Chip, useHoverPress and Android ripple. No appliance colors outside the fridge, decorative raster assets or new dependencies.
+OWN-WORLD: AppShell BlobBackground, standard ink/cream, white light-mode/cream dark-mode IdentityCards with mirrored asymmetric corners, shared ScreenHeader/Chip, native typography and Spectral web titles. No appliance colors or new assets/dependencies. Read-only changes are not pressables.
 
-STORY: Scan saved changes, filter automatic delivery or retained failures, then expand an action to inspect every recorded before/after assignment. Fake and real queues share the same behavior and copy.
+STORY: Filter automatic delivery or retained failures. Each card names its product and collection, then each modified field shows labeled “Avant” and “Ta modification” values. Multi-field patches expose every assignment. Deletion explicitly names which collection will lose the item. Delivery states retain icon/color/word and failures retain their reason.
 
-FIRST VIEWPORT: Close48 is the shared ScreenHeader trailing control, aligned with its icon/title/count row; device-save status follows below. An asymmetric 28/18pt light pane holds the pinned wrapping chips with Layers/Clock/Triangle icons. First action opens initially; remaining rows show name/target and disclosure chevrons. Every queue status pairs an icon, semantic color and word. Expanded values use the 24/800 display role. Content scrolls through FlatList on the AppShell modal measure.
+FIRST VIEWPORT: Close48 aligned in ScreenHeader.trailing. “Tes changements sont conservés” replaces the device-oriented caption. Layers/Clock/Triangle filter chips are pinned on the shared centered measure. Cards use IdentityCard’s 16pt padding, 18pt product name, 13pt collection, 20pt requested value and 24pt separation; no enclosing white pane, separator strokes or collapsed rows.
 
-PROOF: Source and diff review only. Tests updated but not executed per AGENTS.md. No booted simulator was available; native capture comparison and pixel fidelity remain unverified. Web-oriented build-phase scratch metadata is not evidence of native rendering.
+PROOF: Source/diff review only. Tests updated but not executed per AGENTS.md. Native captures and pixel fidelity remain unverified. Previous generated concepts are proposals, not native-render evidence.
 
-FINISH: Source review identified the wide-filter alignment and scored its shared-measure correction resolved. Documentation is source-aligned; global DESIGN.md/design.json remain unchanged. Native verdict remains recapture until device evidence is available.
+FINISH: Source review found the dark-mode card/ground collision; cards now use cream with creamText supporting ink in dark mode; the reviewer scored that fix resolved from source. Final review and documentation apply to this source implementation; global DESIGN.md/design.json remain unchanged.

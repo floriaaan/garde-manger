@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
 import { Animated, FlatList } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useQueuedActions } from '../../application/sync/mutation-queue-context.js'
 import type { QueuedMutation } from '../../application/sync/mutation-queue.js'
 import { formatCurrency, getLocale, t as translate, useTranslation } from '../../i18n/index.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, LayersIcon, RefreshIcon, SmartphoneCheckIcon, TriangleAlertIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ArrowRightIcon, ArrowLeftRightIcon, CalendarIcon, CheckIcon, ClockIcon, LayersIcon, PencilIcon, RefreshIcon, ScaleIcon, SmartphoneCheckIcon, TagIcon, TrashIcon, TriangleAlertIcon, WalletIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { IdentityCard } from '../settings/identity-card.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from './app-shell.js'
 import { Chip } from './chip.js'
 import { ScreenHeader } from './screen-header.js'
@@ -34,75 +34,75 @@ function valueLabel(field: string, value: unknown, before = false): string {
   return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
-function ActionRow({ entry, initiallyExpanded }: { entry: QueuedMutation; initiallyExpanded: boolean }) {
+function ActionRow({ entry, index }: { entry: QueuedMutation; index: number }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const [expanded, setExpanded] = useState(initiallyExpanded)
-  const hover = useHoverPress()
+  const dark = palette.blurTint === 'dark'
+  const secondaryInk = dark ? palette.creamText : palette.inkSecondary
   const fields = Object.entries(entry.patch ?? {}).filter(([field]) => field !== 'expectedUpdatedAt')
-  const summary = entry.patch === null ? t('sync.delete') : fields.map(([field, value]) => valueLabel(field, value)).join(' · ')
-  const status = t(entry.error ? 'sync.attention' : entry.attempts > 0 ? 'sync.retrying' : 'sync.waiting')
-  const caption = expanded && fields.length === 1 ? t(`sync.fields.${fields[0][0]}`) : summary
+  const status = t(entry.error ? 'sync.attention' : entry.attempts > 0 ? 'sync.retrying' : 'sync.to_send')
   const StatusIcon = entry.error ? TriangleAlertIcon : entry.attempts > 0 ? RefreshIcon : ClockIcon
   const statusColor = entry.error ? palette.expiredText : palette.soonText
   const statusBackground = entry.error ? palette.expiredBg : palette.soonBg
-  const Chevron = expanded ? ChevronDownIcon : ChevronRightIcon
+  const field = fields.length === 1 ? fields[0][0] : undefined
+  const ActionIcon = entry.patch === null ? TrashIcon : field === 'quantity' ? ScaleIcon
+    : field === 'location' ? ArrowLeftRightIcon : field === 'price' ? WalletIcon
+      : field === 'checked' ? CheckIcon : field === 'expiresAt' || field === 'openedAt' ? CalendarIcon
+        : field === 'categories' ? TagIcon : PencilIcon
   return (
-    <YStack testID={`queued-action-${entry.id}`}>
-      <Animated.View style={{ transform: [{ scale: hover.scale }] }}>
-        <Pressable testID={`queued-action-toggle-${entry.id}`} accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          accessibilityLabel={`${entry.base.name}. ${summary}. ${status}. ${t(expanded ? 'sync.hide_details' : 'sync.show_details')}`}
-          onPress={() => setExpanded((value) => !value)}
-          onHoverIn={hover.onHoverIn} onHoverOut={hover.onHoverOut}
-          onPressIn={hover.onPressIn} onPressOut={hover.onPressOut} android_ripple={ripple(palette.ink)}
-          style={[pointerCursor, rippleClip(12), { minHeight: 72, paddingVertical: 16 }]}>
-          <XStack gap="$3" alignItems="center">
-            <YStack flex={1} minWidth={0} gap="$1.5">
-              <Text fontSize={14} lineHeight={20} fontWeight="800" color={palette.ink}>{entry.base.name}</Text>
-              <Text fontSize={13} lineHeight={19} color={palette.inkSecondary}>{caption}</Text>
-            </YStack>
-            <YStack flexShrink={0} accessible={false} aria-hidden><Chevron size={18} color={palette.inkSecondary} /></YStack>
-          </XStack>
-        </Pressable>
-      </Animated.View>
-      <XStack alignItems="center" gap="$1.5" alignSelf="flex-start" paddingHorizontal="$2" paddingVertical="$1"
-        marginBottom="$3" borderRadius={999} backgroundColor={statusBackground}>
-        <YStack accessible={false} aria-hidden><StatusIcon size={13} color={statusColor} /></YStack>
-        <Text fontSize={12} fontWeight="600" color={statusColor}>{status}</Text>
-      </XStack>
-      {expanded ? <YStack gap="$3" paddingBottom="$4">
-        {fields.map(([field, value]) => {
-          const oldValue = valueLabel(field, (entry.base as unknown as Record<string, unknown>)[field], true)
-          const newValue = valueLabel(field, value)
-          const label = t(`sync.fields.${field}`)
-          return (
-            <YStack key={field} gap="$1.5" accessible
-              accessibilityLabel={t('sync.change_description', { field: label, before: oldValue, after: newValue })}>
-              {fields.length > 1 ? <Text fontSize={12} color={palette.inkSecondary}>{label}</Text> : null}
-              <XStack alignItems="center" gap="$3">
-                <Text flex={1} minWidth={0} fontSize={14} lineHeight={20} fontWeight="500" color={palette.inkSecondary}>{oldValue}</Text>
-                <YStack flexShrink={0} accessible={false} aria-hidden><ArrowRightIcon size={20} color={palette.inkSecondary} /></YStack>
-                <Text flex={2} minWidth={0} fontSize={24} lineHeight={30} fontWeight="800" color={palette.ink}>{newValue}</Text>
-              </XStack>
-            </YStack>
-          )
-        })}
-        {entry.patch === null ? <Text fontSize={14} lineHeight={21} color={palette.ink}>{t('sync.delete_requested')}</Text> : null}
-        <Text fontSize={12} color={palette.inkSecondary}>{t(entry.collection === 'products' ? 'sync.products' : 'sync.shopping')}</Text>
-        {entry.error ? <Text fontSize={13} lineHeight={20} color={palette.expiredText}>{t(
-          entry.error.type === 'sync_conflict' ? 'sync.conflict'
-            : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
-        )}</Text> : null}
-      </YStack> : null}
-    </YStack>
+    <IdentityCard testID={`queued-action-${entry.id}`} palette={palette}
+      bg={dark ? palette.cream : palette.gradientBottom} labelColor={secondaryInk}
+      chipColor={dark ? palette.creamPill : palette.cream}
+      icon={<ActionIcon size={20} color={palette.ink} />} corner={index % 2 === 0 ? 'a' : 'b'}
+      label={entry.base.name} value={t(entry.collection === 'products' ? 'sync.products' : 'sync.shopping')}
+      emphasizeLabel footer={
+        <YStack gap="$4">
+          {fields.map(([field, value]) => {
+            const oldValue = valueLabel(field, (entry.base as unknown as Record<string, unknown>)[field], true)
+            const newValue = valueLabel(field, value)
+            const label = t(`sync.fields.${field}`)
+            return (
+              <YStack key={field} gap="$2" accessible
+                accessibilityLabel={t('sync.change_description', { field: label, before: oldValue, after: newValue })}>
+                <Text fontSize={13} fontWeight="700" color={palette.ink}>{label}</Text>
+                <XStack alignItems="center" gap="$3">
+                  <YStack flex={1} minWidth={0} gap="$1">
+                    <Text fontSize={12} color={secondaryInk}>{t('sync.before')}</Text>
+                    <Text fontSize={14} lineHeight={20} color={secondaryInk}>{oldValue}</Text>
+                  </YStack>
+                  <YStack flexShrink={0} accessible={false} aria-hidden>
+                    <ArrowRightIcon size={18} color={secondaryInk} />
+                  </YStack>
+                  <YStack flex={1} minWidth={0} gap="$1">
+                    <Text fontSize={12} color={secondaryInk}>{t('sync.your_change')}</Text>
+                    <Text fontSize={20} lineHeight={26} fontWeight="800" color={palette.ink}>{newValue}</Text>
+                  </YStack>
+                </XStack>
+              </YStack>
+            )
+          })}
+          {entry.patch === null ? <Text fontSize={14} lineHeight={21} fontWeight="600" color={palette.ink}>
+            {t(entry.collection === 'products' ? 'sync.remove_product' : 'sync.remove_shopping')}
+          </Text> : null}
+          <YStack gap="$2">
+            <XStack alignItems="center" gap="$1.5" alignSelf="flex-start" paddingHorizontal="$2" paddingVertical="$1"
+              borderRadius={999} backgroundColor={statusBackground}>
+              <YStack accessible={false} aria-hidden><StatusIcon size={13} color={statusColor} /></YStack>
+              <Text flexShrink={1} fontSize={12} fontWeight="600" color={statusColor}>{status}</Text>
+            </XStack>
+            {entry.error ? <Text fontSize={13} lineHeight={20} color={palette.expiredText}>{t(
+              entry.error.type === 'sync_conflict' ? 'sync.conflict'
+                : ['product_not_found', 'shopping_item_not_found'].includes(entry.error.type) ? 'sync.deleted' : 'sync.refused',
+            )}</Text> : null}
+          </YStack>
+        </YStack>
+      } />
   )
 }
 
 export function PendingActionsScreen() {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const insets = useSafeAreaInsets()
   const closeHover = useHoverPress()
   const actions = useQueuedActions()
   const layout = useAppShellLayout({ kind: 'modal' })
@@ -142,9 +142,7 @@ export function PendingActionsScreen() {
         </XStack> : null}
       </YStack>
     }>
-      {/* Paint through AppShell's reserved bottom inset while keeping content inside it. */}
-      <YStack flex={1} minHeight={0} backgroundColor={palette.gradientBottom} borderTopLeftRadius={28}
-        borderTopRightRadius={18} overflow="hidden" marginBottom={-insets.bottom} paddingBottom={insets.bottom}>
+      <YStack flex={1} minHeight={0}>
         <XStack gap="$3" flexWrap="wrap" style={{ ...shellContentStyle(layout), paddingTop: 20, paddingBottom: 20 }}
           accessibilityLabel={t('sync.filter_label')}>
           {filters.map((option) => <Chip key={option.id} testID={`queued-filter-${option.id}`}
@@ -157,8 +155,8 @@ export function PendingActionsScreen() {
           contentContainerStyle={{ ...shellContentStyle(layout), paddingTop: 0, flexGrow: 1 }}
           ListHeaderComponent={entries.length > 0 && pending.length === 0 ? <Text fontSize={13} lineHeight={19}
             color={palette.inkSecondary} marginBottom="$2">{t('sync.needs_attention')}</Text> : null}
-          ItemSeparatorComponent={() => <YStack height={1} backgroundColor={palette.creamPillEdge} />}
-          renderItem={({ item, index }) => <ActionRow entry={item} initiallyExpanded={index === 0} />}
+          ItemSeparatorComponent={() => <YStack height={24} />}
+          renderItem={({ item, index }) => <ActionRow entry={item} index={index} />}
           ListEmptyComponent={<YStack paddingVertical="$6" paddingHorizontal="$2" gap="$3" alignItems="center">
             {actions.isPending ? <SkeletonList palette={palette} rows={3} label={t('sync.loading')} /> : <Text fontSize={16} fontWeight="700" textAlign="center" color={palette.ink}>
               {t(actions.isError ? 'sync.load_error'

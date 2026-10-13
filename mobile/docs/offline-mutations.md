@@ -43,15 +43,18 @@ policy is defined in
 
 The offline banner opens `/pending-actions` as a native modal. Its local-only
 query lists scoped pending and failed intent and updates after durable queue edits.
-The dossier composition uses AppShell's shared `BlobBackground` with standard
+The modal uses AppShell's shared `BlobBackground` with standard
 ink and cream tokens. The shared `ScreenHeader` aligns its icon, title/count
-and trailing 48pt Close; device-save status follows above an asymmetric light
-pane. Shared chips stay pinned above the list and distinguish all actions,
+and trailing 48pt Close; “Tes changements sont conservés” follows below.
+Shared chips stay pinned above the list and distinguish all actions,
 “À envoyer” and “À vérifier” with Layers, Clock and TriangleAlert icons.
-Expandable rows disclose each recorded old → new
-value; delivery states pair an icon, semantic color and word. The first visible
-row opens initially. It remains open as connectivity returns, so completed
-actions disappear from the list. Source inspection confirms the shared design
+Read-only `IdentityCard` rows use white surfaces in light mode and distinct
+cream surfaces in dark mode, with matching supporting text and icon-chip tokens.
+Mirrored asymmetric corners and 24pt spacing separate cards on the shared ground. Every modified field
+is visible with labeled “Avant” and “Ta modification” values; deletion names
+the affected collection. Delivery states pair an icon, semantic color and word,
+and retained failures show their reason. The modal remains open as connectivity
+returns, so completed actions disappear from the list. Source inspection confirms the shared design
 components; fresh native rendering and transition fidelity remain unverified.
 Fake mode supplies twelve initial in-memory actions (nine pending, three conflicts),
 covering quantities, checkboxes, locations, dates, prices, names and deletion,
