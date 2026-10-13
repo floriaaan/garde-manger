@@ -32,6 +32,8 @@ export class MutationQueue {
   private replaying = false
   private sendingId: number | null = null
   private revision = 0
+  private snapshotKey = ''
+  private snapshot?: ReturnType<MutationQueue['status']>
   private delivered = new Map<string, number>()
   private storageUnavailable = false
   private listeners = new Set<() => void>()
@@ -41,7 +43,14 @@ export class MutationQueue {
     return () => { this.listeners.delete(listener) }
   }
 
-  getSnapshot = (): string => `${this.revision}:${JSON.stringify(this.scope())}`
+  getSnapshot = (): ReturnType<MutationQueue['status']> => {
+    const key = `${this.revision}:${JSON.stringify(this.scope())}`
+    if (key !== this.snapshotKey || !this.snapshot) {
+      this.snapshot = this.status()
+      this.snapshotKey = key
+    }
+    return this.snapshot
+  }
   private notify() {
     this.revision++
     for (const listener of this.listeners) listener()

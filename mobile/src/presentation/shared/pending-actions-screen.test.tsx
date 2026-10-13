@@ -210,3 +210,21 @@ test('global progress advances after delivery and only the sending item has a pr
   expect(screen.getByText('1 sur 2 actions synchronisées')).toBeTruthy()
   expect(screen.queryByTestId(`queued-progress-${second.id}`)).toBeNull()
 })
+
+
+test('overwrite shows item progress during fresh-row preparation as well as delivery', async () => {
+  jest.mocked(useConnectivity).mockReturnValue(true)
+  const s = setup(true)
+  let finish!: () => void
+  const preparation = new Promise<void>((resolve) => { finish = resolve })
+  const overwrite = jest.spyOn(s.queue, 'overwrite').mockReturnValueOnce(preparation)
+  await waitFor(() => expect(screen.getByTestId('queued-overwrite-4')).toBeEnabled())
+  expect(screen.queryByTestId('queued-progress-4')).toBeNull()
+  await fireEvent.press(screen.getByTestId('queued-overwrite-4'))
+  await waitFor(() => expect(screen.getByTestId('queued-progress-4')).toBeTruthy())
+  expect(s.queue.status().sendingId).toBeNull()
+  expect(screen.queryByTestId('queued-progress-11')).toBeNull()
+  await act(async () => { finish(); await preparation })
+  await waitFor(() => expect(screen.queryByTestId('queued-progress-4')).toBeNull())
+  overwrite.mockRestore()
+})

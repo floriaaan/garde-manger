@@ -102,6 +102,7 @@ The modal displays global acknowledged delivery progress for the current in-memo
 queue batch. Conflicts and temporary failures remain incomplete; cancellation
 removes the cancelled action from the total. A new batch resets completed counts,
 and accounts/households/servers have separate counters. Restarts begin a new
-progress count for retained actions. Only the action currently being sent displays an indeterminate progress bar,
-because the atomic endpoint reports no intermediate percentage. Waiting and
+progress count for retained actions. Only the action currently being sent or explicitly retried/overwritten displays
+an indeterminate progress bar, including the fresh-row preparation of overwrite.
+The atomic endpoint reports no intermediate percentage. Waiting and
 blocked actions have no item bar; acknowledged rows leave the list. Existing shared progress bars preserve accessible values and Reduce Motion.

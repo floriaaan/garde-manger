@@ -417,3 +417,23 @@ test('failed acknowledgement persistence never increments progress', async () =>
   await expect(s.queue.flush()).rejects.toThrow('Disk full')
   expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
 })
+
+
+test('status snapshots stay stable between changes and expose delivery progress directly to observers', async () => {
+  const s = setup()
+  await s.queue.pending()
+  const initial = s.queue.getSnapshot()
+  expect(s.queue.getSnapshot()).toBe(initial)
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  const pending = s.queue.getSnapshot()
+  expect(pending).not.toBe(initial)
+  expect(pending.progress).toEqual({ done: 0, total: 1 })
+  expect(s.queue.getSnapshot()).toBe(pending)
+  await s.queue.flush()
+  const completed = s.queue.getSnapshot()
+  expect(completed).not.toBe(pending)
+  expect(completed.progress).toEqual({ done: 1, total: 1 })
+  expect(s.queue.getSnapshot()).toBe(completed)
+  s.setScope({ ...initialScope, userId: 'someone-else' })
+  expect(s.queue.getSnapshot().progress).toEqual({ done: 0, total: 0 })
+})
