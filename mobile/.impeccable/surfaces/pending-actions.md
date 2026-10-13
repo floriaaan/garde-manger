@@ -14,7 +14,7 @@ OWN-WORLD: Existing AppShell BlobBackground, ink and cream tokens, themed light 
 
 STORY: Scan saved changes, filter automatic delivery or retained failures, then expand an action to inspect every recorded before/after assignment. Fake and real queues share the same behavior and copy.
 
-FIRST VIEWPORT: Close48 above the shared ScreenHeader and device-save status. An asymmetric 28/18pt light pane holds the pinned wrapping chips. First action opens initially; remaining rows show name/target and disclosure chevrons. Every queue status pairs an icon, semantic color and word. Expanded values use the 24/800 display role. Content scrolls through FlatList on the AppShell modal measure.
+FIRST VIEWPORT: Close48 is the shared ScreenHeader trailing control, aligned with its icon/title/count row; device-save status follows below. An asymmetric 28/18pt light pane holds the pinned wrapping chips with Layers/Clock/Triangle icons. First action opens initially; remaining rows show name/target and disclosure chevrons. Every queue status pairs an icon, semantic color and word. Expanded values use the 24/800 display role. Content scrolls through FlatList on the AppShell modal measure.
 
 PROOF: Source and diff review only. Tests updated but not executed per AGENTS.md. No booted simulator was available; native capture comparison and pixel fidelity remain unverified. Web-oriented build-phase scratch metadata is not evidence of native rendering.
 

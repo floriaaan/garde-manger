@@ -44,10 +44,11 @@ policy is defined in
 The offline banner opens `/pending-actions` as a native modal. Its local-only
 query lists scoped pending and failed intent and updates after durable queue edits.
 The dossier composition uses AppShell's shared `BlobBackground` with standard
-ink and cream tokens for `ScreenHeader`, device-save status and a 48pt Close
-control above an asymmetric light pane. Shared chips stay pinned above the list
-and filter all actions,
-“À envoyer” or “À vérifier”. Expandable rows disclose each recorded old → new
+ink and cream tokens. The shared `ScreenHeader` aligns its icon, title/count
+and trailing 48pt Close; device-save status follows above an asymmetric light
+pane. Shared chips stay pinned above the list and distinguish all actions,
+“À envoyer” and “À vérifier” with Layers, Clock and TriangleAlert icons.
+Expandable rows disclose each recorded old → new
 value; delivery states pair an icon, semantic color and word. The first visible
 row opens initially. It remains open as connectivity returns, so completed
 actions disappear from the list. Source inspection confirms the shared design

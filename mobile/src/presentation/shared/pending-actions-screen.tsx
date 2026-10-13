@@ -6,7 +6,7 @@ import { useQueuedActions } from '../../application/sync/mutation-queue-context.
 import type { QueuedMutation } from '../../application/sync/mutation-queue.js'
 import { formatCurrency, getLocale, t as translate, useTranslation } from '../../i18n/index.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
-import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, RefreshIcon, SmartphoneCheckIcon, TriangleAlertIcon, XIcon } from '../dashboard/dashboard-icons.js'
+import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, LayersIcon, RefreshIcon, SmartphoneCheckIcon, TriangleAlertIcon, XIcon } from '../dashboard/dashboard-icons.js'
 import { AppShell, shellContentStyle, useAppShellLayout } from './app-shell.js'
 import { Chip } from './chip.js'
 import { ScreenHeader } from './screen-header.js'
@@ -112,30 +112,30 @@ export function PendingActionsScreen() {
   const pending = entries.filter((entry) => !entry.error)
   const failed = entries.filter((entry) => entry.error)
   const visible = filter === 'pending' ? pending : filter === 'failed' ? failed : entries
-  const filters: { id: Filter; label: string; count: number }[] = [
-    { id: 'all', label: t('sync.all'), count: entries.length },
-    { id: 'pending', label: t('sync.to_send'), count: pending.length },
-    { id: 'failed', label: t('sync.attention'), count: failed.length },
+  const filters: { id: Filter; label: string; count: number; icon: typeof ClockIcon }[] = [
+    { id: 'all', label: t('sync.all'), count: entries.length, icon: LayersIcon },
+    { id: 'pending', label: t('sync.to_send'), count: pending.length, icon: ClockIcon },
+    { id: 'failed', label: t('sync.attention'), count: failed.length, icon: TriangleAlertIcon },
   ]
   const close = () => { if (router.canGoBack()) router.back(); else router.replace('/') }
   return (
     <AppShell nav={{ kind: 'modal' }} scrollable={false} header={
       <YStack gap="$3">
-        <XStack justifyContent="flex-end">
-          <Animated.View style={{ transform: [{ scale: closeHover.scale }] }}>
-            <Pressable accessibilityRole="button" accessibilityLabel={t('shared.close')} onPress={close}
-              onHoverIn={closeHover.onHoverIn} onHoverOut={closeHover.onHoverOut}
-              onPressIn={closeHover.onPressIn} onPressOut={closeHover.onPressOut}
-              android_ripple={ripple(palette.ink)}
-              style={[pointerCursor, rippleClip(999), { width: 48, height: 48, borderRadius: 999,
-                backgroundColor: palette.cream, alignItems: 'center', justifyContent: 'center' }]}>
-              <XIcon size={22} color={palette.ink} />
-            </Pressable>
-          </Animated.View>
-        </XStack>
         <ScreenHeader palette={palette}
           icon={(color) => <ClockIcon size={20} color={color} />}
-          title={t('sync.title')} subtitle={actions.data !== undefined ? t('sync.count', { count: entries.length }) : undefined} />
+          title={t('sync.title')} subtitle={actions.data !== undefined ? t('sync.count', { count: entries.length }) : undefined}
+          trailing={
+            <Animated.View style={{ transform: [{ scale: closeHover.scale }] }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t('shared.close')} onPress={close}
+                onHoverIn={closeHover.onHoverIn} onHoverOut={closeHover.onHoverOut}
+                onPressIn={closeHover.onPressIn} onPressOut={closeHover.onPressOut}
+                android_ripple={ripple(palette.ink)}
+                style={[pointerCursor, rippleClip(999), { width: 48, height: 48, borderRadius: 999,
+                  backgroundColor: palette.cream, alignItems: 'center', justifyContent: 'center' }]}>
+                <XIcon size={22} color={palette.ink} />
+              </Pressable>
+            </Animated.View>
+          } />
         {entries.length > 0 ? <XStack gap="$2.5" alignItems="center" paddingTop="$1" paddingBottom="$1">
           <YStack flexShrink={0} accessible={false} aria-hidden><SmartphoneCheckIcon size={25} color={palette.ink} /></YStack>
           <Text flex={1} minWidth={0} fontSize={14} lineHeight={20} fontWeight="600" color={palette.ink}>{t('sync.on_device')}</Text>
@@ -149,7 +149,7 @@ export function PendingActionsScreen() {
           accessibilityLabel={t('sync.filter_label')}>
           {filters.map((option) => <Chip key={option.id} testID={`queued-filter-${option.id}`}
             label={`${option.label}${actions.data !== undefined ? ` ${option.count}` : ''}`}
-            selected={filter === option.id} palette={palette}
+            selected={filter === option.id} palette={palette} icon={(color) => <option.icon size={13} color={color} />}
             onPress={() => { setFilter(option.id); list.current?.scrollToOffset({ offset: 0, animated: false }) }} />)}
         </XStack>
         <FlatList ref={list} data={visible} keyExtractor={(entry) =>
