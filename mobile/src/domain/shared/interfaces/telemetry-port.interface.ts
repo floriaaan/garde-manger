@@ -7,8 +7,13 @@
  * docs/adr/0002) — `providers/` wires the real implementation in at boot.
  */
 export interface TelemetryPort {
+  recordEvent?(
+    operation: string,
+    outcome: 'started' | 'completed' | 'success',
+    options?: { attributes?: Record<string, string | number | boolean> },
+  ): void
   recordError(
     message: string,
-    options?: { error?: unknown; attributes?: Record<string, string | number | boolean> },
+    options?: { error?: unknown; attributes?: Record<string, string | number | boolean>; level?: 'info' | 'warn' | 'error' },
   ): void
 }

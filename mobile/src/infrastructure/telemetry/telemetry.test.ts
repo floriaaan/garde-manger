@@ -157,3 +157,31 @@ test('a successful trace export is not repeated when only logs fail', async () =
   expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/logs'))).toHaveLength(2)
   now.mockRestore()
 })
+
+test('sync events export correlation and retry counters while errors redact their original cause', async () => {
+  const { telemetry } = loadModules(true)
+  telemetry.start()
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 202 })
+  globalThis.fetch = fetchMock
+  telemetry.recordEvent('sync.shopping_items.retry_scheduled', 'completed', { attributes: {
+    'sync.mutation_id': 1234, 'sync.attempt': 2, 'sync.retry_delay_ms': 2000,
+    'entity.id': 'item-1', 'error.code': 'temporary_error',
+    patch: 'private-patch', server: 'https://private-server.example', userId: 'private-user',
+  } })
+  telemetry.recordError('storage failed', { error: new Error('token=private-token'), attributes: {
+    'app.operation': 'sync.storage.write', 'error.code': 'queue_storage_write_failed',
+  } })
+  telemetry.recordEvent('sync.shopping_items.replay', 'started', { attributes: { 'sync.attempt': 'private-email@example.com' } })
+  telemetry.shutdown()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  const records = logRecords(fetchMock)
+  expect(records).toHaveLength(3)
+  expect(records[0].attributes).toEqual(expect.arrayContaining([
+    { key: 'sync.mutation_id', value: { intValue: 1234 } },
+    { key: 'sync.attempt', value: { intValue: 2 } },
+    { key: 'sync.retry_delay_ms', value: { intValue: 2000 } },
+  ]))
+  expect(records[1].severityText).toBe('ERROR')
+  expect(records[1].attributes).toContainEqual({ key: 'exception.type', value: { stringValue: 'Error' } })
+  expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('private-')
+})

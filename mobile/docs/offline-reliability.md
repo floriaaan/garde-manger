@@ -1,0 +1,87 @@
+# Offline and reconnect reliability (#87)
+
+## Automated coverage
+
+The focused command is `pnpm --filter garde-manger-mobile run test:offline`.
+`task mobile:check` includes this focused suite, so the `mobile-check` CI job
+runs it through the same command. The general mobile test suite remains
+disabled in that task. No backend, device, credentials,
+or real network connection is required: HTTP responses and transport failures
+are injected at `fetch`, storage round-trips through JSON, and timers/reconnect
+signals are controlled by the tests.
+
+| Contract | Coverage (under `mobile/src/`) |
+| --- | --- |
+| Offline cold start restores session, household, inventory and shopping with original timestamps | `application/shared/offline-cache.test.ts` |
+| Cold start applies durable pending edits after restoring the read snapshot | `application/sync/offline-connector.test.ts` |
+| Online → offline → online sends no writes offline and drains the queue once on reconnect | `application/sync/offline-reliability.test.ts` |
+| 500, HTML 503 and rejected timeout reads retain data; writes retain optimism and survive a queue restart until recovery | `application/sync/offline-reliability.test.ts` |
+| Failed freshness refresh, focus/reconnect revalidation and stale connectivity events | `application/shared/query-freshness.test.tsx`, `application/shared/use-connectivity.test.tsx` |
+| Unavailable session stays cached; authoritative absence/401 invalidates it; native session timeout preserves credentials | `application/identity/session.query.test.tsx`, `infrastructure/http/http-client.test.ts`, `infrastructure/http/http-fridge-connector.test.ts` |
+| Real 401 during replay clears the persisted read snapshot and stops subsequent writes | `application/sync/offline-reliability.test.ts` |
+| Account/household/server switching clears old reads, isolates pending work and ignores an in-flight response from the old scope | `application/shared/offline-cache.test.ts`, `application/sync/mutation-queue.test.ts` |
+| Concurrent enqueue/replay, persisted backoff and lost-response retries use absolute assignments | `application/sync/mutation-queue.test.ts` |
+| Pending fields overlay remote reads until a version conflict retains intent and exposes the authoritative row; remote deletion completes DELETE and permanently refuses PATCH | `application/sync/offline-reliability.test.ts` |
+| Storage failure/corruption never silently discards a queue or reports an unsaved write as accepted | `application/sync/mutation-queue.test.ts`, `infrastructure/storage/mutation-queue-storage.test.ts`, `infrastructure/storage/offline-cache-storage.test.ts` |
+| Queue lifecycle diagnostics, original failure causes, recovery and safe OTLP export | `application/sync/mutation-queue.test.ts`, `application/sync/wire-mutation-queue.test.ts`, `infrastructure/telemetry/telemetry.test.ts` |
+
+## Synchronization diagnostics
+
+The queue uses the existing telemetry port. Lifecycle events use
+`sync.products.*` / `sync.shopping_items.*` operations: `enqueue`, `replay`,
+`retry_scheduled`, `retry_requested`, `conflict_reapplied` and `cancel`.
+Enqueue, success and recovery events are emitted after the corresponding durable
+write succeeds; idle/backoff-only polls do not produce lifecycle events.
+`sync.mutation_id` remains stable across queue restarts, `sync.attempt` identifies
+the replay attempt (starting at one), and `sync.retry_delay_ms` records backoff.
+The entity id and PATCH/DELETE method identify the affected operation.
+
+Permanent replay refusals, including locally detected conflicts, use WARN with
+the error code. Storage read/write errors and unexpected send, restore, flush
+or cancellation cache-update failures retain their original exception for the
+existing diagnostic sanitizer. Restore/flush failure logs are limited to one
+per consecutive failure period and resume after a successful recovery. HTTP
+failures retain their existing transport diagnostics; queue events describe
+delivery state rather than carrying response payloads.
+
+Names, saved rows, patches, account/household ids and server URLs are not included
+in these new logs. Numeric sync attributes are allowlisted by both the mobile
+exporter and the backend relay; arbitrary text in those fields is redacted.
+Remote export still requires telemetry to be enabled. ERROR diagnostics remain
+available in the local console through the existing logger.
+
+These tests describe the conflict contract introduced by #85:
+pending absolute fields win locally until replay; changed server versions retain
+intent for explicit review without overwriting remote fields. A remote not-found
+response for an edit is retained as a permanent failure and removes the row.
+See [household-sync-conflicts.md](household-sync-conflicts.md). Offline
+creation, imports, scans and AI jobs are not queued (#84).
+The rejected-timeout cases exercise transport failure handling; the bounded
+session timeout is tested separately in `http-fridge-connector.test.ts`.
+
+## Device QA matrix
+
+Run each row on a physical iOS device and a physical Android device with the
+same release/staging build. Use a test account in a household with at least two
+products and two shopping items; first open the inventory and shopping list
+online to seed the cache. Use a second member/device for concurrent changes.
+Use a controlled staging proxy for HTTP failures; airplane mode alone cannot
+simulate a reachable network with an unavailable server. Do not use the debug
+connectivity simulation to prove network behavior: it is visual only.
+
+| Scenario and steps | Expected result on both platforms | iOS | Android |
+| --- | --- | --- | --- |
+| Seed data → enable airplane mode (Wi-Fi also off) → force-close → relaunch | Cached context and lists appear without login; previously unopened data may be unavailable | ☐ | ☐ |
+| Online → airplane mode → edit quantity/check an item/delete a product → reconnect | Actions appear immediately; unrelated rows remain; server converges after reconnect without duplicates | ☐ | ☐ |
+| Queue edits/deletes offline → force-close → relaunch offline → reconnect | Optimistic edits/deletes survive restart and replay in order | ☐ | ☐ |
+| Proxy returns 500/HTML 503 on reads and writes, then restores service while app stays foreground | Cached lists/session remain; pending edits survive; automatic retry eventually drains work | ☐ | ☐ |
+| Drop transport during reads/replay (including after a write has committed), then recover | No logout or lost edit; repeated PATCH/DELETE produces the same final state | ☐ | ☐ |
+| Reconnect while backgrounded, then foreground the app | No background replay is required; foreground revalidates and resumes pending work | ☐ | ☐ |
+| Revoke the session on the server → reconnect | Confirmed refusal prompts login, removes old household reads, stops subsequent queued writes | ☐ | ☐ |
+| Queue an edit in A → switch household/account/server to B → reconnect; return to A | B never displays or sends A's pending data; A's work remains scoped to A | ☐ | ☐ |
+| A edits a checkbox offline; B changes its name/quantity online; A reconnects | Remote fields remain; A's intent is retained for conflict review rather than silently overwriting B | ☐ | ☐ |
+| A deletes offline; B already deleted online; A reconnects | Delete completes without retry loop or resurrection | ☐ | ☐ |
+| A edits offline; B deletes online; A reconnects | Edit refusal is surfaced, stops retrying, and the next read removes the row | ☐ | ☐ |
+
+Record build/commit, OS/device, scenario, result and any defect link. Checkboxes
+above are a reusable execution sheet, not evidence that device QA has run.

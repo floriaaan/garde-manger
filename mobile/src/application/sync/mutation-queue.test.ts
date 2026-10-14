@@ -2,6 +2,7 @@ import { MutationQueue, type QueuedMutation, type QueueStorage, type SyncScope }
 import { Result } from '../../domain/shared/result.js'
 import type { ShoppingItem } from '../../domain/shopping-list/shopping-item.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
+import * as telemetryModule from '../shared/telemetry.js'
 
 const item: ShoppingItem = {
   id: 'milk', name: 'Milk', quantity: { amount: 1, unit: 'L' }, checked: false,
@@ -405,7 +406,8 @@ test('global progress counts only persisted acknowledgements and keeps conflicts
   s.setScope(initialScope)
   const [conflict] = await s.queue.failures()
   await s.queue.cancel(conflict.id)
-  expect(s.queue.status().progress).toEqual({ done: 1, total: 1 })
+  expect(s.queue.status().progress).toEqual({ done: 1, total: 2 })
+  expect(s.queue.status().cancelled).toBe(1)
   await s.queue.enqueue('shopping-items', item, { checked: false })
   expect(s.queue.status().progress).toEqual({ done: 0, total: 1 })
 })
@@ -494,4 +496,131 @@ test('idle or blocked replay preserves the observable snapshot without notifying
   expect(s.queue.getSnapshot()).toBe(blocked)
   expect(changed).not.toHaveBeenCalled()
   stop()
+})
+
+test.each(['server', 'userId', 'householdId'] as const)('switching %s during replay ignores the old response and stops the next write', async (key) => {
+  const s = setup()
+  await s.queue.enqueue('shopping-items', item, { checked: true })
+  await s.queue.enqueue('shopping-items', { ...item, id: 'bread' }, { checked: true })
+  s.changed.mockClear()
+  let finish!: () => void
+  const response = new Promise<void>((resolve) => { finish = resolve })
+  let started!: () => void
+  const sending = new Promise<void>((resolve) => { started = resolve })
+  s.send.mockImplementationOnce(async () => {
+    started()
+    await response
+    return Result.ok(undefined)
+  })
+  const replay = s.queue.flush()
+  await sending
+  s.setScope({ ...initialScope, [key]: 'different' })
+  finish()
+  await replay
+  expect(s.send).toHaveBeenCalledTimes(1)
+  expect(s.changed).not.toHaveBeenCalled()
+  expect(s.disk()).toHaveLength(1)
+  expect(await s.queue.pending()).toEqual([])
+  s.setScope(initialScope)
+  await s.create().flush()
+  expect(s.send).toHaveBeenCalledTimes(2)
+  expect(s.disk()).toEqual([])
+})
+
+describe('sync diagnostics', () => {
+  const recordEvent = jest.fn()
+  const recordError = jest.fn()
+  beforeEach(() => {
+    recordEvent.mockClear()
+    recordError.mockClear()
+    jest.spyOn(telemetryModule, 'getTelemetry').mockReturnValue({ recordEvent, recordError })
+  })
+  afterEach(() => jest.restoreAllMocks())
+
+  test('records durable enqueue, actual attempts, persisted backoff and acknowledged success without payloads', async () => {
+    const s = setup()
+    const privateItem = { ...item, name: 'private-name', source: 'manual' as const }
+    await s.queue.enqueue('shopping-items', privateItem, { name: 'private-patch' })
+    s.send.mockResolvedValueOnce(Result.err({ type: 'temporary_error', message: 'private-error' }))
+    await s.queue.flush()
+    await s.queue.flush()
+    await s.create().flush(true)
+    expect(recordEvent.mock.calls.map(([operation, outcome]) => [operation, outcome])).toEqual([
+      ['sync.shopping_items.enqueue', 'success'],
+      ['sync.shopping_items.replay', 'started'],
+      ['sync.shopping_items.retry_scheduled', 'completed'],
+      ['sync.shopping_items.replay', 'started'],
+      ['sync.shopping_items.replay', 'success'],
+    ])
+    const id = recordEvent.mock.calls[0][2].attributes['sync.mutation_id']
+    expect(recordEvent.mock.calls.every(([, , options]) => options.attributes['sync.mutation_id'] === id)).toBe(true)
+    expect(recordEvent.mock.calls[2][2].attributes).toEqual(expect.objectContaining({
+      'error.code': 'temporary_error', 'sync.retry_delay_ms': 1000, 'sync.attempt': 1,
+    }))
+    expect(recordEvent.mock.calls[3][2].attributes['sync.attempt']).toBe(2)
+    expect(JSON.stringify(recordEvent.mock.calls)).not.toContain('private-')
+    expect(JSON.stringify(recordEvent.mock.calls)).not.toContain(initialScope.server)
+    expect(recordError).not.toHaveBeenCalled()
+  })
+
+  test('conflicts warn once, retain intent and log explicit reapplication and cancellation', async () => {
+    const s = setup()
+    await s.queue.enqueue('shopping-items', item, { checked: true })
+    s.send.mockResolvedValueOnce(Result.err({ type: 'sync_conflict', message: 'private-conflict-details' }))
+    await s.queue.flush()
+    await s.queue.flush(true)
+    expect(recordError).toHaveBeenCalledTimes(1)
+    expect(recordError).toHaveBeenCalledWith(expect.any(String), { level: 'warn', attributes: expect.objectContaining({
+      'app.operation': 'sync.replay', 'error.code': 'sync_conflict', 'entity.id': item.id,
+    }) })
+    expect(JSON.stringify(recordError.mock.calls)).not.toContain('private-conflict-details')
+    await s.queue.reapplyConflicts('shopping-items', { ...item, updatedAt: 'fresh-version' })
+    expect(recordEvent).toHaveBeenCalledWith('sync.shopping_items.conflict_reapplied', 'success', expect.any(Object))
+    await s.queue.cancel(s.disk()[0].id)
+    expect(recordEvent).toHaveBeenCalledWith('sync.shopping_items.cancel', 'success', expect.any(Object))
+  })
+
+  test('storage failures retain the original cause and never emit accepted or acknowledged events', async () => {
+    const s = setup()
+    const error = new Error('private-disk-path')
+    jest.mocked(s.storage.write).mockRejectedValueOnce(error)
+    expect((await s.queue.enqueue('shopping-items', item, { checked: true })).ok).toBe(false)
+    expect(recordError).toHaveBeenCalledWith(expect.any(String), { error, attributes: expect.objectContaining({
+      'app.operation': 'sync.storage.write', 'error.code': 'queue_storage_write_failed',
+    }) })
+    expect(recordEvent).not.toHaveBeenCalled()
+    await s.queue.enqueue('shopping-items', item, { checked: true })
+    recordEvent.mockClear()
+    jest.mocked(s.storage.write).mockRejectedValueOnce(error)
+    await expect(s.queue.flush()).rejects.toBe(error)
+    expect(recordEvent.mock.calls.map(([, outcome]) => outcome)).toEqual(['started'])
+  })
+
+  test('corrupt storage is diagnosed once even when callers retry boot', async () => {
+    const error = new SyntaxError('private-corrupt-data')
+    const queue = new MutationQueue({ read: async () => { throw error }, write: jest.fn() },
+      () => initialScope, jest.fn(), jest.fn(), jest.fn())
+    await expect(queue.pending()).rejects.toBe(error)
+    await expect(queue.flush()).rejects.toBe(error)
+    expect(recordError).toHaveBeenCalledTimes(1)
+    expect(recordError).toHaveBeenCalledWith(expect.any(String), { error, attributes: expect.objectContaining({
+      'app.operation': 'sync.storage.read', 'error.code': 'queue_storage_read_failed',
+    }) })
+  })
+
+  test('unexpected send exceptions retain their cause, and a manual retry logs its recovery', async () => {
+    const s = setup()
+    const error = new TypeError('Network request failed')
+    await s.queue.enqueue('shopping-items', item, { checked: true })
+    s.send.mockRejectedValueOnce(error)
+    await s.queue.flush()
+    expect(recordError).toHaveBeenCalledWith(expect.any(String), { error, attributes: expect.objectContaining({
+      'app.operation': 'sync.send', 'error.code': 'queue_send_failed', 'sync.attempt': 1,
+    }) })
+    await s.queue.retry()
+    expect(recordEvent).toHaveBeenCalledWith('sync.shopping_items.retry_requested', 'completed', expect.any(Object))
+    expect(recordEvent).toHaveBeenLastCalledWith('sync.shopping_items.replay', 'success', expect.objectContaining({
+      attributes: expect.objectContaining({ 'sync.attempt': 2 }),
+    }))
+  })
 })

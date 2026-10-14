@@ -124,6 +124,9 @@ export const LOG_SIGNAL_ATTRIBUTES = new Set([
   'app.storage_key',
   'event.outcome',
   'event.occurrences',
+  'sync.mutation_id',
+  'sync.attempt',
+  'sync.retry_delay_ms',
   'request_id',
 ])
 
@@ -160,6 +163,8 @@ export function sanitizeCause(text: string, depth = 0): string {
 }
 
 export function safeAttribute(key: string, value: string): string {
+  if (['sync.mutation_id', 'sync.attempt', 'sync.retry_delay_ms'].includes(key))
+    return /^\d{1,20}$/.test(value) ? value : '[redacted]'
   if (['action', 'app.operation', 'url.path', 'app.screen'].includes(key))
     return safeOperation(value)
   if (key === 'exception.message')
