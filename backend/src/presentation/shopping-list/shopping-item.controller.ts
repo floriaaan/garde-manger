@@ -20,8 +20,8 @@ export default class ShoppingItemController {
       'shopping_list',
       ListShoppingItems,
       async () => {
-        const items = await ctx.containerResolver.make('shoppingList.items')
-        const result = await new ListShoppingItems(items).execute({ householdId: ctx.household.id })
+        const listShoppingItems = await ctx.containerResolver.make('shoppingList.listShoppingItems')
+        const result = await listShoppingItems.execute({ householdId: ctx.household.id })
         ctx.response.json({ items: result.map(toShoppingItemDto) })
       },
       { action: 'shopping_list.get_items' },
@@ -36,11 +36,10 @@ export default class ShoppingItemController {
       CreateShoppingItem,
       async () => {
         const payload = await ctx.request.validateUsing(createShoppingItemValidator)
-        const items = await ctx.containerResolver.make('shoppingList.items')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new CreateShoppingItem(items, idGenerator, clock).execute({
+        const createShoppingItem =
+          await ctx.containerResolver.make('shoppingList.createShoppingItem')
+        const result = await createShoppingItem.execute({
           householdId: ctx.household.id,
           ...payload,
         })
@@ -76,10 +75,10 @@ export default class ShoppingItemController {
       UpdateShoppingItem,
       async () => {
         const payload = await ctx.request.validateUsing(updateShoppingItemValidator)
-        const items = await ctx.containerResolver.make('shoppingList.items')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new UpdateShoppingItem(items, clock).execute({
+        const updateShoppingItem =
+          await ctx.containerResolver.make('shoppingList.updateShoppingItem')
+        const result = await updateShoppingItem.execute({
           householdId: ctx.household.id,
           itemId: ctx.params.id,
           ...payload,
@@ -109,7 +108,9 @@ export default class ShoppingItemController {
         // Fetched before the delete so its haUid is still known — DeleteShoppingItem
         // does its own lookup internally and returns void, not the deleted item.
         const existing = await items.findById(ctx.params.id)
-        const result = await new DeleteShoppingItem(items).execute({
+        const deleteShoppingItem =
+          await ctx.containerResolver.make('shoppingList.deleteShoppingItem')
+        const result = await deleteShoppingItem.execute({
           householdId: ctx.household.id,
           itemId: ctx.params.id,
         })

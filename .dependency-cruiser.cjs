@@ -1,8 +1,7 @@
 /**
- * Shared boundary rules (cf. docs/adr/0002). Layer folders live under each
- * package's own `src/`, so every path pattern here is relative to that
- * package's `src/` — extended by backend/.dependency-cruiser.cjs (and later
- * mobile/.dependency-cruiser.cjs), which add their own `options.tsConfig`/`exclude`.
+ * Shared layer boundaries; see docs/clean-architecture.md.
+ * Paths are relative to each package root. Package configurations supply
+ * TypeScript resolution and exclude test-only sources where appropriate.
  */
 module.exports = {
   forbidden: [
@@ -16,11 +15,11 @@ module.exports = {
       to: { pathNot: '^src/domain' },
     },
     {
-      name: 'application-only-depends-on-domain',
-      comment: 'application must not depend on infrastructure or presentation.',
+      name: 'application-must-not-depend-on-outer-layers',
+      comment: 'application must not depend on infrastructure, presentation or route entry points.',
       severity: 'error',
       from: { path: '^src/application' },
-      to: { path: '^src/(infrastructure|presentation)' },
+      to: { path: '^src/(infrastructure|presentation|app|routes)(/|$)' },
     },
     {
       name: 'infrastructure-must-not-depend-on-presentation',
@@ -37,6 +36,15 @@ module.exports = {
       severity: 'error',
       from: { path: '^src/presentation' },
       to: { path: '^src/infrastructure' },
+    },
+    {
+      name: 'layers-must-not-import-composition-root',
+      comment:
+        'Only entry points assemble dependencies through providers; inner layers must not ' +
+        'use providers to bypass dependency inversion.',
+      severity: 'error',
+      from: { path: '^src/(domain|application|infrastructure|presentation)(/|$)' },
+      to: { path: '^providers(/|$)' },
     },
     {
       name: 'no-circular',

@@ -5,8 +5,6 @@ import { traceAction } from '#presentation/shared/trace-action'
 import { importReceiptValidator } from './receipt.validator.js'
 import { toReceiptDto } from './receipt.dto.js'
 import { toProductDto } from '#presentation/fridge/product.dto'
-import { GetScanDraft } from '#application/job/get-scan-draft.use-case'
-import { FinalizeScanDraft } from '#application/job/finalize-scan-draft.use-case'
 import { ImportReceipt } from '#application/receipt/import-receipt.use-case'
 import { GetReceipt } from '#application/receipt/get-receipt.use-case'
 import { ListReceipts } from '#application/receipt/list-receipts.use-case'
@@ -20,11 +18,10 @@ export default class ReceiptController {
       ImportReceipt,
       async () => {
         const payload = await ctx.request.validateUsing(importReceiptValidator)
-        const scanDrafts = await ctx.containerResolver.make('job.scanDrafts')
         // A draft-backed import carries the scanned photo over to the receipt; the
         // key comes from the server-side draft, never from client input.
         const draft = payload.draftId
-          ? await new GetScanDraft(scanDrafts).execute({
+          ? await (await ctx.containerResolver.make('job.getScanDraft')).execute({
               householdId: ctx.household.id,
               draftId: payload.draftId,
             })
@@ -34,12 +31,9 @@ export default class ReceiptController {
           ctx.response.status(status).json(body)
           return { ok: false as const, error: 'draft_not_found' as const }
         }
-        const receipts = await ctx.containerResolver.make('receipt.receipts')
-        const products = await ctx.containerResolver.make('fridge.products')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new ImportReceipt(receipts, products, idGenerator, clock).execute({
+        const importReceipt = await ctx.containerResolver.make('receipt.importReceipt')
+        const result = await importReceipt.execute({
           householdId: ctx.household.id,
           storeName: payload.storeName,
           scannedAt: payload.scannedAt,
@@ -64,8 +58,8 @@ export default class ReceiptController {
         }
 
         if (draft) {
-          const storage = await ctx.containerResolver.make('shared.storage')
-          await new FinalizeScanDraft(scanDrafts, storage).execute(draft)
+          const finalizeScanDraft = await ctx.containerResolver.make('job.finalizeScanDraft')
+          await finalizeScanDraft.execute(draft)
         }
 
         ctx.response.status(201).json({
@@ -89,8 +83,8 @@ export default class ReceiptController {
       'receipt',
       ListReceipts,
       async () => {
-        const receipts = await ctx.containerResolver.make('receipt.receipts')
-        const result = await new ListReceipts(receipts).execute({ householdId: ctx.household.id })
+        const listReceipts = await ctx.containerResolver.make('receipt.listReceipts')
+        const result = await listReceipts.execute({ householdId: ctx.household.id })
         ctx.response.json({ receipts: result.map(toReceiptDto) })
       },
       { action: 'receipt.get_receipts' },
@@ -104,9 +98,8 @@ export default class ReceiptController {
       'receipt',
       GetReceipt,
       async () => {
-        const receipts = await ctx.containerResolver.make('receipt.receipts')
-        const products = await ctx.containerResolver.make('fridge.products')
-        const result = await new GetReceipt(receipts, products).execute({
+        const getReceipt = await ctx.containerResolver.make('receipt.getReceipt')
+        const result = await getReceipt.execute({
           householdId: ctx.household.id,
           receiptId: ctx.params.id,
         })

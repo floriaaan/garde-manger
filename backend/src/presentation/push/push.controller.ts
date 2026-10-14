@@ -82,11 +82,8 @@ export default class PushController {
       RegisterPushToken,
       async () => {
         const payload = await ctx.request.validateUsing(registerPushTokenValidator)
-        const [tokens, idGenerator] = await Promise.all([
-          ctx.containerResolver.make('push.tokens'),
-          ctx.containerResolver.make('shared.idGenerator'),
-        ])
-        await new RegisterPushToken(tokens, idGenerator).execute({ userId: user.id, ...payload })
+        const registerPushToken = await ctx.containerResolver.make('push.registerPushToken')
+        await registerPushToken.execute({ userId: user.id, ...payload })
         ctx.response.status(204).send('')
       },
       { action: 'push.register' },
@@ -101,8 +98,8 @@ export default class PushController {
       UnregisterPushToken,
       async () => {
         const payload = await ctx.request.validateUsing(unregisterPushTokenValidator)
-        const tokens = await ctx.containerResolver.make('push.tokens')
-        await new UnregisterPushToken(tokens).execute({ userId: user.id, token: payload.token })
+        const unregisterPushToken = await ctx.containerResolver.make('push.unregisterPushToken')
+        await unregisterPushToken.execute({ userId: user.id, token: payload.token })
         ctx.response.status(204).send('')
       },
       { action: 'push.unregister' },

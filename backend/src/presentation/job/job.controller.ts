@@ -61,9 +61,8 @@ export default class JobController {
       'job',
       ListJobs,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new ListJobs(jobs, clock).execute({ householdId: ctx.household.id })
+        const listJobs = await ctx.containerResolver.make('job.listJobs')
+        const result = await listJobs.execute({ householdId: ctx.household.id })
         ctx.response.json({ jobs: result.map(toJobDto) })
       },
       { action: 'job.get_jobs' },
@@ -77,8 +76,8 @@ export default class JobController {
       'job',
       GetJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const job = await new GetJob(jobs).execute({
+        const getJob = await ctx.containerResolver.make('job.getJob')
+        const job = await getJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -101,9 +100,8 @@ export default class JobController {
       'job',
       RetryJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new RetryJob(jobs, clock).execute({
+        const retryJob = await ctx.containerResolver.make('job.retryJob')
+        const result = await retryJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -126,10 +124,8 @@ export default class JobController {
       'job',
       DismissJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new DismissJob(jobs, storage, clock).execute({
+        const dismissJob = await ctx.containerResolver.make('job.dismissJob')
+        const result = await dismissJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -152,8 +148,8 @@ export default class JobController {
       'job',
       RestoreJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const result = await new RestoreJob(jobs).execute({
+        const restoreJob = await ctx.containerResolver.make('job.restoreJob')
+        const result = await restoreJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -176,8 +172,8 @@ export default class JobController {
       'job',
       ListScanDrafts,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const result = await new ListScanDrafts(drafts).execute({ householdId: ctx.household.id })
+        const listScanDrafts = await ctx.containerResolver.make('job.listScanDrafts')
+        const result = await listScanDrafts.execute({ householdId: ctx.household.id })
         ctx.response.json({ drafts: result.map(toScanDraftDto) })
       },
       { action: 'job.get_scan_drafts' },
@@ -191,8 +187,8 @@ export default class JobController {
       'job',
       GetScanDraft,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const draft = await new GetScanDraft(drafts).execute({
+        const getScanDraft = await ctx.containerResolver.make('job.getScanDraft')
+        const draft = await getScanDraft.execute({
           householdId: ctx.household.id,
           draftId: ctx.params.id,
         })
@@ -215,9 +211,8 @@ export default class JobController {
       'job',
       DiscardScanDraft,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const result = await new DiscardScanDraft(drafts, storage).execute({
+        const discardScanDraft = await ctx.containerResolver.make('job.discardScanDraft')
+        const result = await discardScanDraft.execute({
           householdId: ctx.household.id,
           draftId: ctx.params.id,
         })
@@ -290,11 +285,8 @@ export default class JobController {
           if (error instanceof AiQuotaExceededError) throw error
         }
 
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const job = await new EnqueueJob(jobs, storage, idGenerator, clock).execute({
+        const enqueueJob = await ctx.containerResolver.make('job.enqueueJob')
+        const job = await enqueueJob.execute({
           householdId: ctx.household.id,
           createdBy: user.id,
           kind,

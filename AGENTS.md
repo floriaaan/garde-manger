@@ -28,3 +28,21 @@ Tests, builds, lint, typechecks, E2E, benchmarks, coverage and similar commands:
 - may be written/modified but must not be executed unless explicitly requested or genuinely required for diagnosis;
 - must not be repeatedly rerun in a fix → test → fix loop;
 - when execution is necessary, run the smallest targeted command possible.
+
+## Architecture conventions
+
+Read and follow [docs/clean-architecture.md](docs/clean-architecture.md) before
+changing backend, mobile or landing code. It is the reference for layer ownership,
+dependency injection, naming and the documented pragmatic exceptions.
+
+- Keep domain independent and dependencies directed inward; never bypass a layer
+  through a provider or a re-export.
+- Backend modules use classes and constructor-injected ports. Infrastructure is
+  selected in providers, not in use cases. Controllers resolve use cases from
+  provider bindings; never assemble them with `new`.
+- Frontend components and hooks use functions; inject connectors through the
+  existing context/query helpers instead of importing concrete implementations.
+- Preserve behavior during architecture cleanup; fix concrete violations without
+  adding speculative abstractions or reorganizing unrelated features.
+- Update the architecture guide when a convention changes. The command execution
+  policy above still applies: do not automatically run boundary checks or tests.

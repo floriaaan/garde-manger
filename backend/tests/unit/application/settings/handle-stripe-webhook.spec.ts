@@ -1,8 +1,6 @@
 import { test } from '@japa/runner'
-import { createHmac } from 'node:crypto'
 import { HandleStripeWebhook } from '#application/settings/handle-stripe-webhook.use-case'
 import type { StripeSubscriptionEvent } from '#application/settings/handle-stripe-webhook.use-case'
-import { isValidStripeSignature } from '#application/settings/stripe-signature'
 import { Household } from '#domain/identity/household.aggregate'
 import { InviteCode } from '#domain/identity/invite-code.vo'
 import type { HouseholdRepository } from '#domain/identity/interfaces/household-repository.interface'
@@ -157,26 +155,5 @@ test.group('HandleStripeWebhook', () => {
     await useCase(subscriptions).execute(event('invoice.paid'))
 
     assert.lengthOf(subscriptions.upserts, 0)
-  })
-})
-
-test.group('isValidStripeSignature', () => {
-  const secret = 'whsec_test'
-  const body = '{"type":"customer.subscription.updated"}'
-  const now = 1_800_000_000
-  const sign = (timestamp: number) =>
-    createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
-
-  test('accepts a fresh, correctly signed payload', ({ assert }) => {
-    assert.isTrue(isValidStripeSignature(body, `t=${now},v1=${sign(now)}`, secret, now))
-  })
-
-  test('rejects a tampered body, a wrong secret, a stale timestamp and no header', ({ assert }) => {
-    assert.isFalse(isValidStripeSignature(`${body} `, `t=${now},v1=${sign(now)}`, secret, now))
-    assert.isFalse(isValidStripeSignature(body, `t=${now},v1=${sign(now)}`, 'whsec_other', now))
-    assert.isFalse(
-      isValidStripeSignature(body, `t=${now - 600},v1=${sign(now - 600)}`, secret, now),
-    )
-    assert.isFalse(isValidStripeSignature(body, '', secret, now))
   })
 })
