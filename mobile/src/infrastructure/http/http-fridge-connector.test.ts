@@ -548,7 +548,7 @@ describe('Android browser OAuth return (#91)', () => {
 
     expect(await new HttpFridgeConnector().signInSocial(provider)).toEqual({ ok: true, value: session })
     expect(authClient.signIn.social).toHaveBeenCalledWith({ provider, callbackURL: ANDROID_OAUTH_CALLBACK, errorCallbackURL: ANDROID_OAUTH_CALLBACK,
-      fetchOptions: { onResponse: expect.any(Function) },
+      fetchOptions: { headers: { 'x-client-platform': 'android' }, onResponse: expect.any(Function) },
     })
     expect(queryClient.getQueryData(['session'])).toEqual(session)
     expect(authClient.signOut).not.toHaveBeenCalled()
@@ -670,7 +670,7 @@ test('session retrieval propagates traceparent and keeps a structured auth failu
   })
   await expect(new HttpFridgeConnector().getSession()).rejects.toThrow('Impossible de vérifier la session')
   expect(authClient.getSession).toHaveBeenLastCalledWith(expect.objectContaining({ fetchOptions: expect.objectContaining({
-    headers: { traceparent: span.traceparent }, signal: expect.any(AbortSignal),
+    headers: { 'x-client-platform': Platform.OS, traceparent: span.traceparent }, signal: expect.any(AbortSignal),
   }) }))
   expect(report).toHaveBeenLastCalledWith('identity.get_session failed', expect.objectContaining({
     span, error: expect.objectContaining({ code: 'SERVICE_UNAVAILABLE' }),

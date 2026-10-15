@@ -1,6 +1,6 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import { readFile } from 'node:fs/promises'
 import type { HttpContext } from '@adonisjs/core/http'
-import logger from '@adonisjs/core/services/logger'
 import { trace } from '@opentelemetry/api'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -61,9 +61,8 @@ export default class JobController {
       'job',
       ListJobs,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new ListJobs(jobs, clock).execute({ householdId: ctx.household.id })
+        const listJobs = await resolveBinding(ctx, 'job.listJobs')
+        const result = await listJobs.execute({ householdId: ctx.household.id })
         ctx.response.json({ jobs: result.map(toJobDto) })
       },
       { action: 'job.get_jobs' },
@@ -77,8 +76,8 @@ export default class JobController {
       'job',
       GetJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const job = await new GetJob(jobs).execute({
+        const getJob = await resolveBinding(ctx, 'job.getJob')
+        const job = await getJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -101,9 +100,8 @@ export default class JobController {
       'job',
       RetryJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new RetryJob(jobs, clock).execute({
+        const retryJob = await resolveBinding(ctx, 'job.retryJob')
+        const result = await retryJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -126,10 +124,8 @@ export default class JobController {
       'job',
       DismissJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const result = await new DismissJob(jobs, storage, clock).execute({
+        const dismissJob = await resolveBinding(ctx, 'job.dismissJob')
+        const result = await dismissJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -152,8 +148,8 @@ export default class JobController {
       'job',
       RestoreJob,
       async () => {
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const result = await new RestoreJob(jobs).execute({
+        const restoreJob = await resolveBinding(ctx, 'job.restoreJob')
+        const result = await restoreJob.execute({
           householdId: ctx.household.id,
           jobId: ctx.params.id,
         })
@@ -176,8 +172,8 @@ export default class JobController {
       'job',
       ListScanDrafts,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const result = await new ListScanDrafts(drafts).execute({ householdId: ctx.household.id })
+        const listScanDrafts = await resolveBinding(ctx, 'job.listScanDrafts')
+        const result = await listScanDrafts.execute({ householdId: ctx.household.id })
         ctx.response.json({ drafts: result.map(toScanDraftDto) })
       },
       { action: 'job.get_scan_drafts' },
@@ -191,8 +187,8 @@ export default class JobController {
       'job',
       GetScanDraft,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const draft = await new GetScanDraft(drafts).execute({
+        const getScanDraft = await resolveBinding(ctx, 'job.getScanDraft')
+        const draft = await getScanDraft.execute({
           householdId: ctx.household.id,
           draftId: ctx.params.id,
         })
@@ -215,9 +211,8 @@ export default class JobController {
       'job',
       DiscardScanDraft,
       async () => {
-        const drafts = await ctx.containerResolver.make('job.scanDrafts')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const result = await new DiscardScanDraft(drafts, storage).execute({
+        const discardScanDraft = await resolveBinding(ctx, 'job.discardScanDraft')
+        const result = await discardScanDraft.execute({
           householdId: ctx.household.id,
           draftId: ctx.params.id,
         })
@@ -258,7 +253,7 @@ export default class JobController {
           const usable = files.filter((file) => file?.tmpPath && file.isValid)
           const tooMany = kind === 'fridge_scan' && files.length > MAX_FRIDGE_PHOTOS
           if (usable.length === 0 || usable.length !== files.length || tooMany) {
-            logger.warn(
+            ctx.logger.warn(
               { kind, received: files.length, usable: usable.length },
               'job enqueue: no usable file in upload',
             )
@@ -277,7 +272,8 @@ export default class JobController {
         // Refuse up front when the quota is already spent, so no job row (and no
         // stored photo) is created for a request that could never run. A provider
         // that is merely unconfigured is left to the worker to report.
-        const resolve = await ctx.containerResolver.make(
+        const resolve = await resolveBinding(
+          ctx,
           kind === 'receipt_scan'
             ? 'settings.resolveReceiptExtractionPort'
             : kind === 'fridge_scan'
@@ -290,11 +286,8 @@ export default class JobController {
           if (error instanceof AiQuotaExceededError) throw error
         }
 
-        const jobs = await ctx.containerResolver.make('job.jobs')
-        const storage = await ctx.containerResolver.make('shared.storage')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const job = await new EnqueueJob(jobs, storage, idGenerator, clock).execute({
+        const enqueueJob = await resolveBinding(ctx, 'job.enqueueJob')
+        const job = await enqueueJob.execute({
           householdId: ctx.household.id,
           createdBy: user.id,
           kind,

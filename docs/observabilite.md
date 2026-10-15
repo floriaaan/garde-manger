@@ -1,6 +1,6 @@
 # Observabilité — faire tourner, vérifier, exploiter
 
-Décision et justifications : `docs/adr/0011`. Ce document-ci est opérationnel.
+Décision et justifications : `docs/adr/0011`. Ce document-ci est opérationnel. Les [conventions de logs obligatoires](clean-architecture.md#logs-obligatoires-et-contexte-complet) définissent les champs de contexte et paramètres métier autorisés.
 
 ## Architecture
 

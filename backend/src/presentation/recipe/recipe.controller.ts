@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -24,8 +25,8 @@ export default class RecipeController {
       'recipe',
       ListRecipes,
       async () => {
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const result = await new ListRecipes(recipes).execute({ householdId: ctx.household.id })
+        const listRecipes = await resolveBinding(ctx, 'recipe.listRecipes')
+        const result = await listRecipes.execute({ householdId: ctx.household.id })
         ctx.response.json({ recipes: result.map(toRecipeDto) })
       },
       { action: 'recipe.get_recipes' },
@@ -39,8 +40,8 @@ export default class RecipeController {
       'recipe',
       ShowRecipe,
       async () => {
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const recipe = await new ShowRecipe(recipes).execute({
+        const showRecipe = await resolveBinding(ctx, 'recipe.showRecipe')
+        const recipe = await showRecipe.execute({
           householdId: ctx.household.id,
           recipeId: ctx.params.id,
         })
@@ -63,13 +64,10 @@ export default class RecipeController {
       'recipe',
       SuggestRecipes,
       async () => {
-        const products = await ctx.containerResolver.make('fridge.products')
-        const resolveGeneration = await ctx.containerResolver.make(
-          'settings.resolveRecipeGenerationPort',
-        )
-        const generation = await resolveGeneration(ctx.household.id)
+        const createSuggestRecipes = await resolveBinding(ctx, 'recipe.createSuggestRecipes')
 
-        const result = await new SuggestRecipes(products, generation).execute({
+        const suggestRecipes = await createSuggestRecipes(ctx.household.id)
+        const result = await suggestRecipes.execute({
           householdId: ctx.household.id,
         })
         if (!result.ok) {
@@ -92,12 +90,9 @@ export default class RecipeController {
       SaveRecipe,
       async () => {
         const payload = await ctx.request.validateUsing(saveRecipeValidator)
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const products = await ctx.containerResolver.make('fridge.products')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new SaveRecipe(recipes, products, idGenerator, clock).execute({
+        const saveRecipe = await resolveBinding(ctx, 'recipe.saveRecipe')
+        const result = await saveRecipe.execute({
           householdId: ctx.household.id,
           createdBy: user.id,
           ...payload,
@@ -129,12 +124,9 @@ export default class RecipeController {
       CookRecipe,
       async () => {
         const { productIds } = await ctx.request.validateUsing(cookRecipeValidator)
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const products = await ctx.containerResolver.make('fridge.products')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new CookRecipe(recipes, products, idGenerator, clock).execute({
+        const cookRecipe = await resolveBinding(ctx, 'recipe.cookRecipe')
+        const result = await cookRecipe.execute({
           householdId: ctx.household.id,
           userId: user.id,
           recipeId: ctx.params.id,
@@ -164,8 +156,8 @@ export default class RecipeController {
           ctx.response.status(422).json({ message: 'Un état de recette est requis.' })
           return { failed: true }
         }
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const result = await new UpdateRecipeState(recipes).execute({
+        const updateRecipeState = await resolveBinding(ctx, 'recipe.updateRecipeState')
+        const result = await updateRecipeState.execute({
           householdId: ctx.household.id,
           recipeId: ctx.params.id,
           ...state,
@@ -189,8 +181,8 @@ export default class RecipeController {
       'recipe',
       DeleteRecipe,
       async () => {
-        const recipes = await ctx.containerResolver.make('recipe.recipes')
-        const result = await new DeleteRecipe(recipes).execute({
+        const deleteRecipe = await resolveBinding(ctx, 'recipe.deleteRecipe')
+        const result = await deleteRecipe.execute({
           householdId: ctx.household.id,
           recipeId: ctx.params.id,
         })

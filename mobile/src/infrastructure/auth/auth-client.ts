@@ -19,6 +19,7 @@ function availablePasskeyClient(): ReturnType<typeof passkeyClient> {
 function buildClient() {
   return createAuthClient({
     baseURL: getServerUrl(),
+    fetchOptions: { headers: { 'x-client-platform': Platform.OS } },
     plugins: [
       expoClient({
         scheme: 'gardemanger',

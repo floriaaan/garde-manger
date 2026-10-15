@@ -34,6 +34,7 @@ const ALLOWED_RESOURCE_ATTRIBUTES = new Set([
   'service.version',
   'service.build',
   'deployment.environment.name',
+  'client.platform',
   'os.name',
   'os.version',
   'app.session.id',

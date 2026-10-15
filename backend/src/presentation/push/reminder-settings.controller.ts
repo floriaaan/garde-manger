@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { reminderSettingsValidator } from './reminder-settings.validator.js'
@@ -5,11 +6,11 @@ import { reminderSettingsValidator } from './reminder-settings.validator.js'
 export default class ReminderSettingsController {
   async show(ctx: HttpContext) {
     const user = requireAuthenticatedUser(ctx)
-    const households = await ctx.containerResolver.make('identity.households')
+    const households = await resolveBinding(ctx, 'identity.households')
     const household = await households.findByUserId(user.id)
     if (!household)
       return ctx.response.status(404).json({ type: 'no_household', message: 'Aucun foyer.' })
-    const settings = await ctx.containerResolver.make('push.reminderSettings')
+    const settings = await resolveBinding(ctx, 'push.reminderSettings')
     const { default: env } = await import('#start/env')
     return ctx.response.json({
       days: await settings.getDays(household.id),
@@ -22,11 +23,11 @@ export default class ReminderSettingsController {
   async update(ctx: HttpContext) {
     const user = requireAuthenticatedUser(ctx)
     const { days, ...preferences } = await ctx.request.validateUsing(reminderSettingsValidator)
-    const households = await ctx.containerResolver.make('identity.households')
+    const households = await resolveBinding(ctx, 'identity.households')
     const household = await households.findByUserId(user.id)
     if (!household)
       return ctx.response.status(404).json({ type: 'no_household', message: 'Aucun foyer.' })
-    const settings = await ctx.containerResolver.make('push.reminderSettings')
+    const settings = await resolveBinding(ctx, 'push.reminderSettings')
     if (days !== undefined) await settings.setDays(household.id, days)
     await settings.setPreferences(household.id, preferences)
     const { default: env } = await import('#start/env')

@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type { Household } from '#domain/identity/household.aggregate'
@@ -19,7 +20,7 @@ declare module '@adonisjs/core/http' {
 export default class HouseholdRequiredMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
     const user = requireAuthenticatedUser(ctx)
-    const households = await ctx.containerResolver.make('identity.households')
+    const households = await resolveBinding(ctx, 'identity.households')
     const household = await households.findByUserId(user.id)
 
     if (!household) {

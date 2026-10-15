@@ -1,3 +1,13 @@
+import type { GetMyHousehold } from '#application/identity/get-my-household.use-case'
+import type { CreateHousehold } from '#application/identity/create-household.use-case'
+import type { JoinHousehold } from '#application/identity/join-household.use-case'
+import type { RenameHousehold } from '#application/identity/rename-household.use-case'
+import type { RegenerateInviteCode } from '#application/identity/regenerate-invite-code.use-case'
+import type { RemoveHouseholdMember } from '#application/identity/remove-household-member.use-case'
+import type { LeaveHousehold } from '#application/identity/leave-household.use-case'
+import type { TransferHouseholdOwnership } from '#application/identity/transfer-household-ownership.use-case'
+import type { DeleteHousehold } from '#application/identity/delete-household.use-case'
+import type { GetAuthMethods } from '#application/identity/get-auth-methods.use-case'
 import type { ApplicationService } from '@adonisjs/core/types'
 import type { UserDirectory } from '#domain/identity/interfaces/user-directory.interface'
 import type { Authentication } from '#domain/identity/interfaces/authentication.interface'
@@ -9,6 +19,70 @@ export default class IdentityProvider {
   constructor(protected app: ApplicationService) {}
 
   register() {
+    this.app.container.bind('identity.getMyHousehold', async (resolver) => {
+      const { GetMyHousehold } = await import('#application/identity/get-my-household.use-case')
+      return new GetMyHousehold(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.createHousehold', async (resolver) => {
+      const { CreateHousehold } = await import('#application/identity/create-household.use-case')
+      return new CreateHousehold(
+        await resolver.make('identity.households'),
+        await resolver.make('shared.idGenerator'),
+        await resolver.make('shared.clock'),
+      )
+    })
+
+    this.app.container.bind('identity.joinHousehold', async (resolver) => {
+      const { JoinHousehold } = await import('#application/identity/join-household.use-case')
+      return new JoinHousehold(
+        await resolver.make('identity.households'),
+        await resolver.make('shared.idGenerator'),
+        await resolver.make('shared.clock'),
+      )
+    })
+
+    this.app.container.bind('identity.renameHousehold', async (resolver) => {
+      const { RenameHousehold } = await import('#application/identity/rename-household.use-case')
+      return new RenameHousehold(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.regenerateInviteCode', async (resolver) => {
+      const { RegenerateInviteCode } =
+        await import('#application/identity/regenerate-invite-code.use-case')
+      return new RegenerateInviteCode(
+        await resolver.make('identity.households'),
+        await resolver.make('shared.idGenerator'),
+      )
+    })
+
+    this.app.container.bind('identity.removeHouseholdMember', async (resolver) => {
+      const { RemoveHouseholdMember } =
+        await import('#application/identity/remove-household-member.use-case')
+      return new RemoveHouseholdMember(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.leaveHousehold', async (resolver) => {
+      const { LeaveHousehold } = await import('#application/identity/leave-household.use-case')
+      return new LeaveHousehold(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.transferHouseholdOwnership', async (resolver) => {
+      const { TransferHouseholdOwnership } =
+        await import('#application/identity/transfer-household-ownership.use-case')
+      return new TransferHouseholdOwnership(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.deleteHousehold', async (resolver) => {
+      const { DeleteHousehold } = await import('#application/identity/delete-household.use-case')
+      return new DeleteHousehold(await resolver.make('identity.households'))
+    })
+
+    this.app.container.bind('identity.getAuthMethods', async (resolver) => {
+      const { GetAuthMethods } = await import('#application/identity/get-auth-methods.use-case')
+      return new GetAuthMethods(await resolver.make('identity.authMethodsProvider'))
+    })
+
     this.app.container.singleton('identity.userDirectory', async () => {
       const { BetterAuthUserDirectory } =
         await import('#infrastructure/database/identity/user-directory.repository')
@@ -46,6 +120,16 @@ export default class IdentityProvider {
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
+    'identity.getMyHousehold': GetMyHousehold
+    'identity.createHousehold': CreateHousehold
+    'identity.joinHousehold': JoinHousehold
+    'identity.renameHousehold': RenameHousehold
+    'identity.regenerateInviteCode': RegenerateInviteCode
+    'identity.removeHouseholdMember': RemoveHouseholdMember
+    'identity.leaveHousehold': LeaveHousehold
+    'identity.transferHouseholdOwnership': TransferHouseholdOwnership
+    'identity.deleteHousehold': DeleteHousehold
+    'identity.getAuthMethods': GetAuthMethods
     'identity.userDirectory': UserDirectory
     'identity.authentication': Authentication
     'identity.session': Session

@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -15,14 +16,14 @@ export default class AiSettingsController {
       'settings',
       GetEffectiveAiSettings,
       async () => {
-        const settingsProvider = await ctx.containerResolver.make('settings.aiSettingsProvider')
         // No `householdRequired` on this route on purpose: a user who has not
         // joined a foyer yet still reads the instance's defaults (that is what
         // `source: 'environment'` means), so the household is looked up here
         // and stays nullable.
-        const households = await ctx.containerResolver.make('identity.households')
+        const households = await resolveBinding(ctx, 'identity.households')
         const household = await households.findByUserId(user.id)
-        const effective = await new GetEffectiveAiSettings(settingsProvider).execute({
+        const getEffectiveAiSettings = await resolveBinding(ctx, 'settings.getEffectiveAiSettings')
+        const effective = await getEffectiveAiSettings.execute({
           householdId: household?.id ?? null,
         })
         ctx.response.json(toAiSettingsDto(effective))
@@ -39,19 +40,13 @@ export default class AiSettingsController {
       SetActiveAiProvider,
       async () => {
         const payload = await ctx.request.validateUsing(setActiveAiProviderValidator)
-        const repository = await ctx.containerResolver.make('settings.aiProviderSettingsRepository')
-        const settingsProvider = await ctx.containerResolver.make('settings.aiSettingsProvider')
-        const households = await ctx.containerResolver.make('identity.households')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
+        const settingsProvider = await resolveBinding(ctx, 'settings.aiSettingsProvider')
 
-        const result = await new SetActiveAiProvider(
-          repository,
-          settingsProvider,
-          households,
-          idGenerator,
-          clock,
-        ).execute({ userId: user.id, provider: payload.provider })
+        const setActiveAiProvider = await resolveBinding(ctx, 'settings.setActiveAiProvider')
+        const result = await setActiveAiProvider.execute({
+          userId: user.id,
+          provider: payload.provider,
+        })
 
         if (!result.ok) {
           const { status, body } = serializeError(result.error)

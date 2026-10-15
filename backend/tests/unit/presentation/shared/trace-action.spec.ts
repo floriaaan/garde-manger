@@ -30,8 +30,8 @@ test.group('traceAction', () => {
     assert.equal(calls[0]?.msg, 'action:fridge.list_products')
     assert.equal(calls[0]?.obj.action, 'fridge.list_products')
     assert.equal(calls[0]?.obj.useCase, 'ListProducts')
-    assert.isUndefined(calls[0]?.obj.userId)
-    assert.isUndefined(calls[0]?.obj.householdId)
+    assert.equal(calls[0]?.obj.userId, 'user-1')
+    assert.equal(calls[0]?.obj.householdId, 'household-1')
     assert.equal(calls[0]?.obj.outcome, 'success')
     assert.isNumber(calls[0]?.obj.durationMs)
   })
@@ -174,4 +174,58 @@ test('mobile and backend logging conventions stay identical', async ({ assert })
     ),
   ])
   assert.equal(backend, mobile)
+})
+
+test('HTTP refusals are logged even without an isError callback', async ({ assert }) => {
+  const { ctx, calls } = fakeContext({ response: { getStatus: () => 404 } })
+  await traceAction(ctx, 'instance', { name: 'GetPublicStats' }, async () => undefined)
+  assert.equal(calls[0]?.obj['event.outcome'], 'refused')
+  assert.equal(calls[0]?.obj['http.response.status_code'], 404)
+})
+
+test('records safe business context and never the request body or arbitrary text', async ({
+  assert,
+}) => {
+  const values: Record<string, unknown> = {
+    days: '7',
+    location: 'fridge',
+    items: [{ name: 'private food' }],
+    password: 'secret',
+    prompt: 'private prompt',
+    provider: 'alice@example.com',
+  }
+  const { ctx, calls } = fakeContext({
+    request: {
+      id: () => 'request-1',
+      method: () => 'POST',
+      input: (key) => values[key],
+    },
+  })
+  await traceAction(ctx, 'fridge', { name: 'ImportProducts' }, async () => undefined)
+  assert.equal(calls[0]?.obj.request_id, 'request-1')
+  assert.equal(calls[0]?.obj['business.days'], 7)
+  assert.equal(calls[0]?.obj['business.itemsCount'], 1)
+  assert.equal(calls[0]?.obj['business.location'], 'fridge')
+  for (const secret of ['secret', 'private food', 'private prompt', 'alice@example.com']) {
+    assert.notInclude(JSON.stringify(calls), secret)
+  }
+})
+
+test('client platform is explicit and unrecognized values are not copied to logs', async ({
+  assert,
+}) => {
+  for (const platform of ['ios', 'android', 'web', 'landing', 'private@example.com', undefined]) {
+    const { ctx, calls } = fakeContext({
+      request: {
+        id: () => 'request-1',
+        header: () => platform,
+      },
+    })
+    await traceAction(ctx, 'fridge', { name: 'ListProducts' }, async () => [])
+    assert.equal(
+      calls[0]?.obj['client.platform'],
+      platform && ['ios', 'android', 'web', 'landing'].includes(platform) ? platform : 'unknown',
+    )
+    assert.notInclude(JSON.stringify(calls), 'private@example.com')
+  }
 })
