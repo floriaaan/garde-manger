@@ -128,6 +128,24 @@ export const LOG_SIGNAL_ATTRIBUTES = new Set([
   'sync.attempt',
   'sync.retry_delay_ms',
   'request_id',
+  'userId',
+  'householdId',
+  'durationMs',
+  'business.days',
+  'business.expiringWithinDays',
+  'business.page',
+  'business.limit',
+  'business.amount',
+  'business.isArchived',
+  'business.isFavorite',
+  'business.enabled',
+  'business.location',
+  'business.provider',
+  'business.kind',
+  'business.platform',
+  'business.language',
+  'business.itemsCount',
+  'business.productIdsCount',
 ])
 
 export function safeOperation(value: string): string {
@@ -163,6 +181,15 @@ export function sanitizeCause(text: string, depth = 0): string {
 }
 
 export function safeAttribute(key: string, value: string): string {
+  if (key === 'client.platform')
+    return ['ios', 'android', 'web', 'landing'].includes(value) ? value : 'unknown'
+  if (key.startsWith('business.')) {
+    const parameter = key.slice('business.'.length)
+    if (['itemsCount', 'productIdsCount'].includes(parameter))
+      return /^\d{1,6}$/.test(value) ? value : '[redacted]'
+    const safe = safeBusinessParameters((name) => name === parameter ? value : undefined)
+    return safe[key] === undefined ? '[redacted]' : String(safe[key])
+  }
   if (['sync.mutation_id', 'sync.attempt', 'sync.retry_delay_ms'].includes(key))
     return /^\d{1,20}$/.test(value) ? value : '[redacted]'
   if (['action', 'app.operation', 'url.path', 'app.screen'].includes(key))
@@ -179,10 +206,44 @@ export function safeAttribute(key: string, value: string): string {
       'exception.type',
       'request_id',
       'entity.id',
+      'userId',
+      'householdId',
       'app.storage_key',
     ].includes(key)
   ) {
     return /^[A-Za-z0-9_.:-]{1,64}$/.test(value) ? value : '[redacted]'
   }
   return value
+}
+
+/** Only bounded enums, booleans and numeric business parameters; never arbitrary text. */
+export function safeBusinessParameters(read: (key: string) => unknown): Record<string, string | number | boolean> {
+  const result: Record<string, string | number | boolean> = {}
+  for (const key of ['days', 'expiringWithinDays', 'page', 'limit', 'amount'] as const) {
+    const value = read(key)
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1_000_000)
+      result[`business.${key}`] = value
+    else if (typeof value === 'string' && /^\d{1,6}$/.test(value))
+      result[`business.${key}`] = Number(value)
+  }
+  for (const key of ['isArchived', 'isFavorite', 'enabled'] as const) {
+    const value = read(key)
+    if (typeof value === 'boolean') result[`business.${key}`] = value
+  }
+  const enums: Record<string, readonly string[]> = {
+    location: ['fridge', 'freezer', 'pantry'],
+    provider: ['gemini', 'openai', 'ollama'],
+    kind: ['receipt_scan', 'fridge_scan', 'recipe_generation'],
+    platform: ['ios', 'android', 'web'],
+    language: ['fr', 'en'],
+  }
+  for (const [key, allowed] of Object.entries(enums)) {
+    const value = read(key)
+    if (typeof value === 'string' && allowed.includes(value)) result[`business.${key}`] = value
+  }
+  for (const key of ['items', 'productIds'] as const) {
+    const value = read(key)
+    if (Array.isArray(value)) result[`business.${key}Count`] = value.length
+  }
+  return result
 }

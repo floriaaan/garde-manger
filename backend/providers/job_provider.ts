@@ -1,3 +1,4 @@
+import { failureLevel } from '#domain/shared/log-diagnostic'
 import type { GetScanDraft } from '#application/job/get-scan-draft.use-case'
 import type { FinalizeScanDraft } from '#application/job/finalize-scan-draft.use-case'
 import type { ListJobs } from '#application/job/list-jobs.use-case'
@@ -138,6 +139,7 @@ export default class JobProvider {
     const { PurgeExpired } = await import('#application/job/purge-expired.use-case')
     const { NotifyJobFinished } = await import('#application/push/notify-job-finished.use-case')
     const { JobRunner } = await import('#infrastructure/job/job-runner')
+    const { logContext } = await import('#infrastructure/shared/log-context')
 
     const runJob = new RunJob({
       jobs,
@@ -159,16 +161,34 @@ export default class JobProvider {
 
     this.runner = new JobRunner({
       jobs,
-      run: async (job) => {
+      run: (job) => logContext.run({
+        action: 'job.run', 'app.operation': 'job.run', useCase: 'RunJob',
+        userId: job.createdBy, householdId: job.householdId, entityId: job.id,
+        'job.kind': job.kind, 'job.attempt': job.attempts,
+      }, async () => {
+        const startedAt = performance.now()
         await runJob.execute(job)
+        const failed = job.status === 'failed' || job.status === 'queued'
+        logger[failed ? failureLevel(job.errorType ?? 'job_failed') : 'info']({
+          'event.outcome': failed ? 'failure' : 'success',
+          'error.code': job.errorType,
+          'job.status': job.status,
+          durationMs: Math.round(performance.now() - startedAt),
+        }, 'job completed')
         await notifyJobFinished
           .execute(job)
-          .catch((error) => logger.error({ err: error }, 'Job push failed'))
-      },
+          .catch((error) => logger.error({
+            err: error, action: 'push.notify_job_finished', 'app.operation': 'push.notify_job_finished',
+            useCase: 'NotifyJobFinished', 'event.outcome': 'failure',
+          }, 'Job push failed'))
+      }),
       purge: () => purge.execute(),
       clock,
       maxConcurrency: env.get('JOB_MAX_CONCURRENCY', 2),
-      onError: (error, message) => logger.error({ err: error }, message),
+      onError: (error, message, attributes) => logger.error({
+        action: 'job.run', 'app.operation': 'job.run', 'event.outcome': 'failure',
+        ...attributes, err: error,
+      }, message),
     })
     await this.runner.start()
   }

@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises'
 import type { HttpContext } from '@adonisjs/core/http'
-import logger from '@adonisjs/core/services/logger'
 import { trace } from '@opentelemetry/api'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -253,7 +252,7 @@ export default class JobController {
           const usable = files.filter((file) => file?.tmpPath && file.isValid)
           const tooMany = kind === 'fridge_scan' && files.length > MAX_FRIDGE_PHOTOS
           if (usable.length === 0 || usable.length !== files.length || tooMany) {
-            logger.warn(
+            ctx.logger.warn(
               { kind, received: files.length, usable: usable.length },
               'job enqueue: no usable file in upload',
             )

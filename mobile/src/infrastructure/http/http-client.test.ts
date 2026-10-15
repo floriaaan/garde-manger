@@ -68,6 +68,7 @@ test('apiFetchMultipart() POSTs the given FormData without a JSON Content-Type h
   const [, init] = fetchMock.mock.calls[0]
   expect(init.method).toBe('POST')
   expect(init.body).toBe(formData)
+  expect(init.headers['x-client-platform']).toBe(require('react-native').Platform.OS)
   // Not literally `undefined` any more — the cookie/traceparent injection
   // always produces a headers object now — but the point of this test is
   // still true: no Content-Type, so `fetch` derives the multipart boundary
@@ -236,4 +237,20 @@ test('an unauthenticated-shaped 503 is not confirmation of session revocation', 
   await apiFetch('/api/products')
   expect(queryClient.getQueryData(['session'])).toEqual({ userId: 'u1' })
   expect(authClient.signOut).not.toHaveBeenCalled()
+})
+
+
+test('HTTP completion logs retain safe business parameters and exclude free text', async () => {
+  const record = jest.spyOn(telemetry, 'recordEvent').mockImplementation(() => {})
+  globalThis.fetch = jest.fn().mockResolvedValue({ status: 204, ok: true })
+  try {
+    await apiFetch('/api/products?days=7', {
+      method: 'POST', body: JSON.stringify({ location: 'fridge', password: 'secret', name: 'private food' }),
+    }, { action: 'fridge.create_product' })
+    expect(record).toHaveBeenCalledWith('fridge.create_product', 'completed', expect.objectContaining({
+      attributes: expect.objectContaining({ 'business.days': 7, 'business.location': 'fridge' }),
+    }))
+    expect(JSON.stringify(record.mock.calls)).not.toContain('secret')
+    expect(JSON.stringify(record.mock.calls)).not.toContain('private food')
+  } finally { record.mockRestore() }
 })

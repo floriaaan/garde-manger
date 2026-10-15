@@ -1,4 +1,4 @@
-import { safeOperation } from '../../domain/shared/log-diagnostic.js'
+import { safeOperation, safeBusinessParameters } from '../../domain/shared/log-diagnostic.js'
 import { Platform } from 'react-native'
 import { Result } from '../../domain/shared/result.js'
 import { telemetry } from '../telemetry/telemetry.js'
@@ -51,16 +51,33 @@ async function tracedFetch(
   method: string,
   init: RequestInit,
   context?: ActionContext,
-): Promise<{ response: Response; span: ReturnType<typeof telemetry.startClientSpan> }> {
+): Promise<{
+  response: Response
+  span: ReturnType<typeof telemetry.startClientSpan>
+  attributes: ReturnType<typeof telemetry.captureContext>
+}> {
   const apiUrl = getServerUrl()
   const operation = safeOperation(context?.action ?? `${method} ${path.split('?')[0]}`)
-  const span = telemetry.startClientSpan(operation, {
+  let body: Record<string, unknown> = {}
+  if (typeof init.body === 'string' && init.body.length <= 100_000) {
+    try {
+      const parsed: unknown = JSON.parse(init.body)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
+    } catch { /* The actual request/response path remains responsible for invalid JSON. */ }
+  }
+  const query = new URLSearchParams(path.split('?')[1] ?? '')
+  const business = safeBusinessParameters((key) => body[key] ?? query.get(key))
+  const startedAt = Date.now()
+  const requestContext = {
+    ...telemetry.captureContext(),
     'app.operation': operation,
     'http.request.method': method,
     // The path, never the query string: it is where ids and search terms live.
     'url.path': path.split('?')[0],
     ...context?.attributes,
-  })
+    ...business,
+  }
+  const span = telemetry.startClientSpan(operation, requestContext)
 
   // React Native's `fetch` keeps no cookie jar across requests — unlike a
   // browser, `credentials: 'include'` alone sends nothing here. better-auth's
@@ -81,6 +98,7 @@ async function tracedFetch(
 
     const headers = {
       ...(init.headers as Record<string, string>),
+      'x-client-platform': Platform.OS,
       ...(span ? { traceparent: span.traceparent } : null),
       ...(cookie ? { Cookie: cookie } : null),
     }
@@ -95,10 +113,22 @@ async function tracedFetch(
       },
       ...(response.status >= 500 ? { error: { code: `http_${response.status}`, name: 'HttpError' } } : {}),
     })
-    return { response, span }
+    telemetry.recordEvent(operation, 'completed', {
+      ...(span ? { span } : {}),
+      attributes: {
+        ...requestContext,
+        'http.request.method': method,
+        'http.response.status_code': response.status,
+        request_id: response.headers?.get('x-request-id') ?? undefined,
+        durationMs: Date.now() - startedAt,
+      },
+    })
+    return { response, span, attributes: requestContext }
   } catch (error) {
     span?.end({ error })
     const attributes = {
+      ...requestContext,
+      durationMs: Date.now() - startedAt,
       'app.operation': operation,
       'error.code': phase,
       'http.request.method': method,
@@ -109,7 +139,12 @@ async function tracedFetch(
 }
 
 /** Parsing failures belong to the request's trace and are not transport failures. */
-async function readResponse(response: Response, span: ReturnType<typeof telemetry.startClientSpan>, operation: string) {
+async function readResponse(
+  response: Response,
+  span: ReturnType<typeof telemetry.startClientSpan>,
+  operation: string,
+  context: ReturnType<typeof telemetry.captureContext>,
+) {
   try {
     const body = await response.json()
     if (!response.ok && (!body?.error || typeof body.error.type !== 'string')) {
@@ -117,7 +152,7 @@ async function readResponse(response: Response, span: ReturnType<typeof telemetr
     }
     return body
   } catch (error) {
-    const attributes = { 'app.operation': safeOperation(operation), 'error.code': 'invalid_response', 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined }
+    const attributes = { ...context, 'app.operation': safeOperation(operation), 'error.code': 'invalid_response', 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined }
     telemetry.recordError('invalid response', { error, ...(span ? { span } : {}), attributes, level: 'error' })
     throw error
   }
@@ -132,7 +167,7 @@ export async function apiFetch<T>(
   const temporaryError = () => Result.err({ type: 'temporary_error', message: 'Le serveur est temporairement indisponible.' })
   const isTemporary = () => status >= 500 || status === 408 || status === 429
   try {
-    const { response, span } = await tracedFetch(
+    const { response, span, attributes } = await tracedFetch(
       path,
       init?.method ?? 'GET',
       {
@@ -145,12 +180,12 @@ export async function apiFetch<T>(
     status = response.status
     // A 204 always means "success, no body" — nothing to parse.
     if (response.status === 204) return Result.ok(undefined as T)
-    const body = await readResponse(response, span, context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`)
+    const body = await readResponse(response, span, context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, attributes)
     if (!response.ok) {
       const error = body.error as ApiError
       // Logs qualify business refusals separately from technical HTTP failures.
       telemetry.recordError(`action failed: ${error.type}`, {
-        attributes: { 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
+        attributes: { ...attributes, 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
       if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
@@ -180,18 +215,18 @@ export async function apiFetchMultipart<T>(
   context?: ActionContext,
 ): Promise<Result<T, ApiError>> {
   try {
-    const { response, span } = await tracedFetch(
+    const { response, span, attributes } = await tracedFetch(
       path,
       'POST',
       { method: 'POST', credentials: 'include', body: formData },
       context,
     )
     if (response.status === 204) return Result.ok(undefined as T)
-    const body = await readResponse(response, span, context?.action ?? `POST ${path.split('?')[0]}`)
+    const body = await readResponse(response, span, context?.action ?? `POST ${path.split('?')[0]}`, attributes)
     if (!response.ok) {
       const error = body.error as ApiError
       telemetry.recordError(`action failed: ${error.type}`, {
-        attributes: { 'error.type': error.type, action: context?.action ?? `POST ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
+        attributes: { ...attributes, 'error.type': error.type, action: context?.action ?? `POST ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
       if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()

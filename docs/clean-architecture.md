@@ -117,6 +117,77 @@ validation métier différente dans chaque écran.
   du statut HTTP. Préserver les chemins d’erreur, l’ordre des effets et les DTO
   lors d’une correction d’architecture.
 
+## Logs obligatoires et contexte complet
+
+Chaque action métier, appel HTTP et exécution de job doit produire un bilan
+structuré, sur succès comme sur refus ou erreur. Ne pas dépendre de l’activation
+d’un export OTLP pour disposer de logs locaux. Ne pas multiplier les logs à
+chaque fonction pure : les points d’entrée et frontières techniques portent le
+contexte, le domaine reste indépendant du logger concret.
+
+Le champ `client.platform` identifie le client : `ios`, `android`, `web` (app Expo
+dans le navigateur) ou `landing` (y compris son rendu serveur). Il est distinct
+de `service.name`, qui désigne le service émettant le log. Les appels au backend
+le transmettent via `x-client-platform` ; une valeur absente ou non reconnue
+donne `unknown`. Ce champ est déclaratif, jamais une preuve d’identité ni un
+critère d’autorisation. Les jobs historiques ne conservent pas cette origine ;
+ne pas la déduire de leur utilisateur ou de leur trace.
+
+Le contexte comprend, quand ils existent : service/environnement/version,
+`app.operation`, use case backend, `request_id`, `trace_id`/`span_id`, `userId`,
+`householdId`, entité (`entityId` backend, `entity.id` mobile), durée, statut HTTP,
+`event.outcome`, code d’erreur et diagnostic structuré. Un identifiant inconnu
+reste absent ou `null` : ne jamais inventer un utilisateur ou une trace. Les
+identifiants déclarés par le mobile sont des diagnostics client ; seule
+l’attribution pseudonymisée par le relais est attestée côté serveur.
+
+Inclure aussi les **paramètres métier non sensibles**. Ils sont sélectionnés et
+validés par liste blanche, jamais par une copie de `request.all()`, du corps ou
+des arguments d’une fonction :
+
+- `business.days`, `expiringWithinDays`, `page`, `limit`, `amount` : nombres bornés ;
+- `business.isArchived`, `isFavorite`, `enabled` : booléens ;
+- `business.location`, `provider`, `kind`, `platform`, `language` : enums connus ;
+- `business.itemsCount`, `productIdsCount` : tailles des collections, sans contenu ;
+- landing : `business.locale` (`fr` ou `en`).
+
+Les clés ci-dessus portent toutes le préfixe `business.`. Pour ajouter un champ,
+étendre la liste blanche et ses tests ; garder la politique backend/mobile
+identique. Les champs manquants ne justifient pas une requête en base uniquement
+pour enrichir un log.
+
+Ne jamais journaliser mots de passe, cookies, tokens, clés API, emails, codes
+d’invitation, photos, prompts, corps bruts, listes d’aliments ni résultats complets.
+Le résultat est décrit par son issue et les identifiants utiles. Les erreurs
+passent par le sérialiseur de diagnostics, pas par un dump de leur message brut.
+
+### Points d’intégration
+
+- **HTTP backend** : `traceAction` fournit le bilan métier ; le middleware de
+  corrélation couvre les chemins non instrumentés, dont les refus précoces. Il
+  évite de réémettre une erreur déjà enregistrée. Les sondes `/health` et le
+  transport de télémétrie réussi restent exclus du bilan pour éviter le bruit.
+- **Logger backend** : le mixin Pino enrichit aussi les logs des adaptateurs via
+  le contexte asynchrone de la requête. Cet accès à `HttpContext` est réservé à
+  l’infrastructure de logging et à la configuration, jamais aux use cases.
+- **Jobs** : contexte isolé par exécution, avec foyer, auteur, identifiant, type,
+  tentative et issue. Une exécution concurrente ne doit pas hériter de l’autre.
+- **Mobile** : `getTelemetry()` reste la porte d’entrée applicative ; le provider
+  fournit les identités depuis le cache. Chaque requête capture son contexte pour
+  le conserver même si la session change avant sa réponse. Les appels HTTP
+  émettent un bilan de transport ; une erreur de parsing ou un refus métier a son
+  diagnostic associé. Les premiers logs attendent le branchement du provider
+  dans une file bornée à 64 entrées.
+- **Landing** : `withConnectorLogging` reçoit un `OperationLogger` du provider,
+  pour les connecteurs réels comme fake. Les opérations publiques n’ont pas
+  d’identité authentifiée ; les identifiants indisponibles restent `null`.
+
+`info` pour un succès ou un refus attendu, `warn` pour un refus inhabituel,
+`error` pour une panne technique. Une panne du logger frontend ne doit pas
+transformer une opération réussie en erreur. L’export distant et son
+échantillonnage restent configurables ; cela ne dispense pas d’instrumenter les
+opérations. Voir aussi [le guide d’observabilité](observabilite.md).
+
 ## Exceptions pragmatiques existantes
 
 Ces exceptions sont bornées ; elles ne rendent pas les imports entre couches libres.

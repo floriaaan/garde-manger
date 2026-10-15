@@ -1,8 +1,11 @@
+import { actionLogContexts, completedActionLogs, requestLogContext } from './request-log-context.js'
+import type { RequestLogContext } from './request-log-context.js'
 import {
   diagnosticAttributes,
   errorCode,
   errorStatus,
   failureLevel,
+  safeAttribute,
 } from '#domain/shared/log-diagnostic'
 
 export const loggedExceptions = new WeakMap<object, object>()
@@ -14,12 +17,11 @@ type LogFn = (mergingObject: Record<string, unknown>, message: string) => void
  * structurally (no cast at call sites), and a unit test can pass a plain
  * object instead of constructing a real HttpContext.
  */
-export interface ActionContext {
+export interface ActionContext extends RequestLogContext {
   logger: { info: LogFn; warn: LogFn; error: LogFn }
   authenticatedUser: { id: string } | null
   household: { id: string } | null | undefined
   params: Record<string, string | undefined>
-  request?: { id(): string | null | undefined }
   response?: { getStatus(): number }
 }
 
@@ -65,17 +67,19 @@ export async function traceAction<T>(
 ): Promise<T> {
   const startedAt = performance.now()
   const action = opts?.action ?? `${domain}.${toSnakeCase(useCase.name)}`
+  actionLogContexts.set(ctx, { action, useCase: useCase.name })
   const base = {
     action,
     'app.operation': action,
     request_id: ctx.request?.id(),
     useCase: useCase.name,
-    entityId: ctx.params.id,
+    entityId: ctx.params.id ? safeAttribute('entity.id', ctx.params.id) : undefined,
   }
 
   try {
     const result = await fn()
-    const failed = opts?.isError?.(result) ?? false
+    const responseStatus = ctx.response?.getStatus()
+    const failed = (opts?.isError?.(result) ?? false) || (responseStatus !== undefined && responseStatus >= 400)
     const resultError =
       failed && result && typeof result === 'object' && 'error' in result ? result.error : undefined
     const code = failed
@@ -87,18 +91,21 @@ export async function traceAction<T>(
         ? 'error'
         : (opts?.failureLevel ?? failureLevel(code!, status))
       : 'info'
+    const entityId = base.entityId ?? opts?.entityId?.(result)
     ctx.logger[level](
       {
+        ...requestLogContext(ctx),
         ...base,
-        entityId: base.entityId ?? opts?.entityId?.(result),
+        entityId: entityId ? safeAttribute('entity.id', entityId) : undefined,
         durationMs: Math.round(performance.now() - startedAt),
         outcome: failed ? 'error' : 'success',
         'event.outcome': failed ? (level === 'error' ? 'failure' : 'refused') : 'success',
         'error.code': code,
-        ...(failed ? { 'http.response.status_code': status } : {}),
+        'http.response.status_code': responseStatus ?? (failed ? 400 : 200),
       },
       `action:${action}`,
     )
+    completedActionLogs.add(ctx)
     return result
   } catch (error) {
     const status = errorStatus(error) ?? 500
@@ -106,6 +113,7 @@ export async function traceAction<T>(
     const level = status >= 500 ? 'error' : (opts?.failureLevel ?? failureLevel(code, status))
     ctx.logger[level](
       {
+        ...requestLogContext(ctx),
         ...base,
         durationMs: Math.round(performance.now() - startedAt),
         outcome: 'error',
@@ -117,6 +125,7 @@ export async function traceAction<T>(
       },
       `action:${action}`,
     )
+    completedActionLogs.add(ctx)
     if (error && typeof error === 'object') loggedExceptions.set(error, ctx)
     throw error
   }

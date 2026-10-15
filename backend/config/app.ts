@@ -7,7 +7,7 @@ export const appUrl = env.get('APP_URL')
 export const http = defineConfig({
   generateRequestId: true,
   allowMethodSpoofing: false,
-  useAsyncLocalStorage: false,
+  useAsyncLocalStorage: true,
   redirect: {
     forwardQueryString: true,
   },

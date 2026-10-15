@@ -1,3 +1,4 @@
+import { operationLogger } from '../logging/operation-logger.js'
 import { createServerFn } from '@tanstack/react-start'
 import { insertWaitlistEmail } from './waitlist-db.js'
 
@@ -8,4 +9,6 @@ export const subscribeToWaitlistServerFn = createServerFn({ method: 'POST' })
     if (typeof email !== 'string' || !EMAIL_RE.test(email)) throw new Error('Invalid email')
     return email
   })
-  .handler(async ({ data: email }) => insertWaitlistEmail(email))
+  .handler(async ({ data: email }) => operationLogger.run(
+    'landing.store_waitlist_subscription', async () => insertWaitlistEmail(email),
+  ))

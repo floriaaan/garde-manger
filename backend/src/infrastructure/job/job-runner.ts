@@ -21,7 +21,7 @@ export interface JobRunnerDeps {
   purge: () => Promise<void>
   clock: Clock
   maxConcurrency: number
-  onError: (error: unknown, message: string) => void
+  onError: (error: unknown, message: string, attributes?: Record<string, unknown>) => void
 }
 
 /**
@@ -84,7 +84,7 @@ export class JobRunner {
         this.inFlight.add(task)
       }
     } catch (error) {
-      this.deps.onError(error, 'job runner tick failed')
+      this.deps.onError(error, 'job runner tick failed', { 'app.operation': 'job.tick' })
     } finally {
       this.ticking = false
     }
@@ -108,7 +108,12 @@ export class JobRunner {
         span.setStatus({ code: SpanStatusCode.ERROR, message: job.errorType ?? undefined })
       }
     } catch (error) {
-      this.deps.onError(error, 'job run crashed')
+      this.deps.onError(error, 'job run crashed', {
+        userId: job.createdBy, householdId: job.householdId, entityId: job.id,
+        useCase: 'RunJob', 'job.kind': job.kind, 'job.attempt': job.attempts,
+        trace_id: span.spanContext().traceId, span_id: span.spanContext().spanId,
+        durationMs: Math.round(performance.now() - startedAt),
+      })
       span.recordException(error as Error)
       span.setStatus({ code: SpanStatusCode.ERROR })
     } finally {
