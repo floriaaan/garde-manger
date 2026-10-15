@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
@@ -51,7 +52,7 @@ export default class SubscriptionController {
       'settings',
       UseCase,
       async () => {
-        const useCase = await ctx.containerResolver.make(binding)
+        const useCase = await resolveBinding(ctx, binding)
         const result = await useCase.execute({ userId: user.id })
 
         if (!result.ok) {

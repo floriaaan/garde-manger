@@ -26,11 +26,15 @@ export function requestLogContext(ctx?: RequestLogContext | null): Record<string
   const input = ctx.request?.input?.bind(ctx.request)
   let parameters: Record<string, string | number | boolean> = {}
   // Invalid/unparsed input must not make error reporting fail as well.
-  try { if (input) parameters = safeBusinessParameters(input) } catch { /* No body diagnostics. */ }
+  try {
+    if (input) parameters = safeBusinessParameters(input)
+  } catch {
+    /* No body diagnostics. */
+  }
   return {
     request_id: ctx.request?.id() ?? null,
-    'client.platform': platform && ['ios', 'android', 'web', 'landing'].includes(platform)
-      ? platform : 'unknown',
+    'client.platform':
+      platform && ['ios', 'android', 'web', 'landing'].includes(platform) ? platform : 'unknown',
     trace_id: span?.traceId,
     span_id: span?.spanId,
     userId: ctx.authenticatedUser?.id ?? null,

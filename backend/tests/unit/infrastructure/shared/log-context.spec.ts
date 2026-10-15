@@ -1,9 +1,13 @@
 import { test } from '@japa/runner'
 import { logContext } from '#infrastructure/shared/log-context'
 
-test('concurrent jobs retain their own context across awaits and restore the caller', async ({ assert }) => {
+test('concurrent jobs retain their own context across awaits and restore the caller', async ({
+  assert,
+}) => {
   let release!: () => void
-  const barrier = new Promise<void>((resolve) => { release = resolve })
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve
+  })
   const first = logContext.run({ householdId: 'first' }, async () => {
     await barrier
     return logContext.current().householdId

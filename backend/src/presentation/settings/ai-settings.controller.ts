@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -19,10 +20,9 @@ export default class AiSettingsController {
         // joined a foyer yet still reads the instance's defaults (that is what
         // `source: 'environment'` means), so the household is looked up here
         // and stays nullable.
-        const households = await ctx.containerResolver.make('identity.households')
+        const households = await resolveBinding(ctx, 'identity.households')
         const household = await households.findByUserId(user.id)
-        const getEffectiveAiSettings =
-          await ctx.containerResolver.make('settings.getEffectiveAiSettings')
+        const getEffectiveAiSettings = await resolveBinding(ctx, 'settings.getEffectiveAiSettings')
         const effective = await getEffectiveAiSettings.execute({
           householdId: household?.id ?? null,
         })
@@ -40,10 +40,13 @@ export default class AiSettingsController {
       SetActiveAiProvider,
       async () => {
         const payload = await ctx.request.validateUsing(setActiveAiProviderValidator)
-        const settingsProvider = await ctx.containerResolver.make('settings.aiSettingsProvider')
+        const settingsProvider = await resolveBinding(ctx, 'settings.aiSettingsProvider')
 
-        const setActiveAiProvider = await ctx.containerResolver.make('settings.setActiveAiProvider')
-        const result = await setActiveAiProvider.execute({ userId: user.id, provider: payload.provider })
+        const setActiveAiProvider = await resolveBinding(ctx, 'settings.setActiveAiProvider')
+        const result = await setActiveAiProvider.execute({
+          userId: user.id,
+          provider: payload.provider,
+        })
 
         if (!result.ok) {
           const { status, body } = serializeError(result.error)

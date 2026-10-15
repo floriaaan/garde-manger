@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -20,7 +21,7 @@ export default class ShoppingItemController {
       'shopping_list',
       ListShoppingItems,
       async () => {
-        const listShoppingItems = await ctx.containerResolver.make('shoppingList.listShoppingItems')
+        const listShoppingItems = await resolveBinding(ctx, 'shoppingList.listShoppingItems')
         const result = await listShoppingItems.execute({ householdId: ctx.household.id })
         ctx.response.json({ items: result.map(toShoppingItemDto) })
       },
@@ -37,8 +38,7 @@ export default class ShoppingItemController {
       async () => {
         const payload = await ctx.request.validateUsing(createShoppingItemValidator)
 
-        const createShoppingItem =
-          await ctx.containerResolver.make('shoppingList.createShoppingItem')
+        const createShoppingItem = await resolveBinding(ctx, 'shoppingList.createShoppingItem')
         const result = await createShoppingItem.execute({
           householdId: ctx.household.id,
           ...payload,
@@ -48,7 +48,7 @@ export default class ShoppingItemController {
           ctx.response.status(status).json(body)
           return result
         }
-        const mirror = await ctx.containerResolver.make('homeAssistant.shoppingListMirror')
+        const mirror = await resolveBinding(ctx, 'homeAssistant.shoppingListMirror')
         // A merge (`created: false`) touched an existing line — HA already has
         // it, so this must update that entry, not add a second one.
         if (result.value.created) {
@@ -76,8 +76,7 @@ export default class ShoppingItemController {
       async () => {
         const payload = await ctx.request.validateUsing(updateShoppingItemValidator)
 
-        const updateShoppingItem =
-          await ctx.containerResolver.make('shoppingList.updateShoppingItem')
+        const updateShoppingItem = await resolveBinding(ctx, 'shoppingList.updateShoppingItem')
         const result = await updateShoppingItem.execute({
           householdId: ctx.household.id,
           itemId: ctx.params.id,
@@ -88,7 +87,7 @@ export default class ShoppingItemController {
           ctx.response.status(status).json(body)
           return result
         }
-        const mirror = await ctx.containerResolver.make('homeAssistant.shoppingListMirror')
+        const mirror = await resolveBinding(ctx, 'homeAssistant.shoppingListMirror')
         await mirror.itemUpdated(result.value)
         ctx.response.json({ item: toShoppingItemDto(result.value) })
         return result
@@ -104,12 +103,11 @@ export default class ShoppingItemController {
       'shopping_list',
       DeleteShoppingItem,
       async () => {
-        const items = await ctx.containerResolver.make('shoppingList.items')
+        const items = await resolveBinding(ctx, 'shoppingList.items')
         // Fetched before the delete so its haUid is still known — DeleteShoppingItem
         // does its own lookup internally and returns void, not the deleted item.
         const existing = await items.findById(ctx.params.id)
-        const deleteShoppingItem =
-          await ctx.containerResolver.make('shoppingList.deleteShoppingItem')
+        const deleteShoppingItem = await resolveBinding(ctx, 'shoppingList.deleteShoppingItem')
         const result = await deleteShoppingItem.execute({
           householdId: ctx.household.id,
           itemId: ctx.params.id,
@@ -119,7 +117,7 @@ export default class ShoppingItemController {
           ctx.response.status(status).json(body)
           return result
         }
-        const mirror = await ctx.containerResolver.make('homeAssistant.shoppingListMirror')
+        const mirror = await resolveBinding(ctx, 'homeAssistant.shoppingListMirror')
         await mirror.itemDeleted(ctx.household.id, existing?.haUid ?? null)
         ctx.response.status(204).send('')
         return result

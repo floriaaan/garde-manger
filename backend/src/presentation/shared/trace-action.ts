@@ -79,7 +79,8 @@ export async function traceAction<T>(
   try {
     const result = await fn()
     const responseStatus = ctx.response?.getStatus()
-    const failed = (opts?.isError?.(result) ?? false) || (responseStatus !== undefined && responseStatus >= 400)
+    const failed =
+      (opts?.isError?.(result) ?? false) || (responseStatus !== undefined && responseStatus >= 400)
     const resultError =
       failed && result && typeof result === 'object' && 'error' in result ? result.error : undefined
     const code = failed

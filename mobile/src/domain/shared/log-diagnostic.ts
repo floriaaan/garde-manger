@@ -187,7 +187,7 @@ export function safeAttribute(key: string, value: string): string {
     const parameter = key.slice('business.'.length)
     if (['itemsCount', 'productIdsCount'].includes(parameter))
       return /^\d{1,6}$/.test(value) ? value : '[redacted]'
-    const safe = safeBusinessParameters((name) => name === parameter ? value : undefined)
+    const safe = safeBusinessParameters((name) => (name === parameter ? value : undefined))
     return safe[key] === undefined ? '[redacted]' : String(safe[key])
   }
   if (['sync.mutation_id', 'sync.attempt', 'sync.retry_delay_ms'].includes(key))
@@ -217,7 +217,9 @@ export function safeAttribute(key: string, value: string): string {
 }
 
 /** Only bounded enums, booleans and numeric business parameters; never arbitrary text. */
-export function safeBusinessParameters(read: (key: string) => unknown): Record<string, string | number | boolean> {
+export function safeBusinessParameters(
+  read: (key: string) => unknown,
+): Record<string, string | number | boolean> {
   const result: Record<string, string | number | boolean> = {}
   for (const key of ['days', 'expiringWithinDays', 'page', 'limit', 'amount'] as const) {
     const value = read(key)

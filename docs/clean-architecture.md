@@ -57,9 +57,13 @@ this.app.container.bind('fridge.listProducts', async (resolver) => {
 })
 
 // Contrôleur : validation/authentification avant l’appel, DTO après l’appel.
-const listProducts = await ctx.containerResolver.make('fridge.listProducts')
+const listProducts = await resolveBinding(ctx, 'fridge.listProducts')
 const products = await listProducts.execute({ householdId: ctx.household.id })
 ```
+
+La présentation utilise `resolveBinding(ctx, binding)` pour conserver les types de
+`ContainerBindings` : le resolver HTTP brut d’Adonis est typé `ContainerResolver<any>`.
+Ce helper délègue au resolver de la requête et préserve ses substitutions.
 
 Déclarer chaque binding dans `ContainerBindings`, dans son provider. Utiliser le
 `resolver` reçu par la fabrique pour ses dépendances : passer par le conteneur

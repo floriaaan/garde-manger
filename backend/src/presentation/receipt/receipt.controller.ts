@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -20,19 +21,21 @@ export default class ReceiptController {
         const payload = await ctx.request.validateUsing(importReceiptValidator)
         // A draft-backed import carries the scanned photo over to the receipt; the
         // key comes from the server-side draft, never from client input.
-        const draft = payload.draftId
-          ? await (await ctx.containerResolver.make('job.getScanDraft')).execute({
-              householdId: ctx.household.id,
-              draftId: payload.draftId,
-            })
-          : null
+        const getScanDraft = payload.draftId ? await resolveBinding(ctx, 'job.getScanDraft') : null
+        const draft =
+          payload.draftId && getScanDraft
+            ? await getScanDraft.execute({
+                householdId: ctx.household.id,
+                draftId: payload.draftId,
+              })
+            : null
         if (payload.draftId && (!draft || draft.kind !== 'receipt')) {
           const { status, body } = serializeError('draft_not_found')
           ctx.response.status(status).json(body)
           return { ok: false as const, error: 'draft_not_found' as const }
         }
 
-        const importReceipt = await ctx.containerResolver.make('receipt.importReceipt')
+        const importReceipt = await resolveBinding(ctx, 'receipt.importReceipt')
         const result = await importReceipt.execute({
           householdId: ctx.household.id,
           storeName: payload.storeName,
@@ -58,7 +61,7 @@ export default class ReceiptController {
         }
 
         if (draft) {
-          const finalizeScanDraft = await ctx.containerResolver.make('job.finalizeScanDraft')
+          const finalizeScanDraft = await resolveBinding(ctx, 'job.finalizeScanDraft')
           await finalizeScanDraft.execute(draft)
         }
 
@@ -83,7 +86,7 @@ export default class ReceiptController {
       'receipt',
       ListReceipts,
       async () => {
-        const listReceipts = await ctx.containerResolver.make('receipt.listReceipts')
+        const listReceipts = await resolveBinding(ctx, 'receipt.listReceipts')
         const result = await listReceipts.execute({ householdId: ctx.household.id })
         ctx.response.json({ receipts: result.map(toReceiptDto) })
       },
@@ -98,7 +101,7 @@ export default class ReceiptController {
       'receipt',
       GetReceipt,
       async () => {
-        const getReceipt = await ctx.containerResolver.make('receipt.getReceipt')
+        const getReceipt = await resolveBinding(ctx, 'receipt.getReceipt')
         const result = await getReceipt.execute({
           householdId: ctx.household.id,
           receiptId: ctx.params.id,
@@ -125,7 +128,7 @@ export default class ReceiptController {
       'receipt',
       { name: 'GetReceiptImage' },
       async () => {
-        const receipts = await ctx.containerResolver.make('receipt.receipts')
+        const receipts = await resolveBinding(ctx, 'receipt.receipts')
         const receipt = await receipts.findById(ctx.params.id)
         if (!receipt || receipt.householdId !== ctx.household.id || !receipt.imageKey) {
           const { status, body } = serializeError('image_not_found')
@@ -133,7 +136,7 @@ export default class ReceiptController {
           return { failed: true }
         }
 
-        const storage = await ctx.containerResolver.make('shared.storage')
+        const storage = await resolveBinding(ctx, 'shared.storage')
         const file = await storage.read(receipt.imageKey)
         if (!file) {
           const { status, body } = serializeError('image_not_found')

@@ -40,10 +40,7 @@ export default class JobProvider {
 
     this.app.container.bind('job.listJobs', async (resolver) => {
       const { ListJobs } = await import('#application/job/list-jobs.use-case')
-      return new ListJobs(
-        await resolver.make('job.jobs'),
-        await resolver.make('shared.clock'),
-      )
+      return new ListJobs(await resolver.make('job.jobs'), await resolver.make('shared.clock'))
     })
 
     this.app.container.bind('job.getJob', async (resolver) => {
@@ -53,10 +50,7 @@ export default class JobProvider {
 
     this.app.container.bind('job.retryJob', async (resolver) => {
       const { RetryJob } = await import('#application/job/retry-job.use-case')
-      return new RetryJob(
-        await resolver.make('job.jobs'),
-        await resolver.make('shared.clock'),
-      )
+      return new RetryJob(await resolver.make('job.jobs'), await resolver.make('shared.clock'))
     })
 
     this.app.container.bind('job.dismissJob', async (resolver) => {
@@ -161,34 +155,59 @@ export default class JobProvider {
 
     this.runner = new JobRunner({
       jobs,
-      run: (job) => logContext.run({
-        action: 'job.run', 'app.operation': 'job.run', useCase: 'RunJob',
-        userId: job.createdBy, householdId: job.householdId, entityId: job.id,
-        'job.kind': job.kind, 'job.attempt': job.attempts,
-      }, async () => {
-        const startedAt = performance.now()
-        await runJob.execute(job)
-        const failed = job.status === 'failed' || job.status === 'queued'
-        logger[failed ? failureLevel(job.errorType ?? 'job_failed') : 'info']({
-          'event.outcome': failed ? 'failure' : 'success',
-          'error.code': job.errorType,
-          'job.status': job.status,
-          durationMs: Math.round(performance.now() - startedAt),
-        }, 'job completed')
-        await notifyJobFinished
-          .execute(job)
-          .catch((error) => logger.error({
-            err: error, action: 'push.notify_job_finished', 'app.operation': 'push.notify_job_finished',
-            useCase: 'NotifyJobFinished', 'event.outcome': 'failure',
-          }, 'Job push failed'))
-      }),
+      run: (job) =>
+        logContext.run(
+          {
+            action: 'job.run',
+            'app.operation': 'job.run',
+            useCase: 'RunJob',
+            userId: job.createdBy,
+            householdId: job.householdId,
+            entityId: job.id,
+            'job.kind': job.kind,
+            'job.attempt': job.attempts,
+          },
+          async () => {
+            const startedAt = performance.now()
+            await runJob.execute(job)
+            const failed = job.status === 'failed' || job.status === 'queued'
+            logger[failed ? failureLevel(job.errorType ?? 'job_failed') : 'info'](
+              {
+                'event.outcome': failed ? 'failure' : 'success',
+                'error.code': job.errorType,
+                'job.status': job.status,
+                durationMs: Math.round(performance.now() - startedAt),
+              },
+              'job completed',
+            )
+            await notifyJobFinished.execute(job).catch((error) =>
+              logger.error(
+                {
+                  err: error,
+                  action: 'push.notify_job_finished',
+                  'app.operation': 'push.notify_job_finished',
+                  useCase: 'NotifyJobFinished',
+                  'event.outcome': 'failure',
+                },
+                'Job push failed',
+              ),
+            )
+          },
+        ),
       purge: () => purge.execute(),
       clock,
       maxConcurrency: env.get('JOB_MAX_CONCURRENCY', 2),
-      onError: (error, message, attributes) => logger.error({
-        action: 'job.run', 'app.operation': 'job.run', 'event.outcome': 'failure',
-        ...attributes, err: error,
-      }, message),
+      onError: (error, message, attributes) =>
+        logger.error(
+          {
+            action: 'job.run',
+            'app.operation': 'job.run',
+            'event.outcome': 'failure',
+            ...attributes,
+            err: error,
+          },
+          message,
+        ),
     })
     await this.runner.start()
   }

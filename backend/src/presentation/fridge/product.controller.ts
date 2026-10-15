@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -37,7 +38,7 @@ export default class ProductController {
         const { location, expiringWithinDays } =
           await ctx.request.validateUsing(listProductsValidator)
 
-        const listProducts = await ctx.containerResolver.make('fridge.listProducts')
+        const listProducts = await resolveBinding(ctx, 'fridge.listProducts')
         const result = await listProducts.execute({
           householdId: ctx.household.id,
           location,
@@ -58,7 +59,7 @@ export default class ProductController {
       async () => {
         const payload = await ctx.request.validateUsing(createProductValidator)
 
-        const createProduct = await ctx.containerResolver.make('fridge.createProduct')
+        const createProduct = await resolveBinding(ctx, 'fridge.createProduct')
         const result = await createProduct.execute({
           householdId: ctx.household.id,
           ...payload,
@@ -82,7 +83,7 @@ export default class ProductController {
       'fridge',
       GetProduct,
       async () => {
-        const getProduct = await ctx.containerResolver.make('fridge.getProduct')
+        const getProduct = await resolveBinding(ctx, 'fridge.getProduct')
         const product = await getProduct.execute({
           householdId: ctx.household.id,
           productId: ctx.params.id,
@@ -108,7 +109,7 @@ export default class ProductController {
       async () => {
         const payload = await ctx.request.validateUsing(updateProductValidator)
 
-        const updateProduct = await ctx.containerResolver.make('fridge.updateProduct')
+        const updateProduct = await resolveBinding(ctx, 'fridge.updateProduct')
         const result = await updateProduct.execute({
           householdId: ctx.household.id,
           productId: ctx.params.id,
@@ -133,7 +134,7 @@ export default class ProductController {
       'fridge',
       DeleteProduct,
       async () => {
-        const deleteProduct = await ctx.containerResolver.make('fridge.deleteProduct')
+        const deleteProduct = await resolveBinding(ctx, 'fridge.deleteProduct')
         const result = await deleteProduct.execute({
           householdId: ctx.household.id,
           productId: ctx.params.id,
@@ -159,7 +160,7 @@ export default class ProductController {
       async () => {
         const payload = await ctx.request.validateUsing(recordProductOutcomeValidator)
 
-        const recordProductOutcome = await ctx.containerResolver.make('fridge.recordProductOutcome')
+        const recordProductOutcome = await resolveBinding(ctx, 'fridge.recordProductOutcome')
         const result = await recordProductOutcome.execute({
           householdId: ctx.household.id,
           userId: user.id,
@@ -186,8 +187,7 @@ export default class ProductController {
     return traceAction(ctx, 'fridge', GetProductOutcomeStats, async () => {
       const { days } = await ctx.request.validateUsing(productOutcomeStatsValidator)
 
-      const getProductOutcomeStats =
-        await ctx.containerResolver.make('fridge.getProductOutcomeStats')
+      const getProductOutcomeStats = await resolveBinding(ctx, 'fridge.getProductOutcomeStats')
       const result = await getProductOutcomeStats.execute({
         householdId: ctx.household.id,
         days,
@@ -200,8 +200,7 @@ export default class ProductController {
     requireAuthenticatedUser(ctx)
     return traceAction(ctx, 'fridge', GetExpiringSoonProducts, async () => {
       const { days } = await ctx.request.validateUsing(expiringSoonValidator)
-      const getExpiringSoonProducts =
-        await ctx.containerResolver.make('fridge.getExpiringSoonProducts')
+      const getExpiringSoonProducts = await resolveBinding(ctx, 'fridge.getExpiringSoonProducts')
       const result = await getExpiringSoonProducts.execute({
         householdId: ctx.household.id,
         days: days ?? 3,
@@ -218,19 +217,21 @@ export default class ProductController {
       ImportProducts,
       async () => {
         const payload = await ctx.request.validateUsing(importProductsValidator)
-        const draft = payload.draftId
-          ? await (await ctx.containerResolver.make('job.getScanDraft')).execute({
-              householdId: ctx.household.id,
-              draftId: payload.draftId,
-            })
-          : null
+        const getScanDraft = payload.draftId ? await resolveBinding(ctx, 'job.getScanDraft') : null
+        const draft =
+          payload.draftId && getScanDraft
+            ? await getScanDraft.execute({
+                householdId: ctx.household.id,
+                draftId: payload.draftId,
+              })
+            : null
         if (payload.draftId && (!draft || draft.kind !== 'fridge')) {
           const { status, body } = serializeError('draft_not_found')
           ctx.response.status(status).json(body)
           return { ok: false as const, error: 'draft_not_found' as const }
         }
 
-        const importProducts = await ctx.containerResolver.make('fridge.importProducts')
+        const importProducts = await resolveBinding(ctx, 'fridge.importProducts')
         const result = await importProducts.execute({
           householdId: ctx.household.id,
           items: payload.items.map((item) => ({
@@ -249,7 +250,7 @@ export default class ProductController {
         }
 
         if (draft) {
-          const finalizeScanDraft = await ctx.containerResolver.make('job.finalizeScanDraft')
+          const finalizeScanDraft = await resolveBinding(ctx, 'job.finalizeScanDraft')
           await finalizeScanDraft.execute(draft)
         }
 
@@ -264,7 +265,7 @@ export default class ProductController {
     requireAuthenticatedUser(ctx)
     return traceAction(ctx, 'fridge', LookupProduct, async () => {
       const { barcode } = await ctx.request.validateUsing(lookupProductValidator)
-      const lookupProduct = await ctx.containerResolver.make('fridge.lookupProduct')
+      const lookupProduct = await resolveBinding(ctx, 'fridge.lookupProduct')
       const result = await lookupProduct.execute({ barcode })
       ctx.response.json({ result })
     })
@@ -277,7 +278,7 @@ export default class ProductController {
       'fridge',
       { name: 'GetProductImage' },
       async () => {
-        const getProduct = await ctx.containerResolver.make('fridge.getProduct')
+        const getProduct = await resolveBinding(ctx, 'fridge.getProduct')
         const product = await getProduct.execute({
           householdId: ctx.household.id,
           productId: ctx.params.id,
@@ -288,7 +289,7 @@ export default class ProductController {
           return { failed: true }
         }
 
-        const storage = await ctx.containerResolver.make('shared.storage')
+        const storage = await resolveBinding(ctx, 'shared.storage')
         const file = await storage.read(product.imageKey)
         if (!file) {
           const { status, body } = serializeError('image_not_found')

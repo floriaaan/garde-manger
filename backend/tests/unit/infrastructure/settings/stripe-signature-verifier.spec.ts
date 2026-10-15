@@ -17,9 +17,7 @@ test.group('StripeSignatureVerifier', () => {
   test('rejects a tampered body, a wrong secret, a stale timestamp and no header', ({ assert }) => {
     assert.isFalse(verifier.isValid(`${body} `, `t=${now},v1=${sign(now)}`, secret))
     assert.isFalse(verifier.isValid(body, `t=${now},v1=${sign(now)}`, 'whsec_other'))
-    assert.isFalse(
-      verifier.isValid(body, `t=${now - 600},v1=${sign(now - 600)}`, secret),
-    )
+    assert.isFalse(verifier.isValid(body, `t=${now - 600},v1=${sign(now - 600)}`, secret))
     assert.isFalse(verifier.isValid(body, '', secret))
   })
 })

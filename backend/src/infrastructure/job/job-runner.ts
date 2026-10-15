@@ -109,9 +109,14 @@ export class JobRunner {
       }
     } catch (error) {
       this.deps.onError(error, 'job run crashed', {
-        userId: job.createdBy, householdId: job.householdId, entityId: job.id,
-        useCase: 'RunJob', 'job.kind': job.kind, 'job.attempt': job.attempts,
-        trace_id: span.spanContext().traceId, span_id: span.spanContext().spanId,
+        userId: job.createdBy,
+        householdId: job.householdId,
+        entityId: job.id,
+        useCase: 'RunJob',
+        'job.kind': job.kind,
+        'job.attempt': job.attempts,
+        trace_id: span.spanContext().traceId,
+        span_id: span.spanContext().spanId,
         durationMs: Math.round(performance.now() - startedAt),
       })
       span.recordException(error as Error)

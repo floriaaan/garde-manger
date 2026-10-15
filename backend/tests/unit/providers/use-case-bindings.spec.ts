@@ -1,9 +1,12 @@
 import { test } from '@japa/runner'
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import app from '@adonisjs/core/services/app'
 import { FakeProductRepository, buildProduct } from '#tests/unit/application/fridge/fakes'
 
 test.group('Use case provider bindings', () => {
-  test('uses the request repository without leaking it into another request', async ({ assert }) => {
+  test('uses the request repository without leaking it into another request', async ({
+    assert,
+  }) => {
     const first = app.container.createResolver()
     const second = app.container.createResolver()
     const firstProducts = new FakeProductRepository()
@@ -13,11 +16,19 @@ test.group('Use case provider bindings', () => {
     first.bindValue('fridge.products', firstProducts)
     second.bindValue('fridge.products', secondProducts)
 
-    const firstList = await first.make('fridge.listProducts')
-    const secondList = await second.make('fridge.listProducts')
+    const firstList = await resolveBinding({ containerResolver: first }, 'fridge.listProducts')
+    const secondList = await resolveBinding({ containerResolver: second }, 'fridge.listProducts')
 
-    assert.deepEqual((await firstList.execute({ householdId: 'h_1' })).map((p) => p.id), ['first'])
-    assert.deepEqual((await secondList.execute({ householdId: 'h_1' })).map((p) => p.id), ['second'])
+    const firstResult = await firstList.execute({ householdId: 'h_1' })
+    const secondResult = await secondList.execute({ householdId: 'h_1' })
+    assert.deepEqual(
+      firstResult.map((p) => p.id),
+      ['first'],
+    )
+    assert.deepEqual(
+      secondResult.map((p) => p.id),
+      ['second'],
+    )
   })
 
   test('resolves AI generation for each household instead of capturing the first one', async ({
