@@ -56,10 +56,11 @@ function createResolver<T>(
       clock: Clock,
       householdId: string | null,
       usageAlreadyRecorded = false,
+      allowPaidAccess = true,
     ): Promise<T> {
       if (testOverride) return testOverride
 
-      const effective = await settings.resolveEffective(householdId)
+      const effective = await settings.resolveEffective(householdId, allowPaidAccess)
       const provider = effective.activeProvider
 
       if (!effective.availableProviders.includes(provider)) throw unavailable(provider)
@@ -179,8 +180,10 @@ export function resolveReceiptExtractionAdapter(
   quota: AiQuotaPort,
   clock: Clock,
   householdId: string | null,
+  usageAlreadyRecorded = false,
+  allowPaidAccess = true,
 ): Promise<ReceiptExtractionPort> {
-  return receiptExtraction.resolve(settings, quota, clock, householdId)
+  return receiptExtraction.resolve(settings, quota, clock, householdId, usageAlreadyRecorded, allowPaidAccess)
 }
 
 export function resolveRecipeGenerationAdapter(
@@ -188,8 +191,10 @@ export function resolveRecipeGenerationAdapter(
   quota: AiQuotaPort,
   clock: Clock,
   householdId: string | null,
+  usageAlreadyRecorded = false,
+  allowPaidAccess = true,
 ): Promise<RecipeGenerationPort> {
-  return recipeGeneration.resolve(settings, quota, clock, householdId)
+  return recipeGeneration.resolve(settings, quota, clock, householdId, usageAlreadyRecorded, allowPaidAccess)
 }
 
 export function resolveFridgeScanExtractionAdapter(
@@ -198,6 +203,7 @@ export function resolveFridgeScanExtractionAdapter(
   clock: Clock,
   householdId: string | null,
   usageAlreadyRecorded = false,
+  allowPaidAccess = true,
 ): Promise<FridgeScanExtractionPort> {
-  return fridgeScanExtraction.resolve(settings, quota, clock, householdId, usageAlreadyRecorded)
+  return fridgeScanExtraction.resolve(settings, quota, clock, householdId, usageAlreadyRecorded, allowPaidAccess)
 }

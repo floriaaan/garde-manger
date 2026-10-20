@@ -6,9 +6,12 @@ import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-conne
 import { fakeHouseholdAsMember } from '../../infrastructure/fake/fixtures/household.fixture.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { AccountScreen } from './account-screen.js'
+import { AccountDeletedScreen } from './account-deleted-screen.js'
 import { DeleteAccountScreen } from './delete-account-screen.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
+
+beforeEach(() => jest.clearAllMocks())
 
 async function renderAuthenticated(connector = new FakeFridgeConnector(), Page = AccountScreen) {
   await connector.signInSocial()
@@ -73,5 +76,24 @@ test('a plain member can delete their account after confirming with their passwo
   await fireEvent.changeText(screen.getByTestId('account-delete-password'), 'correct-horse-battery-staple')
   await fireEvent.press(screen.getByTestId('account-delete-confirm'))
 
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(auth)/sign-in'))
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/account-deleted'))
+})
+
+test('failed deletion keeps the account page open without a success redirect', async () => {
+  const connector = new FakeFridgeConnector({ fixtureHousehold: fakeHouseholdAsMember })
+  jest.spyOn(connector, 'deleteAccount').mockResolvedValue({ ok: false, error: { type: 'delete_account_failed', message: 'Mot de passe incorrect.' } })
+  await renderAuthenticated(connector, DeleteAccountScreen)
+  await waitFor(() => expect(screen.getByTestId('account-delete-password')).toBeTruthy())
+  await fireEvent.changeText(screen.getByTestId('account-delete-password'), 'wrong-password')
+  await fireEvent.press(screen.getByTestId('account-delete-confirm'))
+  await waitFor(() => expect(screen.getByText('Mot de passe incorrect.')).toBeTruthy())
+  expect(router.replace).not.toHaveBeenCalled()
+})
+
+test('the success page explicitly confirms deletion and offers sign-in', async () => {
+  await render(<ThemeProvider><AccountDeletedScreen /></ThemeProvider>)
+  expect(screen.getByText('Compte supprimé')).toBeTruthy()
+  expect(screen.getByText('Ton compte a été supprimé définitivement. Tu es maintenant déconnecté.')).toBeTruthy()
+  await fireEvent.press(screen.getByTestId('account-deleted-sign-in'))
+  expect(router.replace).toHaveBeenCalledWith('/(auth)/sign-in')
 })

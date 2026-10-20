@@ -34,7 +34,7 @@ export function DeleteAccountScreen() {
       return
     }
     queryClient.clear()
-    router.replace('/(auth)/sign-in')
+    router.replace('/account-deleted')
   }
 
   return (

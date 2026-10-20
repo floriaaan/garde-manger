@@ -24,6 +24,7 @@ export default class AiSettingsController {
         const household = await households.findByUserId(user.id)
         const effective = await new GetEffectiveAiSettings(settingsProvider).execute({
           householdId: household?.id ?? null,
+          allowPaidAccess: ctx.request.header('x-client-platform') !== 'ios',
         })
         ctx.response.json(toAiSettingsDto(effective))
       },

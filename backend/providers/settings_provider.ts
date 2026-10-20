@@ -52,8 +52,15 @@ export default class SettingsProvider {
       const aiSettingsProvider = await this.app.container.make('settings.aiSettingsProvider')
       const quota = await this.app.container.make('settings.aiQuota')
       const clock = await this.app.container.make('shared.clock')
-      return (householdId: string | null) =>
-        resolveReceiptExtractionAdapter(aiSettingsProvider, quota, clock, householdId)
+      return (householdId: string | null, usageAlreadyRecorded = false, allowPaidAccess = true) =>
+        resolveReceiptExtractionAdapter(
+          aiSettingsProvider,
+          quota,
+          clock,
+          householdId,
+          usageAlreadyRecorded,
+          allowPaidAccess,
+        )
     })
 
     this.app.container.singleton('settings.resolveRecipeGenerationPort', async () => {
@@ -62,8 +69,15 @@ export default class SettingsProvider {
       const aiSettingsProvider = await this.app.container.make('settings.aiSettingsProvider')
       const quota = await this.app.container.make('settings.aiQuota')
       const clock = await this.app.container.make('shared.clock')
-      return (householdId: string | null) =>
-        resolveRecipeGenerationAdapter(aiSettingsProvider, quota, clock, householdId)
+      return (householdId: string | null, usageAlreadyRecorded = false, allowPaidAccess = true) =>
+        resolveRecipeGenerationAdapter(
+          aiSettingsProvider,
+          quota,
+          clock,
+          householdId,
+          usageAlreadyRecorded,
+          allowPaidAccess,
+        )
     })
 
     this.app.container.singleton('settings.resolveFridgeScanExtractionPort', async () => {
@@ -72,13 +86,14 @@ export default class SettingsProvider {
       const aiSettingsProvider = await this.app.container.make('settings.aiSettingsProvider')
       const quota = await this.app.container.make('settings.aiQuota')
       const clock = await this.app.container.make('shared.clock')
-      return (householdId: string | null, usageAlreadyRecorded = false) =>
+      return (householdId: string | null, usageAlreadyRecorded = false, allowPaidAccess = true) =>
         resolveFridgeScanExtractionAdapter(
           aiSettingsProvider,
           quota,
           clock,
           householdId,
           usageAlreadyRecorded,
+          allowPaidAccess,
         )
     })
   }
@@ -93,13 +108,18 @@ declare module '@adonisjs/core/types' {
     'settings.aiQuota': AiQuotaPort
     'settings.resolveReceiptExtractionPort': (
       householdId: string | null,
+      usageAlreadyRecorded?: boolean,
+      allowPaidAccess?: boolean,
     ) => Promise<ReceiptExtractionPort>
     'settings.resolveRecipeGenerationPort': (
       householdId: string | null,
+      usageAlreadyRecorded?: boolean,
+      allowPaidAccess?: boolean,
     ) => Promise<RecipeGenerationPort>
     'settings.resolveFridgeScanExtractionPort': (
       householdId: string | null,
       usageAlreadyRecorded?: boolean,
+      allowPaidAccess?: boolean,
     ) => Promise<FridgeScanExtractionPort>
   }
 }

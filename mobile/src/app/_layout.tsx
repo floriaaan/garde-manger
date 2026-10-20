@@ -111,6 +111,7 @@ export default function RootLayout() {
                   <Stack.Screen name="expiry-reminders" />
                   <Stack.Screen name="account" />
                   <Stack.Screen name="delete-account" />
+                  <Stack.Screen name="account-deleted" />
                   <Stack.Screen name="household" />
                   <Stack.Screen name="receipts" />
                   <Stack.Screen name="tasks" />

@@ -16,9 +16,10 @@ import { useTranslation } from '../../i18n/index.js'
 import { useRef } from 'react'
 import { Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CameraView, useCameraPermissions } from 'expo-camera'
+import { CameraView } from 'expo-camera'
 import { Text, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor } from '../shared/hover.js'
+import { useScannerCameraPermissions } from '../shared/use-scanner-camera-permissions.js'
 import { CameraPermissionModal } from '../shared/camera-permission-modal.js'
 import { XIcon } from '../dashboard/dashboard-icons.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
@@ -33,7 +34,7 @@ export function InviteScannerScreen({
 }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const [permission, requestPermission] = useCameraPermissions()
+  const { permission, requestPermission, awaitingNativeRequest } = useScannerCameraPermissions()
   const handledRef = useRef(false)
 
   function handleBarcodeScanned({ data }: { data: string }) {
@@ -45,6 +46,8 @@ export function InviteScannerScreen({
     handledRef.current = true
     onScanned(code)
   }
+
+  if (awaitingNativeRequest) return <YStack flex={1} />
 
   if (!permission?.granted) {
     return (

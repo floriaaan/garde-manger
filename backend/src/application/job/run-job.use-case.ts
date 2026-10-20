@@ -30,12 +30,13 @@ export interface RunJobDeps {
   idGenerator: IdGenerator
   clock: Clock
   // Receipt/recipe quota is per call; a fridge scan is billed only on its first successful photo.
-  resolveReceiptExtraction: (householdId: string) => Promise<ReceiptExtractionPort>
+  resolveReceiptExtraction: (householdId: string, usageAlreadyRecorded?: boolean, allowPaidAccess?: boolean) => Promise<ReceiptExtractionPort>
   resolveFridgeScanExtraction: (
     householdId: string,
     usageAlreadyRecorded?: boolean,
+    allowPaidAccess?: boolean,
   ) => Promise<FridgeScanExtractionPort>
-  resolveRecipeGeneration: (householdId: string) => Promise<RecipeGenerationPort>
+  resolveRecipeGeneration: (householdId: string, usageAlreadyRecorded?: boolean, allowPaidAccess?: boolean) => Promise<RecipeGenerationPort>
   unitTimeoutMs: number
   draftTtlHours: number
 }
@@ -61,7 +62,7 @@ export class RunJob {
   private async generate(job: Job): Promise<void> {
     job.beginRun()
     const result = await this.attempt(async () => {
-      const generation = await this.deps.resolveRecipeGeneration(job.householdId)
+      const generation = await this.deps.resolveRecipeGeneration(job.householdId, false, job.input.allowPaidAccess)
       return new GenerateRecipes(
         this.deps.recipes,
         this.deps.products,
@@ -147,7 +148,7 @@ export class RunJob {
     const image = key ? await this.deps.storage.read(key) : null
     if (!image) return Result.err('extraction_failed')
     return this.attempt(async () => {
-      const extraction = await this.deps.resolveReceiptExtraction(job.householdId)
+      const extraction = await this.deps.resolveReceiptExtraction(job.householdId, false, job.input.allowPaidAccess)
       return new ScanReceipt(extraction).execute({
         image: { buffer: image.buffer, contentType: image.contentType },
         language: job.input.language ?? 'fr',
@@ -162,6 +163,7 @@ export class RunJob {
       const extraction = await this.deps.resolveFridgeScanExtraction(
         job.householdId,
         job.input.aiUsageRecorded === true || job.progress.done > 0,
+        job.input.allowPaidAccess,
       )
       return new ScanFridge(extraction).execute({
         image: image.buffer,

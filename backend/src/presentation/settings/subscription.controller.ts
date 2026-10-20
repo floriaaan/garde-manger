@@ -30,7 +30,7 @@ export default class SubscriptionController {
     action: string,
   ) {
     const user = requireAuthenticatedUser(ctx)
-    if (!billingConfigured()) {
+    if (ctx.request.header('x-client-platform') === 'ios' || !billingConfigured()) {
       const { status, body } = serializeError('billing_unavailable')
       return ctx.response.status(status).json(body)
     }

@@ -110,6 +110,7 @@
     "language_session_only": "Pour cette session uniquement. Les nouveaux résultats IA suivent cette langue."
   },
   "fridge": {
+    "enter_product_manually": "Saisir le produit manuellement",
     "camera_access_is_required_to_scan_a_barcode": "L'accès à la caméra est nécessaire pour scanner un code-barres.",
     "point_at_the_barcode_it_scans_automatically": "Vise le code-barres, il se lit tout seul",
     "remove_date": "Retirer la date",
@@ -356,6 +357,8 @@
     "connection": "Connexion"
   },
   "identity": {
+    "account_deleted": "Compte supprimé",
+    "account_deleted_confirmation": "Ton compte a été supprimé définitivement. Tu es maintenant déconnecté.",
     "email_and_password": "Email et mot de passe",
     "passkey": "Clé d’accès (passkey)",
     "apple_didn_t_return_an_identity_token": "Apple n’a pas renvoyé de jeton d’identité.",

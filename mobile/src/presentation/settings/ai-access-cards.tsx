@@ -21,8 +21,6 @@ import type { AiAccess } from '../../domain/settings/ai-settings.js'
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
 
-const WEB_SUBSCRIPTION_NOTICE = () => t('settings.manage_your_subscription_on_the_web_sign_in_with_the')
-
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   const { t } = useTranslation()
   return (
@@ -86,7 +84,6 @@ export function SubscriptionActiveCard({
   until,
   cancelled,
   onManage,
-  webOnly = false,
   pending,
   error,
 }: {
@@ -95,8 +92,6 @@ export function SubscriptionActiveCard({
   /** Cancelled in Stripe: access holds until `until`, no renewal. */
   cancelled?: boolean
   onManage: () => void
-  /** iOS: the only billing action opens the web subscription page. */
-  webOnly?: boolean
   pending?: boolean
   error?: string | null
 }) {
@@ -146,17 +141,16 @@ export function SubscriptionActiveCard({
         <Pressable
           onPress={onManage}
           disabled={pending}
-          testID={webOnly ? 'subscription-web-link' : 'subscription-manage'}
+          testID="subscription-manage"
           accessibilityRole="button"
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack backgroundColor={palette.cream} borderRadius={999} alignItems="center" justifyContent="center" minHeight={52}>
             <Text fontSize={16} fontWeight="900" color={palette.ink}>
-              {pending ? t('settings.one_moment') : webOnly ? t('settings.manage_subscription_on_the_web') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
+              {pending ? t('settings.one_moment') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
             </Text>
           </XStack>
         </Pressable>
-        {webOnly ? <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text> : null}
         {error ? (
           <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
             {error}
@@ -178,15 +172,12 @@ export function SubscriptionActiveCard({
 export function SubscriptionPaywall({
   palette,
   onSubscribe,
-  webOnly = false,
   pending,
   reason,
   error,
 }: {
   palette: SoftPalette
   onSubscribe: () => void
-  /** Reuse the offer card with only a web redirect, without direct billing copy. */
-  webOnly?: boolean
   pending?: boolean
   reason?: string
   error?: string | null
@@ -215,14 +206,12 @@ export function SubscriptionPaywall({
           <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{t('settings.garde_manger_subscription')}</Text>
         </YStack>
 
-        {!webOnly ? (
-          <XStack alignItems="flex-end" gap="$2.5">
-            <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
-              0,99€
-            </Text>
-            <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
-          </XStack>
-        ) : null}
+        <XStack alignItems="flex-end" gap="$2.5">
+          <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
+            0,99€
+          </Text>
+          <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
+        </XStack>
 
         <YStack height={0} borderTopWidth={1.5} borderStyle="dashed" borderColor={palette.onDarkSecondary} opacity={0.4} />
 
@@ -240,9 +229,9 @@ export function SubscriptionPaywall({
         <Pressable
           onPress={onSubscribe}
           disabled={pending}
-          testID={webOnly ? 'subscription-web-link' : 'subscription-paywall-cta'}
+          testID="subscription-paywall-cta"
           accessibilityRole="button"
-          accessibilityLabel={webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe_for_0_99_per_month')}
+          accessibilityLabel={t('settings.subscribe_for_0_99_per_month')}
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack
@@ -255,7 +244,7 @@ export function SubscriptionPaywall({
           >
             <SparklesIcon size={18} color={palette.accentLimeText} />
             <Text fontSize={16} fontWeight="900" color={palette.accentLimeText}>
-              {pending ? t('settings.one_moment') : webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe')}
+              {pending ? t('settings.one_moment') : t('settings.subscribe')}
             </Text>
           </XStack>
         </Pressable>
@@ -264,24 +253,18 @@ export function SubscriptionPaywall({
             {error}
           </Text>
         ) : null}
-        {webOnly ? (
-          <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text>
-        ) : (
-          <>
-            <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
-            <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-              {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
-              <Text
-                fontSize={12}
-                fontWeight="700"
-                color={palette.onDark}
-                textDecorationLine="underline"
-                accessibilityRole="link"
-                onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
-              >{t('settings.view_terms_of_sale')}</Text>
-            </Text>
-          </>
-        )}
+        <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
+        <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
+          {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
+          <Text
+            fontSize={12}
+            fontWeight="700"
+            color={palette.onDark}
+            textDecorationLine="underline"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
+          >{t('settings.view_terms_of_sale')}</Text>
+        </Text>
       </YStack>
     </DarkSurface>
   )

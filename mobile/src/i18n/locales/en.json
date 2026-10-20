@@ -106,6 +106,7 @@
     "language_session_only": "For this session only. New AI results use this language."
   },
   "fridge": {
+    "enter_product_manually": "Enter the product manually",
     "camera_access_is_required_to_scan_a_barcode": "Camera access is required to scan a barcode.",
     "point_at_the_barcode_it_scans_automatically": "Point at the barcode — it scans automatically",
     "remove_date": "Remove date",
@@ -335,6 +336,8 @@
     "connection": "Connection"
   },
   "identity": {
+    "account_deleted": "Account deleted",
+    "account_deleted_confirmation": "Your account has been permanently deleted. You are now signed out.",
     "email_and_password": "Email and password",
     "passkey": "Passkey",
     "apple_didn_t_return_an_identity_token": "Apple didn’t return an identity token.",

@@ -318,3 +318,21 @@ test.group('RunJob: requesting user language', () => {
     }
   }
 })
+
+test('iOS jobs preserve the free-only policy across execution and retry', async ({ assert }) => {
+  const policies: (boolean | undefined)[] = []
+  const job = fridgeJob(['a'])
+  job.input.allowPaidAccess = false
+  const { run } = setup([], {
+    resolveFridgeScanExtraction: async (_householdId, _recorded, allowPaidAccess) => {
+      policies.push(allowPaidAccess)
+      throw new AiQuotaExceededError(5)
+    },
+  })
+  await run.execute(job)
+  assert.equal(job.errorType, 'ai_quota_exceeded')
+  job.requeue(now)
+  await run.execute(job)
+  assert.deepEqual(policies, [false, false])
+  assert.equal(job.errorType, 'ai_quota_exceeded')
+})

@@ -3,12 +3,12 @@ import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings
 import type { EffectiveAiSettings } from '#domain/settings/effective-ai-settings'
 
 export class GetEffectiveAiSettings implements UseCase<
-  { householdId: string | null },
+  { householdId: string | null; allowPaidAccess?: boolean },
   EffectiveAiSettings
 > {
   constructor(private readonly settings: AiSettingsProvider) {}
 
-  async execute(input: { householdId: string | null }): Promise<EffectiveAiSettings> {
-    return this.settings.resolveEffective(input.householdId)
+  async execute(input: { householdId: string | null; allowPaidAccess?: boolean }): Promise<EffectiveAiSettings> {
+    return this.settings.resolveEffective(input.householdId, input.allowPaidAccess)
   }
 }

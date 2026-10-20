@@ -285,7 +285,7 @@ export default class JobController {
               : 'settings.resolveRecipeGenerationPort',
         )
         try {
-          await resolve(ctx.household.id)
+          await resolve(ctx.household.id, false, ctx.request.header('x-client-platform') !== 'ios')
         } catch (error) {
           if (error instanceof AiQuotaExceededError) throw error
         }
@@ -302,6 +302,7 @@ export default class JobController {
           prompt,
           language,
           traceparent: currentTraceparent(),
+          allowPaidAccess: ctx.request.header('x-client-platform') !== 'ios',
         })
         ctx.response.status(202).json({ job: toJobDto(job) })
         return { failed: false, jobId: job.id }

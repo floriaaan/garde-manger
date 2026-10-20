@@ -12,6 +12,8 @@ export interface JobProgress {
 }
 
 export interface JobInput {
+  /** iOS jobs and retries must never unlock the web subscription quota. */
+  allowPaidAccess?: boolean
   /** Persisted so asynchronous execution and retries retain the requesting user's language. */
   language?: AiLanguage
   imageKeys?: string[]

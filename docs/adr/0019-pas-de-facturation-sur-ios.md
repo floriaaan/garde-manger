@@ -1,36 +1,45 @@
 # ADR-0019 — Pas de facturation sur iOS
 
-> Mise à jour — issue #59 : la décision de masquer l’accès à l’abonnement est
-> remplacée par le parcours ci-dessous. Le contexte et la décision initiale
-> sont conservés pour historique.
+> Décision actuelle — #110 (20 octobre 2026). Le parcours web introduit par
+> #59 / #63 est retiré après le rejet App Store du 19 octobre 2026.
 
-## Parcours actuel (#59)
+## Parcours actuel (#110)
 
-- L’entrée « Abonnement » reste accessible depuis Réglages sur iOS pour les
-  foyers de l’instance officielle. Le titre de la page est « Abonnement ».
-- La page affiche le quota et réutilise les cartes d’offre et d’abonnement actif,
-  avec leurs avantages, leur mascotte et le statut du foyer. Leur seule action
-  est « Souscrire sur le web » ou « Gérer l’abonnement sur le web ». Sur iOS,
-  la carte d’offre n’affiche ni prix, ni mentions de paiement Stripe, ni CGV ou
-  renonciation à la rétractation. Aucun paiement ou portail de facturation n’est
-  lancé par l’application iOS.
-- `platformCapabilities.billing` désigne la facturation Stripe directe. Il
-  reste `false` sur iOS : `useAiSubscribe()` ouvre à la place
-  `https://app.gardemanger.floriaaan.fr/subscription` dans le navigateur,
-  sans appeler les endpoints checkout/portal. Android et le web gardent leur
-  parcours Stripe existant.
-- La route web permet la connexion avec le même compte puis l’accès à
-  l’abonnement. Le texte explique le passage par le navigateur et le retour
-  dans l’application. Une erreur d’ouverture est affichée avec possibilité
-  de réessayer ; le gestionnaire de focus existant actualise les réglages au
-  retour au premier plan.
-- Les serveurs auto-hébergés restent sans action de facturation. Les autres
-  messages de quota et capacités de connexion ne changent pas.
-- La mascotte du header du dashboard dépend du plan du foyer sur toutes les
-  plateformes : dorée pour `subscriber`, normale sinon. La disponibilité de
-  la facturation directe ne masque plus le statut d’abonnement sur iOS.
+- Aucune entrée Abonnement, carte payante, prix, CTA de souscription ou lien
+  d’achat externe sur iOS, quelle que soit la vitrine. La route `/subscription`
+  reste accessible par lien direct mais n’affiche que l’usage IA.
+- `useAiSubscribe()` refuse aussi les actions programmatiques sur iOS.
+  Les variantes de cartes « sur le web » sont supprimées.
+- Chaque appel HTTP transmet `x-client-platform`. Pour `ios`, le backend refuse
+  Checkout et Customer Portal et résout le quota gratuit, même si le foyer est
+  abonné via Stripe. Les exemptions de quota ne s’appliquent pas à iOS.
+- `allowPaidAccess: false` est persisté dans l’entrée JSON des jobs iOS et
+  transmis au worker, y compris aux reprises et aux suggestions de recettes
+  synchrones. Aucune migration de schéma n’est nécessaire. Les photos suivantes
+  d’un même scan restent couvertes par son premier appel facturé.
+- Le header exprime une restriction de distribution du client officiel, pas
+  une preuve d’identité ni une frontière de sécurité contre un client modifié.
+- Les serveurs auto-hébergés gardent leur fonctionnement illimité. Android et
+  le web conservent leur circuit Stripe.
+- Déployer le backend avant la nouvelle build iOS : un ancien backend ignore
+  ce header et continuerait à accorder le quota Stripe. Les anciens clients iOS
+  doivent être remplacés par cette build avant resoumission.
+- Aucun entitlement régional d’achat externe ni exception « reader » n’est
+  utilisé. Le même comportement conservateur s’applique à toutes les vitrines,
+  y compris celles où Apple permet certains liens externes. StoreKit et la
+  réconciliation des abonnements seront nécessaires avant toute offre payante
+  dans l’app iOS.
 
-## Contexte
+Sources Apple consultées le 20 octobre 2026 :
+[3.1.1 et 3.1.3(b)](https://developer.apple.com/app-store/review/guidelines/#in-app-purchase).
+La règle 3.1.3(b) conditionne l’accès multiplateforme aux fonctions achetées
+ailleurs à leur disponibilité en achat intégré. Retirer le lien seul ne suffit
+pas ; le quota payant est donc également désactivé.
+
+Les preuves sur appareils et la note App Review sont suivies dans
+[le protocole de resoumission](../app-store-resubmission.md).
+
+## Historique — contexte et décision antérieurs (remplacés ci-dessus)
 
 L'abonnement IA passe par Stripe (ADR-0015) : un paywall à 0,99 €/mois, un bouton
 « S'abonner » qui ouvre Stripe Checkout, et le Customer Portal pour le payeur. L'ADR-0015

@@ -21,7 +21,7 @@ import { markWelcomeSeen } from '../welcome/use-welcome-seen.js'
 
 export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs)' }: {
   initialMode?: AuthMode
-  successHref?: '/(tabs)' | '/subscription'
+  successHref?: '/(tabs)' | '/subscription' | '/delete-account'
 }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()

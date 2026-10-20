@@ -3,8 +3,7 @@ import { useTranslation } from '../../i18n/index.js'
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
- * iOS reuses the subscription cards, with a single action opening the web
- * subscription page instead of direct billing.
+ * iOS exposes usage only; purchase prompts are disabled until StoreKit is available.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -35,7 +34,7 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title={t('settings.subscription')}
+          title={subscription.billing ? t('settings.subscription') : t('settings.household_ai')}
           onBack={() => router.back()}
         />
       }
@@ -58,23 +57,21 @@ export function SubscriptionScreen() {
         {/* Free plan: the usage comes first — the paywall answers it, it does not open the screen. */}
         {access?.plan === 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 
-        {access?.plan === 'free' ? (
+        {subscription.billing && access?.plan === 'free' ? (
           <SubscriptionPaywall
             palette={palette}
             onSubscribe={subscription.subscribe}
-            webOnly={!subscription.billing}
             pending={subscription.pending}
             error={subscription.error}
           />
         ) : null}
 
-        {access?.plan === 'subscriber' ? (
+        {subscription.billing && access?.plan === 'subscriber' ? (
           <SubscriptionActiveCard
             palette={palette}
             until={access.expiresAt}
             cancelled={access.cancelsAtPeriodEnd}
             onManage={subscription.manage}
-            webOnly={!subscription.billing}
             pending={subscription.pending}
             error={subscription.error}
           />

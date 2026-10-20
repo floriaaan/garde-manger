@@ -59,7 +59,7 @@ export function CameraPermissionModal({
 }) {
   const { t } = useTranslation()
   const closeHover = useHoverPress()
-  const settingsFallback = Platform.OS !== 'web' && !canAskAgain
+  const settingsFallback = Platform.OS === 'ios' || (Platform.OS !== 'web' && !canAskAgain)
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
