@@ -15,7 +15,6 @@ export interface EnqueueJobInput {
   images?: { buffer: Buffer; contentType: string }[]
   prompt?: string
   language?: AiLanguage
-  allowPaidAccess?: boolean
   traceparent: string | null
 }
 
@@ -46,7 +45,6 @@ export class EnqueueJob implements UseCase<EnqueueJobInput, Job> {
       input: {
         ...(input.kind === 'recipe_generation' ? { prompt: input.prompt } : { imageKeys }),
         language: input.language ?? 'fr',
-        allowPaidAccess: input.allowPaidAccess ?? true,
       },
       total: input.kind === 'recipe_generation' ? 1 : imageKeys.length,
       traceparent: input.traceparent,

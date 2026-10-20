@@ -16,6 +16,7 @@ import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { hexToRgba } from '../shared/hex-to-rgba.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
+import type { AppleProduct } from '../../domain/settings/apple-purchases.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
@@ -36,7 +37,7 @@ export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
 
 const mascotGold = require('../../../assets/mascot-gold.png')
 
-const PAYWALL_BENEFITS = () => [t('settings.receipt_and_fridge_scanning'), t('settings.unlimited_generated_recipes'), t('settings.shared_with_the_entire_household')]
+const PAYWALL_BENEFITS = () => [t('settings.receipt_and_fridge_scanning'), t('settings.generated_recipes'), t('settings.shared_with_the_entire_household')]
 
 const MASCOT_GUTTER = 96
 
@@ -84,6 +85,8 @@ export function SubscriptionActiveCard({
   until,
   cancelled,
   onManage,
+  managedByApple = false,
+  managementNotice,
   pending,
   error,
 }: {
@@ -91,7 +94,9 @@ export function SubscriptionActiveCard({
   until?: string | null
   /** Cancelled in Stripe: access holds until `until`, no renewal. */
   cancelled?: boolean
-  onManage: () => void
+  onManage?: () => void
+  managedByApple?: boolean
+  managementNotice?: string
   pending?: boolean
   error?: string | null
 }) {
@@ -138,7 +143,8 @@ export function SubscriptionActiveCard({
         </YStack>
 
         <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.only_the_subscriber_can_change_or_cancel_the_subscription')}</Text>
-        <Pressable
+        {managementNotice ? <Text color={palette.onDarkSecondary} fontSize={13}>{managementNotice}</Text> : null}
+        {onManage ? <Pressable
           onPress={onManage}
           disabled={pending}
           testID="subscription-manage"
@@ -147,10 +153,10 @@ export function SubscriptionActiveCard({
         >
           <XStack backgroundColor={palette.cream} borderRadius={999} alignItems="center" justifyContent="center" minHeight={52}>
             <Text fontSize={16} fontWeight="900" color={palette.ink}>
-              {pending ? t('settings.one_moment') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
+              {pending ? t('settings.one_moment') : managedByApple ? t('settings.apple_manage') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
             </Text>
           </XStack>
-        </Pressable>
+        </Pressable> : null}
         {error ? (
           <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
             {error}
@@ -172,12 +178,22 @@ export function SubscriptionActiveCard({
 export function SubscriptionPaywall({
   palette,
   onSubscribe,
+  storeKit = false,
+  product,
+  onRestore,
+  onRetry,
+  notice,
   pending,
   reason,
   error,
 }: {
   palette: SoftPalette
   onSubscribe: () => void
+  storeKit?: boolean
+  product?: AppleProduct | null
+  onRestore?: () => void
+  onRetry?: () => void
+  notice?: string | null
   pending?: boolean
   reason?: string
   error?: string | null
@@ -203,12 +219,12 @@ export function SubscriptionPaywall({
               </Text>
             </XStack>
           ) : null}
-          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{t('settings.garde_manger_subscription')}</Text>
+          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{storeKit && product ? product.title : t('settings.garde_manger_subscription')}</Text>
         </YStack>
 
         <XStack alignItems="flex-end" gap="$2.5">
-          <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
-            0,99€
+          <Text fontSize={storeKit ? product ? 48 : 22 : 64} fontWeight="900" lineHeight={storeKit ? 56 : 64} letterSpacing={-2} color={palette.onDark}>
+            {storeKit ? product?.displayPrice ?? t('settings.apple_loading_price') : '0,99€'}
           </Text>
           <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
         </XStack>
@@ -228,10 +244,10 @@ export function SubscriptionPaywall({
 
         <Pressable
           onPress={onSubscribe}
-          disabled={pending}
+          disabled={pending || (storeKit && !product)}
           testID="subscription-paywall-cta"
           accessibilityRole="button"
-          accessibilityLabel={t('settings.subscribe_for_0_99_per_month')}
+          accessibilityLabel={storeKit ? t('settings.apple_subscribe_price', { price: product?.displayPrice ?? '…' }) : t('settings.subscribe_for_0_99_per_month')}
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack
@@ -253,6 +269,24 @@ export function SubscriptionPaywall({
             {error}
           </Text>
         ) : null}
+        {notice ? <Text color={palette.onDarkSecondary} accessibilityLiveRegion="polite">{notice}</Text> : null}
+        {storeKit ? (
+          <YStack gap="$2">
+            <Text fontSize={12} color={palette.onDarkSecondary}>{t('settings.apple_auto_renewal')}</Text>
+            <Pressable testID="subscription-restore" accessibilityRole="button" disabled={pending} onPress={onRestore} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.apple_restore')}</Text>
+            </Pressable>
+            {error ? <Pressable testID="subscription-store-retry" accessibilityRole="button" onPress={onRetry} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <Text color={palette.onDark}>{t('dashboard.try_again')}</Text>
+            </Pressable> : null}
+            <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/cgu')} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.terms_of_use')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/privacy')} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.privacy')}</Text>
+            </Pressable>
+          </YStack>
+        ) : <>
         <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
         <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
           {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
@@ -265,6 +299,7 @@ export function SubscriptionPaywall({
             onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
           >{t('settings.view_terms_of_sale')}</Text>
         </Text>
+        </>}
       </YStack>
     </DarkSurface>
   )
@@ -272,9 +307,10 @@ export function SubscriptionPaywall({
 
 /** Paywall wired to the purchase flow — drop it wherever an AI call just hit the free quota. Renders nothing off the free plan. */
 export function ConnectedPaywall({ palette, reason }: { palette: SoftPalette; reason?: string }) {
-  const { canSubscribe, subscribe, pending, error } = useAiSubscribe()
+  const subscription = useAiSubscribe()
+  const { canSubscribe, subscribe, pending, error } = subscription
   if (!canSubscribe) return null
-  return <SubscriptionPaywall palette={palette} onSubscribe={subscribe} pending={pending} reason={reason} error={error} />
+  return <SubscriptionPaywall palette={palette} onSubscribe={subscribe} pending={pending} reason={reason} error={error} storeKit={subscription.storeKit} product={subscription.product} onRestore={subscription.restore} onRetry={subscription.retryStore} notice={subscription.notice} />
 }
 
 /** Share of the free quota from which the hint starts pointing at the subscription. */
@@ -284,8 +320,8 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
   const { t } = useTranslation()
   if (access.limit === null) return null
   const ratio = Math.min(access.used / access.limit, 1)
-  // Without billing (iOS) the plan is never named: a free tier implies a paid one.
-  const label = !platformCapabilities.billing ? t('settings.household_ai') : access.plan === 'free' ? t('settings.free_plan') : t('settings.subscription')
+  // Plans are offered through StoreKit on iOS and Stripe elsewhere.
+  const label = !(platformCapabilities.billing || platformCapabilities.storeKit) ? t('settings.household_ai') : access.plan === 'free' ? t('settings.free_plan') : t('settings.subscription')
   const spent = ratio >= 1
   return (
     <YStack testID="ai-quota-hint" gap="$1.5" marginTop="$2">
@@ -313,7 +349,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
           backgroundColor={spent ? palette.expiredText : palette.mintPaleText}
         />
       </YStack>
-      {showCta && platformCapabilities.billing && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
+      {showCta && (platformCapabilities.billing || platformCapabilities.storeKit) && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
         <Pressable
           testID="ai-quota-subscribe"
           onPress={() => router.push('/subscription')}

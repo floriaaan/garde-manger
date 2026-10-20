@@ -1070,6 +1070,14 @@ export class FakeFridgeConnector implements FridgeConnector {
     return Result.ok(this.aiSettings)
   }
 
+  async getAppleSubscription() {
+    return Result.ok({ productId: 'com.floriaaan.gardemanger.ai.monthly', appAccountToken: '00000000-0000-4000-8000-000000000001', canPurchase: true })
+  }
+
+  async syncAppleSubscription(_signedTransaction: string): Promise<Result<{ active: boolean }, ApiError>> {
+    return Result.err({ type: 'billing_unavailable', message: 'Les achats Apple nécessitent le serveur officiel.' })
+  }
+
   async startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>> {
     await this.pretendNetworkLatency()
     return Result.ok({ url: 'https://checkout.stripe.com/fake' })

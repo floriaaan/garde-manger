@@ -63,7 +63,10 @@ export default defineConfig({
    * header), not the assembler's build pipeline — it only needs to be copied
    * next to `bin/server.js`, where `--import ./instrumentation.ts` expects it.
    */
-  metaFiles: [{ pattern: 'instrumentation.ts', reloadServer: false }],
+  metaFiles: [
+    { pattern: 'instrumentation.ts', reloadServer: false },
+    { pattern: 'resources/apple/*.cer', reloadServer: false },
+  ],
 
   hooks: {
     init: [

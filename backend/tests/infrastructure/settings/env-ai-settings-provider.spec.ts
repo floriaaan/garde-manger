@@ -78,32 +78,4 @@ test.group('EnvAiSettingsProvider — AI_QUOTA_EXEMPT_HOUSEHOLD_IDS', (group) =>
       new AiQuotaExceededError(5).message,
     )
   })
-  test('iOS ignores a paid subscription and quota exemptions, including for workers', async ({ assert }) => {
-    const paid = {
-      ...neverSubscribed,
-      hasActiveSubscription: async () => true,
-      find: async () => ({ expiresAt: new Date('2027-01-01'), cancelAtPeriodEnd: false }),
-    } as unknown as SubscriptionPort
-    const settings = new EnvAiSettingsProvider(noStoredSettings, paid, heavyUsage, clock)
-    const ios = await settings.resolveEffective('h_review', false)
-    assert.equal(ios.access.plan, 'free')
-    assert.equal(ios.access.limit, 5)
-    assert.isNull(ios.access.expiresAt)
-    assert.isFalse(ios.access.cancelsAtPeriodEnd)
-    await assert.rejects(
-      () => resolveReceiptExtractionAdapter(settings, heavyUsage, clock, 'h_review', false, false),
-      new AiQuotaExceededError(5).message,
-    )
-    const web = await settings.resolveEffective('h_review')
-    assert.equal(web.access.plan, 'subscriber')
-    assert.isNull(web.access.limit)
-  })
-
-  test('self-hosted iOS access stays unlimited', async ({ assert }) => {
-    env.set('INSTANCE_MODE', 'self-hosted')
-    const { access } = await provider().resolveEffective('h_review', false)
-    assert.equal(access.plan, 'self-hosted')
-    assert.isNull(access.limit)
-  })
-
 })

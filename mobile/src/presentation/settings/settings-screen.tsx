@@ -207,7 +207,7 @@ export function SettingsScreen() {
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
         />
-        {!platformCapabilities.billing || plan === 'self-hosted' ? null : (
+        {!(platformCapabilities.billing || platformCapabilities.storeKit) || plan === 'self-hosted' ? null : (
           <IdentityCard
             testID="settings-subscription"
             bg={palette.butter}

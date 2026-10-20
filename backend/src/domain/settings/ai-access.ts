@@ -8,6 +8,7 @@
  */
 export interface AiAccess {
   plan: 'self-hosted' | 'free' | 'subscriber'
+  subscriptionProvider?: 'stripe' | 'apple'
   /** Calls used this calendar month. `0` on self-hosted (never read). */
   used: number
   /** `null` on self-hosted — usage is never capped. */

@@ -12,7 +12,7 @@ import { AuthMethodFooter } from './auth-method-footer.js'
 import { AccountScreen } from './account-screen.js'
 import type { PlatformCapabilities } from '../../domain/shared/platform-capabilities.js'
 
-const mockCapabilities: PlatformCapabilities = { billing: true, googleSignIn: true }
+const mockCapabilities: PlatformCapabilities = { billing: true, storeKit: false, googleSignIn: true }
 // A getter: the factory runs during the imports above, before `mockCapabilities` is initialised.
 jest.mock('../../application/shared/platform-capabilities.js', () => ({
   get platformCapabilities() {

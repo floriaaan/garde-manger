@@ -20,3 +20,9 @@ router.get('/api/settings/subscription/return', ({ response }) =>
  * `STRIPE_WEBHOOK_SECRET` (cf. the controller).
  */
 router.post('/api/webhooks/stripe', [StripeWebhookController, 'handle'])
+
+const AppleSubscriptionController = () => import('./apple-subscription.controller.js')
+router.get('/api/settings/subscription/apple', [AppleSubscriptionController, 'show'])
+router.post('/api/settings/subscription/apple', [AppleSubscriptionController, 'sync'])
+// Public, authenticated by Apple's certificate chain and signed payload, never a client header.
+router.post('/api/webhooks/apple', [AppleSubscriptionController, 'notification'])

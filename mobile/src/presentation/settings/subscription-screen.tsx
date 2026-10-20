@@ -3,7 +3,7 @@ import { useTranslation } from '../../i18n/index.js'
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
- * iOS exposes usage only; purchase prompts are disabled until StoreKit is available.
+ * iOS buys through StoreKit; Android and web keep Stripe.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -61,6 +61,11 @@ export function SubscriptionScreen() {
           <SubscriptionPaywall
             palette={palette}
             onSubscribe={subscription.subscribe}
+            storeKit={subscription.storeKit}
+            product={subscription.product}
+            onRestore={subscription.restore}
+            onRetry={subscription.retryStore}
+            notice={subscription.notice}
             pending={subscription.pending}
             error={subscription.error}
           />
@@ -72,9 +77,20 @@ export function SubscriptionScreen() {
             until={access.expiresAt}
             cancelled={access.cancelsAtPeriodEnd}
             onManage={subscription.manage}
+            managedByApple={access.subscriptionProvider === 'apple'}
+            managementNotice={!subscription.manage ? t(access.subscriptionProvider === 'apple' ? 'settings.apple_managed_elsewhere' : 'settings.subscription_managed_elsewhere') : undefined}
             pending={subscription.pending}
             error={subscription.error}
           />
+        ) : null}
+
+        {subscription.storeKit && access?.plan === 'subscriber' ? (
+          <YStack gap="$2">
+            <Pressable testID="subscription-restore" accessibilityRole="button" disabled={subscription.pending} onPress={subscription.restore} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <Text color={palette.ink} textDecorationLine="underline">{t('settings.apple_restore')}</Text>
+            </Pressable>
+            {subscription.notice ? <Text color={palette.inkSecondary} accessibilityLiveRegion="polite">{subscription.notice}</Text> : null}
+          </YStack>
         ) : null}
 
         {access && access.plan !== 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}

@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "expo-iap": "6.1.1",
     "@better-auth/expo": "^1.7.1",
     "@better-auth/passkey": "^1.7.5",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",

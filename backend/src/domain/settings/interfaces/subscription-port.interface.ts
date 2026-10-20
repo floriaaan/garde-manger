@@ -1,4 +1,5 @@
 export interface HouseholdSubscription {
+  provider?: 'stripe' | 'apple'
   payerUserId: string | null
   /** `null` on a row that predates Stripe (docs/adr/0015). */
   stripeCustomerId: string | null

@@ -6,6 +6,7 @@ export type AiPlan = 'self-hosted' | 'free' | 'subscriber'
 
 export interface AiAccess {
   plan: AiPlan
+  subscriptionProvider?: 'stripe' | 'apple'
   used: number
   limit: number | null
   resetsAt: string | null

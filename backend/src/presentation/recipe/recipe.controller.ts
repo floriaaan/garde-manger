@@ -67,7 +67,7 @@ export default class RecipeController {
         const resolveGeneration = await ctx.containerResolver.make(
           'settings.resolveRecipeGenerationPort',
         )
-        const generation = await resolveGeneration(ctx.household.id, false, ctx.request.header('x-client-platform') !== 'ios')
+        const generation = await resolveGeneration(ctx.household.id)
 
         const result = await new SuggestRecipes(products, generation).execute({
           householdId: ctx.household.id,

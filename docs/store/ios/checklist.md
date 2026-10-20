@@ -27,9 +27,10 @@ Reste la liste ci-dessous, dans l'ordre.
       réseau local sur iOS ; `README.fr.md` (section HTTPS) explique la limite et
       renvoie au reverse proxy déjà documenté juste au-dessus.
 - [ ] **Blocages du rejet du 19 octobre 2026 (#109, #110, #111).**
-      Pré-dialogue caméra retiré sur iOS ; achat externe et quota payant désactivés ;
+      Pré-dialogue caméra retiré sur iOS ; achat natif StoreKit et restauration ajoutés ;
       lien de suppression authentifié et confirmation explicite ajoutés.
-      Déployer d’abord le backend. Les tests physiques, la vidéo de suppression et
+      Déployer d’abord la migration et le backend, configurer le produit App Store
+      selon [StoreKit](storekit.md). Les tests physiques, la vidéo de suppression et
       les notes App Review restent à renseigner selon
       [le protocole de resoumission](../../app-store-resubmission.md).
 - [x] **Passage sur iPad** : l'app est proposée sur iPad, avec la barre latérale au lieu

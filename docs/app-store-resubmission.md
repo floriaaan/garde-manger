@@ -9,8 +9,8 @@ les issues sur la seule base de la revue du code.
 Déployer le backend de la PR avant la build iOS. Installer cette build sur un
 iPhone et un iPad physiques, avec un compte jetable sans données personnelles.
 Noter version/build, version du backend, modèle, OS, vitrine du compte Apple et
-date. Ne pas utiliser une exemption de quota pour le compte de revue : iOS
-utilise le quota gratuit pour tous les foyers de l’instance officielle.
+date. Configurer StoreKit selon [le guide](store/ios/storekit.md) et utiliser un
+compte sandbox/TestFlight pour les scénarios d’achat.
 
 ## #109 — Permission caméra (5.1.1(iv))
 
@@ -28,26 +28,27 @@ utilise le quota gratuit pour tous les foyers de l’instance officielle.
 
 ## #110 — Achats numériques (3.1.1)
 
-Politique identique pour toutes les vitrines prises en charge : aucun achat
-ni avantage de quota payant sur iOS, aucun lien externe de souscription.
-Aucune exception régionale n’est invoquée. Référence et décision : ADR-0019.
+Le parcours iOS utilise le dialogue d’achat natif Apple. Android et le web
+conservent Stripe. Les droits du foyer sont utilisables sur les trois plateformes.
+Le produit intégré doit être disponible dans chaque vitrine distribuée ; aucune
+exception de paiement externe n’est invoquée.
 
-Sur chaque vitrine proposée dans App Store Connect (au minimum France/UE,
-États-Unis et une vitrine hors UE/US si distribuée), vérifier avec un foyer
-gratuit puis un foyer disposant déjà d’un abonnement Stripe :
+Avant resoumission, sur iPhone/iPad physiques et pour chaque vitrine distribuée :
 
-- Réglages : pas d’entrée Abonnement. Ouvrir `gardemanger://subscription` :
-  usage IA uniquement, aucun prix, offre, lien web ou action de paiement.
-- Quota atteint : scans ticket/frigo, génération, suggestions et reprise d’une
-  tâche restent refusés au quota gratuit ; aucune incitation à acheter.
-- Une souscription réalisée sur le web n’augmente pas le quota iOS.
-- Les endpoints checkout et portal appelés avec `x-client-platform: ios`
-  répondent `billing_unavailable` ; aucun navigateur de paiement ne s’ouvre.
-- Web/Android : les parcours Stripe restent disponibles. Sur serveur
-  auto-hébergé : l’IA reste illimitée sans carte d’achat.
+- Réglages > Abonnement : nom, prix localisé et périodicité App Store ; aucun
+  bouton Stripe ou renvoi web de souscription dans iOS.
+- Achat : dialogue Apple, confirmation serveur puis quota abonné du foyer.
+- Restauration : même compte Garde-manger après réinstallation / autre appareil ;
+  aucun droit pour un autre compte, un reçu falsifié ou un abonnement remboursé.
+- Annulation du dialogue, approbation différée, coupure réseau, fermeture après
+  paiement : aucune activation prématurée, transaction récupérable au retour.
+- Gestion native, renouvellement sandbox, résiliation, expiration, grâce et
+  remboursement ; aucun événement ancien ne réactive un abonnement révoqué.
+- Abonnement Stripe déjà actif : accès maintenu sur iOS sans deuxième achat.
+  Abonnement Apple déjà actif : accès sur Android/web sans deuxième checkout.
+- Vérifier Stripe sur Android/web et l’IA illimitée sur serveur auto-hébergé.
 
-Les usages sont comptés par foyer, toutes plateformes confondues : des appels
-web peuvent donc aussi épuiser le quota gratuit disponible sur iOS.
+Compléter les preuves et les notifications de test selon le guide StoreKit.
 
 ## #111 — Suppression et vidéo (5.1.1(v))
 
@@ -77,7 +78,7 @@ n’a pas été réalisé. Ne pas enregistrer de mot de passe ou de compte de pr
 | Issue / scénario | Appareil / OS | Build / backend | Vitrine | Date / résultat | Preuve |
 | --- | --- | --- | --- | --- | --- |
 | #109 autoriser / refuser / restreint / réglages | À renseigner | À renseigner | À renseigner | Non exécuté | À joindre |
-| #110 gratuit / abonné / quota / reprise | À renseigner | À renseigner | Chaque vitrine ciblée | Non exécuté | À joindre |
+| #110 achat / restauration / renouvellement / remboursement | À renseigner | À renseigner | Chaque vitrine ciblée | Non exécuté | À joindre |
 | #111 connexion / suppression / confirmation | iPhone + iPad | À renseigner | À renseigner | Non exécuté | Vidéo à joindre |
 
 ## Proposition de note App Review (à compléter après validation)
@@ -85,10 +86,13 @@ n’a pas été réalisé. Ne pas enregistrer de mot de passe ou de compte de pr
 Camera: Opening a scanner requests the native iOS camera permission directly.
 After denial, users can open Settings or use the available manual/import path.
 
-Purchases: This iOS build offers no paid digital unlocks or external purchase
-prompts in any storefront. Hosted AI uses the same free quota on iOS for all
-households, including households with a web subscription. No regional external
-purchase entitlement is used.
+Purchases: iOS subscriptions use Apple's native StoreKit purchase dialog, with
+App Store localized pricing, Restore purchases, and native subscription management.
+The server verifies Apple transactions and current subscription status before
+unlocking the household subscription. Android and web use Stripe. Existing
+subscriptions remain usable across platforms, without offering a second purchase.
+No external purchase links are used in iOS.
+App Store product ID: [REQUIRED — insert the configured, reviewable monthly product].
 
 Account deletion: Sign in, then open Settings > Account > Delete my account.
 Confirm deletion (password required for email/password accounts). A success

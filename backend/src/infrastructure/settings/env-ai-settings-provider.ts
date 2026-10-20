@@ -40,7 +40,7 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
     private readonly clock: Clock,
   ) {}
 
-  async resolveEffective(householdId: string | null, allowPaidAccess = true): Promise<EffectiveAiSettings> {
+  async resolveEffective(householdId: string | null): Promise<EffectiveAiSettings> {
     const allowed = parseAllowedProviders(env.get('AI_PROVIDER', ''))
     const availableProviders = allowed.filter((provider) => this.hasCredentials(provider))
     const hosted = env.get('INSTANCE_MODE', 'self-hosted') === 'hosted'
@@ -54,11 +54,11 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
       availableProviders,
       canChooseProvider: !hosted,
       models: this.modelsFor(activeProvider),
-      access: await this.resolveAccess(householdId, hosted, allowPaidAccess),
+      access: await this.resolveAccess(householdId, hosted),
     }
   }
 
-  private async resolveAccess(householdId: string | null, hosted: boolean, allowPaidAccess: boolean): Promise<AiAccess> {
+  private async resolveAccess(householdId: string | null, hosted: boolean): Promise<AiAccess> {
     if (!hosted) {
       return {
         plan: 'self-hosted',
@@ -71,9 +71,9 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
     }
 
     const now = this.clock.now()
-    const subscribed = allowPaidAccess && (await this.subscriptions.hasActiveSubscription(householdId))
+    const subscribed = await this.subscriptions.hasActiveSubscription(householdId)
     const plan = subscribed ? 'subscriber' : 'free'
-    const limit = allowPaidAccess && this.isQuotaExempt(householdId)
+    const limit = this.isQuotaExempt(householdId)
       ? null
       : subscribed
         ? env.get('AI_QUOTA_SUBSCRIBED', 150)
@@ -93,6 +93,7 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
       resetsAt,
       expiresAt: subscription?.expiresAt ?? null,
       cancelsAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
+      subscriptionProvider: subscription?.provider,
     }
   }
 
