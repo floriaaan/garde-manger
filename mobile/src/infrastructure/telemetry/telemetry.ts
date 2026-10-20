@@ -1,5 +1,5 @@
 import { diagnosticAttributes, errorCode, errorStatus, failureLevel, LOG_SIGNAL_ATTRIBUTES, safeAttribute, safeOperation } from '../../domain/shared/log-diagnostic.js'
-import { AppState, type AppStateStatus } from 'react-native'
+import { AppState, Platform, type AppStateStatus } from 'react-native'
 import { newSpanId, newTraceId, toTraceparent } from './ids.js'
 import { buildResource, intAttribute, stringAttribute, type OtlpAttribute } from './resource.js'
 
@@ -34,6 +34,7 @@ type AttributeValue = string | number | boolean | undefined | null
 export interface SpanHandle {
   readonly traceId: string
   readonly spanId: string
+  readonly context?: Record<string, AttributeValue>
   /** Inject as the `traceparent` request header to continue this trace server-side. */
   readonly traceparent: string
   end(outcome?: { attributes?: Record<string, AttributeValue>; error?: unknown }): void
@@ -78,6 +79,16 @@ function nanos(milliseconds: number): string {
 }
 
 class MobileTelemetry {
+  private contextProvider: () => Record<string, AttributeValue> = () => ({})
+
+  configureContext(provider: () => Record<string, AttributeValue>): void {
+    this.contextProvider = provider
+  }
+
+  captureContext(): Record<string, AttributeValue> {
+    try { return this.contextProvider() } catch { return {} }
+  }
+
   private endpoint: string | null = null
   private sampleRatio = 1
   private started = false
@@ -138,6 +149,7 @@ class MobileTelemetry {
   startClientSpan(name: string, attributes?: Record<string, AttributeValue>): SpanHandle | null {
     if (this.stopped || !this.endpoint) return null
 
+    const capturedContext = { ...this.captureContext(), ...attributes }
     const traceId = newTraceId()
     const spanId = newSpanId()
     const sampled = Math.random() < this.sampleRatio
@@ -146,6 +158,7 @@ class MobileTelemetry {
     return {
       traceId,
       spanId,
+      context: capturedContext,
       traceparent: toTraceparent(traceId, spanId, sampled),
       end: (outcome) => {
         if (!sampled) return
@@ -158,7 +171,7 @@ class MobileTelemetry {
             startTimeUnixNano: nanos(startedAt),
             endTimeUnixNano: nanos(Date.now()),
             attributes: toAttributes({
-              ...attributes, ...outcome?.attributes,
+              ...capturedContext, ...outcome?.attributes,
               ...(failed ? { 'error.code': errorCode(outcome?.error), ...diagnosticAttributes(outcome?.error) } : {}),
             }),
             status: failed ? { code: 2 } : undefined,
@@ -175,22 +188,24 @@ class MobileTelemetry {
     operation: string,
     outcome: 'started' | 'completed' | 'success',
     options?: {
-      span?: Pick<SpanHandle, 'traceId' | 'spanId'>
+      span?: Pick<SpanHandle, 'traceId' | 'spanId' | 'context'>
       attributes?: Record<string, AttributeValue>
     },
   ): void {
     try {
-      this.enqueueLog({
+      const log: QueuedLog = {
         timeUnixNano: nanos(Date.now()),
         severityText: 'INFO',
         severityNumber: 9,
         body: { stringValue: 'client event' },
         attributes: toAttributes({
-          ...options?.attributes, 'app.operation': operation, 'event.outcome': outcome,
+          ...this.captureContext(), ...options?.span?.context, ...options?.attributes, 'app.operation': operation, 'event.outcome': outcome,
         }),
         traceId: options?.span?.traceId,
         spanId: options?.span?.spanId,
-      })
+      }
+      this.writeLocal(log)
+      this.enqueueLog(log)
     } catch {
       // Telemetry must never surface in application code.
     }
@@ -205,13 +220,13 @@ class MobileTelemetry {
     _message: string,
     options?: {
       error?: unknown
-      span?: Pick<SpanHandle, 'traceId' | 'spanId'>
+      span?: Pick<SpanHandle, 'traceId' | 'spanId' | 'context'>
       attributes?: Record<string, AttributeValue>
       level?: 'info' | 'warn' | 'error'
     },
   ): void {
     try {
-      const attributes = options?.attributes
+      const attributes = { ...this.captureContext(), ...options?.span?.context, ...options?.attributes }
       const code = errorCode(
         typeof options?.error === 'string' ? undefined : options?.error,
         errorCode({ code: attributes?.['error.code'] ?? attributes?.['error.type'] }),
@@ -237,20 +252,25 @@ class MobileTelemetry {
         traceId: options?.span?.traceId,
         spanId: options?.span?.spanId,
       }
-      // A safe local diagnostic remains available when OTLP is disabled.
-      if (level === 'error') {
-        const flatten = (items: OtlpAttribute[]) => Object.fromEntries(
-          items.map(({ key, value }) => [key, Object.values(value)[0]]),
-        )
-        console.error('operation failed', {
-          ...flatten(buildResource().attributes), ...flatten(log.attributes),
-          trace_id: log.traceId, span_id: log.spanId,
-        })
-      }
+      this.writeLocal(log)
       this.enqueueLog(log)
     } catch {
       // Same contract as above.
     }
+  }
+
+  /** Local structured logs remain available even when remote export is disabled. */
+  private writeLocal(log: QueuedLog): void {
+    const flatten = (items: OtlpAttribute[]) => Object.fromEntries(
+      items.map(({ key, value }) => [key, Object.values(value)[0]]),
+    )
+    const level = log.severityText === 'ERROR' ? 'error' : log.severityText === 'WARN' ? 'warn' : 'info'
+    try {
+      console[level](log.body.stringValue, {
+        ...flatten(buildResource().attributes), ...flatten(log.attributes),
+        trace_id: log.traceId, span_id: log.spanId,
+      })
+    } catch { /* A broken local sink must not prevent remote export. */ }
   }
 
   private enqueueSpan(span: QueuedSpan): void {
@@ -267,7 +287,7 @@ class MobileTelemetry {
     if (this.stopped) return
     if (log.severityText === 'INFO' && log.body.stringValue === 'operation failed') {
       const signature = (entry: QueuedLog) => JSON.stringify(
-        ['app.operation', 'error.code', 'http.response.status_code', 'entity.id'].map(
+        ['app.operation', 'error.code', 'http.response.status_code', 'entity.id', 'userId', 'householdId', 'request_id'].map(
           (key) => entry.attributes.find((attribute) => attribute.key === key)?.value,
         ),
       )
@@ -354,7 +374,7 @@ class MobileTelemetry {
       const response = await fetch(`${this.endpoint}/${signal}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-client-platform': Platform.OS },
         body: JSON.stringify(payload),
         signal: controller.signal,
       })

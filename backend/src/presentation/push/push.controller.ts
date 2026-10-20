@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { traceAction } from '#presentation/shared/trace-action'
@@ -60,8 +61,8 @@ export default class PushController {
         .status(503)
         .json({ type: 'push_unavailable', message: 'Push Web non configuré.' })
     }
-    const tokens = await ctx.containerResolver.make('push.tokens')
-    const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
+    const tokens = await resolveBinding(ctx, 'push.tokens')
+    const idGenerator = await resolveBinding(ctx, 'shared.idGenerator')
     await tokens.upsertWeb({ id: idGenerator.next(), userId: user.id, ...payload })
     return ctx.response.status(204).send('')
   }
@@ -69,7 +70,7 @@ export default class PushController {
   async unregisterWeb(ctx: HttpContext) {
     const user = requireAuthenticatedUser(ctx)
     const { endpoint } = await ctx.request.validateUsing(unregisterWebPushValidator)
-    const tokens = await ctx.containerResolver.make('push.tokens')
+    const tokens = await resolveBinding(ctx, 'push.tokens')
     await tokens.deleteForUser(user.id, endpoint)
     return ctx.response.status(204).send('')
   }
@@ -82,11 +83,8 @@ export default class PushController {
       RegisterPushToken,
       async () => {
         const payload = await ctx.request.validateUsing(registerPushTokenValidator)
-        const [tokens, idGenerator] = await Promise.all([
-          ctx.containerResolver.make('push.tokens'),
-          ctx.containerResolver.make('shared.idGenerator'),
-        ])
-        await new RegisterPushToken(tokens, idGenerator).execute({ userId: user.id, ...payload })
+        const registerPushToken = await resolveBinding(ctx, 'push.registerPushToken')
+        await registerPushToken.execute({ userId: user.id, ...payload })
         ctx.response.status(204).send('')
       },
       { action: 'push.register' },
@@ -101,8 +99,8 @@ export default class PushController {
       UnregisterPushToken,
       async () => {
         const payload = await ctx.request.validateUsing(unregisterPushTokenValidator)
-        const tokens = await ctx.containerResolver.make('push.tokens')
-        await new UnregisterPushToken(tokens).execute({ userId: user.id, token: payload.token })
+        const unregisterPushToken = await resolveBinding(ctx, 'push.unregisterPushToken')
+        await unregisterPushToken.execute({ userId: user.id, token: payload.token })
         ctx.response.status(204).send('')
       },
       { action: 'push.unregister' },

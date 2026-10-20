@@ -29,7 +29,7 @@ export function useConnectivity(includeSimulation = true): boolean | undefined {
         const state = await getNetworkStateAsync()
         if (active && request === revision) update(state)
       } catch (error) {
-        if (active) getTelemetry().recordError('network state read failed', { error })
+        if (active) getTelemetry().recordError('network state read failed', { error, attributes: { 'app.operation': 'network.read_state' } })
       }
     }
     const network = addNetworkStateListener((state) => {

@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import { traceAction } from '#presentation/shared/trace-action'
 import router from '@adonisjs/core/services/router'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -48,13 +49,16 @@ router.get('/api/auth/methods', [AuthMethodsController, 'index'])
 router.get('/api/session', [SessionController, 'show'])
 
 router.any('/api/auth/*', async (ctx: HttpContext) => {
-  const authHandler = await ctx.containerResolver.make('identity.authHandler')
+  const authHandler = await resolveBinding(ctx, 'identity.authHandler')
   const execute = async () => {
     const response = await authHandler(await toFetchRequest(ctx))
     let error: unknown
     if (!response.ok && ctx.request.url().split('?')[0] === '/api/auth/get-session') {
       try {
-        const body = await response.clone().json()
+        const body = (await response.clone().json()) as {
+          code?: unknown
+          error?: { type?: unknown }
+        }
         error = { code: body.code ?? body.error?.type, status: response.status }
       } catch {
         /* Non-JSON failures retain the stable HTTP status fallback. */

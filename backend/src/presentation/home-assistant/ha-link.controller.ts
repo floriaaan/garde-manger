@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -23,8 +24,8 @@ export default class HaLinkController {
       'home_assistant',
       GetHomeAssistantLink,
       async () => {
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const result = await new GetHomeAssistantLink(links).execute({
+        const getHomeAssistantLink = await resolveBinding(ctx, 'homeAssistant.getHomeAssistantLink')
+        const result = await getHomeAssistantLink.execute({
           householdId: ctx.household.id,
         })
         if (!result.ok) {
@@ -47,21 +48,12 @@ export default class HaLinkController {
       SaveHomeAssistantConnection,
       async () => {
         const payload = await ctx.request.validateUsing(saveHomeAssistantConnectionValidator)
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const client = await ctx.containerResolver.make('homeAssistant.client')
-        const hostPolicy = await ctx.containerResolver.make('homeAssistant.hostPolicy')
-        const households = await ctx.containerResolver.make('identity.households')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new SaveHomeAssistantConnection(
-          links,
-          client,
-          hostPolicy,
-          households,
-          idGenerator,
-          clock,
-        ).execute({
+        const saveHomeAssistantConnection = await resolveBinding(
+          ctx,
+          'homeAssistant.saveHomeAssistantConnection',
+        )
+        const result = await saveHomeAssistantConnection.execute({
           userId: user.id,
           householdId: ctx.household.id,
           instanceUrl: payload.instanceUrl,
@@ -87,17 +79,9 @@ export default class HaLinkController {
       DiscoverTodoEntities,
       async () => {
         const payload = await ctx.request.validateUsing(discoverTodoEntitiesValidator)
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const client = await ctx.containerResolver.make('homeAssistant.client')
-        const hostPolicy = await ctx.containerResolver.make('homeAssistant.hostPolicy')
-        const households = await ctx.containerResolver.make('identity.households')
 
-        const result = await new DiscoverTodoEntities(
-          links,
-          client,
-          hostPolicy,
-          households,
-        ).execute({
+        const discoverTodoEntities = await resolveBinding(ctx, 'homeAssistant.discoverTodoEntities')
+        const result = await discoverTodoEntities.execute({
           userId: user.id,
           householdId: ctx.household.id,
           instanceUrl: payload.instanceUrl,
@@ -123,11 +107,12 @@ export default class HaLinkController {
       BindHomeAssistantList,
       async () => {
         const payload = await ctx.request.validateUsing(bindHomeAssistantListValidator)
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const households = await ctx.containerResolver.make('identity.households')
-        const clock = await ctx.containerResolver.make('shared.clock')
 
-        const result = await new BindHomeAssistantList(links, households, clock).execute({
+        const bindHomeAssistantList = await resolveBinding(
+          ctx,
+          'homeAssistant.bindHomeAssistantList',
+        )
+        const result = await bindHomeAssistantList.execute({
           userId: user.id,
           householdId: ctx.household.id,
           ...payload,
@@ -151,11 +136,8 @@ export default class HaLinkController {
       'home_assistant',
       UnlinkHomeAssistant,
       async () => {
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const items = await ctx.containerResolver.make('shoppingList.items')
-        const households = await ctx.containerResolver.make('identity.households')
-
-        const result = await new UnlinkHomeAssistant(links, items, households).execute({
+        const unlinkHomeAssistant = await resolveBinding(ctx, 'homeAssistant.unlinkHomeAssistant')
+        const result = await unlinkHomeAssistant.execute({
           userId: user.id,
           householdId: ctx.household.id,
         })
@@ -178,17 +160,10 @@ export default class HaLinkController {
       'home_assistant',
       SyncShoppingList,
       async () => {
-        const links = await ctx.containerResolver.make('homeAssistant.links')
-        const items = await ctx.containerResolver.make('shoppingList.items')
-        const client = await ctx.containerResolver.make('homeAssistant.client')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-
-        const result = await new SyncShoppingList(links, items, client, idGenerator, clock).execute(
-          {
-            householdId: ctx.household.id,
-          },
-        )
+        const syncShoppingList = await resolveBinding(ctx, 'homeAssistant.syncShoppingList')
+        const result = await syncShoppingList.execute({
+          householdId: ctx.household.id,
+        })
         if (!result.ok) {
           const { status, body } = serializeError(result.error)
           ctx.response.status(status).json(body)

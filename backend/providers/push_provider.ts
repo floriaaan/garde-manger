@@ -1,3 +1,5 @@
+import type { RegisterPushToken } from '#application/push/register-push-token.use-case'
+import type { UnregisterPushToken } from '#application/push/unregister-push-token.use-case'
 import type { ApplicationService } from '@adonisjs/core/types'
 import type { PushSender } from '#domain/push/interfaces/push-sender.interface'
 import type { PushTokenRepository } from '#domain/push/interfaces/push-token-repository.interface'
@@ -15,6 +17,20 @@ export default class PushProvider {
   constructor(protected app: ApplicationService) {}
 
   register() {
+    this.app.container.bind('push.registerPushToken', async (resolver) => {
+      const { RegisterPushToken } = await import('#application/push/register-push-token.use-case')
+      return new RegisterPushToken(
+        await resolver.make('push.tokens'),
+        await resolver.make('shared.idGenerator'),
+      )
+    })
+
+    this.app.container.bind('push.unregisterPushToken', async (resolver) => {
+      const { UnregisterPushToken } =
+        await import('#application/push/unregister-push-token.use-case')
+      return new UnregisterPushToken(await resolver.make('push.tokens'))
+    })
+
     this.app.container.singleton('push.reminderSettings', async () => {
       const { LucidReminderSettingsRepository } =
         await import('#infrastructure/database/push/reminder-settings.repository')
@@ -88,6 +104,8 @@ export default class PushProvider {
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
+    'push.registerPushToken': RegisterPushToken
+    'push.unregisterPushToken': UnregisterPushToken
     'push.tokens': PushTokenRepository
     'push.sender': PushSender
     'push.reminderSettings': ReminderSettingsRepository

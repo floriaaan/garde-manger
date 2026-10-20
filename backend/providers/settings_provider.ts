@@ -1,3 +1,10 @@
+import type { StartSubscriptionCheckout } from '#application/settings/start-subscription-checkout.use-case'
+import type { OpenBillingPortal } from '#application/settings/open-billing-portal.use-case'
+import type { HandleStripeWebhook } from '#application/settings/handle-stripe-webhook.use-case'
+import type { GetEffectiveAiSettings } from '#application/settings/get-effective-ai-settings.use-case'
+import type { SetActiveAiProvider } from '#application/settings/set-active-ai-provider.use-case'
+import type { RevokePayerSubscriptions } from '#application/settings/revoke-payer-subscriptions.use-case'
+import type { WebhookSignatureVerifier } from '#domain/settings/interfaces/webhook-signature-verifier.interface'
 import type { ApplicationService } from '@adonisjs/core/types'
 import type { AiProviderSettingsRepository } from '#domain/settings/interfaces/ai-provider-settings-repository.interface'
 import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings-provider.interface'
@@ -12,6 +19,71 @@ export default class SettingsProvider {
   constructor(protected app: ApplicationService) {}
 
   register() {
+    this.app.container.bind('settings.startSubscriptionCheckout', async (resolver) => {
+      const { StartSubscriptionCheckout } =
+        await import('#application/settings/start-subscription-checkout.use-case')
+      return new StartSubscriptionCheckout(
+        await resolver.make('settings.billing'),
+        await resolver.make('settings.subscriptions'),
+        await resolver.make('identity.households'),
+      )
+    })
+
+    this.app.container.bind('settings.openBillingPortal', async (resolver) => {
+      const { OpenBillingPortal } =
+        await import('#application/settings/open-billing-portal.use-case')
+      return new OpenBillingPortal(
+        await resolver.make('settings.billing'),
+        await resolver.make('settings.subscriptions'),
+        await resolver.make('identity.households'),
+      )
+    })
+
+    this.app.container.bind('settings.handleStripeWebhook', async (resolver) => {
+      const { HandleStripeWebhook } =
+        await import('#application/settings/handle-stripe-webhook.use-case')
+      return new HandleStripeWebhook(
+        await resolver.make('settings.subscriptions'),
+        await resolver.make('identity.households'),
+        await resolver.make('shared.clock'),
+      )
+    })
+
+    this.app.container.bind('settings.getEffectiveAiSettings', async (resolver) => {
+      const { GetEffectiveAiSettings } =
+        await import('#application/settings/get-effective-ai-settings.use-case')
+      return new GetEffectiveAiSettings(await resolver.make('settings.aiSettingsProvider'))
+    })
+
+    this.app.container.bind('settings.setActiveAiProvider', async (resolver) => {
+      const { SetActiveAiProvider } =
+        await import('#application/settings/set-active-ai-provider.use-case')
+      return new SetActiveAiProvider(
+        await resolver.make('settings.aiProviderSettingsRepository'),
+        await resolver.make('settings.aiSettingsProvider'),
+        await resolver.make('identity.households'),
+        await resolver.make('shared.idGenerator'),
+        await resolver.make('shared.clock'),
+      )
+    })
+
+    this.app.container.bind('settings.revokePayerSubscriptions', async (resolver) => {
+      const { RevokePayerSubscriptions } =
+        await import('#application/settings/revoke-payer-subscriptions.use-case')
+      return new RevokePayerSubscriptions(
+        await resolver.make('settings.subscriptions'),
+        await resolver.make('settings.billing'),
+        await resolver.make('shared.clock'),
+      )
+    })
+
+    this.app.container.bind('settings.stripeSignatureVerifier', async (resolver) => {
+      const { StripeSignatureVerifier } =
+        await import('#infrastructure/settings/stripe-signature-verifier')
+      const clock = await resolver.make('shared.clock')
+      return new StripeSignatureVerifier(clock)
+    })
+
     this.app.container.singleton('settings.aiProviderSettingsRepository', async () => {
       const { LucidAiProviderSettingsRepository } =
         await import('#infrastructure/database/settings/ai-provider-settings.repository')
@@ -86,6 +158,13 @@ export default class SettingsProvider {
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
+    'settings.startSubscriptionCheckout': StartSubscriptionCheckout
+    'settings.openBillingPortal': OpenBillingPortal
+    'settings.handleStripeWebhook': HandleStripeWebhook
+    'settings.getEffectiveAiSettings': GetEffectiveAiSettings
+    'settings.setActiveAiProvider': SetActiveAiProvider
+    'settings.revokePayerSubscriptions': RevokePayerSubscriptions
+    'settings.stripeSignatureVerifier': WebhookSignatureVerifier
     'settings.aiProviderSettingsRepository': AiProviderSettingsRepository
     'settings.aiSettingsProvider': AiSettingsProvider
     'settings.subscriptions': SubscriptionPort

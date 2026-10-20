@@ -41,7 +41,7 @@ export function AuthEntryScreen({ initialMode = 'sign-in', successHref = '/(tabs
 
   useEffect(() => {
     void markWelcomeSeen().catch((error) => {
-      getTelemetry().recordError('welcome flag write failed', { error })
+      getTelemetry().recordError('welcome flag write failed', { error, attributes: { 'app.operation': 'onboarding.persist_welcome' } })
     })
   }, [])
 

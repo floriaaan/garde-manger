@@ -124,7 +124,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       const { data, error } = await authClient.getSession({ fetchOptions: {
         signal: controller.signal,
         onResponse({ response }) { requestId = response.headers.get('x-request-id') ?? undefined },
-        ...(span ? { headers: { traceparent: span.traceparent } } : {}),
+        headers: { 'x-client-platform': Platform.OS, ...(span ? { traceparent: span.traceparent } : {}) },
       } })
       if (error && !controller.signal.aborted && errorStatus(error) === 401) {
         span?.end({ attributes: { request_id: requestId, 'event.outcome': 'session_invalid' } })
@@ -268,7 +268,7 @@ export class HttpFridgeConnector implements FridgeConnector {
         ...(android ? {
           errorCallbackURL: ANDROID_OAUTH_CALLBACK,
           fetchOptions: {
-            ...(span ? { headers: { traceparent: span.traceparent } } : {}),
+            headers: { 'x-client-platform': Platform.OS, ...(span ? { traceparent: span.traceparent } : {}) },
             onResponse({ response }: { response: Response }) {
               requestId = response.headers.get('x-request-id') ?? undefined
               progress('request', 'completed')

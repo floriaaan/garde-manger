@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
@@ -17,16 +18,27 @@ function billingConfigured(): boolean {
 /** Both endpoints answer `{ url }`: a Stripe-hosted page the mobile app opens in a browser (docs/adr/0015). */
 export default class SubscriptionController {
   checkout(ctx: HttpContext) {
-    return this.open(ctx, StartSubscriptionCheckout, 'settings.start_checkout')
+    return this.open(
+      ctx,
+      StartSubscriptionCheckout,
+      'settings.startSubscriptionCheckout',
+      'settings.start_checkout',
+    )
   }
 
   portal(ctx: HttpContext) {
-    return this.open(ctx, OpenBillingPortal, 'settings.open_billing_portal')
+    return this.open(
+      ctx,
+      OpenBillingPortal,
+      'settings.openBillingPortal',
+      'settings.open_billing_portal',
+    )
   }
 
   private async open(
     ctx: HttpContext,
     UseCase: typeof StartSubscriptionCheckout | typeof OpenBillingPortal,
+    binding: 'settings.startSubscriptionCheckout' | 'settings.openBillingPortal',
     action: string,
   ) {
     const user = requireAuthenticatedUser(ctx)
@@ -40,11 +52,8 @@ export default class SubscriptionController {
       'settings',
       UseCase,
       async () => {
-        const result = await new UseCase(
-          await ctx.containerResolver.make('settings.billing'),
-          await ctx.containerResolver.make('settings.subscriptions'),
-          await ctx.containerResolver.make('identity.households'),
-        ).execute({ userId: user.id })
+        const useCase = await resolveBinding(ctx, binding)
+        const result = await useCase.execute({ userId: user.id })
 
         if (!result.ok) {
           const { status, body } = serializeError(result.error)

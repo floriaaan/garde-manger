@@ -166,7 +166,7 @@ test('sync events export correlation and retry counters while errors redact thei
   telemetry.recordEvent('sync.shopping_items.retry_scheduled', 'completed', { attributes: {
     'sync.mutation_id': 1234, 'sync.attempt': 2, 'sync.retry_delay_ms': 2000,
     'entity.id': 'item-1', 'error.code': 'temporary_error',
-    patch: 'private-patch', server: 'https://private-server.example', userId: 'private-user',
+    patch: 'private-patch', server: 'https://private-server.example', userId: 'user-1',
   } })
   telemetry.recordError('storage failed', { error: new Error('token=private-token'), attributes: {
     'app.operation': 'sync.storage.write', 'error.code': 'queue_storage_write_failed',
@@ -184,4 +184,21 @@ test('sync events export correlation and retry counters while errors redact thei
   expect(records[1].severityText).toBe('ERROR')
   expect(records[1].attributes).toContainEqual({ key: 'exception.type', value: { stringValue: 'Error' } })
   expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('private-')
+})
+
+
+test('operation context is captured per span even when the signed-in user changes', () => {
+  const { telemetry } = loadModules(true)
+  const local = jest.spyOn(console, 'error').mockImplementation(() => {})
+  telemetry.start()
+  let userId = 'user-1'
+  telemetry.configureContext(() => ({ userId, householdId: 'household-1' }))
+  const span = telemetry.startClientSpan('fridge.get_products')!
+  userId = 'user-2'
+  telemetry.recordError('failed', { span, error: new Error('password=secret') })
+  expect(local).toHaveBeenLastCalledWith('operation failed', expect.objectContaining({
+    userId: 'user-1', householdId: 'household-1', trace_id: span.traceId,
+  }))
+  expect(JSON.stringify(local.mock.calls)).not.toContain('password=secret')
+  local.mockRestore()
 })

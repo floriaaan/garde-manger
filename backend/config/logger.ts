@@ -1,3 +1,6 @@
+import { logContext } from '#infrastructure/shared/log-context'
+import { HttpContext } from '@adonisjs/core/http'
+import { requestLogContext } from '#presentation/shared/request-log-context'
 import { diagnosticAttributes, errorCode } from '#domain/shared/log-diagnostic'
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
@@ -9,6 +12,7 @@ const loggerConfig = defineConfig({
   loggers: {
     app: {
       enabled: true,
+      mixin: () => ({ ...requestLogContext(HttpContext.get()), ...logContext.current() }),
       name: 'garde-manger-backend',
       level: env.get('LOG_LEVEL'),
       base: {

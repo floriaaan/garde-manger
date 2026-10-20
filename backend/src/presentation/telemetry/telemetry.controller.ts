@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { getAuthenticatedUser } from '#presentation/shared/auth-context'
 import type { RelayedTelemetrySignal } from '#domain/shared/interfaces/telemetry-relay.interface'
@@ -14,7 +15,7 @@ const SIGNALS: RelayedTelemetrySignal[] = ['traces', 'logs']
  */
 export default class TelemetryController {
   async ingest(ctx: HttpContext) {
-    const relay = await ctx.containerResolver.make('telemetry.relay')
+    const relay = await resolveBinding(ctx, 'telemetry.relay')
 
     // 404 rather than 503: a disabled relay is not a transient failure, and
     // the app uses this to stop trying for the rest of the session.

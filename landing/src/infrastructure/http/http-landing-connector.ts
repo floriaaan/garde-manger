@@ -25,7 +25,9 @@ export class HttpLandingConnector implements LandingConnector {
   }
 
   async getInstanceStats(): Promise<InstanceStats | null> {
-    const response = await this.fetch(`${this.config.apiUrl}/api/public/stats`)
+    const response = await this.fetch(`${this.config.apiUrl}/api/public/stats`, {
+      headers: { 'x-client-platform': 'landing' },
+    })
     if (response.status === 404) return null
     if (!response.ok) throw new Error(`GET /api/public/stats failed: ${response.status}`)
     const body = (await response.json()) as { stats: InstanceStats }

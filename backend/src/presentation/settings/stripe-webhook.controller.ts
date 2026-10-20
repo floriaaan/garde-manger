@@ -1,7 +1,7 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import { traceAction } from '#presentation/shared/trace-action'
-import { isValidStripeSignature } from '#application/settings/stripe-signature'
 import { stripeWebhookValidator } from './stripe-webhook.validator.js'
 import { HandleStripeWebhook } from '#application/settings/handle-stripe-webhook.use-case'
 
@@ -16,7 +16,8 @@ export default class StripeWebhookController {
     const secret = env.get('STRIPE_WEBHOOK_SECRET', '')
     const signature = ctx.request.header('stripe-signature') ?? ''
     const rawBody = ctx.request.raw() ?? ''
-    if (!secret || !isValidStripeSignature(rawBody, signature, secret)) {
+    const verifier = await resolveBinding(ctx, 'settings.stripeSignatureVerifier')
+    if (!secret || !verifier.isValid(rawBody, signature, secret)) {
       ctx.logger.warn(
         {
           action: 'settings.stripe_webhook',
@@ -55,11 +56,8 @@ export default class StripeWebhookController {
           subscription.cancel_at_period_end === true ||
           (subscription.cancel_at !== null && subscription.cancel_at !== undefined)
 
-        const outcome = await new HandleStripeWebhook(
-          await ctx.containerResolver.make('settings.subscriptions'),
-          await ctx.containerResolver.make('identity.households'),
-          await ctx.containerResolver.make('shared.clock'),
-        ).execute({
+        const handleStripeWebhook = await resolveBinding(ctx, 'settings.handleStripeWebhook')
+        const outcome = await handleStripeWebhook.execute({
           type: event.type,
           subscription: {
             id: subscription.id,

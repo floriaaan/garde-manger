@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requireAuthenticatedUser } from '#presentation/shared/auth-context'
 import { serializeError } from '#presentation/shared/error-serializer'
@@ -15,17 +16,13 @@ import { GetMyHousehold } from '#application/identity/get-my-household.use-case'
 import { RenameHousehold } from '#application/identity/rename-household.use-case'
 import { RegenerateInviteCode } from '#application/identity/regenerate-invite-code.use-case'
 import { RemoveHouseholdMember } from '#application/identity/remove-household-member.use-case'
-import { RevokePayerSubscriptions } from '#application/settings/revoke-payer-subscriptions.use-case'
 import { LeaveHousehold } from '#application/identity/leave-household.use-case'
 import { DeleteHousehold } from '#application/identity/delete-household.use-case'
 import { TransferHouseholdOwnership } from '#application/identity/transfer-household-ownership.use-case'
 
 async function revokePayerSubscriptions(ctx: HttpContext, userId: string) {
-  await new RevokePayerSubscriptions(
-    await ctx.containerResolver.make('settings.subscriptions'),
-    await ctx.containerResolver.make('settings.billing'),
-    await ctx.containerResolver.make('shared.clock'),
-  ).execute({ userId })
+  const useCase = await resolveBinding(ctx, 'settings.revokePayerSubscriptions')
+  await useCase.execute({ userId })
 }
 
 export default class HouseholdController {
@@ -36,10 +33,10 @@ export default class HouseholdController {
       'identity',
       GetMyHousehold,
       async () => {
-        const households = await ctx.containerResolver.make('identity.households')
-        const userDirectory = await ctx.containerResolver.make('identity.userDirectory')
+        const userDirectory = await resolveBinding(ctx, 'identity.userDirectory')
 
-        const household = await new GetMyHousehold(households).execute({ userId: user.id })
+        const getMyHousehold = await resolveBinding(ctx, 'identity.getMyHousehold')
+        const household = await getMyHousehold.execute({ userId: user.id })
         if (!household) {
           ctx.response.json({ household: null })
           return
@@ -60,12 +57,10 @@ export default class HouseholdController {
       CreateHousehold,
       async () => {
         const payload = await ctx.request.validateUsing(createHouseholdValidator)
-        const households = await ctx.containerResolver.make('identity.households')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const userDirectory = await ctx.containerResolver.make('identity.userDirectory')
+        const userDirectory = await resolveBinding(ctx, 'identity.userDirectory')
 
-        const result = await new CreateHousehold(households, idGenerator, clock).execute({
+        const createHousehold = await resolveBinding(ctx, 'identity.createHousehold')
+        const result = await createHousehold.execute({
           userId: user.id,
           name: payload.name,
         })
@@ -91,12 +86,10 @@ export default class HouseholdController {
       JoinHousehold,
       async () => {
         const payload = await ctx.request.validateUsing(joinHouseholdValidator)
-        const households = await ctx.containerResolver.make('identity.households')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-        const clock = await ctx.containerResolver.make('shared.clock')
-        const userDirectory = await ctx.containerResolver.make('identity.userDirectory')
+        const userDirectory = await resolveBinding(ctx, 'identity.userDirectory')
 
-        const result = await new JoinHousehold(households, idGenerator, clock).execute({
+        const joinHousehold = await resolveBinding(ctx, 'identity.joinHousehold')
+        const result = await joinHousehold.execute({
           userId: user.id,
           inviteCode: payload.inviteCode,
         })
@@ -122,10 +115,10 @@ export default class HouseholdController {
       RenameHousehold,
       async () => {
         const payload = await ctx.request.validateUsing(renameHouseholdValidator)
-        const households = await ctx.containerResolver.make('identity.households')
-        const userDirectory = await ctx.containerResolver.make('identity.userDirectory')
+        const userDirectory = await resolveBinding(ctx, 'identity.userDirectory')
 
-        const result = await new RenameHousehold(households).execute({
+        const renameHousehold = await resolveBinding(ctx, 'identity.renameHousehold')
+        const result = await renameHousehold.execute({
           userId: user.id,
           name: payload.name,
         })
@@ -150,10 +143,8 @@ export default class HouseholdController {
       'identity',
       RegenerateInviteCode,
       async () => {
-        const households = await ctx.containerResolver.make('identity.households')
-        const idGenerator = await ctx.containerResolver.make('shared.idGenerator')
-
-        const result = await new RegenerateInviteCode(households, idGenerator).execute({
+        const regenerateInviteCode = await resolveBinding(ctx, 'identity.regenerateInviteCode')
+        const result = await regenerateInviteCode.execute({
           userId: user.id,
         })
         if (!result.ok) {
@@ -176,9 +167,8 @@ export default class HouseholdController {
       'identity',
       RemoveHouseholdMember,
       async () => {
-        const households = await ctx.containerResolver.make('identity.households')
-
-        const result = await new RemoveHouseholdMember(households).execute({
+        const removeHouseholdMember = await resolveBinding(ctx, 'identity.removeHouseholdMember')
+        const result = await removeHouseholdMember.execute({
           userId: user.id,
           targetUserId: ctx.params.userId,
         })
@@ -208,9 +198,8 @@ export default class HouseholdController {
       'identity',
       LeaveHousehold,
       async () => {
-        const households = await ctx.containerResolver.make('identity.households')
-
-        const result = await new LeaveHousehold(households).execute({ userId: user.id })
+        const leaveHousehold = await resolveBinding(ctx, 'identity.leaveHousehold')
+        const result = await leaveHousehold.execute({ userId: user.id })
         if (!result.ok) {
           const { status, body } = serializeError(result.error)
           ctx.response.status(status).json(body)
@@ -236,9 +225,12 @@ export default class HouseholdController {
       TransferHouseholdOwnership,
       async () => {
         const payload = await ctx.request.validateUsing(transferHouseholdOwnershipValidator)
-        const households = await ctx.containerResolver.make('identity.households')
 
-        const result = await new TransferHouseholdOwnership(households).execute({
+        const transferHouseholdOwnership = await resolveBinding(
+          ctx,
+          'identity.transferHouseholdOwnership',
+        )
+        const result = await transferHouseholdOwnership.execute({
           userId: user.id,
           newOwnerId: payload.newOwnerId,
         })
@@ -262,9 +254,8 @@ export default class HouseholdController {
       'identity',
       DeleteHousehold,
       async () => {
-        const households = await ctx.containerResolver.make('identity.households')
-
-        const result = await new DeleteHousehold(households).execute({ userId: user.id })
+        const deleteHousehold = await resolveBinding(ctx, 'identity.deleteHousehold')
+        const result = await deleteHousehold.execute({ userId: user.id })
         if (!result.ok) {
           const { status, body } = serializeError(result.error)
           ctx.response.status(status).json(body)

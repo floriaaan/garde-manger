@@ -1,3 +1,4 @@
+import { resolveBinding } from '#presentation/shared/resolve-binding'
 import type { HttpContext } from '@adonisjs/core/http'
 import { GetPublicStats } from '#application/instance/get-public-stats.use-case'
 import { traceAction } from '#presentation/shared/trace-action'
@@ -5,7 +6,7 @@ import { traceAction } from '#presentation/shared/trace-action'
 export default class PublicStatsController {
   async show(ctx: HttpContext) {
     return traceAction(ctx, 'instance', GetPublicStats, async () => {
-      const useCase = await ctx.containerResolver.make('instance.getPublicStats')
+      const useCase = await resolveBinding(ctx, 'instance.getPublicStats')
       const stats = await useCase.execute()
 
       // 404 rather than 403: a disabled endpoint is indistinguishable from an

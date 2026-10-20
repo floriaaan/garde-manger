@@ -1,3 +1,4 @@
+import { requestLogContext } from './request-log-context.js'
 import {
   diagnosticAttributes,
   errorCode,
@@ -39,6 +40,7 @@ export class HttpExceptionHandler extends BaseExceptionHandler {
     const level = failureLevel(code, status)
     ctx.logger[level](
       {
+        ...requestLogContext(ctx),
         'app.operation': (ctx.request.url().split('?')[0] ?? '').startsWith('/api/auth/get-session')
           ? 'identity.get_session'
           : `${ctx.request.method()} ${ctx.route?.pattern ?? 'unmatched_route'}`,

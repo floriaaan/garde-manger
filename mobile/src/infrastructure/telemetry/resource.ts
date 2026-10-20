@@ -43,6 +43,7 @@ export function buildResource(): { attributes: OtlpAttribute[] } {
         'deployment.environment.name',
         process.env.EXPO_PUBLIC_APP_ENV ?? (__DEV__ ? 'development' : 'production'),
       ),
+      stringAttribute('client.platform', Platform.OS),
       stringAttribute('os.name', Platform.OS),
       stringAttribute('os.version', String(Platform.Version)),
       stringAttribute('app.session.id', SESSION_ID),
