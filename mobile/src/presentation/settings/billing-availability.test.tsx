@@ -105,7 +105,7 @@ describe('native StoreKit (iOS)', () => {
     mockApple.product = null
     const { checkout } = await renderWith(<SubscriptionScreen />, spentFree)
     await waitFor(() => expect(screen.getByTestId('subscription-paywall-cta')).toBeTruthy())
-    expect(screen.getByTestId('subscription-paywall-cta').props.disabled).toBe(true)
+    expect(screen.getByTestId('subscription-paywall-cta')).toBeDisabled()
     expect(screen.queryByText('0,99€')).toBeNull()
     expect(checkout).not.toHaveBeenCalled()
   })

@@ -105,6 +105,27 @@ export class AiUsageSchema extends BaseModel {
   declare period: string
 }
 
+export class AppleSubscriptionSchema extends BaseModel {
+  static $columns = ['cancelAtPeriodEnd', 'environment', 'expiresAt', 'householdId', 'id', 'originalTransactionId', 'payerUserId', 'signedAt'] as const
+  $columns = AppleSubscriptionSchema.$columns
+  @column()
+  declare cancelAtPeriodEnd: boolean
+  @column()
+  declare environment: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare householdId: string | null
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare originalTransactionId: string
+  @column()
+  declare payerUserId: string | null
+  @column.dateTime()
+  declare signedAt: DateTime
+}
+
 export class ExpiryReminderSettingSchema extends BaseModel {
   static $columns = ['days', 'householdId'] as const
   $columns = ExpiryReminderSettingSchema.$columns

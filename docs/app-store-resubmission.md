@@ -4,6 +4,9 @@
 vidéo ni mise à jour App Store Connect réalisée dans cette PR. Ne pas clôturer
 les issues sur la seule base de la revue du code.
 
+Les résultats des tests et builds locaux sont consignés dans
+[le rapport de validation](app-store-validation.md).
+
 ## Préparation
 
 Déployer le backend de la PR avant la build iOS. Installer cette build sur un

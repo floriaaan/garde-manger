@@ -68,7 +68,7 @@ test('cancellation unlocks the UI and a pending approval does not grant access',
   await fireEvent.press(screen.getByTestId('buy'))
   await waitFor(() => expect(port.purchase).toHaveBeenCalledTimes(1))
   await act(async () => purchaseError('user-cancelled'))
-  expect(screen.getByTestId('buy').props.disabled).toBe(false)
+  expect(screen.getByTestId('buy')).not.toBeDisabled()
   await act(async () => purchaseError('pending'))
   expect(sync).not.toHaveBeenCalled()
   expect(port.finish).not.toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
@@ -91,7 +92,7 @@ test('failed deletion keeps the account page open without a success redirect', a
 })
 
 test('the success page explicitly confirms deletion and offers sign-in', async () => {
-  await render(<ThemeProvider><AccountDeletedScreen /></ThemeProvider>)
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } }}><ThemeProvider><AccountDeletedScreen /></ThemeProvider></SafeAreaProvider>)
   expect(screen.getByText('Compte supprimé')).toBeTruthy()
   expect(screen.getByText('Ton compte a été supprimé définitivement. Tu es maintenant déconnecté.')).toBeTruthy()
   await fireEvent.press(screen.getByTestId('account-deleted-sign-in'))

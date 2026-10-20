@@ -34,7 +34,7 @@ export const applePurchases: ApplePurchases = {
         const transaction = remember(purchase)
         if (transaction) void onPurchase(transaction).catch(() => onError('verification-failed'))
       })
-      errors = IAP.purchaseErrorListener((error) => onError(error.code))
+      errors = IAP.purchaseErrorListener((error) => onError(error.code ?? 'unknown'))
       if (!await IAP.initConnection()) throw new Error('StoreKit unavailable')
       for (const purchase of await IAP.getPendingTransactionsIOS()) {
         const transaction = remember(purchase)
