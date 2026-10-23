@@ -1,4 +1,21 @@
 {
+  "feedback": {
+    "help": "Help and feedback",
+    "title": "Share feedback",
+    "summary": "Suggest an improvement or tell us about getting started",
+    "intro": "An idea?\nTell us.",
+    "privacy": "No account, household or inventory data is attached. The team will see your email address if you send your feedback. Avoid private information.",
+    "email_guidance": "A draft to review before you send it.",
+    "open_email": "Prepare my email",
+    "retry": "Try opening email again",
+    "subject": "Product feedback — Garde-manger",
+    "template": "My feedback is about a feature or getting started:\n\nWhat I wanted to do:\n\nWhat could be improved:\n\nWhat would help me:\n",
+    "failed": "Couldn’t open your email app. Try again or write to the address below.",
+    "opened": "Your feedback has not been sent. Review and send the draft in your email app. If nothing opens, use the address below.",
+    "alternative": "Or write to us directly at:",
+    "examples": "A missing feature, your first scan or a step that could be simpler.",
+    "opening": "Opening email…"
+  },
   "dashboard": {
     "review_title": "Give the project a hand",
     "review_description": "Finding Garde-manger helpful? Your review helps other households discover it.",
