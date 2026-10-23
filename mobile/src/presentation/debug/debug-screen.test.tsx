@@ -1,4 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { router } from 'expo-router'
+import * as SecureStore from 'expo-secure-store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
@@ -7,7 +9,7 @@ import { DebugScreen } from './debug-screen.js'
 import { getLocaleOverride, i18n, setLocaleOverride } from '../../i18n/index.js'
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), navigate: jest.fn() },
   useFocusEffect: jest.fn(),
 }))
 jest.mock('expo-secure-store', () => ({
@@ -39,5 +41,23 @@ test('switches rendered labels immediately and returns to the system locale', as
   await fireEvent.press(screen.getByTestId('debug-locale-system'))
   expect(getLocaleOverride()).toBeNull()
   expect(screen.getByTestId('debug-locale-system').props.accessibilityState.selected).toBe(true)
+  client.clear()
+})
+
+test('replays onboarding from debug without resetting the session', async () => {
+  const connector = new FakeFridgeConnector()
+  await connector.signInSocial()
+  const signOut = jest.spyOn(connector, 'signOut')
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  await render(<ThemeProvider><QueryClientProvider client={client}>
+    <ConnectorProvider connector={connector}><DebugScreen /></ConnectorProvider>
+  </QueryClientProvider></ThemeProvider>)
+
+  await waitFor(() => expect(screen.getByTestId('debug-replay-onboarding')).not.toBeDisabled())
+  await fireEvent.press(screen.getByTestId('debug-replay-onboarding'))
+
+  await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/(tabs)'))
+  expect(SecureStore.setItemAsync).toHaveBeenCalledWith('garde-manger.first-run-tour.armed', '1')
+  expect(signOut).not.toHaveBeenCalled()
   client.clear()
 })

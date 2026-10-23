@@ -27,6 +27,7 @@ import {
   getDefaultServerUrl,
   getServerUrl,
 } from '../../application/shared/server-config.js'
+import { armFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { resetWelcomeSeen, useHasSeenWelcome } from '../welcome/use-welcome-seen.js'
 
 const SIGN_OUT_TIMEOUT_MS = 2000
@@ -127,6 +128,17 @@ export function DebugScreen() {
             onPress={() => router.push(href as Parameters<typeof router.push>[0])}
           />
         ))}
+        <PillButton
+          testID="debug-replay-onboarding"
+          tone="quiet"
+          label={t('onboarding.replay_tour')}
+          palette={palette}
+          disabled={!session.data}
+          onPress={async () => {
+            await armFirstRunTour()
+            router.navigate('/(tabs)')
+          }}
+        />
         <PillButton
           testID="debug-show-splash"
           tone="quiet"
