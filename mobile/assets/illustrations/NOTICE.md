@@ -32,7 +32,7 @@ Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 
 Generated with the built-in OpenAI ImageGen tool for the feedback screen.
 This asset is not part of the Microsoft Fluent Emoji set above.
-Transparent PNG, resized to 384 × 384 for a 96pt decorative image.
+Transparent PNG, resized to 384 × 384 for a 96–128pt decorative image.
 
 Generation prompt:
 

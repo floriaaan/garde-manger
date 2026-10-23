@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Linking } from 'react-native'
+import { Image, Linking, Platform, useWindowDimensions } from 'react-native'
 import { router } from 'expo-router'
 import { useTranslation } from '../../i18n/index.js'
 import { AppShell } from '../shared/app-shell.js'
@@ -15,6 +15,8 @@ const FEEDBACK_EMAIL = 'garde-manger@floriaaan.fr'
 export function FeedbackScreen() {
   const { t } = useTranslation()
   const palette = useSoftPalette()
+  const { height, fontScale } = useWindowDimensions()
+  const illustrationSize = height / fontScale < 700 ? 96 : 128
   const [status, setStatus] = useState<'idle' | 'opening' | 'opened' | 'failed'>('idle')
 
   async function openEmail() {
@@ -35,31 +37,38 @@ export function FeedbackScreen() {
         onBack={() => router.back()} />
     }>
       <YStack marginTop="$5" gap="$5">
-        <YStack gap="$2">
+        <YStack backgroundColor={palette.cream} padding="$5" gap="$4"
+          style={{ borderTopLeftRadius: 30, borderTopRightRadius: 16, borderBottomRightRadius: 30, borderBottomLeftRadius: 16,
+            shadowColor: palette.shadowWarm, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 3 }}>
           <Image source={require('../../../assets/illustrations/feedback-envelope-3d.png')}
             resizeMode="contain" accessible={false} accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            style={{ width: 96, height: 96, marginBottom: 8 }} />
-          <Text fontSize={18} fontWeight="600" color={palette.ink}>{t('feedback.intro')}</Text>
-          <Text fontSize={14} color={palette.inkSecondary}>{t('feedback.examples')}</Text>
-        </YStack>
-
-        <YStack gap="$3">
-          <YStack gap="$2">
-            <Text fontSize={13} color={palette.inkSecondary}>{t('feedback.privacy')}</Text>
-            <Text fontSize={13} color={palette.inkSecondary}>{t('feedback.email_guidance')}</Text>
+            style={{ width: illustrationSize, height: illustrationSize, alignSelf: 'center' }} />
+          <YStack gap="$3">
+            <Text role="heading" style={Platform.OS === 'web' ? { fontFamily: '"Spectral", Georgia, serif' } : undefined}
+              fontSize={32} lineHeight={40} fontWeight={Platform.OS === 'web' ? '600' : '800'} color={palette.ink}>
+              {t('feedback.intro')}
+            </Text>
+            <Text fontSize={14} color={palette.creamText}>{t('feedback.examples')}</Text>
           </YStack>
-          <PillButton testID="feedback-open-email" label={t(status === 'failed' ? 'feedback.retry' : status === 'opening' ? 'feedback.opening' : 'feedback.open_email')}
-            palette={palette} disabled={status === 'opening'} busy={status === 'opening'}
-            onPress={() => { void openEmail() }} />
-          <NotificationFeedback palette={palette} error={status === 'failed'} message={
-            status === 'failed' ? t('feedback.failed') : status === 'opened' ? t('feedback.opened') : null
-          } />
+          <YStack gap="$3">
+            <Text fontSize={12} color={palette.creamText}>{t('feedback.privacy')}</Text>
+            <PillButton fullWidth testID="feedback-open-email" label={t(status === 'failed' ? 'feedback.retry' : status === 'opening' ? 'feedback.opening' : 'feedback.open_email')}
+              palette={palette} disabled={status === 'opening'} busy={status === 'opening'}
+              onPress={() => { void openEmail() }} />
+            <Text fontSize={12} color={palette.creamText}>{t('feedback.email_guidance')}</Text>
+          </YStack>
         </YStack>
 
-        <YStack marginTop="$2" gap="$1">
+        <NotificationFeedback palette={palette} error={status === 'failed'} message={
+          status === 'failed' ? t('feedback.failed') : status === 'opened' ? t('feedback.opened') : null
+        } />
+
+        <YStack paddingHorizontal="$1" gap="$1">
           <Text fontSize={13} color={palette.inkSecondary}>{t('feedback.alternative')}</Text>
-          <Text testID="feedback-email-address" selectable fontSize={14} fontWeight="600" color={palette.ink}>
+          <Text testID="feedback-email-address" selectable={Platform.OS !== 'web' ? true : undefined}
+            style={Platform.OS === 'web' ? { userSelect: 'text' } : undefined}
+            fontSize={14} fontWeight="600" color={palette.ink}>
             {FEEDBACK_EMAIL}
           </Text>
         </YStack>

@@ -60,7 +60,7 @@ export function PillButton({
   size?: keyof typeof PILL_HEIGHT
   /** For a centered empty state's own CTA — see the note above `flex-start`. */
   centered?: boolean
-  /** Stretch the action across its container instead of sizing it to the label. */
+  /** Stretch the action across its parent, allowing long labels to wrap. */
   fullWidth?: boolean
   disabled?: boolean
   busy?: boolean
@@ -88,6 +88,7 @@ export function PillButton({
           alignItems="center"
           gap="$1.5"
           minHeight={height}
+          paddingVertical={fullWidth ? '$2.5' : undefined}
           paddingHorizontal={size === 'dense' ? '$3' : '$4'}
           borderRadius={999}
           justifyContent="center"
@@ -95,6 +96,7 @@ export function PillButton({
         >
           {icon ? icon(tone === 'accent' ? palette.accentLimeText : palette.ink) : null}
           <Text
+            flexShrink={fullWidth ? 1 : undefined}
             fontSize={size === 'dense' ? 12 : 14}
             fontWeight="800"
             color={tone === 'accent' ? palette.accentLimeText : palette.ink}

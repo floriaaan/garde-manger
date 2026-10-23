@@ -3,9 +3,9 @@
     "help": "Aide et retours",
     "title": "Donner mon avis",
     "summary": "Suggérer une amélioration ou parler de la prise en main",
-    "intro": "Une idée ou quelque chose qui pourrait être plus simple ? Écris-nous.",
-    "privacy": "Aucune donnée de ton compte, de ton foyer ou de ton inventaire n’est jointe. Évite les informations privées.",
-    "email_guidance": "Tu pourras modifier le brouillon avant l’envoi. Ton adresse e-mail sera visible par l’équipe si tu l’envoies.",
+    "intro": "Une idée ?\nÉcris-nous.",
+    "privacy": "Aucune donnée de ton compte, de ton foyer ou de ton inventaire n’est jointe. Ton adresse e-mail sera visible par l’équipe si tu envoies ton retour. Évite les informations privées.",
+    "email_guidance": "Un brouillon à relire avant de l’envoyer.",
     "open_email": "Préparer mon e-mail",
     "retry": "Réessayer d’ouvrir la messagerie",
     "subject": "Retour produit — Garde-manger",
@@ -13,7 +13,7 @@
     "failed": "Impossible d’ouvrir ta messagerie. Réessaie ou écris à l’adresse ci-dessous.",
     "opened": "Ton retour n’est pas envoyé. Relis et envoie le brouillon dans ta messagerie. Si rien ne s’ouvre, utilise l’adresse ci-dessous.",
     "alternative": "Ou écris-nous directement à cette adresse :",
-    "examples": "Par exemple : une fonction qui te manque, un premier scan ou une étape peu claire.",
+    "examples": "Une fonction qui te manque, ton premier scan ou une étape qui pourrait être plus simple.",
     "opening": "Ouverture de la messagerie…"
   },
   "dashboard": {

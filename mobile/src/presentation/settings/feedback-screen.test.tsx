@@ -22,7 +22,7 @@ test('opens a free-form email without personal data or claiming it was sent', as
   renderFeedback()
   expect(screen.getByText(/Aucune donnée de ton compte/)).toBeTruthy()
   expect(screen.getByText(/Ton adresse e-mail sera visible/)).toBeTruthy()
-  expect(screen.getByText(/Par exemple : une fonction qui te manque/)).toBeTruthy()
+  expect(screen.getByText(/Une fonction qui te manque/)).toBeTruthy()
   expect(openURL).not.toHaveBeenCalled()
   fireEvent.press(screen.getByRole('button', { name: 'Préparer mon e-mail' }))
   await waitFor(() => expect(screen.getByText(/Ton retour n’est pas envoyé/)).toBeTruthy())
