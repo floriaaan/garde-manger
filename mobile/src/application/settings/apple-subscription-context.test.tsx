@@ -20,7 +20,7 @@ function Status() {
   </>
 }
 
-async function setup() {
+async function setup(initializationFailure?: 'configuration' | 'connection') {
   let onPurchase!: (purchase: ApplePurchase) => Promise<void>
   let onError!: (code: string) => void
   const port = {
@@ -30,14 +30,16 @@ async function setup() {
     restore: jest.fn(async () => [purchase]), current: jest.fn(async () => []),
     finish: jest.fn(async () => {}), manage: jest.fn(async () => {}),
   } satisfies ApplePurchases
+  if (initializationFailure === 'connection') port.connect.mockRejectedValueOnce(new Error('StoreKit unavailable'))
   const connector = new FakeFridgeConnector()
+  if (initializationFailure === 'configuration') jest.spyOn(connector, 'getAppleSubscription').mockResolvedValueOnce({ ok: false, error: { type: 'network_error', message: 'Configuration indisponible.' } })
   await connector.signInSocial()
   const sync = jest.spyOn(connector, 'syncAppleSubscription').mockResolvedValue({ ok: true, value: { active: true } })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   await render(<QueryClientProvider client={client}><ConnectorProvider connector={connector}>
     <AppleSubscriptionProvider purchases={port}><Status /></AppleSubscriptionProvider>
   </ConnectorProvider></QueryClientProvider>)
-  await waitFor(() => expect(screen.getByText('1,49 €')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText(initializationFailure === 'configuration' ? 'Configuration indisponible.' : initializationFailure === 'connection' ? 'L’App Store est indisponible ou l’achat n’a pas abouti. Réessaie.' : '1,49 €')).toBeTruthy())
   return { port, connector, sync, purchaseUpdated: () => onPurchase(purchase), purchaseError: (code: string) => onError(code) }
 }
 
@@ -97,4 +99,15 @@ test('retry clears a pending purchase and stale price before reloading StoreKit'
   await fireEvent.press(screen.getByTestId('retry'))
   await waitFor(() => expect(screen.getByText('2,49 €')).toBeTruthy())
   expect(screen.getByTestId('buy')).not.toBeDisabled()
+})
+
+test.each(['configuration', 'connection'] as const)('retry recovers a failed %s initialization and allows restoration', async (failure) => {
+  const { port, sync } = await setup(failure)
+  await fireEvent.press(screen.getByTestId('retry'))
+  await waitFor(() => expect(screen.getByText('1,49 €')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('restore'))
+  await waitFor(() => expect(screen.getByText('Abonnement restauré.')).toBeTruthy())
+  expect(port.restore).toHaveBeenCalledTimes(1)
+  expect(sync).toHaveBeenCalledWith('apple-signed-jws')
+  expect(port.finish).toHaveBeenCalledWith(purchase)
 })

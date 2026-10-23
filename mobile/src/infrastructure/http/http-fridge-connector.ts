@@ -262,10 +262,11 @@ export class HttpFridgeConnector implements FridgeConnector {
         }
       })
       // Expo turns the native path into a deep link. On web a relative path
-      // would redirect to the API host, so return to the frontend origin.
+      // would redirect to the API host. Preserve the initiating frontend route
+      // through the full-page web redirect (e.g. account deletion).
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : android ? ANDROID_OAUTH_CALLBACK : '/',
+        callbackURL: Platform.OS === 'web' ? `${window.location.origin}${window.location.pathname || '/'}${window.location.search || ''}` : android ? ANDROID_OAUTH_CALLBACK : '/',
         ...(android ? {
           errorCallbackURL: ANDROID_OAUTH_CALLBACK,
           fetchOptions: {

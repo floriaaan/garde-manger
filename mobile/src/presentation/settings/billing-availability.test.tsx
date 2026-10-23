@@ -127,6 +127,14 @@ describe('native StoreKit (iOS)', () => {
     openURL.mockRestore()
   })
 
+  test('an existing subscriber can retry StoreKit initialization after an error', async () => {
+    mockApple.error = 'Connexion StoreKit indisponible.'
+    await renderWith(<SubscriptionScreen />, { ...subscriber, subscriptionProvider: 'apple' })
+    await waitFor(() => expect(screen.getByText('Connexion StoreKit indisponible.')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('subscription-store-retry'))
+    expect(mockApple.retry).toHaveBeenCalledTimes(1)
+  })
+
   test('restoration and Apple management use native actions', async () => {
     await renderWith(<SubscriptionScreen />, { ...subscriber, subscriptionProvider: 'apple' })
     await waitFor(() => expect(screen.getByTestId('subscription-active')).toBeTruthy())

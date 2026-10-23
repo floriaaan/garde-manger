@@ -90,3 +90,19 @@ temporaire isolé.
 Ces corrections ne rendent pas verte la suite Jest mobile complète, qui reste
 hors des étapes exécutées par `task mobile:check` (désactivée dans le Taskfile
 existant). Aucun simulateur lancé et aucun build natif relancé.
+
+## Retours de revue — 23 octobre 2026
+
+- OAuth web Google/PocketID : le callback conserve le chemin et les paramètres
+  de la page initiatrice, notamment `/delete-account` et `/subscription`.
+- Un abonné dispose désormais du bouton « Réessayer » en cas d’erreur StoreKit.
+  Il relance l’initialisation existante avant une nouvelle restauration.
+- Le faux connecteur expose explicitement le résultat de configuration Apple
+  prévu par l’interface, ce qui permet de simuler ses erreurs réseau.
+
+Validation ciblée : 83 tests réussis dans `http-fridge-connector`,
+`apple-subscription-context` et `billing-availability` ; typecheck mobile réussi ;
+lint des fichiers de logique/UI et de tests concernés réussi ; `git diff --check`
+réussi. Les tests couvrent les deux fournisseurs OAuth, les paramètres du
+callback et la reprise après échec de configuration ou de connexion StoreKit.
+Aucun simulateur ou build natif lancé pour ces corrections.
