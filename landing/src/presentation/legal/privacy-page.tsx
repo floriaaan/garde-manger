@@ -243,6 +243,7 @@ const sections: LegalSection[] = [
 export function PrivacyPage() {
   return (
     <LegalPage
+      localeHrefs={{ fr: '/privacy', en: '/en/privacy' }}
       title="Politique de confidentialité"
       intro="Quelles données personnelles l’instance officielle Garde-manger traite, pourquoi, et comment exercer vos droits."
       updated={LEGAL_UPDATED}

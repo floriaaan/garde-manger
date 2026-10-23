@@ -1,4 +1,4 @@
-import { useTranslation } from '../../i18n/index.js'
+import { getLocale, useTranslation } from '../../i18n/index.js'
 import { useState } from 'react'
 import { Linking } from 'react-native'
 import { router } from 'expo-router'
@@ -37,7 +37,7 @@ import { useAiSettingsQuery } from '../../application/settings/ai-settings.query
 import { useInstanceInfoQuery } from '../../application/instance/instance-info.query.js'
 import type { AiProvider } from '../../domain/settings/ai-settings.js'
 
-const PRIVACY_POLICY_URL = 'https://gardemanger.floriaaan.fr/privacy'
+const POLICY_SITE_URL = 'https://gardemanger.floriaaan.fr'
 const TERMS_OF_USE_URL = 'https://gardemanger.floriaaan.fr/cgu'
 
 const PROVIDER_LABELS: Record<AiProvider, string> = { gemini: 'Gemini', openai: 'OpenAI', ollama: 'Ollama' }
@@ -325,7 +325,10 @@ export function SettingsScreen() {
             color={palette.inkSecondary}
             textDecorationLine="underline"
             accessibilityRole="link"
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+            onPress={() => {
+              const path = getLocale() === 'en' ? '/en/privacy' : '/privacy'
+              void Linking.openURL(`${POLICY_SITE_URL}${path}`).catch(() => showToast(t('settings.couldn_t_open_privacy_policy'), 'error'))
+            }}
           >{t('settings.privacy')}</Text>
           <Text
             testID="settings-terms"
