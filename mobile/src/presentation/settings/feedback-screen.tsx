@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Linking } from 'react-native'
+import { Image, Linking } from 'react-native'
 import { router } from 'expo-router'
 import { useTranslation } from '../../i18n/index.js'
 import { AppShell } from '../shared/app-shell.js'
@@ -36,6 +36,10 @@ export function FeedbackScreen() {
     }>
       <YStack marginTop="$5" gap="$5">
         <YStack gap="$2">
+          <Image source={require('../../../assets/illustrations/feedback-envelope-3d.png')}
+            resizeMode="contain" accessible={false} accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ width: 96, height: 96, marginBottom: 8 }} />
           <Text fontSize={18} fontWeight="600" color={palette.ink}>{t('feedback.intro')}</Text>
           <Text fontSize={14} color={palette.inkSecondary}>{t('feedback.examples')}</Text>
         </YStack>
