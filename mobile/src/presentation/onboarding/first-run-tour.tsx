@@ -8,6 +8,7 @@ import { Pressable } from '../shared/pressable.js'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { PillButton } from '../shared/pill-button.js'
 import { pointerCursor, useReduceMotion } from '../shared/hover.js'
+import { ArrowRightIcon, CheckIcon, ChefHatIcon, PlusIcon, ScanLineIcon } from '../dashboard/dashboard-icons.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
 import { useTourAnchors, type AnchorBox, type TourAnchorId } from './tour-anchors.js'
@@ -79,11 +80,11 @@ export function FirstRunTour({
   const beat = BEATS[index]
   const isLast = index === BEATS.length - 1
   const action = beat.action === 'inventory'
-    ? { label: t('onboarding.add_product'), run: onAddProduct }
+    ? { label: t('onboarding.add_product'), run: onAddProduct, Icon: PlusIcon }
     : beat.action === 'recipes'
-      ? { label: t('onboarding.open_recipes'), run: onOpenRecipes }
+      ? { label: t('onboarding.open_recipes'), run: onOpenRecipes, Icon: ChefHatIcon }
       : beat.action === 'scan'
-        ? { label: t('dashboard.scan'), run: onScan }
+        ? { label: t('dashboard.scan'), run: onScan, Icon: ScanLineIcon }
         : null
 
   /**
@@ -210,10 +211,9 @@ export function FirstRunTour({
           }}
         >
           <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 16, gap: 8 }}>
-            <Text
-              fontSize={12}
-              fontWeight="600"
-              color={palette.inkSecondary}
+            <YStack
+              gap="$2"
+              accessible
               accessibilityRole="progressbar"
               accessibilityValue={{
                 min: 1,
@@ -222,8 +222,21 @@ export function FirstRunTour({
                 text: t('onboarding.step_progress', { current: index + 1, total: BEATS.length }),
               }}
             >
-              {t('onboarding.step_progress', { current: index + 1, total: BEATS.length })}
-            </Text>
+              <XStack gap="$1.5" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                {BEATS.map((step, stepIndex) => (
+                  <YStack
+                    key={step.id}
+                    flex={1}
+                    height={6}
+                    borderRadius={999}
+                    backgroundColor={stepIndex <= index ? palette.navCardTeal : palette.creamPillEdge}
+                  />
+                ))}
+              </XStack>
+              <Text fontSize={12} fontWeight="600" color={palette.inkSecondary}>
+                {t('onboarding.step_progress', { current: index + 1, total: BEATS.length })}
+              </Text>
+            </YStack>
             <Text fontSize={20} fontWeight="800" color={palette.ink}>
               {beat.title}
             </Text>
@@ -235,6 +248,8 @@ export function FirstRunTour({
               <PillButton
                 testID={`first-run-tour-${beat.action}`}
                 label={action.label}
+                fullWidth
+                icon={(color) => <action.Icon size={20} color={color} />}
                 tone="quiet"
                 onPress={() => {
                   onFinish()
@@ -243,6 +258,14 @@ export function FirstRunTour({
                 palette={palette}
               />
             ) : null}
+            <PillButton
+              testID="first-run-tour-next"
+              label={isLast ? t('onboarding.let_s_go') : t('onboarding.next')}
+              fullWidth
+              icon={(color) => isLast ? <CheckIcon size={20} color={color} /> : <ArrowRightIcon size={20} color={color} />}
+              onPress={() => (isLast ? onFinish() : setIndex(index + 1))}
+              palette={palette}
+            />
             <XStack marginTop="$2" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$3">
               <Pressable
                 testID="first-run-tour-skip"
@@ -255,23 +278,15 @@ export function FirstRunTour({
                 <Text fontSize={13} fontWeight="700" color={palette.inkSecondary}>{t('onboarding.skip')}</Text>
               </Pressable>
 
-              <XStack gap="$2" alignItems="center" flexWrap="wrap">
-                {index > 0 ? (
-                  <PillButton
-                    testID="first-run-tour-back"
-                    label={t('onboarding.back')}
-                    tone="quiet"
-                    onPress={() => setIndex(index - 1)}
-                    palette={palette}
-                  />
-                ) : null}
+              {index > 0 ? (
                 <PillButton
-                  testID="first-run-tour-next"
-                  label={isLast ? t('onboarding.let_s_go') : t('onboarding.next')}
-                  onPress={() => (isLast ? onFinish() : setIndex(index + 1))}
+                  testID="first-run-tour-back"
+                  label={t('onboarding.back')}
+                  tone="quiet"
+                  onPress={() => setIndex(index - 1)}
                   palette={palette}
                 />
-              </XStack>
+              ) : null}
             </XStack>
           </ScrollView>
         </YStack>

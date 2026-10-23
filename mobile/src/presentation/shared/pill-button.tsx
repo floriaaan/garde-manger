@@ -43,6 +43,7 @@ export function PillButton({
   tone = 'accent',
   size = 'default',
   centered = false,
+  fullWidth = false,
   disabled = false,
   busy = false,
 }: {
@@ -59,6 +60,8 @@ export function PillButton({
   size?: keyof typeof PILL_HEIGHT
   /** For a centered empty state's own CTA — see the note above `flex-start`. */
   centered?: boolean
+  /** Stretch the action across its container instead of sizing it to the label. */
+  fullWidth?: boolean
   disabled?: boolean
   busy?: boolean
 }) {
@@ -78,7 +81,7 @@ export function PillButton({
       hitSlop={{ top: slop, bottom: slop, left: 6, right: 6 }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      style={[pointerCursor, { alignSelf: centered ? 'center' : 'flex-start', borderRadius: 999 }]}
+      style={[pointerCursor, { alignSelf: fullWidth ? 'stretch' : centered ? 'center' : 'flex-start', borderRadius: 999 }]}
     >
       <Animated.View style={{ transform: [{ scale: hover.scale }], opacity: disabled ? 0.6 : 1 }}>
         <XStack
