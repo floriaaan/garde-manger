@@ -17,11 +17,12 @@ function renderFeedback() {
   </QueryClientProvider></ThemeProvider>)
 }
 
-test('opens an editable email containing only feedback prompts, without claiming it was sent', async () => {
+test('opens a free-form email without personal data or claiming it was sent', async () => {
   const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true)
   renderFeedback()
   expect(screen.getByText(/Aucune donnée de ton compte/)).toBeTruthy()
   expect(screen.getByText(/Ton adresse e-mail sera visible/)).toBeTruthy()
+  expect(screen.getByText(/Par exemple : une fonction qui te manque/)).toBeTruthy()
   expect(openURL).not.toHaveBeenCalled()
   fireEvent.press(screen.getByRole('button', { name: 'Préparer mon e-mail' }))
   await waitFor(() => expect(screen.getByText(/Ton retour n’est pas envoyé/)).toBeTruthy())
@@ -31,7 +32,7 @@ test('opens an editable email containing only feedback prompts, without claiming
   expect(url.pathname).toBe('garde-manger@floriaaan.fr')
   expect([...url.searchParams.keys()]).toEqual(['subject', 'body'])
   expect(url.searchParams.get('subject')).toBe('Retour produit — Garde-manger')
-  expect(url.searchParams.get('body')).toBe('Mon retour concerne une fonctionnalité ou la prise en main :\n\nCe que je voulais faire :\n\nCe qui pourrait être amélioré :\n\nCe qui m’aiderait :\n')
+  expect(url.searchParams.get('body')).toBe('Bonjour,\n\nVoici mon retour sur Garde-manger :\n\n')
 })
 
 test.each(['rejection', 'unavailable'] as const)('offers a selectable address and a retry on %s', async (failure) => {
@@ -55,6 +56,7 @@ test('disables the action while the email handoff is pending', async () => {
   jest.spyOn(Linking, 'openURL').mockReturnValue(new Promise((resolve) => { finish = resolve }))
   renderFeedback()
   fireEvent.press(screen.getByTestId('feedback-open-email'))
+  expect(screen.getByRole('button', { name: 'Ouverture de la messagerie…', disabled: true })).toBeTruthy()
   expect(screen.getByTestId('feedback-open-email').props.accessibilityState).toEqual({ disabled: true, busy: true })
   await act(async () => { finish(true) })
   await waitFor(() => expect(screen.getByTestId('feedback-open-email').props.accessibilityState.disabled).toBe(false))
