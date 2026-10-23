@@ -68,6 +68,12 @@ test('tapping the account card opens Mon compte', async () => {
   expect(router.push).toHaveBeenCalledWith('/account')
 })
 
+test('opens product feedback from an accessible Settings entry', async () => {
+  await renderAuthenticated()
+  fireEvent.press(screen.getByRole('button', { name: 'Donner mon avis' }))
+  expect(router.push).toHaveBeenCalledWith('/feedback')
+})
+
 test('shows the app version in the À propos line', async () => {
   await renderAuthenticated()
 

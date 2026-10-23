@@ -109,6 +109,7 @@ export default function RootLayout() {
                     <Stack.Screen name="join" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
                     <Stack.Screen name="(tabs)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
                     <Stack.Screen name="settings" />
+                    <Stack.Screen name="feedback" />
                     <Stack.Screen name="notifications" />
                     <Stack.Screen name="pantry-checkup" />
                     <Stack.Screen name="expiry-reminders" />

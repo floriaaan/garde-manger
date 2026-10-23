@@ -21,6 +21,7 @@ import {
     BadgeCheckIcon,
   WalletIcon,
   RefreshIcon,
+  MessageSquareIcon,
 } from '../dashboard/dashboard-icons.js'
 import { armFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
@@ -294,6 +295,15 @@ export function SettingsScreen() {
           />
         </YStack>
       ) : null}
+      <YStack marginTop="$5" gap="$3">
+        <SectionLabel palette={palette}>{t('feedback.help')}</SectionLabel>
+        <IdentityCard testID="settings-feedback" bg={palette.mintPale}
+          labelColor={palette.mintPaleText} chipColor={palette.chipTeal}
+          icon={<MessageSquareIcon size={18} color={palette.onDark} />}
+          label={t('feedback.title')} value={t('feedback.summary')} emphasizeLabel
+          accessibilityLabel={t('feedback.title')} corner="b" palette={palette}
+          onPress={() => router.push('/feedback')} />
+      </YStack>
 
       {/* Dev-only door to `/debug` (also reachable by triple-tapping the logo on the auth screens). Never bundled into a release build. */}
       {__DEV__ ? (
