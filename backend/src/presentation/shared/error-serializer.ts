@@ -62,7 +62,8 @@ const STRING_ERROR_MESSAGES: Record<string, string> = {
   no_subscription: 'Aucun abonnement à gérer : seule la personne qui a souscrit peut y accéder.',
   billing_unavailable: "L'abonnement n'est pas disponible sur cette instance.",
   invalid_apple_purchase: 'Achat Apple invalide ou non reconnu.',
-  apple_account_mismatch: 'Cet achat Apple est lié à un autre compte Garde-manger. Connecte-toi avec le compte utilisé lors de l’achat.',
+  apple_account_mismatch:
+    'Cet achat Apple est lié à un autre compte Garde-manger. Connecte-toi avec le compte utilisé lors de l’achat.',
   product_not_found: 'Produit introuvable.',
   image_not_found: 'Image introuvable.',
   receipt_not_found: 'Ticket introuvable.',

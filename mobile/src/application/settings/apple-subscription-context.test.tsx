@@ -15,6 +15,7 @@ function Status() {
     <Text>{apple.error}</Text>
     <Text>{apple.notice}</Text>
     <Pressable testID="buy" disabled={!apple.product || apple.pending} onPress={apple.subscribe}><Text>Buy</Text></Pressable>
+    <Pressable testID="retry" onPress={apple.retry}><Text>Retry</Text></Pressable>
     <Pressable testID="restore" onPress={apple.restore}><Text>Restore</Text></Pressable>
   </>
 }
@@ -80,4 +81,20 @@ test('an existing household subscription blocks a second native purchase', async
   await fireEvent.press(screen.getByTestId('buy'))
   await waitFor(() => expect(screen.getByText('Ce foyer dispose déjà d’un abonnement actif.')).toBeTruthy())
   expect(port.purchase).not.toHaveBeenCalled()
+})
+
+test('retry clears a pending purchase and stale price before reloading StoreKit', async () => {
+  const { port } = await setup()
+  await fireEvent.press(screen.getByTestId('buy'))
+  await waitFor(() => expect(port.purchase).toHaveBeenCalledTimes(1))
+  expect(screen.getByTestId('buy')).toBeDisabled()
+  port.product.mockImplementationOnce(() => new Promise(() => {}))
+  await fireEvent.press(screen.getByTestId('retry'))
+  await waitFor(() => expect(port.product).toHaveBeenCalledTimes(2))
+  expect(screen.queryByText('1,49 €')).toBeNull()
+  expect(screen.getByText('loading')).toBeTruthy()
+  port.product.mockResolvedValueOnce({ id: purchase.productId, displayPrice: '2,49 €', title: 'IA du foyer' })
+  await fireEvent.press(screen.getByTestId('retry'))
+  await waitFor(() => expect(screen.getByText('2,49 €')).toBeTruthy())
+  expect(screen.getByTestId('buy')).not.toBeDisabled()
 })

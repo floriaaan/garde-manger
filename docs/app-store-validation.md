@@ -67,3 +67,26 @@ cet environnement. L’export JavaScript Android a été validé.
 Les exports et la compilation ne prouvent pas un achat réel. La configuration
 App Store Connect, les achats/restaurations sandbox sur iPhone/iPad et la vidéo
 de suppression restent à réaliser selon [le protocole de resoumission](app-store-resubmission.md).
+
+## Correction des jobs CI — 23 octobre 2026
+
+Le [run 39509680715](https://github.com/floriaaan/garde-manger/actions/runs/39509680715)
+s’arrêtait au lint sur les deux jobs, avant leurs étapes suivantes :
+
+- Backend : 116 erreurs de formatage et deux accès directs au résultat d’un
+  `await`. Formatage des fichiers concernés et variables intermédiaires dans les
+  deux tests, sans changement de comportement backend.
+- Mobile : `react-hooks/set-state-in-effect` sur la remise à zéro StoreKit.
+  L’état est désormais réinitialisé avant rendu lorsque le compte, le foyer,
+  le serveur ou la tentative change. Aucun contournement de règle ESLint.
+
+Contrôles locaux après correction : lint backend réussi ; lint mobile réussi
+avec 31 avertissements ; typecheck et frontières de dépendances réussis sur
+les deux projets. Les cinq tests du contexte StoreKit passent, dont une
+régression sur la remise à zéro lors d’une nouvelle tentative. Les neuf tests
+backend ciblés Apple Store et synchronisation passent également sur PostgreSQL
+temporaire isolé.
+
+Ces corrections ne rendent pas verte la suite Jest mobile complète, qui reste
+hors des étapes exécutées par `task mobile:check` (désactivée dans le Taskfile
+existant). Aucun simulateur lancé et aucun build natif relancé.

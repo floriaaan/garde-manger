@@ -72,14 +72,27 @@ test.group('account deletion: household cleanup', () => {
   })
 })
 
-test('solo owner deletion cancels Stripe before its entitlement row is removed by cascade', async ({ client, assert }) => {
+test('solo owner deletion cancels Stripe before its entitlement row is removed by cascade', async ({
+  client,
+  assert,
+}) => {
   const cookie = await signUp(client, 'solo-stripe-payer@example.com', 'Solo Stripe Payer')
-  const created = await client.post('/api/households').headers({ cookie }).json({ name: 'Solo billed household' })
+  const created = await client
+    .post('/api/households')
+    .headers({ cookie })
+    .json({ name: 'Solo billed household' })
   const householdId = created.body().household.id
   const user = await db.from('user').where('email', 'solo-stripe-payer@example.com').first()
   if (!user) throw new Error('Missing payer')
   const subscriptions = await app.container.make('settings.subscriptions')
-  await subscriptions.upsert({ householdId, payerUserId: user.id, stripeCustomerId: 'cus_solo', stripeSubscriptionId: 'sub_solo', expiresAt: new Date('2027-01-01'), cancelAtPeriodEnd: false })
+  await subscriptions.upsert({
+    householdId,
+    payerUserId: user.id,
+    stripeCustomerId: 'cus_solo',
+    stripeSubscriptionId: 'sub_solo',
+    expiresAt: new Date('2027-01-01'),
+    cancelAtPeriodEnd: false,
+  })
   const billing = await app.container.make('settings.billing')
   const originalCancel = billing.cancelSubscription
   const cancelled: string[] = []
@@ -93,5 +106,7 @@ test('solo owner deletion cancels Stripe before its entitlement row is removed b
     response.assertStatus(200)
     assert.deepEqual(cancelled, ['sub_solo'])
     assert.isNull(await subscriptions.find(householdId))
-  } finally { billing.cancelSubscription = originalCancel }
+  } finally {
+    billing.cancelSubscription = originalCancel
+  }
 })

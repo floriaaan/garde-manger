@@ -42,7 +42,11 @@ export default class SubscriptionController {
       async () => {
         const result = await new UseCase(
           await ctx.containerResolver.make('settings.billing'),
-          await ctx.containerResolver.make(UseCase === OpenBillingPortal ? 'settings.stripeSubscriptions' : 'settings.subscriptions'),
+          await ctx.containerResolver.make(
+            UseCase === OpenBillingPortal
+              ? 'settings.stripeSubscriptions'
+              : 'settings.subscriptions',
+          ),
           await ctx.containerResolver.make('identity.households'),
         ).execute({ userId: user.id })
 

@@ -44,6 +44,18 @@ export function AppleSubscriptionProvider({ purchases, children }: { purchases: 
   const userId = session.data?.user.id
   const householdId = household.data?.id
 
+  // Reset before rendering a changed account, server, or retry scope.
+  const scope = [purchases, connector, userId, householdId, serverUrl, queryClient, attempt]
+  const [previousScope, setPreviousScope] = useState(scope)
+  if (scope.some((value, index) => value !== previousScope[index])) {
+    setPreviousScope(scope)
+    setPending(false)
+    setProduct(null)
+    setConfig(null)
+    setError(null)
+    setNotice(null)
+  }
+
   useEffect(() => {
     if (!purchases || !userId || !householdId) return
     ++lifecycle.current
@@ -52,11 +64,6 @@ export function AppleSubscriptionProvider({ purchases, children }: { purchases: 
     const processing = new Map<string, Promise<boolean>>()
     ready.current = false
     operation.current = null
-    setPending(false)
-    setProduct(null)
-    setConfig(null)
-    setError(null)
-    setNotice(null)
 
     const finishPurchaseAttempt = () => {
       if (operation.current === 'purchase') { operation.current = null; setPending(false) }
