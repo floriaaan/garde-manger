@@ -11,6 +11,8 @@ import { ConfettiHost } from '../presentation/shared/confetti.js'
 import { ThemeProvider } from '../presentation/shared/theme-provider.js'
 import { ToastHost } from '../presentation/shared/toast.js'
 import { ErrorBoundary } from '../presentation/shared/error-boundary.js'
+import { AppleSubscriptionProvider } from '../application/settings/apple-subscription-context.js'
+import { applePurchases } from '../../providers/apple-purchases.js'
 import { ConnectorProvider } from '../application/shared/connector-context.js'
 import { queryClient } from '../application/shared/query-client.js'
 import { createConnector } from '../../providers/create-connector.js'
@@ -80,51 +82,54 @@ export default function RootLayout() {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <ConnectorProvider connector={connector}>
-            <ErrorBoundary>
-              {/* A Stack, not a Slot. `Réglages`, `Foyer` and `Historique des
-                tickets` used to live inside `(tabs)/`, where iOS's
-                `NativeTabs` only routes to the five declared triggers — so
-                `router.push('/settings')` was a silent no-op on iOS and the
-                only entrance to settings was dead. They are pushed screens,
-                never tabs (`AppShell`'s `{ kind: 'stack' }`), so they now sit
-                here as siblings of the tab group, which needs a real stack
-                navigator at the root to push onto. URLs are unchanged: `(tabs)`
-                is a group, so `/settings` was already `/settings`. */}
-              <AuthBackgroundFrame>
-                <Stack screenOptions={{ headerShown: false }}>
-                  {/* First-time entry shares the auth screen in registration mode. */}
-                  <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="server-choice" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="reset-password" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="(auth)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  {/* Between `(auth)` and `(tabs)`, and a sibling of both: an
-                    account with no foyer is signed in but has no screen inside
-                    the tabs that could honestly render, so it gets its own
-                    group with its own gate. `join` is the deep-link landing
-                    route for `gardemanger://join?code=…`. */}
-                  <Stack.Screen name="(onboarding)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="join" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="(tabs)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
-                  <Stack.Screen name="settings" />
-                  <Stack.Screen name="notifications" />
-                  <Stack.Screen name="pantry-checkup" />
-                  <Stack.Screen name="expiry-reminders" />
-                  <Stack.Screen name="account" />
-                  <Stack.Screen name="delete-account" />
-                  <Stack.Screen name="household" />
-                  <Stack.Screen name="receipts" />
-                  <Stack.Screen name="tasks" />
-                  <Stack.Screen name="action-sheet" options={{
-                    presentation: 'formSheet', sheetAllowedDetents: 'fitToContents',
-                    sheetGrabberVisible: true, sheetExpandsWhenScrolledToEdge: true,
-                    gestureEnabled: true,
-                  }} />
-                  <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="debug" options={{ presentation: 'modal' }} />
-                </Stack>
-              </AuthBackgroundFrame>
-            </ErrorBoundary>
+            <AppleSubscriptionProvider purchases={applePurchases}>
+              <ErrorBoundary>
+                {/* A Stack, not a Slot. `Réglages`, `Foyer` and `Historique des
+                  tickets` used to live inside `(tabs)/`, where iOS's
+                  `NativeTabs` only routes to the five declared triggers — so
+                  `router.push('/settings')` was a silent no-op on iOS and the
+                  only entrance to settings was dead. They are pushed screens,
+                  never tabs (`AppShell`'s `{ kind: 'stack' }`), so they now sit
+                  here as siblings of the tab group, which needs a real stack
+                  navigator at the root to push onto. URLs are unchanged: `(tabs)`
+                  is a group, so `/settings` was already `/settings`. */}
+                <AuthBackgroundFrame>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    {/* First-time entry shares the auth screen in registration mode. */}
+                    <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="server-choice" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="reset-password" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="(auth)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    {/* Between `(auth)` and `(tabs)`, and a sibling of both: an
+                      account with no foyer is signed in but has no screen inside
+                      the tabs that could honestly render, so it gets its own
+                      group with its own gate. `join` is the deep-link landing
+                      route for `gardemanger://join?code=…`. */}
+                    <Stack.Screen name="(onboarding)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="join" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="(tabs)" options={{ contentStyle: { backgroundColor: 'transparent' } }} />
+                    <Stack.Screen name="settings" />
+                    <Stack.Screen name="notifications" />
+                    <Stack.Screen name="pantry-checkup" />
+                    <Stack.Screen name="expiry-reminders" />
+                    <Stack.Screen name="account" />
+                    <Stack.Screen name="delete-account" />
+                    <Stack.Screen name="account-deleted" />
+                    <Stack.Screen name="household" />
+                    <Stack.Screen name="receipts" />
+                    <Stack.Screen name="tasks" />
+                    <Stack.Screen name="action-sheet" options={{
+                      presentation: 'formSheet', sheetAllowedDetents: 'fitToContents',
+                      sheetGrabberVisible: true, sheetExpandsWhenScrolledToEdge: true,
+                      gestureEnabled: true,
+                    }} />
+                    <Stack.Screen name="scanner" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="home-assistant" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="debug" options={{ presentation: 'modal' }} />
+                  </Stack>
+                </AuthBackgroundFrame>
+              </ErrorBoundary>
+            </AppleSubscriptionProvider>
           </ConnectorProvider>
         </QueryClientProvider>
         <ToastHost />

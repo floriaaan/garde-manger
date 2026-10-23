@@ -148,19 +148,16 @@ export const auth = betterAuth({
         const household = await households.findByUserId(user.id)
         if (!household) return
 
-        if (household.ownerId === user.id) {
-          if (household.members.length > 1) {
-            throw new APIError('BAD_REQUEST', {
-              message: 'Transférez la propriété du foyer avant de supprimer votre compte.',
-              code: 'ownership_transfer_required',
-            })
-          }
-          await households.delete(household.id)
-          return
+        if (household.ownerId === user.id && household.members.length > 1) {
+          throw new APIError('BAD_REQUEST', {
+            message: 'Transférez la propriété du foyer avant de supprimer votre compte.',
+            code: 'ownership_transfer_required',
+          })
         }
-
-        const { LeaveHousehold } = await import('#application/identity/leave-household.use-case')
-        await new LeaveHousehold(households).execute({ userId: user.id })
+        if (household.ownerId !== user.id) {
+          const { LeaveHousehold } = await import('#application/identity/leave-household.use-case')
+          await new LeaveHousehold(households).execute({ userId: user.id })
+        }
 
         // Cf. `household.controller.ts`'s `leave`/`removeMember` — deleting
         // the account is one more way to stop being in the foyer you paid
@@ -172,6 +169,8 @@ export const auth = betterAuth({
           await app.container.make('settings.billing'),
           await app.container.make('shared.clock'),
         ).execute({ userId: user.id })
+        // Revoke/cancel before the solo household cascade removes its billing row.
+        if (household.ownerId === user.id) await households.delete(household.id)
       },
     },
   },

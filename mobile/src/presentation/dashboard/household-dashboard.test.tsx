@@ -9,7 +9,7 @@ import { Platform } from 'react-native'
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
 // iOS cannot bill directly, but the household's subscription still applies.
 jest.mock('../../application/shared/platform-capabilities.js', () => ({
-  platformCapabilities: { billing: false, googleSignIn: false },
+  platformCapabilities: { billing: false, storeKit: true, googleSignIn: false },
 }))
 
 // The fake fridge holds one product whose date is already in the past (milk,

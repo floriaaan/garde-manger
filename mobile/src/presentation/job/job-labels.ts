@@ -52,7 +52,7 @@ export function isBehindAnother(job: Job, jobs: Job[]): boolean {
 export function failureMessage(job: Job): string {
   switch (job.error?.type) {
     case 'ai_quota_exceeded':
-      return platformCapabilities.billing
+      return (platformCapabilities.billing || platformCapabilities.storeKit)
         ? t('job.free_quota_reached_upgrade_to_the_ai_plan_to_continue')
         : t('job.monthly_quota_reached_it_resets_on_the_first_of_the')
     case 'provider_not_configured':

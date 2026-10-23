@@ -13,6 +13,8 @@ import { AuthButton } from './auth-button.js'
 import { AuthPasswordField } from './auth-password-field.js'
 import { useHouseholdQuery } from '../../application/identity/household.query.js'
 import { useLinkedAccountsQuery } from '../../application/identity/linked-accounts.query.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
+import { useAiSettingsQuery } from '../../application/settings/ai-settings.query.js'
 import { useDeleteAccountMutation } from '../../application/identity/delete-account.mutation.js'
 
 export function DeleteAccountScreen() {
@@ -22,6 +24,7 @@ export function DeleteAccountScreen() {
   const household = useHouseholdQuery()
   const linkedAccounts = useLinkedAccountsQuery()
   const deleteAccount = useDeleteAccountMutation()
+  const aiSettings = useAiSettingsQuery()
   const [hint, showHint] = useHint()
   const [password, setPassword] = useState('')
   const hasPassword = linkedAccounts.data?.some((account) => account.provider === 'password') ?? false
@@ -34,7 +37,7 @@ export function DeleteAccountScreen() {
       return
     }
     queryClient.clear()
-    router.replace('/(auth)/sign-in')
+    router.replace('/account-deleted')
   }
 
   return (
@@ -45,6 +48,9 @@ export function DeleteAccountScreen() {
     >
       <YStack marginTop="$6" gap="$4">
         <Text fontSize={15} fontWeight="600" color={palette.ink}>{t('identity.this_action_is_permanent_your_account_and_personal_data_will')}</Text>
+        {platformCapabilities.storeKit || aiSettings.data?.access.subscriptionProvider === 'apple' ? (
+          <Text fontSize={14} color={palette.inkSecondary}>{t('settings.apple_deletion_notice')}</Text>
+        ) : null}
         {household.isError || linkedAccounts.isError ? (
           <YStack gap="$2">
             <Text fontSize={14} color={palette.expiredText}>{t('identity.we_couldn_t_check_the_deletion_requirements')}</Text>

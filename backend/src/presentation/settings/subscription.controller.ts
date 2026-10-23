@@ -30,7 +30,7 @@ export default class SubscriptionController {
     action: string,
   ) {
     const user = requireAuthenticatedUser(ctx)
-    if (!billingConfigured()) {
+    if (ctx.request.header('x-client-platform') === 'ios' || !billingConfigured()) {
       const { status, body } = serializeError('billing_unavailable')
       return ctx.response.status(status).json(body)
     }
@@ -42,7 +42,11 @@ export default class SubscriptionController {
       async () => {
         const result = await new UseCase(
           await ctx.containerResolver.make('settings.billing'),
-          await ctx.containerResolver.make('settings.subscriptions'),
+          await ctx.containerResolver.make(
+            UseCase === OpenBillingPortal
+              ? 'settings.stripeSubscriptions'
+              : 'settings.subscriptions',
+          ),
           await ctx.containerResolver.make('identity.households'),
         ).execute({ userId: user.id })
 

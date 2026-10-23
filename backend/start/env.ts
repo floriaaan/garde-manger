@@ -103,6 +103,15 @@ export default await Env.create(new URL('../', import.meta.url), {
   STRIPE_PRICE_ID: Env.schema.string.optional(),
   STRIPE_RETURN_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 
+  // StoreKit 2 / App Store Server API. Separate from Sign in with Apple keys.
+  APPLE_IAP_PRODUCT_ID: Env.schema.string.optional(),
+  APPLE_IAP_ISSUER_ID: Env.schema.string.optional(),
+  APPLE_IAP_KEY_ID: Env.schema.string.optional(),
+  APPLE_IAP_PRIVATE_KEY: Env.schema.string.optional(),
+  APPLE_IAP_BUNDLE_ID: Env.schema.string.optional(),
+  APPLE_IAP_APP_ID: Env.schema.number.optional(),
+  APPLE_IAP_ALLOW_SANDBOX: Env.schema.boolean.optional(),
+
   // Root directory for locally-stored images (receipts, products) — cf. ADR-0009.
   STORAGE_ROOT: Env.schema.string.optional(),
 

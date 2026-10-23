@@ -3,8 +3,7 @@ import { useTranslation } from '../../i18n/index.js'
  * Réglages > Abonnement (ADR 0014). Three states off `access.plan`:
  * self-hosted → not applicable (nothing to buy, AI is unlimited on your own
  * server); free → the paywall; subscriber → what is active and until when.
- * iOS reuses the subscription cards, with a single action opening the web
- * subscription page instead of direct billing.
+ * iOS buys through StoreKit; Android and web keep Stripe.
  */
 import { Pressable } from 'react-native'
 import { router } from 'expo-router'
@@ -35,7 +34,7 @@ export function SubscriptionScreen() {
         <ScreenHeader
           palette={palette}
           icon={(color) => <BadgeCheckIcon size={19} color={color} />}
-          title={t('settings.subscription')}
+          title={subscription.billing ? t('settings.subscription') : t('settings.household_ai')}
           onBack={() => router.back()}
         />
       }
@@ -58,26 +57,52 @@ export function SubscriptionScreen() {
         {/* Free plan: the usage comes first — the paywall answers it, it does not open the screen. */}
         {access?.plan === 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}
 
-        {access?.plan === 'free' ? (
+        {subscription.billing && access?.plan === 'free' ? (
           <SubscriptionPaywall
             palette={palette}
             onSubscribe={subscription.subscribe}
-            webOnly={!subscription.billing}
+            storeKit={subscription.storeKit}
+            product={subscription.product}
+            onRestore={subscription.restore}
+            onRetry={subscription.retryStore}
+            notice={subscription.notice}
             pending={subscription.pending}
             error={subscription.error}
           />
         ) : null}
 
-        {access?.plan === 'subscriber' ? (
+        {subscription.billing && access?.plan === 'subscriber' ? (
           <SubscriptionActiveCard
             palette={palette}
             until={access.expiresAt}
             cancelled={access.cancelsAtPeriodEnd}
             onManage={subscription.manage}
-            webOnly={!subscription.billing}
+            managedByApple={access.subscriptionProvider === 'apple'}
+            managementNotice={!subscription.manage ? t(access.subscriptionProvider === 'apple' ? 'settings.apple_managed_elsewhere' : 'settings.subscription_managed_elsewhere') : undefined}
             pending={subscription.pending}
             error={subscription.error}
           />
+        ) : null}
+
+        {subscription.storeKit && access?.plan === 'subscriber' ? (
+          <YStack gap="$2">
+            <Pressable testID="subscription-restore" accessibilityRole="button" accessibilityState={{ disabled: !!subscription.pending }} disabled={subscription.pending} onPress={subscription.restore} style={({ pressed }) => ({ minHeight: 44, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: palette.cream, justifyContent: 'center', opacity: subscription.pending ? 0.5 : pressed ? 0.7 : 1 })}>
+              <Text fontSize={14} fontWeight="700" color={palette.ink} textAlign="center">{t('settings.apple_restore')}</Text>
+            </Pressable>
+            {subscription.error ? (
+              <Pressable
+                testID="subscription-store-retry"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !!subscription.pending }}
+                disabled={subscription.pending}
+                onPress={subscription.retryStore}
+                style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: subscription.pending ? 0.5 : pressed ? 0.7 : 1 })}
+              >
+                <Text fontSize={14} fontWeight="600" color={palette.ink} textAlign="center">{t('dashboard.try_again')}</Text>
+              </Pressable>
+            ) : null}
+            {subscription.notice ? <Text color={palette.inkSecondary} accessibilityLiveRegion="polite">{subscription.notice}</Text> : null}
+          </YStack>
         ) : null}
 
         {access && access.plan !== 'free' ? <AiQuotaHint access={access} palette={palette} showCta={false} /> : null}

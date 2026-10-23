@@ -118,7 +118,7 @@ export function AiProviderScreen() {
             <SparklesIcon size={14} color={palette.lavenderText} />
             <Text flex={1} fontSize={12} fontWeight="600" color={palette.inkSecondary}>
               {settings.data && !canChooseProvider
-                ? platformCapabilities.billing
+                ? (platformCapabilities.billing || platformCapabilities.storeKit)
                   ? t('settings.each_scan_or_recipe_counts_towards_your_plan_see_subscription')
                   : t('settings.each_scan_or_recipe_counts_towards_the_household_s_monthly')
                 : t('settings.ai_only_runs_when_you_start_a_scan_or_request')}

@@ -453,6 +453,26 @@ describe('authentication integrations', () => {
     expect(authClient.linkSocial).toHaveBeenCalledWith({ provider: 'pocketid', callbackURL })
   })
 
+  test.each(['google', 'pocketid'] as const)('web OAuth via %s returns to account deletion after the redirect', async (provider) => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    Object.defineProperty(window, 'location', { configurable: true, value: {
+      origin: 'https://app.example.com', pathname: '/delete-account', search: '',
+    } })
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({})
+    expect(await new HttpFridgeConnector().signInSocial(provider)).toEqual({ ok: true, value: null })
+    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider, callbackURL: 'https://app.example.com/delete-account' })
+  })
+
+  test('web OAuth preserves the subscription return path and its parameters', async () => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    Object.defineProperty(window, 'location', { configurable: true, value: {
+      origin: 'https://app.example.com', pathname: '/subscription', search: '?source=settings',
+    } })
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValue({})
+    await new HttpFridgeConnector().signInSocial('google')
+    expect(authClient.signIn.social).toHaveBeenCalledWith({ provider: 'google', callbackURL: 'https://app.example.com/subscription?source=settings' })
+  })
+
   test('web OAuth waits for the callback instead of checking for a session before redirect', async () => {
     Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
     Object.defineProperty(window, 'location', { configurable: true, value: { origin: 'https://app.example.com' } })

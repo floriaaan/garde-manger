@@ -7,11 +7,12 @@ import { t, useTranslation } from '../../i18n/index.js'
  */
 import { useRef, useState } from 'react'
 import { Image, Pressable } from 'react-native'
-import { CameraView, useCameraPermissions } from 'expo-camera'
+import { CameraView } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { pointerCursor } from '../shared/hover.js'
+import { useScannerCameraPermissions } from '../shared/use-scanner-camera-permissions.js'
 import { CameraPermissionModal } from '../shared/camera-permission-modal.js'
 import { CameraChrome, CameraRoundButton, ShutterButton } from '../shared/camera-chrome.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -30,7 +31,7 @@ function hintFor(count: number) {
 export function FridgeScanCameraScreen() {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const [permission, requestPermission] = useCameraPermissions()
+  const { permission, requestPermission, awaitingNativeRequest } = useScannerCameraPermissions()
   const cameraRef = useRef<CameraView>(null)
   const [photos, setPhotos] = useState<string[]>([])
   const [capturing, setCapturing] = useState(false)
@@ -66,6 +67,8 @@ export function FridgeScanCameraScreen() {
   function removePhoto(uri: string) {
     setPhotos((current) => current.filter((p) => p !== uri))
   }
+
+  if (awaitingNativeRequest) return <YStack flex={1} />
 
   if (!permission?.granted) {
     return (

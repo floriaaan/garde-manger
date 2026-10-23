@@ -56,7 +56,7 @@ export default class StripeWebhookController {
           (subscription.cancel_at !== null && subscription.cancel_at !== undefined)
 
         const outcome = await new HandleStripeWebhook(
-          await ctx.containerResolver.make('settings.subscriptions'),
+          await ctx.containerResolver.make('settings.stripeSubscriptions'),
           await ctx.containerResolver.make('identity.households'),
           await ctx.containerResolver.make('shared.clock'),
         ).execute({

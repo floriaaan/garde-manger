@@ -2,6 +2,10 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import type { AiProviderSettingsRepository } from '#domain/settings/interfaces/ai-provider-settings-repository.interface'
 import type { AiSettingsProvider } from '#domain/settings/interfaces/ai-settings-provider.interface'
 import type { SubscriptionPort } from '#domain/settings/interfaces/subscription-port.interface'
+import type {
+  AppleStorePort,
+  AppleSubscriptionRepository,
+} from '#domain/settings/interfaces/apple-subscription-port.interface'
 import type { BillingPort } from '#domain/settings/interfaces/billing-port.interface'
 import type { AiQuotaPort } from '#domain/settings/interfaces/ai-quota-port.interface'
 import type { ReceiptExtractionPort } from '#domain/receipt/interfaces/receipt-extraction-port.interface'
@@ -18,10 +22,31 @@ export default class SettingsProvider {
       return new LucidAiProviderSettingsRepository()
     })
 
-    this.app.container.singleton('settings.subscriptions', async () => {
+    this.app.container.singleton('settings.appleStore', async () => {
+      const { createAppleStore } = await import('#infrastructure/settings/apple-store.adapter')
+      return createAppleStore()
+    })
+
+    this.app.container.singleton('settings.appleSubscriptions', async () => {
+      const { LucidAppleSubscriptionRepository } =
+        await import('#infrastructure/settings/lucid-apple-subscription.repository')
+      return new LucidAppleSubscriptionRepository()
+    })
+
+    this.app.container.singleton('settings.stripeSubscriptions', async () => {
       const { LucidSubscriptionAdapter } =
         await import('#infrastructure/settings/lucid-subscription.adapter')
       return new LucidSubscriptionAdapter()
+    })
+
+    this.app.container.singleton('settings.subscriptions', async () => {
+      const { CombinedSubscriptionAdapter } =
+        await import('#infrastructure/settings/combined-subscription.adapter')
+      return new CombinedSubscriptionAdapter(
+        await this.app.container.make('settings.stripeSubscriptions'),
+        await this.app.container.make('settings.appleSubscriptions'),
+        await this.app.container.make('shared.clock'),
+      )
     })
 
     this.app.container.singleton('settings.billing', async () => {
@@ -89,6 +114,9 @@ declare module '@adonisjs/core/types' {
     'settings.aiProviderSettingsRepository': AiProviderSettingsRepository
     'settings.aiSettingsProvider': AiSettingsProvider
     'settings.subscriptions': SubscriptionPort
+    'settings.stripeSubscriptions': SubscriptionPort
+    'settings.appleStore': AppleStorePort | null
+    'settings.appleSubscriptions': AppleSubscriptionRepository
     'settings.billing': BillingPort
     'settings.aiQuota': AiQuotaPort
     'settings.resolveReceiptExtractionPort': (

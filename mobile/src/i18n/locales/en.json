@@ -106,6 +106,7 @@
     "language_session_only": "For this session only. New AI results use this language."
   },
   "fridge": {
+    "enter_product_manually": "Enter the product manually",
     "camera_access_is_required_to_scan_a_barcode": "Camera access is required to scan a barcode.",
     "point_at_the_barcode_it_scans_automatically": "Point at the barcode — it scans automatically",
     "remove_date": "Remove date",
@@ -335,6 +336,8 @@
     "connection": "Connection"
   },
   "identity": {
+    "account_deleted": "Account deleted",
+    "account_deleted_confirmation": "Your account has been permanently deleted. You are now signed out.",
     "email_and_password": "Email and password",
     "passkey": "Passkey",
     "apple_didn_t_return_an_identity_token": "Apple didn’t return an identity token.",
@@ -852,6 +855,21 @@
     "uses": "Uses {{value1}}, {{value2}}"
   },
   "settings": {
+    "apple_verification_retry": "Purchase verification did not complete. Try Restore purchases again.",
+    "apple_purchase_pending": "Purchase awaiting approval. Your subscription will activate after Apple confirms it.",
+    "apple_purchase_failed": "The App Store is unavailable or the purchase did not complete. Try again.",
+    "household_already_subscribed": "This household already has an active subscription.",
+    "apple_restored": "Subscription restored.",
+    "apple_nothing_to_restore": "No active Apple subscription to restore for this account.",
+    "apple_manage": "Manage in the App Store",
+    "apple_loading_price": "Loading price…",
+    "apple_subscribe_price": "Subscribe for {{price}} per month",
+    "apple_auto_renewal": "Monthly, automatically renewing subscription. Payment is charged to your Apple account. Manage or cancel renewal in your App Store settings before the current period ends.",
+    "apple_restore": "Restore purchases",
+    "apple_managed_elsewhere": "This subscription was purchased from Apple. Manage it using the Apple account used for the purchase.",
+    "subscription_managed_elsewhere": "This subscription was purchased on another platform. Only the subscriber can manage it from that platform.",
+    "generated_recipes": "Recipe generation",
+    "apple_deletion_notice": "If you have an Apple subscription, deleting your Garde-manger account does not cancel it. You can cancel it in App Store settings, even after deleting your account.",
     "manage_your_subscription_on_the_web_sign_in_with_the": "Manage your subscription on the web. Sign in with the same account, then return to the app: your subscription and quota will refresh.",
     "no_ai_provider_configured": "No AI provider configured",
     "receipt_scanning_and_recipes_need_an_api_key_gemini_openai": "Receipt scanning and recipes need an API key (Gemini, OpenAI) or a local Ollama model on this server.",

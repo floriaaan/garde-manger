@@ -23,6 +23,7 @@ import type { LocationValue } from '../../domain/fridge/location.js'
 import type { ProductLookupResult } from '../../domain/fridge/product-lookup-result.js'
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
 import type { ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
+import type { AppleSubscriptionConfig } from '../../domain/settings/apple-purchases.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
 import type { ReminderDays, ReminderSettings, ReminderSettingsUpdate, WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 import type {
@@ -261,10 +262,11 @@ export class HttpFridgeConnector implements FridgeConnector {
         }
       })
       // Expo turns the native path into a deep link. On web a relative path
-      // would redirect to the API host, so return to the frontend origin.
+      // would redirect to the API host. Preserve the initiating frontend route
+      // through the full-page web redirect (e.g. account deletion).
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: Platform.OS === 'web' ? `${window.location.origin}/` : android ? ANDROID_OAUTH_CALLBACK : '/',
+        callbackURL: Platform.OS === 'web' ? `${window.location.origin}${window.location.pathname || '/'}${window.location.search || ''}` : android ? ANDROID_OAUTH_CALLBACK : '/',
         ...(android ? {
           errorCallbackURL: ANDROID_OAUTH_CALLBACK,
           fetchOptions: {
@@ -902,6 +904,14 @@ export class HttpFridgeConnector implements FridgeConnector {
       { action: 'settings.set_active_ai_provider' },
     )
     return result.ok ? Result.ok(result.value) : Result.err(result.error)
+  }
+
+  getAppleSubscription(): Promise<Result<AppleSubscriptionConfig, ApiError>> {
+    return apiFetch('/api/settings/subscription/apple', undefined, { action: 'settings.get_apple_subscription' })
+  }
+
+  syncAppleSubscription(signedTransaction: string): Promise<Result<{ active: boolean }, ApiError>> {
+    return apiFetch('/api/settings/subscription/apple', { method: 'POST', body: JSON.stringify({ signedTransaction }) }, { action: 'settings.sync_apple_subscription' })
   }
 
   async startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>> {

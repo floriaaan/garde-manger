@@ -80,6 +80,7 @@ async function tracedFetch(
     const cookie = Platform.OS === 'web' ? null : await authClient.getCookie()
 
     const headers = {
+      'x-client-platform': Platform.OS,
       ...(init.headers as Record<string, string>),
       ...(span ? { traceparent: span.traceparent } : null),
       ...(cookie ? { Cookie: cookie } : null),

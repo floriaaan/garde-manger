@@ -1,8 +1,10 @@
 import { useTranslation } from '../../i18n/index.js'
 import { useRef } from 'react'
-import { CameraView, useCameraPermissions } from 'expo-camera'
+import { Pressable } from '../shared/pressable.js'
+import { CameraView } from 'expo-camera'
 import { router } from 'expo-router'
-import { YStack } from '../shared/tamagui-typed.js'
+import { Text, YStack } from '../shared/tamagui-typed.js'
+import { useScannerCameraPermissions } from '../shared/use-scanner-camera-permissions.js'
 import { CameraPermissionModal } from '../shared/camera-permission-modal.js'
 import { goBack } from '../shared/navigation.js'
 import { CameraChrome } from '../shared/camera-chrome.js'
@@ -20,7 +22,7 @@ type BarcodeScannerMode = ({ mode: 'create' } | { mode: 'edit'; productId: strin
 export function BarcodeScannerScreen(props: BarcodeScannerMode) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
-  const [permission, requestPermission] = useCameraPermissions()
+  const { permission, requestPermission, awaitingNativeRequest } = useScannerCameraPermissions()
   // A ref, not state: `onBarcodeScanned` can fire multiple times before a state update
   // commits a re-render, so several calls could all observe `handled === false` and all
   // navigate. A ref is read/written synchronously, so only the first call ever proceeds.
@@ -63,6 +65,8 @@ export function BarcodeScannerScreen(props: BarcodeScannerMode) {
     }
   }
 
+  if (awaitingNativeRequest) return <YStack flex={1} />
+
   if (!permission?.granted) {
     return (
       <CameraPermissionModal
@@ -73,7 +77,16 @@ export function BarcodeScannerScreen(props: BarcodeScannerMode) {
         onClose={() => goBack('/(tabs)/fridge')}
         requestTestID="barcode-scanner-request-permission"
         closeTestID="barcode-scanner-permission-close"
-      />
+      >
+        <Pressable testID="barcode-scanner-manual-entry" accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => {
+          if (props.fromForm) goBack('/(tabs)/fridge')
+          else router.replace(props.mode === 'edit'
+            ? { pathname: '/(tabs)/fridge/[id]/edit', params: { id: props.productId } }
+            : '/(tabs)/fridge/new')
+        }}>
+          <Text color={palette.ink} textAlign="center">{t('fridge.enter_product_manually')}</Text>
+        </Pressable>
+      </CameraPermissionModal>
     )
   }
 

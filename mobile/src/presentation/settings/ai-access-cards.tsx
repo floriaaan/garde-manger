@@ -16,12 +16,11 @@ import { useAiSubscribe } from '../../application/settings/use-ai-subscribe.js'
 import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { hexToRgba } from '../shared/hex-to-rgba.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
+import type { AppleProduct } from '../../domain/settings/apple-purchases.js'
 import type { AiAccess } from '../../domain/settings/ai-settings.js'
 
 const TERMS_OF_SALE_URL = 'https://gardemanger.floriaaan.fr/cgv#retractation'
 const SETUP_GUIDE_URL = 'https://github.com/floriaaan/garde-manger/blob/main/README.fr.md#ia-scan-de-tickets-recettes'
-
-const WEB_SUBSCRIPTION_NOTICE = () => t('settings.manage_your_subscription_on_the_web_sign_in_with_the')
 
 export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
   const { t } = useTranslation()
@@ -38,7 +37,7 @@ export function AiSetupGuideCard({ palette }: { palette: SoftPalette }) {
 
 const mascotGold = require('../../../assets/mascot-gold.png')
 
-const PAYWALL_BENEFITS = () => [t('settings.receipt_and_fridge_scanning'), t('settings.unlimited_generated_recipes'), t('settings.shared_with_the_entire_household')]
+const PAYWALL_BENEFITS = () => [t('settings.receipt_and_fridge_scanning'), t('settings.generated_recipes'), t('settings.shared_with_the_entire_household')]
 
 const MASCOT_GUTTER = 96
 
@@ -86,7 +85,8 @@ export function SubscriptionActiveCard({
   until,
   cancelled,
   onManage,
-  webOnly = false,
+  managedByApple = false,
+  managementNotice,
   pending,
   error,
 }: {
@@ -94,9 +94,9 @@ export function SubscriptionActiveCard({
   until?: string | null
   /** Cancelled in Stripe: access holds until `until`, no renewal. */
   cancelled?: boolean
-  onManage: () => void
-  /** iOS: the only billing action opens the web subscription page. */
-  webOnly?: boolean
+  onManage?: () => void
+  managedByApple?: boolean
+  managementNotice?: string
   pending?: boolean
   error?: string | null
 }) {
@@ -143,20 +143,20 @@ export function SubscriptionActiveCard({
         </YStack>
 
         <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.only_the_subscriber_can_change_or_cancel_the_subscription')}</Text>
-        <Pressable
+        {managementNotice ? <Text color={palette.onDarkSecondary} fontSize={13}>{managementNotice}</Text> : null}
+        {onManage ? <Pressable
           onPress={onManage}
           disabled={pending}
-          testID={webOnly ? 'subscription-web-link' : 'subscription-manage'}
+          testID="subscription-manage"
           accessibilityRole="button"
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack backgroundColor={palette.cream} borderRadius={999} alignItems="center" justifyContent="center" minHeight={52}>
             <Text fontSize={16} fontWeight="900" color={palette.ink}>
-              {pending ? t('settings.one_moment') : webOnly ? t('settings.manage_subscription_on_the_web') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
+              {pending ? t('settings.one_moment') : managedByApple ? t('settings.apple_manage') : cancelled ? t('settings.resume_subscription') : t('settings.manage_subscription')}
             </Text>
           </XStack>
-        </Pressable>
-        {webOnly ? <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text> : null}
+        </Pressable> : null}
         {error ? (
           <Text fontSize={12} fontWeight="600" color={palette.onDarkSecondary} accessibilityLiveRegion="polite">
             {error}
@@ -178,15 +178,22 @@ export function SubscriptionActiveCard({
 export function SubscriptionPaywall({
   palette,
   onSubscribe,
-  webOnly = false,
+  storeKit = false,
+  product,
+  onRestore,
+  onRetry,
+  notice,
   pending,
   reason,
   error,
 }: {
   palette: SoftPalette
   onSubscribe: () => void
-  /** Reuse the offer card with only a web redirect, without direct billing copy. */
-  webOnly?: boolean
+  storeKit?: boolean
+  product?: AppleProduct | null
+  onRestore?: () => void
+  onRetry?: () => void
+  notice?: string | null
   pending?: boolean
   reason?: string
   error?: string | null
@@ -212,17 +219,15 @@ export function SubscriptionPaywall({
               </Text>
             </XStack>
           ) : null}
-          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{t('settings.garde_manger_subscription')}</Text>
+          <Text fontSize={28} fontWeight="900" lineHeight={32} letterSpacing={-0.5} color={palette.onDark}>{storeKit && product ? product.title : t('settings.garde_manger_subscription')}</Text>
         </YStack>
 
-        {!webOnly ? (
-          <XStack alignItems="flex-end" gap="$2.5">
-            <Text fontSize={64} fontWeight="900" lineHeight={64} letterSpacing={-2} color={palette.onDark}>
-              0,99€
-            </Text>
-            <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
-          </XStack>
-        ) : null}
+        <XStack alignItems="flex-end" gap="$2.5">
+          <Text fontSize={storeKit ? product ? 48 : 22 : 64} fontWeight="900" lineHeight={storeKit ? 56 : 64} letterSpacing={-2} color={palette.onDark}>
+            {storeKit ? product?.displayPrice ?? t('settings.apple_loading_price') : '0,99€'}
+          </Text>
+          <Text flex={1} fontSize={14} fontWeight="700" lineHeight={18} color={palette.onDarkSecondary} paddingBottom={6}>{t('settings.per_month_for_the_entire_household', { value1: '\n' })}</Text>
+        </XStack>
 
         <YStack height={0} borderTopWidth={1.5} borderStyle="dashed" borderColor={palette.onDarkSecondary} opacity={0.4} />
 
@@ -239,10 +244,10 @@ export function SubscriptionPaywall({
 
         <Pressable
           onPress={onSubscribe}
-          disabled={pending}
-          testID={webOnly ? 'subscription-web-link' : 'subscription-paywall-cta'}
+          disabled={pending || (storeKit && !product)}
+          testID="subscription-paywall-cta"
           accessibilityRole="button"
-          accessibilityLabel={webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe_for_0_99_per_month')}
+          accessibilityLabel={storeKit ? t('settings.apple_subscribe_price', { price: product?.displayPrice ?? '…' }) : t('settings.subscribe_for_0_99_per_month')}
           style={{ opacity: pending ? 0.7 : 1 }}
         >
           <XStack
@@ -255,7 +260,7 @@ export function SubscriptionPaywall({
           >
             <SparklesIcon size={18} color={palette.accentLimeText} />
             <Text fontSize={16} fontWeight="900" color={palette.accentLimeText}>
-              {pending ? t('settings.one_moment') : webOnly ? t('settings.subscribe_on_the_web') : t('settings.subscribe')}
+              {pending ? t('settings.one_moment') : t('settings.subscribe')}
             </Text>
           </XStack>
         </Pressable>
@@ -264,24 +269,72 @@ export function SubscriptionPaywall({
             {error}
           </Text>
         ) : null}
-        {webOnly ? (
-          <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{WEB_SUBSCRIPTION_NOTICE()}</Text>
-        ) : (
-          <>
-            <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
-            <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
-              {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
-              <Text
-                fontSize={12}
-                fontWeight="700"
-                color={palette.onDark}
-                textDecorationLine="underline"
+        {notice ? <Text color={palette.onDarkSecondary} accessibilityLiveRegion="polite">{notice}</Text> : null}
+        {storeKit ? (
+          <YStack gap="$2">
+            <Text fontSize={12} color={palette.onDarkSecondary}>{t('settings.apple_auto_renewal')}</Text>
+            <Pressable
+              testID="subscription-restore"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !!pending }}
+              disabled={pending}
+              onPress={onRestore}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                justifyContent: 'center',
+                borderRadius: 12,
+                backgroundColor: palette.heroPillFill,
+                opacity: pending ? 0.5 : pressed ? 0.7 : 1,
+              })}
+            >
+              <Text fontSize={14} fontWeight="700" color={palette.onDark} textAlign="center">{t('settings.apple_restore')}</Text>
+            </Pressable>
+            {error ? <Pressable testID="subscription-store-retry" accessibilityRole="button" disabled={pending} onPress={onRetry} style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pending ? 0.5 : pressed ? 0.7 : 1 })}>
+              <Text fontSize={14} fontWeight="600" color={palette.onDark} textAlign="center">{t('dashboard.try_again')}</Text>
+            </Pressable> : null}
+            <XStack
+              testID="subscription-legal-links"
+              flexWrap="wrap"
+              justifyContent="center"
+              gap="$2"
+              paddingTop="$2"
+              borderTopWidth={1}
+              borderColor={hexToRgba(palette.onDark, 0.18)}
+            >
+              <Pressable
+                testID="subscription-terms"
                 accessibilityRole="link"
-                onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
-              >{t('settings.view_terms_of_sale')}</Text>
-            </Text>
-          </>
-        )}
+                onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/cgu')}
+                style={({ pressed }) => ({ minHeight: 44, minWidth: 120, flexBasis: 120, flexGrow: 1, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Text fontSize={13} fontWeight="600" color={palette.onDarkSecondary} textAlign="center" textDecorationLine="underline">{t('settings.terms_of_use')}</Text>
+              </Pressable>
+              <Pressable
+                testID="subscription-privacy"
+                accessibilityRole="link"
+                onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/privacy')}
+                style={({ pressed }) => ({ minHeight: 44, minWidth: 120, flexBasis: 120, flexGrow: 1, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Text fontSize={13} fontWeight="600" color={palette.onDarkSecondary} textAlign="center" textDecorationLine="underline">{t('settings.privacy')}</Text>
+              </Pressable>
+            </XStack>
+          </YStack>
+        ) : <>
+        <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
+        <Text testID="subscription-withdrawal-notice" fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>
+          {t('settings.by_subscribing_you_request_immediate_access_to_the_service_and')}{' '}
+          <Text
+            fontSize={12}
+            fontWeight="700"
+            color={palette.onDark}
+            textDecorationLine="underline"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(TERMS_OF_SALE_URL)}
+          >{t('settings.view_terms_of_sale')}</Text>
+        </Text>
+        </>}
       </YStack>
     </DarkSurface>
   )
@@ -289,9 +342,10 @@ export function SubscriptionPaywall({
 
 /** Paywall wired to the purchase flow — drop it wherever an AI call just hit the free quota. Renders nothing off the free plan. */
 export function ConnectedPaywall({ palette, reason }: { palette: SoftPalette; reason?: string }) {
-  const { canSubscribe, subscribe, pending, error } = useAiSubscribe()
+  const subscription = useAiSubscribe()
+  const { canSubscribe, subscribe, pending, error } = subscription
   if (!canSubscribe) return null
-  return <SubscriptionPaywall palette={palette} onSubscribe={subscribe} pending={pending} reason={reason} error={error} />
+  return <SubscriptionPaywall palette={palette} onSubscribe={subscribe} pending={pending} reason={reason} error={error} storeKit={subscription.storeKit} product={subscription.product} onRestore={subscription.restore} onRetry={subscription.retryStore} notice={subscription.notice} />
 }
 
 /** Share of the free quota from which the hint starts pointing at the subscription. */
@@ -301,8 +355,8 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
   const { t } = useTranslation()
   if (access.limit === null) return null
   const ratio = Math.min(access.used / access.limit, 1)
-  // Without billing (iOS) the plan is never named: a free tier implies a paid one.
-  const label = !platformCapabilities.billing ? t('settings.household_ai') : access.plan === 'free' ? t('settings.free_plan') : t('settings.subscription')
+  // Plans are offered through StoreKit on iOS and Stripe elsewhere.
+  const label = !(platformCapabilities.billing || platformCapabilities.storeKit) ? t('settings.household_ai') : access.plan === 'free' ? t('settings.free_plan') : t('settings.subscription')
   const spent = ratio >= 1
   return (
     <YStack testID="ai-quota-hint" gap="$1.5" marginTop="$2">
@@ -330,7 +384,7 @@ export function AiQuotaHint({ access, palette, showCta = true }: { access: AiAcc
           backgroundColor={spent ? palette.expiredText : palette.mintPaleText}
         />
       </YStack>
-      {showCta && platformCapabilities.billing && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
+      {showCta && (platformCapabilities.billing || platformCapabilities.storeKit) && ratio >= NUDGE_RATIO && access.plan === 'free' ? (
         <Pressable
           testID="ai-quota-subscribe"
           onPress={() => router.push('/subscription')}

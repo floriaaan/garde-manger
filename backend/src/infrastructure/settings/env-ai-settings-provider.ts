@@ -93,6 +93,7 @@ export class EnvAiSettingsProvider implements AiSettingsProvider {
       resetsAt,
       expiresAt: subscription?.expiresAt ?? null,
       cancelsAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
+      subscriptionProvider: subscription?.provider,
     }
   }
 

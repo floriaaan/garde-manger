@@ -30,6 +30,7 @@ import type { ProductLookupResult } from '../../domain/fridge/product-lookup-res
 import type { ReceiptDraft } from '../../domain/receipt/receipt-draft.js'
 import type { Receipt, ImportReceiptInput } from '../../domain/receipt/receipt.js'
 import type { FridgeScanDraft, ImportProductsItemInput } from '../../domain/fridge/fridge-scan-draft.js'
+import type { AppleSubscriptionConfig } from '../../domain/settings/apple-purchases.js'
 import type { AiSettings, AiProvider } from '../../domain/settings/ai-settings.js'
 import { DEFAULT_REMINDER_DAYS, type ReminderDays, type ReminderSettings, type ReminderSettingsUpdate, type WebPushSubscription } from '../../domain/settings/reminder-settings.js'
 import type { HaLink, HaTodoEntity, SaveHaConnectionInput, BindHaListInput } from '../../domain/home-assistant/ha-link.js'
@@ -1068,6 +1069,14 @@ export class FakeFridgeConnector implements FridgeConnector {
     }
     this.aiSettings = { ...this.aiSettings, activeProvider: provider }
     return Result.ok(this.aiSettings)
+  }
+
+  async getAppleSubscription(): Promise<Result<AppleSubscriptionConfig, ApiError>> {
+    return Result.ok({ productId: 'com.floriaaan.gardemanger.ai.monthly', appAccountToken: '00000000-0000-4000-8000-000000000001', canPurchase: true })
+  }
+
+  async syncAppleSubscription(_signedTransaction: string): Promise<Result<{ active: boolean }, ApiError>> {
+    return Result.err({ type: 'billing_unavailable', message: 'Les achats Apple nécessitent le serveur officiel.' })
   }
 
   async startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>> {

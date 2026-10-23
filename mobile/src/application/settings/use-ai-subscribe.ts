@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 import { useQueryClient } from '@tanstack/react-query'
 import { celebrate } from '../shared/confetti.js'
+import { useAppleSubscription } from './apple-subscription-context.js'
 import { useAiSettingsQuery } from './ai-settings.query.js'
 import type { AiSettings } from '../../domain/settings/ai-settings.js'
 import { useConnector } from '../shared/connector-context.js'
@@ -10,12 +11,10 @@ import { platformCapabilities } from '../shared/platform-capabilities.js'
 import type { Result } from '../../domain/shared/result.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
 
-const WEB_SUBSCRIPTION_URL = 'https://app.gardemanger.floriaaan.fr/subscription'
-
 /**
  * The subscribe/manage flow every paywall shares (ADR 0015): the backend hands
  * back a Stripe-hosted page, opened in the system browser. Without direct
- * billing (iOS), actions open the web subscription page without calling Stripe.
+ * Stripe billing (iOS), StoreKit owns the native purchase/restore lifecycle.
  * `canSubscribe` gates the direct paywalls, not access to the subscription page.
  */
 export function useAiSubscribe() {
@@ -25,23 +24,16 @@ export function useAiSubscribe() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { billing } = platformCapabilities
-  const canSubscribe = billing && settings.data?.access.plan === 'free'
+  const apple = useAppleSubscription()
+  const { billing, storeKit } = platformCapabilities
+  const purchasesAvailable = billing || storeKit
+  const canSubscribe = purchasesAvailable && settings.data?.access.plan === 'free'
 
   async function openStripePage(start: () => Promise<Result<{ url: string }, ApiError>>) {
+    // iOS cannot open checkout or a web purchase page, including through deep links.
+    if (!billing) return
     setError(null)
     setPending(true)
-    if (!billing) {
-      try {
-        await Linking.openURL(WEB_SUBSCRIPTION_URL)
-      } catch {
-        setError('Impossible d’ouvrir l’abonnement sur le web. Réessaie.')
-      } finally {
-        setPending(false)
-      }
-      // The root focus manager refreshes settings when the user returns.
-      return
-    }
     const result = await start()
     if (!result.ok) {
       setPending(false)
@@ -76,12 +68,20 @@ export function useAiSubscribe() {
     for (const delay of [1500, 4000, 8000]) setTimeout(() => void refresh(), delay)
   }
 
+  const provider = settings.data?.access.subscriptionProvider
   return {
-    billing,
+    billing: purchasesAvailable,
+    storeKit,
+    product: apple.product,
+    notice: storeKit ? apple.notice : null,
+    restore: apple.restore,
+    retryStore: apple.retry,
     canSubscribe,
-    subscribe: () => openStripePage(() => connector.startSubscriptionCheckout()),
-    manage: () => openStripePage(() => connector.openBillingPortal()),
-    pending,
-    error,
+    subscribe: storeKit ? apple.subscribe : () => openStripePage(() => connector.startSubscriptionCheckout()),
+    // Apple subscriptions are always managed by Apple, even from Android/web.
+    manage: storeKit ? (provider === 'apple' ? apple.manage : undefined)
+      : provider === 'apple' ? undefined : () => openStripePage(() => connector.openBillingPortal()),
+    pending: storeKit ? apple.pending : pending,
+    error: storeKit ? apple.error : error,
   }
 }

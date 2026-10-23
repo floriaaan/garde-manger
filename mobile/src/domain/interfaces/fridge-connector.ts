@@ -13,6 +13,7 @@ import type { LocationValue } from '../fridge/location.js'
 import type { ProductLookupResult } from '../fridge/product-lookup-result.js'
 import type { Receipt, ImportReceiptInput } from '../receipt/receipt.js'
 import type { ImportProductsItemInput } from '../fridge/fridge-scan-draft.js'
+import type { AppleSubscriptionConfig } from '../settings/apple-purchases.js'
 import type { AiSettings, AiProvider } from '../settings/ai-settings.js'
 import type { ReminderDays, ReminderSettings, ReminderSettingsUpdate, WebPushSubscription } from '../settings/reminder-settings.js'
 import type {
@@ -144,6 +145,8 @@ export interface FridgeConnector {
   getAiSettings(): Promise<AiSettings | null>
   setActiveAiProvider(provider: AiProvider): Promise<Result<AiSettings, ApiError>>
   /** Stripe-hosted page to subscribe (Checkout) or to manage/cancel (billing portal) — opened in a browser, never in-app (ADR 0015). */
+  getAppleSubscription(): Promise<Result<AppleSubscriptionConfig, ApiError>>
+  syncAppleSubscription(signedTransaction: string): Promise<Result<{ active: boolean }, ApiError>>
   startSubscriptionCheckout(): Promise<Result<{ url: string }, ApiError>>
   openBillingPortal(): Promise<Result<{ url: string }, ApiError>>
   getHaLink(): Promise<HaLink | null>

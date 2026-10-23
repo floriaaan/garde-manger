@@ -26,6 +26,7 @@ import { NUDGE_RATIO } from './ai-access-cards.js'
 import { Avatar } from '../shared/avatar.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { ROLE_LABELS } from '../identity/role-labels.js'
+import { platformCapabilities } from '../../application/shared/platform-capabilities.js'
 import { useConnector } from '../../application/shared/connector-context.js'
 import { disablePush } from '../../application/push/push-notifications.js'
 import { showToast } from '../../application/shared/toast.js'
@@ -206,7 +207,7 @@ export function SettingsScreen() {
           // was redesigned to show.
           accessibilityLabel={householdSpokenLabel}
         />
-        {plan === 'self-hosted' ? null : (
+        {!(platformCapabilities.billing || platformCapabilities.storeKit) || plan === 'self-hosted' ? null : (
           <IdentityCard
             testID="settings-subscription"
             bg={palette.butter}
