@@ -20,6 +20,7 @@ import {
   SparklesIcon,
     BadgeCheckIcon,
   WalletIcon,
+  RefreshIcon,
 } from '../dashboard/dashboard-icons.js'
 import { armFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
@@ -283,6 +284,7 @@ export function SettingsScreen() {
           <PillButton
             testID="settings-replay-tour"
             label={t('onboarding.replay_tour')}
+            icon={(color) => <RefreshIcon size={18} color={color} />}
             tone="quiet"
             palette={palette}
             onPress={async () => {

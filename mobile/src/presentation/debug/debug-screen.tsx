@@ -11,7 +11,7 @@ import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip } from '../shared/chip.js'
 import { ActionSheet } from '../shared/action-sheet.js'
-import { SettingsIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
+import { SettingsIcon, TriangleAlertIcon, RefreshIcon } from '../dashboard/dashboard-icons.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -132,6 +132,7 @@ export function DebugScreen() {
           testID="debug-replay-onboarding"
           tone="quiet"
           label={t('onboarding.replay_tour')}
+          icon={(color) => <RefreshIcon size={18} color={color} />}
           palette={palette}
           disabled={!session.data}
           onPress={async () => {
