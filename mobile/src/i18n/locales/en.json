@@ -9,7 +9,7 @@
     "open_email": "Prepare my email",
     "retry": "Try opening email again",
     "subject": "Product feedback — Garde-manger",
-    "template": "Hello,\n\nHere is my feedback on Garde-manger:\n\n",
+    "template": "My feedback is about a feature or getting started:\n\nWhat I wanted to do:\n\nWhat could be improved:\n\nWhat would help me:\n",
     "failed": "Couldn’t open your email app. Try again or write to the address below.",
     "opened": "Your feedback has not been sent. Review and send the draft in your email app. If nothing opens, use the address below.",
     "alternative": "Or write to us directly at:",

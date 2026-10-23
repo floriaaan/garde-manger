@@ -22,7 +22,7 @@ export function FeedbackScreen() {
   async function openEmail() {
     setStatus('opening')
     try {
-      // Only a translated invitation leaves the app: no account, server or inventory data.
+      // Only translated prompts leave the app: no account, server or inventory data.
       const result = await Linking.openURL(`mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(t('feedback.subject'))}&body=${encodeURIComponent(t('feedback.template'))}`)
       setStatus(result === false ? 'failed' : 'opened')
     } catch {

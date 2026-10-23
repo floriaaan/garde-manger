@@ -9,7 +9,7 @@
     "open_email": "Préparer mon e-mail",
     "retry": "Réessayer d’ouvrir la messagerie",
     "subject": "Retour produit — Garde-manger",
-    "template": "Bonjour,\n\nVoici mon retour sur Garde-manger :\n\n",
+    "template": "Mon retour concerne une fonctionnalité ou la prise en main :\n\nCe que je voulais faire :\n\nCe qui pourrait être amélioré :\n\nCe qui m’aiderait :\n",
     "failed": "Impossible d’ouvrir ta messagerie. Réessaie ou écris à l’adresse ci-dessous.",
     "opened": "Ton retour n’est pas envoyé. Relis et envoie le brouillon dans ta messagerie. Si rien ne s’ouvre, utilise l’adresse ci-dessous.",
     "alternative": "Ou écris-nous directement à cette adresse :",
