@@ -17,6 +17,13 @@ export function legalHead(path: string, title: string, description: string) {
       { name: 'twitter:title', content: fullTitle },
       { name: 'twitter:description', content: description },
     ],
-    links: [{ rel: 'canonical', href: absoluteUrl(path) }],
+    links: [
+      { rel: 'canonical', href: absoluteUrl(path) },
+      ...(['/privacy', '/en/privacy'].includes(path) ? [
+        { rel: 'alternate', hrefLang: 'fr', href: absoluteUrl('/privacy') },
+        { rel: 'alternate', hrefLang: 'en', href: absoluteUrl('/en/privacy') },
+        { rel: 'alternate', hrefLang: 'x-default', href: absoluteUrl('/privacy') },
+      ] : []),
+    ],
   }
 }

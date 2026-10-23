@@ -119,7 +119,7 @@ describe('native StoreKit (iOS)', () => {
     expect(mockApple.restore).toHaveBeenCalledTimes(1)
     expect(openURL).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Conditions d’utilisation' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Confidentialité' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Politique de confidentialité' })).toBeTruthy()
     await fireEvent.press(screen.getByTestId('subscription-terms'))
     expect(openURL).toHaveBeenLastCalledWith('https://gardemanger.floriaaan.fr/cgu')
     await fireEvent.press(screen.getByTestId('subscription-privacy'))

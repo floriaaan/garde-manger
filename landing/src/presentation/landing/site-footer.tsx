@@ -44,9 +44,13 @@ export function SiteFooter({ content }: { content: LandingContent }) {
     },
     {
       title: ui.footer.navLegal,
-      // The legal texts are French only, whatever the locale of the landing.
-      lang: 'fr',
-      links: LEGAL_LINKS,
+      links: LEGAL_LINKS.map((link) => ({
+        ...link,
+        lang: 'fr',
+        ...(locale === 'en' && link.href.startsWith('/privacy')
+          ? { href: link.href.replace('/privacy', '/en/privacy'), label: link.href === '/privacy' ? 'Privacy Policy' : 'Cookies', lang: 'en' }
+          : {}),
+      })),
     },
   ]
 
@@ -92,11 +96,12 @@ export function SiteFooter({ content }: { content: LandingContent }) {
             {columns.map((column) => (
               <div key={column.title}>
                 <p className="text-sm font-bold tracking-wide text-ink/70 uppercase">{column.title}</p>
-                <ul lang={'lang' in column ? column.lang : undefined} className="mt-4 space-y-2.5 text-sm font-semibold text-ink">
+                <ul className="mt-4 space-y-2.5 text-sm font-semibold text-ink">
                   {column.links.map((link) => (
                     <li key={link.label}>
                       <a
                         href={link.href}
+                        lang={'lang' in link ? link.lang : undefined}
                         className="inline-block rounded-sm transition-transform duration-300 hover:translate-x-1 hover:underline hover:decoration-blob-strong hover:decoration-4 hover:underline-offset-4"
                       >
                         {link.label}
