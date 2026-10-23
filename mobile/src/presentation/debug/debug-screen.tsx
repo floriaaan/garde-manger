@@ -11,7 +11,7 @@ import { router } from 'expo-router'
 import { Text, XStack, YStack } from '../shared/tamagui-typed.js'
 import { Chip } from '../shared/chip.js'
 import { ActionSheet } from '../shared/action-sheet.js'
-import { SettingsIcon, TriangleAlertIcon } from '../dashboard/dashboard-icons.js'
+import { SettingsIcon, TriangleAlertIcon, RefreshIcon } from '../dashboard/dashboard-icons.js'
 import { AppShell } from '../shared/app-shell.js'
 import { ScreenHeader } from '../shared/screen-header.js'
 import { PillButton } from '../shared/pill-button.js'
@@ -27,6 +27,7 @@ import {
   getDefaultServerUrl,
   getServerUrl,
 } from '../../application/shared/server-config.js'
+import { armFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { resetWelcomeSeen, useHasSeenWelcome } from '../welcome/use-welcome-seen.js'
 
 const SIGN_OUT_TIMEOUT_MS = 2000
@@ -127,6 +128,18 @@ export function DebugScreen() {
             onPress={() => router.push(href as Parameters<typeof router.push>[0])}
           />
         ))}
+        <PillButton
+          testID="debug-replay-onboarding"
+          tone="quiet"
+          label={t('onboarding.replay_tour')}
+          icon={(color) => <RefreshIcon size={18} color={color} />}
+          palette={palette}
+          disabled={!session.data}
+          onPress={async () => {
+            await armFirstRunTour()
+            router.navigate('/(tabs)')
+          }}
+        />
         <PillButton
           testID="debug-show-splash"
           tone="quiet"

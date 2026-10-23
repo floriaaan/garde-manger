@@ -563,6 +563,18 @@
     "fridge_analysed_count_other": "Frigo analysé — {{count}} produits"
   },
   "onboarding": {
+    "inventory_title": "Remplir ton garde-manger",
+    "inventory_prompt": "Ajoute un produit avec sa quantité et sa date. Dans le garde-manger, touche-le pour le modifier ou noter ce qui a été consommé.",
+    "recipes_title": "Cuisiner ce que tu as",
+    "recipes_prompt": "Ouvre Recettes, puis demande une idée avec les produits de ton garde-manger. Consulte la recette avant de te lancer.",
+    "add_product": "Ajouter un produit",
+    "open_recipes": "Ouvrir les recettes",
+    "step_progress": "Étape {{current}} sur {{total}}",
+    "back": "Retour",
+    "guidance": "Prise en main",
+    "replay_tour": "Revoir la visite",
+    "replay_description": "Ajouter des produits, cuisiner ce que tu as : revois les actions essentielles à ton rythme.",
+
     "what_needs_using_first": "Ce qui part en premier",
     "this_card_answers_tonight_s_question_what_should_you_eat": "Cette carte répond à la seule question du soir : qu’est-ce qu’il faut manger maintenant, avant que ça se perde.",
     "three_numbers_three_lists": "Trois nombres, trois listes",
@@ -603,7 +615,7 @@
     "join_household": "Rejoindre le foyer",
     "letting_you_in": "On te fait entrer…",
     "show_me_around_the_app": "Me faire visiter l’app",
-    "a_short_tour_that_you_can_skip": "Une courte visite, que tu peux passer.",
+    "a_short_tour_that_you_can_skip": "4 étapes facultatives. À revoir dans Réglages → Prise en main.",
     "show_me_around_the_application": "Me faire visiter l’application",
     "switch_accounts": "Changer de compte",
     "next": "Suivant",

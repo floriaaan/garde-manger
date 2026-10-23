@@ -737,6 +737,8 @@ const pendingTasks = activeJobs + useReviewableDraftsQuery().length
         scrollRef={scrollRef}
         scrollOffset={scrollOffset}
         onScan={goToScan}
+        onAddProduct={onAddProduct}
+        onOpenRecipes={onOpenRecettes}
         onFinish={tour.dismiss}
       />
     ) : null}
