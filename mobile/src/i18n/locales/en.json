@@ -541,6 +541,18 @@
     "fridge_analysed_count_other": "Fridge analysed — {{count}} products"
   },
   "onboarding": {
+    "inventory_title": "Fill your pantry",
+    "inventory_prompt": "Add a product with its quantity and expiry date. In your pantry, tap it to edit it or record what you have used.",
+    "recipes_title": "Cook with what you have",
+    "recipes_prompt": "Open Recipes, then request an idea using products from your pantry. Review the recipe before you start cooking.",
+    "add_product": "Add a product",
+    "open_recipes": "Open recipes",
+    "step_progress": "Step {{current}} of {{total}}",
+    "back": "Back",
+    "guidance": "Getting started",
+    "replay_tour": "Replay the tour",
+    "replay_description": "Add products and cook with what you have: revisit the main actions at your own pace.",
+
     "what_needs_using_first": "What needs using first",
     "this_card_answers_tonight_s_question_what_should_you_eat": "This card answers tonight’s question: what should you eat now before it goes to waste?",
     "three_numbers_three_lists": "Three numbers, three lists",
@@ -581,7 +593,7 @@
     "join_household": "Join household",
     "letting_you_in": "Letting you in…",
     "show_me_around_the_app": "Show me around the app",
-    "a_short_tour_that_you_can_skip": "A short tour that you can skip.",
+    "a_short_tour_that_you_can_skip": "4 optional steps. Replay in Settings → Getting started.",
     "show_me_around_the_application": "Show me around the application",
     "switch_accounts": "Switch accounts",
     "next": "Next",

@@ -21,6 +21,7 @@ import {
     BadgeCheckIcon,
   WalletIcon,
 } from '../dashboard/dashboard-icons.js'
+import { armFirstRunTour } from '../onboarding/use-first-run-tour.js'
 import { IdentityCard, RoleBadge } from './identity-card.js'
 import { NUDGE_RATIO } from './ai-access-cards.js'
 import { Avatar } from '../shared/avatar.js'
@@ -274,6 +275,23 @@ export function SettingsScreen() {
           onPress={() => router.push('/server-info')}
         />
       </YStack>
+
+      {household.data ? (
+        <YStack marginTop="$5" gap="$2">
+          <Text fontSize={16} fontWeight="800" color={palette.ink}>{t('onboarding.guidance')}</Text>
+          <Text fontSize={14} color={palette.inkSecondary}>{t('onboarding.replay_description')}</Text>
+          <PillButton
+            testID="settings-replay-tour"
+            label={t('onboarding.replay_tour')}
+            tone="quiet"
+            palette={palette}
+            onPress={async () => {
+              await armFirstRunTour()
+              router.navigate('/(tabs)')
+            }}
+          />
+        </YStack>
+      ) : null}
 
       {/* Dev-only door to `/debug` (also reachable by triple-tapping the logo on the auth screens). Never bundled into a release build. */}
       {__DEV__ ? (

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Linking } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
@@ -9,12 +10,10 @@ import { SettingsScreen } from './settings-screen.js'
 import * as pushNotifications from '../../application/push/push-notifications.js'
 import { showToast } from '../../application/shared/toast.js'
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }))
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
 jest.mock('../../application/shared/toast.js', () => ({ showToast: jest.fn() }))
 
-// Only the debug menu's "Réinitialiser l'onboarding" row touches the
-// keychain (via `resetWelcomeSeen`) — nothing else on this screen does, so
-// no other test here depended on this mock existing before it did.
+// Replaying the tour saves the opt-in before returning to the dashboard.
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),
@@ -189,4 +188,19 @@ test('tapping the instance card opens the server-info page', async () => {
   fireEvent.press(screen.getByTestId('settings-instance'))
 
   expect(router.push).toHaveBeenCalledWith('/server-info')
+})
+
+test('replay saves the opt-in before returning to the already-mounted dashboard', async () => {
+  let finishWrite!: () => void
+  jest.mocked(SecureStore.setItemAsync).mockImplementationOnce(() => new Promise<void>((resolve) => { finishWrite = resolve }))
+  jest.mocked(router.navigate).mockClear()
+  await renderAuthenticated()
+  await waitFor(() => expect(screen.getByTestId('settings-replay-tour')).toBeTruthy())
+
+  await fireEvent.press(screen.getByTestId('settings-replay-tour'))
+  expect(SecureStore.setItemAsync).toHaveBeenCalledWith('garde-manger.first-run-tour.armed', '1')
+  expect(router.navigate).not.toHaveBeenCalled()
+
+  finishWrite()
+  await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/(tabs)'))
 })
