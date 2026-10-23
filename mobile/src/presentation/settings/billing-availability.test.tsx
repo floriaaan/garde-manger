@@ -4,6 +4,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import * as Linking from 'expo-linking'
+import { Linking as NativeLinking } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import { router } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -108,6 +109,22 @@ describe('native StoreKit (iOS)', () => {
     expect(screen.getByTestId('subscription-paywall-cta')).toBeDisabled()
     expect(screen.queryByText('0,99€')).toBeNull()
     expect(checkout).not.toHaveBeenCalled()
+  })
+
+  test('iOS keeps restoration separate from the two legal links and preserves their destinations', async () => {
+    const openURL = jest.spyOn(NativeLinking, 'openURL').mockResolvedValue(true)
+    await renderWith(<SubscriptionScreen />, spentFree)
+    await waitFor(() => expect(screen.getByTestId('subscription-legal-links')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('subscription-restore'))
+    expect(mockApple.restore).toHaveBeenCalledTimes(1)
+    expect(openURL).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Conditions d’utilisation' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Confidentialité' })).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('subscription-terms'))
+    expect(openURL).toHaveBeenLastCalledWith('https://gardemanger.floriaaan.fr/cgu')
+    await fireEvent.press(screen.getByTestId('subscription-privacy'))
+    expect(openURL).toHaveBeenLastCalledWith('https://gardemanger.floriaaan.fr/privacy')
+    openURL.mockRestore()
   })
 
   test('restoration and Apple management use native actions', async () => {

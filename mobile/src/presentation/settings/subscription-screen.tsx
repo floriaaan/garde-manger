@@ -86,8 +86,8 @@ export function SubscriptionScreen() {
 
         {subscription.storeKit && access?.plan === 'subscriber' ? (
           <YStack gap="$2">
-            <Pressable testID="subscription-restore" accessibilityRole="button" disabled={subscription.pending} onPress={subscription.restore} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text color={palette.ink} textDecorationLine="underline">{t('settings.apple_restore')}</Text>
+            <Pressable testID="subscription-restore" accessibilityRole="button" accessibilityState={{ disabled: !!subscription.pending }} disabled={subscription.pending} onPress={subscription.restore} style={({ pressed }) => ({ minHeight: 44, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: palette.cream, justifyContent: 'center', opacity: subscription.pending ? 0.5 : pressed ? 0.7 : 1 })}>
+              <Text fontSize={14} fontWeight="700" color={palette.ink} textAlign="center">{t('settings.apple_restore')}</Text>
             </Pressable>
             {subscription.notice ? <Text color={palette.inkSecondary} accessibilityLiveRegion="polite">{subscription.notice}</Text> : null}
           </YStack>

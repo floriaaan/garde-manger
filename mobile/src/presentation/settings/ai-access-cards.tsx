@@ -273,18 +273,53 @@ export function SubscriptionPaywall({
         {storeKit ? (
           <YStack gap="$2">
             <Text fontSize={12} color={palette.onDarkSecondary}>{t('settings.apple_auto_renewal')}</Text>
-            <Pressable testID="subscription-restore" accessibilityRole="button" disabled={pending} onPress={onRestore} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.apple_restore')}</Text>
+            <Pressable
+              testID="subscription-restore"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !!pending }}
+              disabled={pending}
+              onPress={onRestore}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                justifyContent: 'center',
+                borderRadius: 12,
+                backgroundColor: palette.heroPillFill,
+                opacity: pending ? 0.5 : pressed ? 0.7 : 1,
+              })}
+            >
+              <Text fontSize={14} fontWeight="700" color={palette.onDark} textAlign="center">{t('settings.apple_restore')}</Text>
             </Pressable>
-            {error ? <Pressable testID="subscription-store-retry" accessibilityRole="button" onPress={onRetry} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text color={palette.onDark}>{t('dashboard.try_again')}</Text>
+            {error ? <Pressable testID="subscription-store-retry" accessibilityRole="button" disabled={pending} onPress={onRetry} style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pending ? 0.5 : pressed ? 0.7 : 1 })}>
+              <Text fontSize={14} fontWeight="600" color={palette.onDark} textAlign="center">{t('dashboard.try_again')}</Text>
             </Pressable> : null}
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/cgu')} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.terms_of_use')}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/privacy')} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text color={palette.onDark} textDecorationLine="underline">{t('settings.privacy')}</Text>
-            </Pressable>
+            <XStack
+              testID="subscription-legal-links"
+              flexWrap="wrap"
+              justifyContent="center"
+              gap="$2"
+              paddingTop="$2"
+              borderTopWidth={1}
+              borderColor={hexToRgba(palette.onDark, 0.18)}
+            >
+              <Pressable
+                testID="subscription-terms"
+                accessibilityRole="link"
+                onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/cgu')}
+                style={({ pressed }) => ({ minHeight: 44, minWidth: 120, flexBasis: 120, flexGrow: 1, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Text fontSize={13} fontWeight="600" color={palette.onDarkSecondary} textAlign="center" textDecorationLine="underline">{t('settings.terms_of_use')}</Text>
+              </Pressable>
+              <Pressable
+                testID="subscription-privacy"
+                accessibilityRole="link"
+                onPress={() => Linking.openURL('https://gardemanger.floriaaan.fr/privacy')}
+                style={({ pressed }) => ({ minHeight: 44, minWidth: 120, flexBasis: 120, flexGrow: 1, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Text fontSize={13} fontWeight="600" color={palette.onDarkSecondary} textAlign="center" textDecorationLine="underline">{t('settings.privacy')}</Text>
+              </Pressable>
+            </XStack>
           </YStack>
         ) : <>
         <Text fontSize={12} fontWeight="500" color={palette.onDarkSecondary}>{t('settings.secure_payment_by_stripe_cancel_anytime_from_the_app')}</Text>
