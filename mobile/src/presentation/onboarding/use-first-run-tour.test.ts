@@ -31,7 +31,7 @@ test('does not interrupt users who have not opted in', async () => {
 
 test('waits for the household before showing the opted-in tour', async () => {
   await armFirstRunTour()
-  const { result, rerender } = await renderHook(({ enabled }) => useFirstRunTour(enabled), { initialProps: { enabled: false } })
+  const { result, rerender } = await renderHook(({ enabled }: { enabled: boolean }) => useFirstRunTour(enabled), { initialProps: { enabled: false } })
   expect(result.current.show).toBe(false)
   await rerender({ enabled: true })
   await waitFor(() => expect(result.current.show).toBe(true))

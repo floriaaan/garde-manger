@@ -8,6 +8,7 @@ import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-conne
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { SettingsScreen } from './settings-screen.js'
 import * as pushNotifications from '../../application/push/push-notifications.js'
+import { setLocaleOverride } from '../../i18n/index.js'
 import { showToast } from '../../application/shared/toast.js'
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
@@ -203,4 +204,39 @@ test('replay saves the opt-in before returning to the already-mounted dashboard'
 
   finishWrite()
   await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/(tabs)'))
+})
+
+afterEach(() => setLocaleOverride(null))
+
+test.each([
+  ['fr', 'hosted', '/privacy'],
+  ['en', 'hosted', '/en/privacy'],
+  ['fr', 'self-hosted', '/privacy'],
+  ['en', 'self-hosted', '/en/privacy'],
+] as const)('privacy policy uses %s for a %s instance', async (language, mode, path) => {
+  setLocaleOverride(language)
+  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true)
+  const connector = new FakeFridgeConnector()
+  jest.spyOn(connector, 'getInstanceInfo').mockResolvedValue({ mode, name: 'Test instance', version: '1.0.0' })
+  try {
+    await renderAuthenticated(connector)
+    await waitFor(() => expect(screen.getByText('Test instance')).toBeTruthy())
+    expect(screen.getByRole('link', { name: language === 'en' ? 'Privacy Policy' : 'Politique de confidentialité' })).toBeTruthy()
+    fireEvent.press(screen.getByTestId('settings-privacy-policy'))
+    expect(openURL).toHaveBeenCalledWith(`https://gardemanger.floriaaan.fr${path}`)
+  } finally {
+    openURL.mockRestore()
+  }
+})
+
+test('reports a failed privacy policy launch', async () => {
+  setLocaleOverride('en')
+  const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('Cannot open browser'))
+  try {
+    await renderAuthenticated()
+    fireEvent.press(screen.getByTestId('settings-privacy-policy'))
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Couldn’t open the privacy policy. Try again.', 'error'))
+  } finally {
+    openURL.mockRestore()
+  }
 })

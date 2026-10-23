@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { LandingContent } from '../../domain/content/landing-content.js'
 import { useLandingContentQuery } from '../../application/content/landing-content.query.js'
 import { cn } from '../ui/cn.js'
 import { CORNERS } from '../ui/corners.js'
@@ -40,6 +41,12 @@ const ACTORS: { id: Actor; corners: string; surface: string; text: string; title
   },
 ]
 
+const EN_ACTORS = {
+  software: { title: 'The software', description: 'The Garde-manger code, open source under the MIT licence, published on GitHub by its publisher.' },
+  official: { title: 'The official instance', description: 'The ready-to-use service hosted and operated by the publisher, with accounts and subscriptions.' },
+  'self-hosted': { title: 'Self-hosted instances', description: 'Installed and operated by third parties on their own servers. The publisher neither hosts nor controls them.' },
+}
+
 /**
  * Shared frame of the four legal pages: hero card, breadcrumb, table of
  * contents and the "who is who" strip that keeps the SaaS / self-hosted line
@@ -51,14 +58,19 @@ export function LegalPage({
   updated,
   applies,
   sections,
+  locale = 'fr',
+  localeHrefs,
 }: {
   title: string
   intro: string
   updated: string
   applies: Actor
   sections: LegalSection[]
+  locale?: LandingContent['locale']
+  localeHrefs?: Record<LandingContent['locale'], string>
 }) {
-  const { data: content } = useLandingContentQuery('fr')
+  const { data: content } = useLandingContentQuery(locale)
+  const english = locale === 'en'
 
   return (
     <>
@@ -68,7 +80,7 @@ export function LegalPage({
       >
         {content.ui.skipToContent}
       </a>
-      <SiteHeader content={content} />
+      <SiteHeader content={content} localeHrefs={localeHrefs} />
       <main id="contenu" className="pt-24 sm:pt-28">
         <div className="px-3 sm:px-5">
           <div
@@ -78,11 +90,11 @@ export function LegalPage({
                 'radial-gradient(45% 60% at 100% 0%, rgb(191 238 122 / 0.55), transparent 70%), linear-gradient(#e9f6d8, #e9f6d8)',
             }}
           >
-            <nav aria-label="Fil d’Ariane" className="text-sm font-semibold text-ink/70">
+            <nav aria-label={english ? 'Breadcrumb' : 'Fil d’Ariane'} className="text-sm font-semibold text-ink/70">
               <ol className="flex items-center gap-2">
                 <li>
-                  <a href="/" className="rounded-sm hover:text-ink hover:underline">
-                    Accueil
+                  <a href={english ? '/en' : '/'} className="rounded-sm hover:text-ink hover:underline">
+                    {english ? 'Home' : 'Accueil'}
                   </a>
                 </li>
                 <li aria-hidden>/</li>
@@ -95,13 +107,13 @@ export function LegalPage({
               {title}
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-ink/75">{intro}</p>
-            <p className="mt-6 text-sm font-semibold text-ink/70">Dernière mise à jour : {updated}</p>
+            <p className="mt-6 text-sm font-semibold text-ink/70">{english ? 'Last updated: ' : 'Dernière mise à jour : '}{updated}</p>
           </div>
         </div>
 
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-16">
-          <nav aria-label="Sommaire" className="lg:sticky lg:top-8 lg:self-start">
-            <p className="text-sm font-bold tracking-wide text-ink/70 uppercase">Sommaire</p>
+          <nav aria-label={english ? 'Contents' : 'Sommaire'} className="lg:sticky lg:top-8 lg:self-start">
+            <p className="text-sm font-bold tracking-wide text-ink/70 uppercase">{english ? 'Contents' : 'Sommaire'}</p>
             <ol className="mt-4 space-y-2.5 text-[15px] font-semibold text-ink">
               {sections.map((section, index) => (
                 <li key={section.id} className="flex gap-3">
@@ -119,7 +131,7 @@ export function LegalPage({
           <div className="max-w-3xl min-w-0 space-y-14">
             <section aria-labelledby="qui-est-qui" className="space-y-4">
               <h2 id="qui-est-qui" className="sr-only">
-                Le logiciel, l’instance officielle et les instances auto-hébergées
+                {english ? 'The software, the official instance and self-hosted instances' : 'Le logiciel, l’instance officielle et les instances auto-hébergées'}
               </h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 {ACTORS.map((actor) => (
@@ -127,11 +139,11 @@ export function LegalPage({
                     key={actor.id}
                     className={cn(actor.corners, actor.surface, 'p-5', actor.id === applies && 'shadow-card-float')}
                   >
-                    <p className="text-base font-extrabold tracking-tight text-ink">{actor.title}</p>
-                    <p className={cn('mt-2 text-sm leading-relaxed', actor.text)}>{actor.description}</p>
+                    <p className="text-base font-extrabold tracking-tight text-ink">{english ? EN_ACTORS[actor.id].title : actor.title}</p>
+                    <p className={cn('mt-2 text-sm leading-relaxed', actor.text)}>{english ? EN_ACTORS[actor.id].description : actor.description}</p>
                     {actor.id === applies && (
                       <p className="mt-3 inline-block rounded-full bg-ground-white px-3 py-1 text-xs font-bold text-ink">
-                        Ce document
+                        {english ? 'This document' : 'Ce document'}
                       </p>
                     )}
                   </div>
