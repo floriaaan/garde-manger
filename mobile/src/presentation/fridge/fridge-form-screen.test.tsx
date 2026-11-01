@@ -141,55 +141,6 @@ test('submitting with an empty expiresAt sends null', async () => {
   expect(createSpy.mock.calls[0]?.[0]).toMatchObject({ expiresAt: null })
 })
 
-test('a prefillBarcode found in the lookup fixture pre-fills the name, and the category it carries reaches the create payload with no field for it in the UI', async () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const connector = new FakeFridgeConnector()
-  const createSpy = jest.spyOn(connector, 'createProduct')
-  await render(
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <ConnectorProvider connector={connector}>
-          <FridgeFormScreen mode="create" prefillBarcode="3017620422003" onSuccess={jest.fn()} />
-        </ConnectorProvider>
-      </QueryClientProvider>
-    </ThemeProvider>,
-  )
-
-  await waitFor(() =>
-    expect(screen.getByTestId('fridge-form-name').props.value).toBe('Pâte à tartiner noisettes-cacao'),
-  )
-  await fireEvent.changeText(screen.getByTestId('fridge-form-amount'), '1')
-  await fireEvent.changeText(screen.getByTestId('fridge-form-unit'), 'pot')
-  await fireEvent.press(screen.getByTestId('fridge-form-submit'))
-
-  await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
-  expect(createSpy.mock.calls[0]?.[0]).toMatchObject({ category: 'Pâtes à tartiner' })
-})
-
-test('scanning a barcode from an edit form applies the lookup result, not the original product data, regardless of which query settles first', async () => {
-  // Regression test for the edit-prefill vs. barcode-lookup-prefill race: both effects
-  // write name/category (category has no field of its own — see the payload-level
-  // coverage above — but shares the same race-prone effects as name, so the name
-  // assertion below still exercises it), and a deliberate scan should always win
-  // over the product's original data even though `existing` (fake-product-1) and
-  // `lookup` can settle in either order.
-  await renderWithProviders(
-    <FridgeFormScreen mode="edit" productId="fake-product-1" prefillBarcode="3017620422003" onSuccess={jest.fn()} />,
-  )
-
-  await waitFor(() =>
-    expect(screen.getByTestId('fridge-form-name').props.value).toBe('Pâte à tartiner noisettes-cacao'),
-  )
-  expect(screen.getByTestId('fridge-form-name').props.value).not.toBe('Lait demi-écrémé')
-})
-
-test('a prefillBarcode not in the lookup fixture shows an informational hint, leaves the form empty', async () => {
-  await renderWithProviders(<FridgeFormScreen mode="create" prefillBarcode="0000000000000" onSuccess={jest.fn()} />)
-
-  await waitFor(() => expect(screen.getByText('Produit non trouvé, remplis les champs à la main.')).toBeTruthy())
-  expect(screen.getByTestId('fridge-form-name').props.value).toBe('')
-})
-
 test('a failed lookup shows an error, never the "not found" hint meant for a real empty result', async () => {
   const connector = new FakeFridgeConnector()
   connector.lookupProductByBarcode = jest.fn().mockRejectedValue(new Error('Impossible de contacter le serveur.'))

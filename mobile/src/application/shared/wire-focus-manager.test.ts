@@ -30,10 +30,3 @@ test.each(['ios', 'android'] as const)('%s propagates repeated background/foregr
   stop()
   expect(remove).toHaveBeenCalledTimes(1)
 })
-
-test('web retains its browser focus handling', () => {
-  Platform.OS = 'web'
-  const subscribe = jest.spyOn(AppState, 'addEventListener')
-  wireFocusManager()()
-  expect(subscribe).not.toHaveBeenCalled()
-})

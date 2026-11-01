@@ -163,7 +163,7 @@ services:
   #--------------------------------------------------------------------
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.160.0
+    image: otel/opentelemetry-collector-contrib:0.164.0
     restart: unless-stopped
     command: ['--config=/etc/otelcol/config.yaml']
     environment:

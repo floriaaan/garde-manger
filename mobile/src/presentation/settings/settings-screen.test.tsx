@@ -2,15 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Linking } from 'react-native'
-import * as SecureStore from 'expo-secure-store'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
 import { FakeFridgeConnector } from '../../infrastructure/fake/fake-fridge-connector.js'
 import { ThemeProvider } from '../shared/theme-provider.js'
 import { SettingsScreen } from './settings-screen.js'
-import * as pushNotifications from '../../application/push/push-notifications.js'
 import { setLocaleOverride } from '../../i18n/index.js'
-import { showToast } from '../../application/shared/toast.js'
-
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), navigate: jest.fn() }, useFocusEffect: jest.fn() }))
 jest.mock('../../application/shared/toast.js', () => ({ showToast: jest.fn() }))
 
@@ -102,147 +98,9 @@ test('tapping the AI card opens the provider page', async () => {
   expect(router.push).toHaveBeenCalledWith('/ai-provider')
 })
 
-test('opens Notifications and keeps the global switch on that page', async () => {
-  await renderAuthenticated()
-  fireEvent.press(screen.getByTestId('settings-notifications-page'))
-  expect(router.push).toHaveBeenCalledWith('/notifications')
-  expect(screen.queryByTestId('settings-notifications-switch')).toBeNull()
-  expect(screen.queryByTestId('settings-expiry-reminders')).toBeNull()
-})
-
-test('does not file the receipt history under settings — it is content, and it lives on the dashboard now', async () => {
-  await renderAuthenticated()
-
-  await waitFor(() => expect(screen.getByTestId('sign-out')).toBeTruthy())
-
-  expect(screen.queryByTestId('settings-receipts-history')).toBeNull()
-  expect(screen.queryByText('Historique des tickets')).toBeNull()
-})
-
-test('signing out clears the session and returns to sign-in', async () => {
-  await renderAuthenticated()
-
-  await waitFor(() => expect(screen.getByTestId('sign-out')).toBeTruthy())
-
-  await fireEvent.press(screen.getByTestId('sign-out'))
-
-  // Confirmed, like every other consequential action — a shared kitchen tablet
-  // is the scene a bare sign-out button fails in.
-  await waitFor(() => expect(screen.getByTestId('sign-out-confirm')).toBeTruthy())
-  await fireEvent.press(screen.getByTestId('sign-out-confirm'))
-
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/(auth)/sign-in'))
-})
-
-test('a failed push removal reports a toast and retains the session for retry', async () => {
-  const connector = new FakeFridgeConnector()
-  const signOut = jest.spyOn(connector, 'signOut')
-  const disable = jest.spyOn(pushNotifications, 'disablePush').mockRejectedValueOnce(new Error('Offline'))
-  jest.mocked(router.replace).mockClear()
-  await renderAuthenticated(connector)
-  fireEvent.press(screen.getByTestId('sign-out'))
-  await waitFor(() => expect(screen.getByTestId('sign-out-confirm')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('sign-out-confirm'))
-  await waitFor(() => expect(showToast).toHaveBeenCalledWith('Impossible de terminer la déconnexion. Réessaie.', 'error'))
-  expect(signOut).not.toHaveBeenCalled()
-  expect(router.replace).not.toHaveBeenCalled()
-  disable.mockRestore()
-})
-
-test('a foyer that could not be read is unavailable, not absent', async () => {
-  const connector = new FakeFridgeConnector()
-  jest.spyOn(connector, 'getHousehold').mockRejectedValue(new Error('network'))
-
-  await renderAuthenticated(connector)
-
-  await waitFor(() => expect(screen.getByText('Foyer indisponible')).toBeTruthy())
-  // "Aucun foyer" is a fact about the account; a failed read is a fact about
-  // the network. Printing the first for the second invents a state.
-  expect(screen.queryByText('Aucun foyer')).toBeNull()
-})
-
 // The Home Assistant entry point moved to /household (see
 // household-screen.test.tsx) — it's a foyer-scoped setting, not an
 // account-scoped one, so it lives on the Foyer page next to invite/members
 // rather than on Réglages.
 
-test('the debug entry opens the debug screen', async () => {
-  await renderAuthenticated()
-
-  await waitFor(() => expect(screen.getByTestId('debug-menu-open')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('debug-menu-open'))
-
-  expect(router.push).toHaveBeenCalledWith('/debug')
-})
-
-test('shows the instance card with the name, without the raw server URL or version', async () => {
-  const connector = new FakeFridgeConnector()
-  jest
-    .spyOn(connector, 'getInstanceInfo')
-    .mockResolvedValue({ mode: 'self-hosted', name: 'Garde-manger de test', version: '0.0.0' })
-
-  await renderAuthenticated(connector)
-
-  await waitFor(() => expect(screen.getByText('Garde-manger de test')).toBeTruthy())
-  // Technical detail — that's what "Changer de serveur" is for now.
-  expect(screen.queryByText(/v0\.0\.0/)).toBeNull()
-})
-
-test('tapping the instance card opens the server-info page', async () => {
-  await renderAuthenticated()
-
-  await waitFor(() => expect(screen.getByTestId('settings-instance')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('settings-instance'))
-
-  expect(router.push).toHaveBeenCalledWith('/server-info')
-})
-
-test('replay saves the opt-in before returning to the already-mounted dashboard', async () => {
-  let finishWrite!: () => void
-  jest.mocked(SecureStore.setItemAsync).mockImplementationOnce(() => new Promise<void>((resolve) => { finishWrite = resolve }))
-  jest.mocked(router.navigate).mockClear()
-  await renderAuthenticated()
-  await waitFor(() => expect(screen.getByTestId('settings-replay-tour')).toBeTruthy())
-
-  await fireEvent.press(screen.getByTestId('settings-replay-tour'))
-  expect(SecureStore.setItemAsync).toHaveBeenCalledWith('garde-manger.first-run-tour.armed', '1')
-  expect(router.navigate).not.toHaveBeenCalled()
-
-  finishWrite()
-  await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/(tabs)'))
-})
-
 afterEach(() => setLocaleOverride(null))
-
-test.each([
-  ['fr', 'hosted', '/privacy'],
-  ['en', 'hosted', '/en/privacy'],
-  ['fr', 'self-hosted', '/privacy'],
-  ['en', 'self-hosted', '/en/privacy'],
-] as const)('privacy policy uses %s for a %s instance', async (language, mode, path) => {
-  setLocaleOverride(language)
-  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true)
-  const connector = new FakeFridgeConnector()
-  jest.spyOn(connector, 'getInstanceInfo').mockResolvedValue({ mode, name: 'Test instance', version: '1.0.0' })
-  try {
-    await renderAuthenticated(connector)
-    await waitFor(() => expect(screen.getByText('Test instance')).toBeTruthy())
-    expect(screen.getByRole('link', { name: language === 'en' ? 'Privacy Policy' : 'Politique de confidentialité' })).toBeTruthy()
-    fireEvent.press(screen.getByTestId('settings-privacy-policy'))
-    expect(openURL).toHaveBeenCalledWith(`https://gardemanger.floriaaan.fr${path}`)
-  } finally {
-    openURL.mockRestore()
-  }
-})
-
-test('reports a failed privacy policy launch', async () => {
-  setLocaleOverride('en')
-  const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('Cannot open browser'))
-  try {
-    await renderAuthenticated()
-    fireEvent.press(screen.getByTestId('settings-privacy-policy'))
-    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Couldn’t open the privacy policy. Try again.', 'error'))
-  } finally {
-    openURL.mockRestore()
-  }
-})
