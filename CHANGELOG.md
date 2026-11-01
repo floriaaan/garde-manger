@@ -6,7 +6,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [1.0.1]
 
-Changes after the `1.0.0` baseline summarized below, using `1.0.0-rc.5` as the Git comparison reference.
+Changes since `1.0.0`.
 
 ### Added
 - Native iOS subscriptions through StoreKit, with localized App Store pricing, purchase restoration, subscription management and server-side transaction verification. Requires Apple subscription configuration and a new native build.
@@ -29,7 +29,7 @@ Changes after the `1.0.0` baseline summarized below, using `1.0.0-rc.5` as the G
 
 ## [1.0.0]
 
-Consolidated summary of `1.0.0-rc.1` through `1.0.0-rc.5`. The applications used version `1.0.0`; no separate `1.0.0` Git tag was published, so links use `1.0.0-rc.5` as the baseline. Detailed changes remain in the release-candidate entries below.
+First stable release.
 
 ### Added
 - Shared household inventory with expiry dates, invitation codes and a shared shopping list.
@@ -52,30 +52,6 @@ Consolidated summary of `1.0.0-rc.1` through `1.0.0-rc.5`. The applications used
 - Household queries during authentication and onboarding, ownership transfers and safeguards when leaving a household.
 - AI quota accounting for multi-photo and resumed fridge scans; failed recipe generation no longer creates a recipe.
 - Notification preference loading, saving and device-permission refresh, web form focus and bottom-sheet scrolling, and recipe-composer selection and exit handling.
-
-## [1.0.0-rc.5]
-
-### Added
-- AI-generated recipes and receipt/fridge scan results follow the requesting user's selected language across Gemini, OpenAI and Ollama, including background jobs and retries.
-- French and English mobile translations with system-language detection, French fallback, native locale configuration, and a live language selector in the debug menu. The first integration requires a new native build.
-- Shared household recipe favorites and archives, with state filters and actions from recipe lists and details.
-- A dedicated notifications page with device permission status, household expiry-reminder controls, and a weekly pantry check-up on a configurable day.
-- User avatars across account, household and dashboard views, with initials when no image is available.
-- A dashboard card for rating the app on iOS and Android, with native review prompts, store links and retry feedback.
-- EAS Update configuration for staging and production channels, with commands and documentation for OTA publishing. Activation requires a new native build.
-
-### Changed
-- Native action sheets use a shared route and adapt to their content; recipe actions and filters use the same presentation.
-- Narrow web layouts use a responsive footer navigation with a separate scan action, while wide layouts retain the sidebar.
-- iOS subscription settings show household quota, plan benefits and subscription status, with subscription management opened in the web app.
-
-### Fixed
-- Mobile session checks preserve credentials and the last known session during network failures and timeouts; cold-start failures offer retry instead of signing out.
-- Household-dependent queries wait for an active household instead of requesting data during authentication or onboarding.
-- Household management confirms ownership transfers, prevents duplicate actions, keeps failed confirmations open for retry, and requires owners to transfer ownership before leaving.
-- Notification settings refresh device permissions after toggling and report loading, save failures and retry states; reminder settings are unavailable until a household is active.
-- Android Google sign-in handles the OAuth return and preserves the resulting session, with lifecycle diagnostics for failed attempts.
-- Web bottom sheets stay within the viewport and scroll correctly; toast and hint padding is restored.
 
 ## [1.0.0-rc.4]
 
@@ -156,9 +132,8 @@ First release candidate.
 - Application id is now `com.floriaaan.gardemanger` on iOS and Android.
 
 [Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.1...HEAD
-[1.0.1]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.5...1.0.1
-[1.0.0]: https://github.com/floriaaan/garde-manger/releases/tag/1.0.0-rc.5
-[1.0.0-rc.5]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.4...1.0.0-rc.5
+[1.0.1]: https://github.com/floriaaan/garde-manger/compare/1.0.0...1.0.1
+[1.0.0]: https://github.com/floriaaan/garde-manger/tree/1.0.0
 [1.0.0-rc.4]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.2...1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.1...1.0.0-rc.2
