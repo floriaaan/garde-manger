@@ -5,6 +5,7 @@ import { File } from 'expo-file-system'
 import { queryClient } from '../../application/shared/query-client.js'
 import { ANDROID_OAUTH_CALLBACK, readAndroidOAuthReturn } from '../../application/identity/android-oauth-return.js'
 import { authClient } from '../auth/auth-client.js'
+import { beginSignIn, sessionInvalidationGuard } from '../auth/sign-in-lifecycle.js'
 import { apiFetch, apiFetchMultipart } from './http-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
 import { Result } from '../../domain/shared/result.js'
@@ -92,9 +93,6 @@ async function appendImagePart(
 }
 
 const SESSION_TIMEOUT_MS = 5000
-// Android foreground revalidation races the browser plugin's cookie write.
-let pendingAndroidSignIns = 0
-let androidSignInGeneration = 0
 
 export class HttpFridgeConnector implements FridgeConnector {
   /** Raw `fetch`, not `apiFetch`: `url` is a candidate server, not necessarily the one currently configured — this must never read `getServerUrl()`. */
@@ -112,9 +110,7 @@ export class HttpFridgeConnector implements FridgeConnector {
   }
 
   async getSession(): Promise<Session | null> {
-    const generation = androidSignInGeneration
-    const pendingAtStart = pendingAndroidSignIns > 0
-    const canClearSession = () => !pendingAtStart && !pendingAndroidSignIns && generation === androidSignInGeneration
+    const canClearSession = sessionInvalidationGuard()
     // A bounded check must not turn a temporary outage into a sign-out.
     // Rejecting preserves TanStack's last session; null is authoritative absence.
     const span = telemetry.startClientSpan('identity.get_session', { 'app.operation': 'identity.get_session' })
@@ -247,10 +243,7 @@ export class HttpFridgeConnector implements FridgeConnector {
       })
       return Result.err({ type, message })
     }
-    if (android) {
-      pendingAndroidSignIns += 1
-      androidSignInGeneration += 1
-    }
+    const finishSignIn = android ? beginSignIn() : undefined
     let subscription: ReturnType<typeof Linking.addEventListener> | undefined
     try {
       progress('request', 'started')
@@ -324,11 +317,12 @@ export class HttpFridgeConnector implements FridgeConnector {
         : 'Connexion impossible. Vérifie ta connexion et réessaie.')
     } finally {
       subscription?.remove()
-      if (android) pendingAndroidSignIns -= 1
+      finishSignIn?.()
     }
   }
 
   async signInApple(identityToken: string): Promise<Result<Session, ApiError>> {
+    const finishSignIn = beginSignIn()
     try {
       const { error } = await authClient.signIn.social({ provider: 'apple', idToken: { token: identityToken } })
       if (error) {
@@ -336,11 +330,17 @@ export class HttpFridgeConnector implements FridgeConnector {
         return Result.err({ type: error.code ?? 'apple_sign_in_failed', message: error.message ?? 'Connexion Apple impossible.' })
       }
       const session = await this.getSession()
+      if (session) {
+        await queryClient.cancelQueries({ queryKey: ['session'] })
+        queryClient.setQueryData(['session'], session)
+      }
       if (!session) reportFailure('identity.sign_in_apple', { code: 'apple_session_missing' })
       return session ? Result.ok(session) : Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
     } catch (error) {
       reportFailure('identity.sign_in_apple', error)
       return Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
+    } finally {
+      finishSignIn()
     }
   }
 

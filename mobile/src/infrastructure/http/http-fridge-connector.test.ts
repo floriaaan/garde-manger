@@ -518,6 +518,47 @@ describe('authentication integrations', () => {
   })
 })
 
+describe('Apple sign-in session races', () => {
+  const session = { user: { id: 'u1', name: 'Alice', email: 'alice@example.com', image: null } }
+
+  test.each([{ data: null }, { error: { status: 401 } }])('a foreground session response cannot sign out during Apple sign-in: %j', async (response) => {
+    const connector = new HttpFridgeConnector()
+    ;(authClient.getSession as jest.Mock).mockReset().mockResolvedValueOnce(response).mockResolvedValueOnce({ data: session })
+    ;(authClient.signIn.social as jest.Mock).mockImplementationOnce(async () => {
+      expect(await connector.getSession()).toBeNull()
+      expect(authClient.signOut).not.toHaveBeenCalled()
+      return {}
+    })
+    expect(await connector.signInApple('identity-token')).toEqual({ ok: true, value: session })
+    expect(queryClient.getQueryData(['session'])).toEqual(session)
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test('a session query started before Apple sign-in cannot overwrite its verified session', async () => {
+    let finishOldRequest!: (response: { data: null }) => void
+    ;(authClient.getSession as jest.Mock).mockReset()
+      .mockImplementationOnce(() => new Promise((resolve) => { finishOldRequest = resolve }))
+      .mockResolvedValueOnce({ data: session })
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValueOnce({})
+    const connector = new HttpFridgeConnector()
+    const oldRequest = queryClient.fetchQuery({ queryKey: ['session'], queryFn: () => connector.getSession() }).catch(() => {})
+    expect(await connector.signInApple('identity-token')).toEqual({ ok: true, value: session })
+    finishOldRequest({ data: null })
+    await oldRequest
+    expect(queryClient.getQueryData(['session'])).toEqual(session)
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  })
+
+  test('failed Apple sign-in releases the guard so a subsequent confirmed refusal still signs out', async () => {
+    ;(authClient.signIn.social as jest.Mock).mockResolvedValueOnce({ error: { code: 'INVALID_TOKEN' } })
+    const connector = new HttpFridgeConnector()
+    expect((await connector.signInApple('invalid')).ok).toBe(false)
+    ;(authClient.getSession as jest.Mock).mockReset().mockResolvedValueOnce({ data: null })
+    await connector.getSession()
+    expect(authClient.signOut).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('Android browser OAuth return (#91)', () => {
   const originalOS = Platform.OS
   const session = { user: { id: 'u1', name: 'Alice', email: 'alice@example.com', image: null } }
