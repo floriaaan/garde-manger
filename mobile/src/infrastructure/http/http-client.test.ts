@@ -3,6 +3,7 @@ import { apiFetch, apiFetchMultipart } from './http-client.js'
 import { queryClient } from '../../application/shared/query-client.js'
 import { telemetry } from '../telemetry/telemetry.js'
 import { subscribeToast } from '../../application/shared/toast.js'
+import { beginSignIn } from '../auth/sign-in-lifecycle.js'
 
 // `http-client.ts` reads the session cookie via `authClient.getCookie()` on
 // every request. The real client pulls in `better-auth/react`, an ESM-only
@@ -107,6 +108,45 @@ test('another 401-shaped error (a rejected login, say) does not touch the cached
   await apiFetch('/api/products')
 
   expect(queryClient.getQueryData(['session'])).toEqual({ userId: 'u1' })
+})
+
+test.each([apiFetch, (path: string) => apiFetchMultipart(path, new FormData())])('a late 401 cannot revoke a session established after the request started', async (request) => {
+  jest.mocked(authClient.signOut).mockClear()
+  let finishResponse!: (body: unknown) => void
+  let parsingStarted!: () => void
+  const parsing = new Promise<void>((resolve) => { parsingStarted = resolve })
+  globalThis.fetch = jest.fn().mockResolvedValue({
+    status: 401, ok: false,
+    json: () => new Promise((resolve) => {
+      finishResponse = resolve
+      parsingStarted()
+    }),
+  })
+  const pending = request('/api/household')
+  // Let the request reach response parsing before sign-in completes.
+  await parsing
+  const finishSignIn = beginSignIn()
+  queryClient.setQueryData(['session'], { userId: 'new-session' })
+  finishSignIn()
+  finishResponse({ error: { type: 'unauthenticated', message: 'Authentication required.' } })
+  expect((await pending).ok).toBe(false)
+  expect(queryClient.getQueryData(['session'])).toEqual({ userId: 'new-session' })
+  expect(authClient.signOut).not.toHaveBeenCalled()
+})
+
+test('a 401 from a request started during sign-in cannot revoke its incoming session', async () => {
+  jest.mocked(authClient.signOut).mockClear()
+  const finishSignIn = beginSignIn()
+  globalThis.fetch = jest.fn().mockResolvedValue({
+    status: 401, ok: false,
+    json: () => Promise.resolve({ error: { type: 'unauthenticated', message: 'Authentication required.' } }),
+  })
+  try {
+    expect((await apiFetch('/api/household')).ok).toBe(false)
+    expect(authClient.signOut).not.toHaveBeenCalled()
+  } finally {
+    finishSignIn()
+  }
 })
 
 test('apiFetch() records telemetry with the given action name when the response is not ok', async () => {

@@ -7,9 +7,13 @@ import { fakeHousehold } from '../../infrastructure/fake/fixtures/household.fixt
 import { BootSplash } from '../shared/boot-splash.js'
 import { JobHost } from '../job/job-host.js'
 import TabsLayout from '../../app/(tabs)/_layout.js'
+import OnboardingLayout from '../../app/(onboarding)/_layout.js'
+import type { Session } from '../../domain/identity/session.js'
+import { fakeSession } from '../../infrastructure/fake/fixtures/session.fixture.js'
 
 jest.mock('expo-router', () => ({
   Redirect: jest.fn(() => null),
+  Stack: jest.fn(() => null),
   Tabs: Object.assign(jest.fn(() => null), { Screen: jest.fn(() => null) }),
 }))
 jest.mock('expo-router/unstable-native-tabs', () => ({ NativeTabs: jest.fn(() => null) }))
@@ -21,6 +25,27 @@ jest.mock('../job/active-job-pill.js', () => ({ ActiveJobPill: () => null }))
 jest.mock('../push/push-host.js', () => ({ PushHost: () => null }))
 
 beforeEach(() => jest.clearAllMocks())
+
+test.each([TabsLayout, OnboardingLayout])('%p waits for a session before requesting the household', async (Layout) => {
+  const connector = new FakeFridgeConnector()
+  let finishSession!: (session: Session | null) => void
+  jest.spyOn(connector, 'getSession').mockReturnValue(new Promise((resolve) => { finishSession = resolve }))
+  const householdRead = jest.spyOn(connector, 'getHousehold')
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const view = await render(
+    <QueryClientProvider client={queryClient}>
+      <ConnectorProvider connector={connector}><Layout /></ConnectorProvider>
+    </QueryClientProvider>,
+  )
+  expect(householdRead).not.toHaveBeenCalled()
+  await act(async () => { finishSession(null) })
+  await waitFor(() => expect(Redirect).toHaveBeenCalled())
+  expect(householdRead).not.toHaveBeenCalled()
+  await act(async () => { queryClient.setQueryData(['session'], fakeSession) })
+  await waitFor(() => expect(householdRead).toHaveBeenCalledTimes(1))
+  await view.unmount()
+  queryClient.clear()
+})
 
 test('an initial household error keeps the retry splash, then an empty retry opens onboarding', async () => {
   const connector = new FakeFridgeConnector()

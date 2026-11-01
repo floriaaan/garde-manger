@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 import { Result } from '../../domain/shared/result.js'
 import { telemetry } from '../telemetry/telemetry.js'
 import { authClient } from '../auth/auth-client.js'
+import { sessionInvalidationGuard } from '../auth/sign-in-lifecycle.js'
 import { queryClient } from '../../application/shared/query-client.js'
 import { showToast } from '../../application/shared/toast.js'
 import type { ApiError } from '../../domain/shared/api-error.js'
@@ -51,7 +52,8 @@ async function tracedFetch(
   method: string,
   init: RequestInit,
   context?: ActionContext,
-): Promise<{ response: Response; span: ReturnType<typeof telemetry.startClientSpan> }> {
+): Promise<{ response: Response; span: ReturnType<typeof telemetry.startClientSpan>; canClearSession: () => boolean }> {
+  const canClearSession = sessionInvalidationGuard()
   const apiUrl = getServerUrl()
   const operation = safeOperation(context?.action ?? `${method} ${path.split('?')[0]}`)
   const span = telemetry.startClientSpan(operation, {
@@ -96,7 +98,7 @@ async function tracedFetch(
       },
       ...(response.status >= 500 ? { error: { code: `http_${response.status}`, name: 'HttpError' } } : {}),
     })
-    return { response, span }
+    return { response, span, canClearSession }
   } catch (error) {
     span?.end({ error })
     const attributes = {
@@ -130,7 +132,7 @@ export async function apiFetch<T>(
   context?: ActionContext,
 ): Promise<Result<T, ApiError>> {
   try {
-    const { response, span } = await tracedFetch(
+    const { response, span, canClearSession } = await tracedFetch(
       path,
       init?.method ?? 'GET',
       {
@@ -150,7 +152,7 @@ export async function apiFetch<T>(
         attributes: { 'error.type': error.type, action: context?.action ?? `${init?.method ?? 'GET'} ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
-      if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
+      if (response.status === 401 && error.type === 'unauthenticated' && canClearSession()) handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)
@@ -172,7 +174,7 @@ export async function apiFetchMultipart<T>(
   context?: ActionContext,
 ): Promise<Result<T, ApiError>> {
   try {
-    const { response, span } = await tracedFetch(
+    const { response, span, canClearSession } = await tracedFetch(
       path,
       'POST',
       { method: 'POST', credentials: 'include', body: formData },
@@ -186,7 +188,7 @@ export async function apiFetchMultipart<T>(
         attributes: { 'error.type': error.type, action: context?.action ?? `POST ${path.split('?')[0]}`, 'http.response.status_code': response.status, request_id: response.headers?.get('x-request-id') ?? undefined },
         ...(span ? { span } : null),
       })
-      if (response.status === 401 && error.type === 'unauthenticated') handleUnauthenticated()
+      if (response.status === 401 && error.type === 'unauthenticated' && canClearSession()) handleUnauthenticated()
       return Result.err(error)
     }
     return Result.ok(body as T)

@@ -19,7 +19,7 @@ import { useHouseholdQuery } from '../../application/identity/household.query.js
  */
 export default function OnboardingLayout() {
   const session = useSessionQuery()
-  const household = useHouseholdQuery()
+  const household = useHouseholdQuery({ enabled: Boolean(session.data) })
 
   if (session.isPending || (session.isError && session.data === undefined)) return <BootSplash />
   if (!session.data) return <Redirect href="/(auth)/sign-in" />
