@@ -35,7 +35,7 @@ export const applePurchases: ApplePurchases = {
         if (transaction) void onPurchase(transaction).catch(() => onError('verification-failed'))
       })
       errors = IAP.purchaseErrorListener((error) => onError(error.code ?? 'unknown'))
-      if (!await IAP.initConnection()) throw new Error('StoreKit unavailable')
+      if (!await IAP.initConnection()) throw Object.assign(new Error('StoreKit unavailable'), { code: 'storekit_unavailable' })
       for (const purchase of await IAP.getPendingTransactionsIOS()) {
         const transaction = remember(purchase)
         if (transaction) await onPurchase(transaction)
@@ -47,9 +47,10 @@ export const applePurchases: ApplePurchases = {
   async product(id) {
     const products = await IAP.fetchProducts({ skus: [id], type: 'subs' })
     const product = products?.find((item) => item.id === id)
+    if (!product) throw Object.assign(new Error('App Store product unavailable'), { code: 'apple_product_not_found' })
     // This release sells one monthly, auto-renewing subscription only.
-    if (!product || !('subscriptionPeriodUnitIOS' in product) || product.subscriptionPeriodUnitIOS !== 'month' || product.subscriptionPeriodNumberIOS !== '1') {
-      throw new Error('Monthly App Store product unavailable')
+    if (!('subscriptionPeriodUnitIOS' in product) || product.subscriptionPeriodUnitIOS !== 'month' || product.subscriptionPeriodNumberIOS !== '1') {
+      throw Object.assign(new Error('Monthly App Store product unavailable'), { code: 'apple_product_invalid_period' })
     }
     return { id: product.id, displayPrice: product.displayPrice, title: product.title }
   },

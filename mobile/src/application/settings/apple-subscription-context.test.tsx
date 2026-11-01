@@ -20,7 +20,7 @@ function Status() {
   </>
 }
 
-async function setup(initializationFailure?: 'configuration' | 'connection') {
+async function setup(initializationFailure?: 'configuration' | 'connection' | 'recovery') {
   let onPurchase!: (purchase: ApplePurchase) => Promise<void>
   let onError!: (code: string) => void
   const port = {
@@ -31,6 +31,7 @@ async function setup(initializationFailure?: 'configuration' | 'connection') {
     finish: jest.fn(async () => {}), manage: jest.fn(async () => {}),
   } satisfies ApplePurchases
   if (initializationFailure === 'connection') port.connect.mockRejectedValueOnce(new Error('StoreKit unavailable'))
+  if (initializationFailure === 'recovery') port.current.mockRejectedValueOnce(new Error('StoreKit recovery unavailable'))
   const connector = new FakeFridgeConnector()
   if (initializationFailure === 'configuration') jest.spyOn(connector, 'getAppleSubscription').mockResolvedValueOnce({ ok: false, error: { type: 'network_error', message: 'Configuration indisponible.' } })
   await connector.signInSocial()
@@ -110,4 +111,12 @@ test.each(['configuration', 'connection'] as const)('retry recovers a failed %s 
   expect(port.restore).toHaveBeenCalledTimes(1)
   expect(sync).toHaveBeenCalledWith('apple-signed-jws')
   expect(port.finish).toHaveBeenCalledWith(purchase)
+})
+
+test('a receipt recovery failure does not prevent loading the localized price or buying', async () => {
+  const { port } = await setup('recovery')
+  expect(screen.getByText('1,49 €')).toBeTruthy()
+  expect(screen.getByTestId('buy')).not.toBeDisabled()
+  await fireEvent.press(screen.getByTestId('buy'))
+  await waitFor(() => expect(port.purchase).toHaveBeenCalledTimes(1))
 })
