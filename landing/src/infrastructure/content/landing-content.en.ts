@@ -12,7 +12,7 @@ export const landingContentEn: LandingContent = {
     titleHighlight: 'nothing wasted',
     titleAfter: '.',
     subtitle:
-      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. The web app is available now; the mobile apps are available in beta.',
+      'Garde-manger tracks the whole household’s fridge, warns before dates pass, and suggests what to cook with what’s left. Available on the web and on Android through Google Play; iOS is available in beta through TestFlight.',
     screenshots: [
       {
         src: '/screenshots/accueil.jpg',
@@ -58,7 +58,7 @@ export const landingContentEn: LandingContent = {
     titleHighlight: 'Two ways',
     titleAfter: ' to get started',
     subtitle:
-      'Same app, same features. The official app is available on the web and in beta on mobile; you can also install everything at home.',
+      'Same app, same features. The official app is available on the web, on Google Play for Android and in TestFlight beta for iOS; you can also install everything at home.',
     hosted: {
       label: 'Hosted',
       tag: 'The easy way',
@@ -94,7 +94,7 @@ export const landingContentEn: LandingContent = {
         'docker compose up -d',
         'curl http://localhost:3333/health',
       ],
-      note: 'The app isn’t on the stores yet: on Android, install it from the APK in Releases. With Ollama, nothing leaves your home.',
+      note: 'On Android, install the app from Google Play or from the APK in Releases. With Ollama, nothing leaves your home.',
       cta: { label: 'Read the guide', href: 'https://github.com/floriaaan/garde-manger#installation' },
     },
   },
@@ -127,15 +127,13 @@ export const landingContentEn: LandingContent = {
     {
       question: 'What devices does it run on?',
       answer:
-      'On the web, iOS and Android. The web app is available now. On iOS, join the beta through TestFlight. On Android, join the Google testing group first, then access the Google Play beta with the same account. The APK is still available in Releases.',
+      'On the web, iOS and Android. The web app is available now. On iOS, join the beta through TestFlight. On Android, install the stable version directly from Google Play. The APK is still available in Releases.',
     },
   ],
   stores: {
     appStore: null,
-    playStore: null,
+    playStore: 'https://play.google.com/store/apps/details?id=com.floriaaan.gardemanger',
     testFlight: 'https://testflight.apple.com/join/AcGZsS4B',
-    googleGroup: 'https://groups.google.com/g/garde-manger-beta',
-    googlePlayBeta: 'https://play.google.com/apps/testing/com.floriaaan.gardemanger',
   },
   ui: {
     skipToContent: 'Skip to content',
@@ -147,7 +145,7 @@ export const landingContentEn: LandingContent = {
       label: 'Your email',
       submit: 'Notify me',
       sending: 'Sending…',
-      success: 'Got it! We’ll let you know when the apps are out.',
+      success: 'Got it! We’ll let you know when the iOS app is out.',
       error: 'Something went wrong — try again in a moment.',
       alreadySubscribed: 'Already on the list with that email.',
     },
@@ -163,13 +161,11 @@ export const landingContentEn: LandingContent = {
     },
     offers: {
       or: 'or',
-      storesAvailable: 'App Store and Google Play',
+      storesAvailable: 'Android · Google Play / iOS · TestFlight',
       storesFallback: 'iOS and Android · coming soon to the stores',
-      betaHeading: 'Try the mobile apps',
-      testFlight: 'iOS · TestFlight',
-      googleGroup: '1. Join the Google group',
-      googlePlayBeta: '2. Try it on Google Play',
-      androidBetaNote: 'On Android, join the testing group first, then access the Google Play beta with the same Google account.',
+      mobileHeading: 'Download the mobile app',
+      testFlight: 'iOS · TestFlight beta',
+      playStore: 'Get it on Google Play',
     },
     faq: {
       headingBefore: 'Got',

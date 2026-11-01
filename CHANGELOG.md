@@ -4,6 +4,55 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+## [1.0.1]
+
+Changes after the `1.0.0` baseline summarized below, using `1.0.0-rc.5` as the Git comparison reference.
+
+### Added
+- Native iOS subscriptions through StoreKit, with localized App Store pricing, purchase restoration, subscription management and server-side transaction verification. Requires Apple subscription configuration and a new native build.
+- Replayable first-run guidance with actionable prompts, segmented progress and a replay action in the debug menu.
+- An accessible feedback page from Settings, with an illustrated layout, a guided email draft in the selected language, retry feedback and a selectable contact address.
+
+### Changed
+- The landing page links directly to the stable Android app on Google Play, replacing testing-group instructions in French and English; iOS remains available through TestFlight.
+- iOS subscription screens clarify purchase, restoration and management actions, with direct links to the privacy policy and terms.
+- Apple subscription setup, diagnostics and native build requirements are documented for operators.
+
+### Fixed
+- Camera permission handling across barcode, fridge, receipt and household-invitation scanners, and account-deletion navigation after signing out.
+- OAuth callbacks preserve their return routes; native Apple sign-in uses the correct auth origin and reports failures.
+- Apple subscription pricing remains available during receipt recovery, with clearer product errors and retry actions for existing subscribers.
+- The privacy-policy link in Settings opens the English policy when English is selected.
+
+### Security
+- Updated vulnerable dependencies and container runtime images, reduced production-image dependencies, refreshed nginx packages and documented security audits.
+
+## [1.0.0]
+
+Consolidated summary of `1.0.0-rc.1` through `1.0.0-rc.5`. The applications used version `1.0.0`; no separate `1.0.0` Git tag was published, so links use `1.0.0-rc.5` as the baseline. Detailed changes remain in the release-candidate entries below.
+
+### Added
+- Shared household inventory with expiry dates, invitation codes and a shared shopping list.
+- AI-powered receipt and fridge scanning, PDF receipt import and sharing, and recipe generation with Gemini, OpenAI or a self-hosted Ollama model. AI tasks run in the background, with completion notifications.
+- Recipe composition from pantry products, shared recipe favorites and archives, and filters for recipe states.
+- French and English app translations, automatic language detection, and AI-generated recipes and scan results in the selected language.
+- Configurable household expiry reminders, a weekly pantry check-up and Web Push support for compatible browsers.
+- Apple sign-in, Google sign-in and passkeys on supported clients, account linking, email password recovery and account deletion with household ownership checks.
+- Hosted and self-hosted operation, Docker images on GHCR, an Android APK and a self-hostable web app.
+- iPad layouts, user avatars, an app-rating prompt, privacy and terms links, and dedicated not-found pages.
+- EAS Update configuration for staging and production, plus installation, authentication, observability and App Store submission documentation.
+
+### Changed
+- Redesigned authentication, server selection and household onboarding, with refreshed branding, illustrations and reduced-motion support.
+- Responsive navigation for mobile, tablet and web, shared native action sheets, and bundled web typography.
+- Household-scoped AI settings and hosted subscription management, with web-based billing management on iOS in this baseline.
+
+### Fixed
+- Session persistence during transient network failures and Android Google sign-in callbacks.
+- Household queries during authentication and onboarding, ownership transfers and safeguards when leaving a household.
+- AI quota accounting for multi-photo and resumed fridge scans; failed recipe generation no longer creates a recipe.
+- Notification preference loading, saving and device-permission refresh, web form focus and bottom-sheet scrolling, and recipe-composer selection and exit handling.
+
 ## [1.0.0-rc.5]
 
 ### Added
@@ -106,7 +155,9 @@ First release candidate.
 - Install guide: minimal compose file, secrets in a `.env`, HTTPS with Caddy, versioned updates with a backup step.
 - Application id is now `com.floriaaan.gardemanger` on iOS and Android.
 
-[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.5...HEAD
+[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.5...1.0.1
+[1.0.0]: https://github.com/floriaaan/garde-manger/releases/tag/1.0.0-rc.5
 [1.0.0-rc.5]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.4...1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.2...1.0.0-rc.3

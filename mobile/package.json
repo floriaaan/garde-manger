@@ -1,7 +1,7 @@
 {
   "name": "garde-manger-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "dependencies": {
     "expo-iap": "6.1.1",
     "@better-auth/expo": "^1.7.14",
