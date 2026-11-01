@@ -46,8 +46,6 @@ export interface StoreLinks {
   appStore: string | null
   playStore: string | null
   testFlight: string
-  googleGroup: string
-  googlePlayBeta: string
 }
 
 /**
@@ -84,11 +82,9 @@ export interface LandingUi {
     or: string
     storesAvailable: string
     storesFallback: string
-    betaHeading: string
+    mobileHeading: string
     testFlight: string
-    googleGroup: string
-    googlePlayBeta: string
-    androidBetaNote: string
+    playStore: string
   }
   faq: {
     headingBefore: string
