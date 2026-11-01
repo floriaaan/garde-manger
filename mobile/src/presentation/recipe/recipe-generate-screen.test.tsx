@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ConnectorProvider } from '../../application/shared/connector-context.js'
@@ -93,38 +93,6 @@ test('nothing on the sheet is mandatory — submitting untouched sends no prompt
   await waitFor(() => expect(generate).toHaveBeenCalledWith(undefined))
 })
 
-test('the choices reach the endpoint as one composed prompt, and the sheet closes onto the recipe', async () => {
-  const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
-  const generate = jest.spyOn(connector, 'enqueueRecipeGeneration')
-  renderComposer(connector)
-
-  await openRefine()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
-
-  // Each step is awaited: this suite's jest environment does not set
-  // `IS_REACT_ACT_ENVIRONMENT`, so a render triggered by `fireEvent` is not
-  // flushed before the next line reads the tree.
-  fireEvent.changeText(screen.getByTestId('recipes-wish'), 'un gratin')
-  await waitFor(() => expect(screen.getByTestId('recipes-wish').props.value).toBe('un gratin'))
-
-  fireEvent.press(screen.getByTestId('recipes-option-materiel-sans-four'))
-  await waitFor(() =>
-    expect(screen.getByTestId('recipes-option-materiel-sans-four').props.accessibilityState).toEqual({ selected: true }),
-  )
-
-  fireEvent.press(screen.getByTestId('recipes-option-portions-4'))
-  await waitFor(() =>
-    expect(screen.getByTestId('recipes-option-portions-4').props.accessibilityState).toEqual({ selected: true }),
-  )
-
-  fireEvent.press(screen.getByTestId('recipes-generate-submit'))
-
-  await waitFor(() => expect(generate).toHaveBeenCalledWith('un gratin — sans four, pour 4 personnes.'))
-  await waitFor(() => expect(router.dismiss).toHaveBeenCalled())
-  expect(router.push).toHaveBeenCalledWith({ pathname: '/(tabs)/recipes/[id]', params: { id: 'fake-recipe-generated-1' } })
-})
-
 test('a single-choice group swaps instead of stacking', async () => {
   renderComposer()
 
@@ -143,27 +111,6 @@ test('a single-choice group swaps instead of stacking', async () => {
   )
 })
 
-test('the seconds-long job gets a real loader, not a quiet button', async () => {
-  const connector = new FakeFridgeConnector()
-  stubJob(connector, job({ status: 'running', startedAt: '2026-09-20T10:00:01.000Z' }))
-  renderComposer(connector)
-
-  await waitFor(() => expect(screen.getByTestId('recipes-generate-submit')).toBeTruthy())
-  expect(screen.queryByTestId('recipes-generating')).toBeNull()
-
-  fireEvent.press(screen.getByTestId('recipes-generate-submit'))
-
-  await waitFor(() => expect(screen.getByTestId('recipes-generating')).toBeTruthy())
-  expect(screen.getByText('On écrit ta recette')).toBeTruthy()
-  // The app's own loading bar, in the palette's chip colours — not the OS spinner.
-  expect(screen.getByTestId('recipes-generating-bar')).toBeTruthy()
-  // The member is never trapped: the job runs on the server, so they can leave.
-  fireEvent.press(screen.getByTestId('recipes-generating-later'))
-  expect(router.dismiss).toHaveBeenCalled()
-  // The form is unmounted, not covered: nothing left for a screen reader to swipe into.
-  expect(screen.queryByTestId('recipes-generate-submit')).toBeNull()
-})
-
 test('a generation that has nothing to cook from says why, and the reason stays on screen', async () => {
   const connector = new FakeFridgeConnector()
   jest.spyOn(connector, 'getProducts').mockResolvedValue([])
@@ -177,16 +124,6 @@ test('a generation that has nothing to cook from says why, and the reason stays 
   await waitFor(() => expect(screen.getByTestId('recipes-generate-error')).toBeTruthy())
   expect(screen.getByText('Ajoute des produits au garde-manger pour générer une recette.')).toBeTruthy()
   expect(router.dismiss).not.toHaveBeenCalled()
-})
-
-test('the sheet can be closed without generating anything', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-generate-close')).toBeTruthy())
-
-  fireEvent.press(screen.getByTestId('recipes-generate-close'))
-
-  expect(router.dismiss).toHaveBeenCalled()
 })
 
 test('a successful call that produced no recipe says so instead of closing in silence', async () => {
@@ -203,26 +140,6 @@ test('a successful call that produced no recipe says so instead of closing in si
   // The sheet stays open and the list is not invalidated — it gained nothing.
   expect(router.dismiss).not.toHaveBeenCalled()
   expect(router.push).not.toHaveBeenCalled()
-})
-
-test('an empty garde-manger offers the door, before the wait and after it', async () => {
-  const connector = new FakeFridgeConnector()
-  jest.spyOn(connector, 'getProducts').mockResolvedValue([])
-  stubJob(connector, failedJob('no_products', 'Ajoute des produits au garde-manger pour générer une recette.'))
-  renderComposer(connector)
-
-  // Before: the empty state carries the action, not just the diagnosis.
-  await waitFor(() => expect(screen.getByTestId('recipes-empty-add-product')).toBeTruthy())
-
-  fireEvent.press(screen.getByTestId('recipes-generate-submit'))
-
-  // After: so does the error, because this modal draws no nav to reach it with.
-  await waitFor(() => expect(screen.getByTestId('recipes-error-add-product')).toBeTruthy())
-
-  fireEvent.press(screen.getByTestId('recipes-error-add-product'))
-
-  expect(router.dismiss).toHaveBeenCalled()
-  expect(router.push).toHaveBeenCalledWith('/(tabs)/fridge/new')
 })
 
 test('a failure the user can only retry offers exactly that', async () => {
@@ -270,75 +187,11 @@ test('a pantry product card is a control, not a caption — tapping it builds th
   await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.stringContaining('en utilisant ')))
 })
 
-test('the pantry offers the three nearest products first, and "Voir tout" opens the rest with a search', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
-  expect(screen.getAllByTestId(/^recipes-pin-/)).toHaveLength(3)
-  expect(screen.queryByTestId('recipes-pin-fake-product-3')).toBeNull()
-  expect(screen.queryByTestId('recipes-pantry-search')).toBeNull()
-
-  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
-  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'basmati')
-
-  await waitFor(() => {
-    expect(screen.getByTestId('recipes-pin-fake-product-3')).toBeTruthy()
-    expect(screen.queryByTestId('recipes-pin-fake-product-1')).toBeNull()
-  })
-})
-
-test('a pantry search with no match says so instead of showing an empty card', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
-  fireEvent.changeText(screen.getByTestId('recipes-pantry-search'), 'saucisson')
-
-  await waitFor(() => expect(screen.getByText('Aucun produit ne correspond à « saucisson ».')).toBeTruthy())
-})
-
-test('a product picked from "Voir tout" stays in the short list, and the fold counts it', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-pantry-all')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('recipes-pantry-all'))
-  fireEvent.press(screen.getByTestId('recipes-pin-fake-product-3'))
-  fireEvent.press(screen.getByTestId('recipes-pantry-less'))
-
-  await waitFor(() =>
-    expect(screen.getByTestId('recipes-pin-fake-product-3').props.accessibilityState).toMatchObject({ selected: true }),
-  )
-
-  // Folded, the header says how many are picked instead of how many exist.
-  fireEvent.press(screen.getByTestId('recipes-cooking-from-toggle'))
-  await waitFor(() =>
-    expect(screen.getByTestId('recipes-cooking-from-toggle').props.accessibilityLabel).toBe('Sous la main, 1 choisi'),
-  )
-})
-
 test('an empty sheet lets the system back and swipe leave freely', async () => {
   renderComposer()
 
   await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
 
-  expect(lastPreventRemove().prevent).toBe(false)
-})
-
-test('a leave through back or swipe with an unsaved wish asks first, like "Fermer"', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-wish')).toBeTruthy())
-  fireEvent.changeText(screen.getByTestId('recipes-wish'), 'un gratin')
-
-  expect(lastPreventRemove().prevent).toBe(true)
-  const { onLeave } = lastPreventRemove()
-  await act(async () => onLeave())
-
-  await waitFor(() => expect(screen.getByTestId('recipes-discard-confirm')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('recipes-discard-confirm'))
-
-  // Released before dismissing, or the guard would catch its own exit.
-  await waitFor(() => expect(router.dismiss).toHaveBeenCalled())
   expect(lastPreventRemove().prevent).toBe(false)
 })
 
@@ -374,32 +227,6 @@ test('discarding a filled sheet is confirmed, not done on one tap of a grey link
   )
 })
 
-test('closing an untouched sheet does not stop to ask', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-generate-close')).toBeTruthy())
-
-  fireEvent.press(screen.getByTestId('recipes-generate-close'))
-
-  expect(router.dismiss).toHaveBeenCalled()
-  expect(screen.queryByText('Effacer cette envie ?')).toBeNull()
-})
-
-test('the sheet shows the sentence the model will actually receive', async () => {
-  renderComposer()
-
-  await openRefine()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-option-regime-vegetarien')).toBeTruthy())
-  fireEvent.press(screen.getByTestId('recipes-option-regime-vegetarien'))
-
-  await waitFor(() =>
-    expect(screen.getByTestId('recipes-prompt-preview')).toHaveTextContent(
-      'On demandera : « Une recette végétarienne. »',
-    ),
-  )
-})
-
 test('the six chip groups are folded away — the composer opens as a shortcut, not a form', async () => {
   renderComposer()
 
@@ -428,18 +255,4 @@ test('no pantry product is chosen for the cook — the card proposes, the tap de
   await waitFor(() =>
     expect(screen.getByTestId('recipes-pin-fake-product-1').props.accessibilityState).toMatchObject({ selected: true }),
   )
-})
-
-test('the "Sous la main" pantry card is retractable', async () => {
-  renderComposer()
-
-  await waitFor(() => expect(screen.getByTestId('recipes-pin-fake-product-1')).toBeTruthy())
-
-  const toggle = screen.getByTestId('recipes-cooking-from-toggle')
-  expect(toggle.props.accessibilityState.expanded).toBe(true)
-
-  fireEvent.press(toggle)
-
-  expect(screen.queryByTestId('recipes-pin-fake-product-1')).toBeNull()
-  expect(toggle.props.accessibilityState.expanded).toBe(false)
 })

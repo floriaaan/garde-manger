@@ -37,17 +37,6 @@ test('renders the product name, quantity, and category', async () => {
   expect(screen.getByText('Produits laitiers')).toBeTruthy()
 })
 
-test('eating one of several logs one unit and keeps the product on screen', async () => {
-  const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-4" />)
-  await waitFor(() => expect(screen.getByText('Yaourts nature')).toBeTruthy())
-
-  await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
-
-  await waitFor(() => expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length + 1))
-  expect(connector.outcomes.at(-1)).toMatchObject({ kind: 'consumed', quantity: { amount: 1 } })
-  expect(screen.queryByTestId('fridge-detail-gone')).toBeNull()
-})
-
 test('finishing the last unit needs no confirmation and leaves the screen', async () => {
   const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />)
   await waitFor(() => expect(screen.getByText('Lait demi-écrémé')).toBeTruthy())

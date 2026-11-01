@@ -20,8 +20,10 @@ ENV VITE_CONNECTOR=$VITE_CONNECTOR VITE_API_URL=$VITE_API_URL VITE_GITHUB_REPO=$
 COPY landing ./landing
 RUN pnpm --filter garde-manger-landing run build
 
-FROM base AS production
+FROM node:26-alpine AS production
 ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0
+# Package managers are only needed in the build stages.
+RUN npm uninstall -g npm && rm -rf /root/.npm
 RUN addgroup -S gardemanger && adduser -S gardemanger -G gardemanger
 COPY --from=build --chown=gardemanger:gardemanger /app/node_modules ./node_modules
 COPY --from=build --chown=gardemanger:gardemanger /app/landing/node_modules ./landing/node_modules
@@ -32,4 +34,4 @@ WORKDIR /app/landing
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-CMD ["pnpm", "run", "start"]
+CMD ["node", "node_modules/srvx/bin/srvx.mjs", "--prod", "-s", "../client", "dist/server/server.js"]

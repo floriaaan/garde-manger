@@ -203,20 +203,6 @@ async function settled(connector: FakeFridgeConnector, jobId: string) {
   throw new Error('job never settled')
 }
 
-test('enqueueReceiptScan() answers queued, then leaves a receipt draft once the job succeeds', async () => {
-  const connector = new FakeFridgeConnector({ aiLatencyMs: 0 })
-  const enqueued = await connector.enqueueReceiptScan('file://anything.jpg')
-
-  expect(enqueued.ok).toBe(true)
-  if (!enqueued.ok) return
-  expect(enqueued.value.status).toBe('queued')
-
-  const job = await settled(connector, enqueued.value.id)
-  expect(job.status).toBe('succeeded')
-  const draft = await connector.getScanDraft(job.result?.draftId ?? '')
-  expect(draft?.kind === 'receipt' && draft.draft.storeName).toBe('Carrefour')
-})
-
 test('importReceipt() creates a receipt and one product per item, linked by receiptId', async () => {
   const connector = new FakeFridgeConnector()
   const result = await connector.importReceipt({

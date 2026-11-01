@@ -14,9 +14,11 @@ FROM deps AS build
 COPY backend ./backend
 RUN pnpm --filter garde-manger-backend run build
 
-FROM base AS production
+FROM node:24-alpine AS production
 ARG APP_BUILD=local
 ENV NODE_ENV=production APP_BUILD=$APP_BUILD
+# Package managers are only needed in the build stages.
+RUN npm uninstall -g npm && rm -rf /root/.npm
 RUN addgroup -S gardemanger && adduser -S gardemanger -G gardemanger
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules

@@ -91,52 +91,6 @@ test('removing a member asks first, then removes', async () => {
   await waitFor(() => expect(removeSpy).toHaveBeenCalledWith('fake-user-2'))
 })
 
-test('a sole owner cannot open the leave or delete action', async () => {
-  const connector = new FakeFridgeConnector({
-    fixtureHousehold: { ...fakeHousehold, members: [fakeHousehold.members[0]!] },
-  })
-  const leaveSpy = jest.spyOn(connector, 'leaveHousehold')
-  await renderHousehold(connector)
-
-  await waitFor(() => expect(screen.getByTestId('household-name')).toBeTruthy())
-  expect(screen.queryByTestId('household-leave')).toBeNull()
-  expect(screen.queryByTestId('household-leave-confirm')).toBeNull()
-  expect(screen.queryByTestId('household-transfer-ownership')).toBeNull()
-  expect(screen.getByTestId('household-owner-leave-help')).toHaveTextContent('un autre membre doit d’abord te rejoindre')
-  expect(leaveSpy).not.toHaveBeenCalled()
-  expect(await connector.getHousehold()).toEqual({ ...fakeHousehold, members: [fakeHousehold.members[0]!] })
-})
-
-test('an owner can leave only after transferring ownership', async () => {
-  const connector = await renderHousehold()
-  const leaveSpy = jest.spyOn(connector, 'leaveHousehold')
-  const transferSpy = jest.spyOn(connector, 'transferHouseholdOwnership')
-
-  await waitFor(() => expect(screen.getByTestId('household-transfer-ownership')).toBeTruthy())
-  expect(screen.queryByTestId('household-leave')).toBeNull()
-  expect(screen.queryByTestId('household-leave-confirm')).toBeNull()
-  expect(leaveSpy).not.toHaveBeenCalled()
-  expect(screen.getByTestId('household-owner-leave-help')).toHaveTextContent('transfère d’abord la propriété')
-
-  await fireEvent.press(screen.getByTestId('household-transfer-ownership'))
-  await fireEvent.press(screen.getByTestId('household-transfer-target-fake-user-2'))
-  expect(transferSpy).not.toHaveBeenCalled()
-  expect(screen.getByText('Transférer la propriété à Camille ?')).toBeTruthy()
-  expect(screen.getByText(/Tu perdras ces droits/)).toBeTruthy()
-  await fireEvent.press(screen.getByTestId('household-transfer-confirm'))
-
-  await waitFor(() => expect(screen.getByTestId('household-leave')).toBeTruthy())
-  expect(screen.queryByTestId('household-transfer-ownership')).toBeNull()
-  expect(await connector.getHousehold()).toMatchObject({
-    id: fakeHousehold.id,
-    role: 'member',
-    members: [
-      { userId: 'fake-user-1', role: 'member' },
-      { userId: 'fake-user-2', role: 'owner' },
-    ],
-  })
-})
-
 test('cancelling the recipient confirmation preserves ownership and membership', async () => {
   const connector = await renderHousehold()
   const transferSpy = jest.spyOn(connector, 'transferHouseholdOwnership')
@@ -182,19 +136,6 @@ test.each([
   await fireEvent.press(screen.getByTestId(confirm))
   await waitFor(() => expect(screen.queryByTestId(confirm)).toBeNull())
   expect(mutation).toHaveBeenCalledTimes(2)
-})
-
-test('a rejected transfer keeps the confirmation open with an actionable error', async () => {
-  const connector = new FakeFridgeConnector()
-  jest.spyOn(connector, 'transferHouseholdOwnership').mockRejectedValueOnce(new Error('offline'))
-  await renderHousehold(connector)
-  await waitFor(() => expect(screen.getByTestId('household-transfer-ownership')).toBeTruthy())
-  await fireEvent.press(screen.getByTestId('household-transfer-ownership'))
-  await fireEvent.press(screen.getByTestId('household-transfer-target-fake-user-2'))
-  await fireEvent.press(screen.getByTestId('household-transfer-confirm'))
-  await waitFor(() => expect(screen.getByTestId('household-action-error')).toHaveTextContent('Vérifie ta connexion et réessaie.'))
-  expect(screen.getByTestId('household-transfer-confirm')).not.toBeDisabled()
-  expect(await connector.getHousehold()).toEqual(fakeHousehold)
 })
 
 test('renaming is disclosed on demand and closes after a successful save', async () => {

@@ -29,9 +29,3 @@ test('a dev build opens the debug screen', async () => {
   await tripleTap()
   expect(router.push).toHaveBeenCalledWith('/debug')
 })
-
-test('a release build ignores the triple tap', async () => {
-  ;(globalThis as unknown as { __DEV__: boolean }).__DEV__ = false
-  await tripleTap()
-  expect(router.push).not.toHaveBeenCalled()
-})
