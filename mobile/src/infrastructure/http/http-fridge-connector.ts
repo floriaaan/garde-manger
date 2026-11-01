@@ -331,8 +331,12 @@ export class HttpFridgeConnector implements FridgeConnector {
   async signInApple(identityToken: string): Promise<Result<Session, ApiError>> {
     try {
       const { error } = await authClient.signIn.social({ provider: 'apple', idToken: { token: identityToken } })
-      if (error) return Result.err({ type: error.code ?? 'apple_sign_in_failed', message: error.message ?? 'Connexion Apple impossible.' })
+      if (error) {
+        reportFailure('identity.sign_in_apple', error)
+        return Result.err({ type: error.code ?? 'apple_sign_in_failed', message: error.message ?? 'Connexion Apple impossible.' })
+      }
       const session = await this.getSession()
+      if (!session) reportFailure('identity.sign_in_apple', { code: 'apple_session_missing' })
       return session ? Result.ok(session) : Result.err({ type: 'apple_sign_in_failed', message: 'Connexion Apple impossible.' })
     } catch (error) {
       reportFailure('identity.sign_in_apple', error)

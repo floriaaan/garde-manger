@@ -7,6 +7,7 @@ import { useSessionQuery } from '../identity/session.query.js'
 import { useHouseholdQuery } from '../identity/household.query.js'
 import { t } from '../../i18n/index.js'
 import { getServerUrl, onServerUrlChange } from '../shared/server-config.js'
+import { getTelemetry } from '../shared/telemetry.js'
 
 const noop = async () => {}
 interface AppleSubscriptionState {
@@ -94,26 +95,46 @@ export function AppleSubscriptionProvider({ purchases, children }: { purchases: 
       return task
     }
 
+    let stage = 'configuration'
     void (async () => {
       const result = await connector.getAppleSubscription()
       if (!active) return
-      if (!result.ok) { setError(result.error.message); return }
+      if (!result.ok) {
+        getTelemetry().recordError('Apple subscription configuration failed', { error: result.error, attributes: { 'app.operation': 'settings.apple_configuration' } })
+        setError(result.error.message); return
+      }
       const expectedProduct = result.value.productId
       activeProcess.current = (purchase) => purchase.productId === expectedProduct ? process(purchase) : Promise.resolve(false)
+      stage = 'connection'
       close = await purchases.connect(async (purchase) => { if (active) await activeProcess.current?.(purchase) }, (code) => {
         if (!active) return
         finishPurchaseAttempt()
         if (code === 'user-cancelled') return
         if (code === 'deferred-payment' || code === 'pending') setNotice(t('settings.apple_purchase_pending'))
-        else setError(t('settings.apple_purchase_failed'))
+        else {
+          getTelemetry().recordError('Apple purchase failed', { error: { code }, attributes: { 'app.operation': 'settings.apple_purchase' } })
+          setError(t('settings.apple_purchase_failed'))
+        }
       })
       if (!active) { close(); return }
       ready.current = true
       setConfig(result.value)
-      for (const purchase of await purchases.current()) await activeProcess.current?.(purchase)
+      // Catalog loading must not wait for receipt recovery or backend verification.
+      void purchases.current().then(async (items) => {
+        for (const purchase of items) {
+          if (!active) return
+          await activeProcess.current?.(purchase)
+        }
+      }).catch((failure) => {
+        if (!active) return
+        getTelemetry().recordError('Apple purchase recovery failed', { error: failure, attributes: { 'app.operation': 'settings.apple_recovery' } })
+        setError(t('settings.apple_verification_retry'))
+      })
+      stage = 'product'
       const loadedProduct = await purchases.product(expectedProduct)
       if (active) setProduct(loadedProduct)
-    })().catch(() => {
+    })().catch((failure) => {
+      if (active) getTelemetry().recordError('Apple subscription initialization failed', { error: failure, attributes: { 'app.operation': `settings.apple_${stage}` } })
       if (active) setError(t('settings.apple_purchase_failed'))
     })
 

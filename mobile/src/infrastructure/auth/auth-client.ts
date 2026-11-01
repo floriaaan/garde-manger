@@ -19,6 +19,9 @@ function availablePasskeyClient(): ReturnType<typeof passkeyClient> {
 function buildClient() {
   return createAuthClient({
     baseURL: getServerUrl(),
+    // expoClient omits expo-origin for native ID-token sign-in/linking.
+    // Supply the trusted origin explicitly; browsers own their Origin header.
+    ...(Platform.OS !== 'web' ? { fetchOptions: { headers: { origin: 'gardemanger://' } } } : {}),
     plugins: [
       expoClient({
         scheme: 'gardemanger',

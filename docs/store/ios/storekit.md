@@ -59,6 +59,23 @@
 Aucun secret Apple n’est embarqué dans le mobile. Le backend transmet seulement
 l’identifiant produit et un `appAccountToken` UUID stable par compte Garde-manger.
 
+### Diagnostic d’un prix indisponible
+
+Les erreurs du mobile indiquent l’étape via `app.operation` :
+`settings.apple_configuration`, `settings.apple_connection`,
+`settings.apple_product` ou `settings.apple_recovery`.
+Pour le catalogue, `apple_product_not_found` signifie que StoreKit n’a pas
+renvoyé le produit demandé : vérifier l’identifiant exact, la disponibilité,
+les contrats et l’association à la version soumise dans App Store Connect.
+`apple_product_invalid_period` indique un produit qui n’est pas mensuel.
+`storekit_unavailable` signale un échec d’initialisation native.
+Les diagnostics restent disponibles dans la console de l’app ; leur remontée
+au collecteur nécessite la télémétrie mobile activée dans la build.
+
+Le `.env` backend ne suffit pas à reproduire le catalogue App Store : utiliser
+une build native sur appareil iOS avec le même bundle et le même produit.
+La récupération des achats existants ne bloque pas la requête de prix.
+
 ## Validation et sécurité
 
 L’app transmet le JWS de la transaction à `POST /api/settings/subscription/apple`.
