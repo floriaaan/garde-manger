@@ -4,6 +4,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versio
 
 ## [Unreleased]
 
+## [1.0.2]
+
+### Fixed
+- Restore the landing Docker image's working directory before copying runtime files, fixing startup failures caused by a missing `srvx` module.
+- Prevent stale authentication responses from invalidating a new sign-in session, and defer household queries until a session is available.
+
 ## [1.0.1]
 
 Changes since `1.0.0`.
@@ -131,7 +137,8 @@ First release candidate.
 - Install guide: minimal compose file, secrets in a `.env`, HTTPS with Caddy, versioned updates with a backup step.
 - Application id is now `com.floriaaan.gardemanger` on iOS and Android.
 
-[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.1...HEAD
+[Unreleased]: https://github.com/floriaaan/garde-manger/compare/1.0.2...HEAD
+[1.0.2]: https://github.com/floriaaan/garde-manger/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/floriaaan/garde-manger/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/floriaaan/garde-manger/tree/1.0.0
 [1.0.0-rc.4]: https://github.com/floriaaan/garde-manger/compare/1.0.0-rc.3...1.0.0-rc.4

@@ -25,6 +25,7 @@ ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0
 # Package managers are only needed in the build stages.
 RUN npm uninstall -g npm && rm -rf /root/.npm
 RUN addgroup -S gardemanger && adduser -S gardemanger -G gardemanger
+WORKDIR /app
 COPY --from=build --chown=gardemanger:gardemanger /app/node_modules ./node_modules
 COPY --from=build --chown=gardemanger:gardemanger /app/landing/node_modules ./landing/node_modules
 COPY --from=build --chown=gardemanger:gardemanger /app/landing/dist ./landing/dist

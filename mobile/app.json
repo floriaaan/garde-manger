@@ -2,7 +2,7 @@
   "expo": {
     "name": "Garde-manger",
     "slug": "garde-manger",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "icon": "./assets/images/icon.png",
     "scheme": "gardemanger",
     "userInterfaceStyle": "automatic",
