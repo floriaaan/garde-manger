@@ -9,6 +9,10 @@ export class FakeProductRepository implements ProductRepository {
   readonly products = new Map<string, Product>()
   readonly outcomes: ProductOutcome[] = []
 
+  async findOutcomeById(id: string) {
+    return this.outcomes.find((outcome) => outcome.id === id) ?? null
+  }
+
   async findById(id: string) {
     return this.products.get(id) ?? null
   }

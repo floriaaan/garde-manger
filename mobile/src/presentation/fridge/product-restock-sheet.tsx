@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '../../i18n/index.js'
 import type { Product } from '../../domain/fridge/product.js'
+import type { RecordProductOutcomeInput } from '../../domain/fridge/product-outcome.js'
 import { Quantity } from '../../domain/fridge/quantity.js'
 import { normalizeShoppingItemName } from '../../domain/shopping-list/shopping-item-merge.js'
 import { useShoppingItemsQuery } from '../../application/shopping-list/shopping-items.query.js'
@@ -23,7 +24,7 @@ export function ProductRestockSheet({
   product: Product
   finish: boolean
   onClose: () => void
-  onFinish: (inShoppingList: boolean) => Promise<boolean>
+  onFinish: (inShoppingList: boolean, input: RecordProductOutcomeInput) => Promise<boolean>
   onComplete: (inShoppingList: boolean) => void
 }) {
   const { t } = useTranslation()
@@ -37,6 +38,13 @@ export function ProductRestockSheet({
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [inShoppingList, setInShoppingList] = useState(false)
+  // Freeze the consumption intent, including its receipt key, when the
+  // decision opens. Refetches and retries must not consume newly added stock.
+  const [consumption] = useState<RecordProductOutcomeInput>(() => ({
+    kind: 'consumed',
+    amount: product.quantity.amount,
+    operationId: `restock-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`,
+  }))
   // A synchronous guard covers two presses before React commits disabled.
   const busy = useRef(false)
   const completed = useRef(false)
@@ -91,7 +99,7 @@ export function ProductRestockSheet({
       }
       // Shopping first: failure cannot remove inventory. If consumption
       // fails, saved stays true and retry never adds to shopping again.
-      if (finish && !(await onFinish(saved))) {
+      if (finish && !(await onFinish(saved, consumption))) {
         setError(t(saved ? 'restock.finish_failed_after_add' : 'restock.finish_failed'))
         return
       }

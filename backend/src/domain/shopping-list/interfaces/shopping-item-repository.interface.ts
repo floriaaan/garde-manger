@@ -1,7 +1,7 @@
 import type { ShoppingItem } from '../shopping-item.entity.js'
 
 export interface ShoppingItemRepository {
-  /** Production adapters serialize the read/create decision within a foyer. */
+  /** Production adapters serialize create, update and delete decisions within a foyer. */
   withHouseholdLock?<T>(
     householdId: string,
     action: (items: ShoppingItemRepository) => Promise<T>,

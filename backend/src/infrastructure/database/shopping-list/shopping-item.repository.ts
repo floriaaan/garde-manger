@@ -21,7 +21,7 @@ export class LucidShoppingItemRepository implements ShoppingItemRepository {
   }
 
   async findById(id: string): Promise<ShoppingItem | null> {
-    const row = await ShoppingItemModel.find(id)
+    const row = await ShoppingItemModel.query({ client: this.client }).where('id', id).first()
     return row ? toDomain(row) : null
   }
 
@@ -50,7 +50,7 @@ export class LucidShoppingItemRepository implements ShoppingItemRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await ShoppingItemModel.query().where('id', id).delete()
+    await ShoppingItemModel.query({ client: this.client }).where('id', id).delete()
   }
 
   async clearHomeAssistantSync(householdId: string): Promise<void> {

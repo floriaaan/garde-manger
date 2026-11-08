@@ -73,7 +73,10 @@ test('an existing item is kept explicitly, without summing or consuming before v
   expect(onFinish).not.toHaveBeenCalled()
   await fireEvent.press(screen.getByTestId('restock-keep'))
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true))
-  expect(onFinish).toHaveBeenCalledWith(true)
+  expect(onFinish).toHaveBeenCalledWith(
+    true,
+    expect.objectContaining({ kind: 'consumed', amount: 1, operationId: expect.any(String) }),
+  )
   const items = (await connector.getShoppingItems()).filter((item) => item.name === milk.name)
   expect(items).toHaveLength(1)
   expect(items[0].quantity.amount).toBe(2)
@@ -100,7 +103,10 @@ test('cancelling and finishing only never add a shopping item', async () => {
   expect(add).not.toHaveBeenCalled()
   await fireEvent.press(screen.getByTestId('restock-finish-only'))
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith(false))
-  expect(onFinish).toHaveBeenCalledWith(false)
+  expect(onFinish).toHaveBeenCalledWith(
+    false,
+    expect.objectContaining({ kind: 'consumed', amount: 1, operationId: expect.any(String) }),
+  )
   expect(add).not.toHaveBeenCalled()
 })
 

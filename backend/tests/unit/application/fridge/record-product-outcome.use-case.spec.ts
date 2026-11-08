@@ -12,6 +12,56 @@ async function setup(product = buildProduct()) {
 const BASE = { householdId: 'h_1', userId: 'u_1', productId: 'p_1' }
 
 test.group('RecordProductOutcome', () => {
+  test('a retry after product deletion returns the stored outcome only once', async ({
+    assert,
+  }) => {
+    const { products, useCase } = await setup()
+    const input = { ...BASE, kind: 'consumed', amount: 6, operationId: 'same-operation' }
+    const first = await useCase.execute(input)
+    const retry = await useCase.execute(input)
+    assert.deepEqual(retry, first)
+    assert.lengthOf(products.outcomes, 1)
+    assert.isNull(await products.findById('p_1'))
+  })
+
+  test('partial-consumption retries never subtract stock twice', async ({ assert }) => {
+    const { products, useCase } = await setup()
+    const input = { ...BASE, kind: 'consumed', amount: 1, operationId: 'partial-operation' }
+    await useCase.execute(input)
+    await useCase.execute(input)
+    const remaining = await products.findById('p_1')
+    assert.equal(remaining?.quantity.amount, 5)
+    assert.lengthOf(products.outcomes, 1)
+  })
+
+  test('reusing an operation for another amount is refused', async ({ assert }) => {
+    const { products, useCase } = await setup()
+    const input = { ...BASE, kind: 'consumed', amount: 1, operationId: 'fixed-intent' }
+    await useCase.execute(input)
+    const changed = await useCase.execute({ ...input, amount: 2 })
+    assert.isFalse(changed.ok)
+    assert.lengthOf(products.outcomes, 1)
+    const remaining = await products.findById('p_1')
+    assert.equal(remaining?.quantity.amount, 5)
+  })
+
+  test('an operation receipt cannot be replayed by another actor or household', async ({
+    assert,
+  }) => {
+    const { products, useCase } = await setup()
+    const input = { ...BASE, kind: 'consumed', amount: 6, operationId: 'private-receipt' }
+    await useCase.execute(input)
+    assert.deepEqual(await useCase.execute({ ...input, userId: 'another-user' }), {
+      ok: false,
+      error: 'product_not_found',
+    })
+    assert.deepEqual(await useCase.execute({ ...input, householdId: 'another-household' }), {
+      ok: false,
+      error: 'product_not_found',
+    })
+    assert.lengthOf(products.outcomes, 1)
+  })
+
   test('without an amount, the whole stock leaves and the product is gone', async ({ assert }) => {
     const { products, useCase } = await setup()
     const result = await useCase.execute({ ...BASE, kind: 'consumed' })

@@ -887,6 +887,20 @@ export class FakeFridgeConnector implements FridgeConnector {
     input: RecordProductOutcomeInput,
   ): Promise<Result<RecordedProductOutcome, ApiError>> {
     await this.pretendNetworkLatency()
+    const operationId = input.operationId
+      ? `operation:${JSON.stringify([this.household?.id ?? this.fixtureHousehold.id, this.session?.user.id ?? fakeSession.user.id, input.operationId])}`
+      : null
+    if (operationId) {
+      if (input.amount === undefined) return Result.err({ type: 'validation_failed', message: 'Une quantité explicite est requise.' })
+      const previous = this.outcomes.find((outcome) => outcome.id === operationId)
+      if (previous) {
+        if (previous.productId !== productId || previous.kind !== input.kind || previous.quantity.amount !== input.amount ||
+          previous.discardReason !== (input.discardReason ?? null)) {
+          return Result.err({ type: 'validation_failed', message: 'Cet identifiant correspond à une autre consommation.' })
+        }
+        return Result.ok({ product: this.products.find((product) => product.id === productId) ?? null, outcome: previous })
+      }
+    }
     const index = this.products.findIndex((p) => p.id === productId)
     if (index === -1) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
     const product = this.products[index]
@@ -899,7 +913,7 @@ export class FakeFridgeConnector implements FridgeConnector {
     }
 
     const outcome: ProductOutcome = {
-      id: `fake-outcome-${this.nextOutcomeId++}`,
+      id: operationId ?? `fake-outcome-${this.nextOutcomeId++}`,
       productId,
       recordedBy: this.session?.user.id ?? fakeSession.user.id,
       recipeId: null,

@@ -76,6 +76,7 @@ export const importProductsValidator = vine.compile(
 
 export const recordProductOutcomeValidator = vine.compile(
   vine.object({
+    operationId: vine.string().trim().minLength(1).maxLength(120).optional(),
     kind: vine.enum(['consumed', 'discarded'] as const),
     amount: vine.number().withoutDecimals().positive().optional(),
     discardReason: vine

@@ -143,6 +143,28 @@ test.group('fridge: product CRUD, expiring-soon, lookup, image', () => {
     return create.body().product.id as string
   }
 
+  test('an outcome retry after deletion returns the same receipt without another consumption', async ({
+    client,
+    assert,
+  }) => {
+    const cookie = await signUpWithHousehold(client, 'outcome-retry@example.com')
+    const productId = await createYaourts(client, cookie)
+    const input = { kind: 'consumed', amount: 6, operationId: 'lost-response' }
+    const first = await client
+      .post(`/api/products/${productId}/outcomes`)
+      .headers({ cookie })
+      .json(input)
+    first.assertStatus(200)
+    const retry = await client
+      .post(`/api/products/${productId}/outcomes`)
+      .headers({ cookie })
+      .json(input)
+    retry.assertStatus(200)
+    assert.deepEqual(retry.body(), first.body())
+    const rows = await db.from('product_outcome').where('product_id', productId)
+    assert.lengthOf(rows, 1)
+  })
+
   test('outcomes: one eaten, then the rest thrown away', async ({ client, assert }) => {
     const cookie = await signUpWithHousehold(client, 'outcome-flow@example.com')
     const productId = await createYaourts(client, cookie)

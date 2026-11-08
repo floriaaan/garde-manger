@@ -34,6 +34,17 @@ export class UpdateProduct implements UseCase<
   ) {}
 
   async execute(input: UpdateProductInput): Promise<ResultType<Product, UpdateProductError>> {
+    if (this.products.withHouseholdLock) {
+      return this.products.withHouseholdLock(input.householdId, (products) =>
+        new UpdateProduct(products, this.clock).executeUnlocked(input),
+      )
+    }
+    return this.executeUnlocked(input)
+  }
+
+  private async executeUnlocked(
+    input: UpdateProductInput,
+  ): Promise<ResultType<Product, UpdateProductError>> {
     const product = await this.products.findById(input.productId)
     if (!product || product.householdId !== input.householdId)
       return Result.err('product_not_found')

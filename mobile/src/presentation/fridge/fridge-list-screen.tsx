@@ -558,8 +558,8 @@ export function FridgeListScreen({
       {restocking ? (
         <ProductRestockSheet product={restocking.product} finish={restocking.finish}
           onClose={() => setRestocking(null)}
-          onFinish={async () => {
-            const result = await recordOutcome.mutateAsync({ productId: restocking.product.id, input: { kind: 'consumed' } })
+          onFinish={async (_inShoppingList, input) => {
+            const result = await recordOutcome.mutateAsync({ productId: restocking.product.id, input })
             if (!result.ok) return false
             // Keep the product snapshot until the shopping decision is done.
             void products.refetch()

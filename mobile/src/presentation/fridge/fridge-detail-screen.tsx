@@ -247,7 +247,7 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
     {restocking ? (
       <ProductRestockSheet product={p} finish={restocking === 'finish'}
         onClose={() => setRestocking(null)}
-        onFinish={(inShoppingList) => record({ kind: 'consumed' }, inShoppingList)}
+        onFinish={(inShoppingList, input) => record(input, inShoppingList)}
         onComplete={(inShoppingList) => {
           setRestocking(null)
           if (inShoppingList) showHint(t('restock.shopping_saved'))
