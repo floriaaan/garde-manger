@@ -18,6 +18,9 @@ export interface CreateShoppingItemInput {
   name: string
   quantity: { amount: number; unit: string }
   source: string
+  /** Inventory restocking requires an explicit decision instead of summing. */
+  onDuplicate?: 'reject' | 'keep' | 'replace'
+  existingItemId?: string
 }
 
 export interface CreateShoppingItemOutput {
@@ -28,9 +31,11 @@ export interface CreateShoppingItemOutput {
   created: boolean
 }
 
+type CreateShoppingItemError = ValidationError | 'shopping_item_exists' | 'shopping_item_changed'
+
 export class CreateShoppingItem implements UseCase<
   CreateShoppingItemInput,
-  ResultType<CreateShoppingItemOutput, ValidationError>
+  ResultType<CreateShoppingItemOutput, CreateShoppingItemError>
 > {
   constructor(
     private readonly items: ShoppingItemRepository,
@@ -40,7 +45,18 @@ export class CreateShoppingItem implements UseCase<
 
   async execute(
     input: CreateShoppingItemInput,
-  ): Promise<ResultType<CreateShoppingItemOutput, ValidationError>> {
+  ): Promise<ResultType<CreateShoppingItemOutput, CreateShoppingItemError>> {
+    if (this.items.withHouseholdLock) {
+      return this.items.withHouseholdLock(input.householdId, (items) =>
+        new CreateShoppingItem(items, this.idGenerator, this.clock).executeUnlocked(input),
+      )
+    }
+    return this.executeUnlocked(input)
+  }
+
+  private async executeUnlocked(
+    input: CreateShoppingItemInput,
+  ): Promise<ResultType<CreateShoppingItemOutput, CreateShoppingItemError>> {
     const quantity = Quantity.create(input.quantity.amount, input.quantity.unit)
     if (!quantity.ok) return quantity
 
@@ -57,6 +73,19 @@ export class CreateShoppingItem implements UseCase<
       (candidate) => !candidate.checked && normalizeShoppingItemName(candidate.name) === targetName,
     )
 
+    if (input.existingItemId && target?.id !== input.existingItemId) {
+      return Result.err('shopping_item_changed')
+    }
+    if (target && input.onDuplicate) {
+      if (input.onDuplicate === 'reject' || !input.existingItemId) {
+        return Result.err('shopping_item_exists')
+      }
+      if (input.onDuplicate === 'replace') {
+        target.update({ quantity: quantity.value }, this.clock.now())
+        await this.items.save(target)
+      }
+      return Result.ok({ item: target, created: false })
+    }
     if (target) {
       const merged = mergeQuantities(target.quantity, quantity.value)
       if (merged) {

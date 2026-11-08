@@ -43,6 +43,21 @@ function buildItem(id: string, householdId: string, source = 'manual') {
 }
 
 test.group('LucidShoppingItemRepository', (group) => {
+  test('household create lock rolls back writes when the operation fails', async ({ assert }) => {
+    await createUser('u_lock', 'lock@example.com')
+    await createHousehold('h_lock', 'u_lock')
+    const repository = new LucidShoppingItemRepository()
+    await assert.rejects(
+      () =>
+        repository.withHouseholdLock('h_lock', async (locked) => {
+          await locked.save(buildItem('s_lock', 'h_lock'))
+          throw new Error('failed write')
+        }),
+      'failed write',
+    )
+    assert.isNull(await repository.findById('s_lock'))
+  })
+
   group.each.setup(async () => {
     await db.beginGlobalTransaction()
   })

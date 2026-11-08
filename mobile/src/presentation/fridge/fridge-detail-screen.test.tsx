@@ -37,11 +37,72 @@ test('renders the product name, quantity, and category', async () => {
   expect(screen.getByText('Produits laitiers')).toBeTruthy()
 })
 
-test('finishing the last unit needs no confirmation and leaves the screen', async () => {
+test('finishing and restocking records the outcome after saving the chosen shopping total', async () => {
+  const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />)
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-consume')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
+  await waitFor(() => expect(screen.getByTestId('restock-confirm').props.accessibilityState.disabled).toBe(false))
+  await fireEvent.changeText(screen.getByTestId('restock-amount'), '3')
+  await fireEvent.press(screen.getByTestId('restock-confirm'))
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-gone')).toHaveTextContent('Produit terminé et prévu'))
+  expect(await connector.getProduct('fake-product-1')).toBeNull()
+  expect(connector.outcomes.at(-1)).toMatchObject({ productId: 'fake-product-1', kind: 'consumed' })
+  expect((await connector.getShoppingItems()).find((item) => item.id === 'fake-item-1')?.quantity.amount).toBe(3)
+})
+
+test('adding from the product fiche does not consume inventory', async () => {
+  const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />)
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-restock')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('fridge-detail-restock'))
+  await waitFor(() => expect(screen.getByTestId('restock-keep').props.accessibilityState.disabled).toBe(false))
+  await fireEvent.press(screen.getByTestId('restock-keep'))
+  await waitFor(() => expect(screen.queryByTestId('restock-confirm')).toBeNull())
+  expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length)
+  expect(await connector.getProduct('fake-product-1')).not.toBeNull()
+})
+
+test('restocking consumes the opening snapshot when a member replenishes during confirmation', async () => {
+  const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />)
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-consume')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
+  await waitFor(() => expect(screen.getByTestId('restock-confirm').props.accessibilityState.disabled).toBe(false))
+  await connector.updateProduct('fake-product-1', { quantity: { amount: 6, unit: 'L' } })
+  await fireEvent.press(screen.getByTestId('restock-confirm'))
+  await waitFor(() => expect(screen.queryByTestId('restock-confirm')).toBeNull())
+  expect((await connector.getProduct('fake-product-1'))?.quantity.amount).toBe(5)
+  expect(connector.outcomes.at(-1)?.quantity.amount).toBe(1)
+})
+
+test('a committed consumption with a lost response can be retried without writing twice', async () => {
+  const connector = new FakeFridgeConnector()
+  const original = connector.recordProductOutcome.bind(connector)
+  const outcome = jest.spyOn(connector, 'recordProductOutcome').mockImplementationOnce(async (...args) => {
+    await original(...args)
+    return { ok: false, error: { type: 'network_error', message: 'Réponse perdue' } }
+  })
+  const add = jest.spyOn(connector, 'createShoppingItem')
+  await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />, connector)
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-consume')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
+  await waitFor(() => expect(screen.getByTestId('restock-confirm').props.accessibilityState.disabled).toBe(false))
+  await fireEvent.press(screen.getByTestId('restock-confirm'))
+  await waitFor(() => expect(screen.getByTestId('restock-error')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('restock-confirm'))
+  await waitFor(() => expect(screen.getByTestId('fridge-detail-gone')).toBeTruthy())
+  expect(outcome).toHaveBeenCalledTimes(2)
+  expect(outcome.mock.calls[0][1]).toEqual(outcome.mock.calls[1][1])
+  expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length + 1)
+  expect(add).toHaveBeenCalledTimes(1)
+})
+
+test('finishing the last unit offers restocking and can finish without adding', async () => {
   const { connector } = await renderWithProviders(<FridgeDetailScreen productId="fake-product-1" />)
   await waitFor(() => expect(screen.getByText('Lait demi-écrémé')).toBeTruthy())
 
   await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
+  await waitFor(() => expect(screen.getByTestId('restock-finish-only')).toBeTruthy())
+  expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length)
+  await fireEvent.press(screen.getByTestId('restock-finish-only'))
 
   await waitFor(() => expect(screen.getByTestId('fridge-detail-gone')).toBeTruthy())
   expect(screen.getByText('Produit terminé')).toBeTruthy()
@@ -91,6 +152,8 @@ test('a failed exit shows an inline error, stays on screen, and invalidates noth
   invalidateSpy.mockClear()
 
   await fireEvent.press(screen.getByTestId('fridge-detail-consume'))
+  await waitFor(() => expect(screen.getByTestId('restock-finish-only')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('restock-finish-only'))
 
   await waitFor(() => expect(screen.getByTestId('fridge-detail-action-error')).toBeTruthy())
   expect(screen.queryByTestId('fridge-detail-gone')).toBeNull()

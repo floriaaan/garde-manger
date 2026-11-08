@@ -268,6 +268,20 @@ test('several data-entry mistakes are deleted, not logged', async () => {
   expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length)
 })
 
+test('long-press actions add the product to shopping without removing it', async () => {
+  const connector = await renderWithProviders(<FridgeListScreen />)
+  await waitFor(() => expect(screen.getByTestId('fridge-product-fake-product-1')).toBeTruthy())
+  await fireEvent(screen.getByTestId('fridge-product-fake-product-1'), 'longPress')
+  await fireEvent.press(screen.getByTestId('fridge-selection-remove'))
+  await waitFor(() => expect(screen.getByTestId('product-exit-restock')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('product-exit-restock'))
+  await waitFor(() => expect(screen.getByTestId('restock-keep').props.accessibilityState.disabled).toBe(false))
+  await fireEvent.press(screen.getByTestId('restock-keep'))
+  await waitFor(() => expect(screen.queryByTestId('restock-confirm')).toBeNull())
+  expect(await connector.getProduct('fake-product-1')).not.toBeNull()
+  expect(connector.outcomes).toHaveLength(fakeProductOutcomes.length)
+})
+
 test('leaving the selection puts the list back to opening products', async () => {
   await renderWithProviders(<FridgeListScreen />)
   await waitFor(() => expect(screen.getByText('Lait demi-écrémé')).toBeTruthy())

@@ -23,6 +23,17 @@ export class DeleteProduct implements UseCase<
   constructor(private readonly products: ProductRepository) {}
 
   async execute(input: DeleteProductInput): Promise<ResultType<void, DeleteProductError>> {
+    if (this.products.withHouseholdLock) {
+      return this.products.withHouseholdLock(input.householdId, (products) =>
+        new DeleteProduct(products).executeUnlocked(input),
+      )
+    }
+    return this.executeUnlocked(input)
+  }
+
+  private async executeUnlocked(
+    input: DeleteProductInput,
+  ): Promise<ResultType<void, DeleteProductError>> {
     const product = await this.products.findById(input.productId)
     if (!product || product.householdId !== input.householdId)
       return Result.err('product_not_found')

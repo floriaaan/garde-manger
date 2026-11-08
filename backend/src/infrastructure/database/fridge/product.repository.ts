@@ -1,8 +1,9 @@
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import ProductModel from './product.lucid.js'
 import ProductOutcomeModel from './product_outcome.lucid.js'
-import { toDomain } from './product.mapper.js'
+import { toDomain, toOutcomeDomain } from './product.mapper.js'
 import type {
   ProductRepository,
   ProductFilters,
@@ -30,8 +31,25 @@ function toRow(product: Product) {
 }
 
 export class LucidProductRepository implements ProductRepository {
+  constructor(private readonly client?: TransactionClientContract) {}
+
+  async withHouseholdLock<T>(
+    householdId: string,
+    action: (products: ProductRepository) => Promise<T>,
+  ): Promise<T> {
+    return db.transaction(async (trx) => {
+      await trx.from('household').where('id', householdId).forUpdate().first()
+      return action(new LucidProductRepository(trx))
+    })
+  }
+
+  async findOutcomeById(id: string): Promise<ProductOutcome | null> {
+    const row = await ProductOutcomeModel.query({ client: this.client }).where('id', id).first()
+    return row ? toOutcomeDomain(row) : null
+  }
+
   async findById(id: string): Promise<Product | null> {
-    const row = await ProductModel.find(id)
+    const row = await ProductModel.query({ client: this.client }).where('id', id).first()
     return row ? toDomain(row) : null
   }
 
@@ -77,11 +95,11 @@ export class LucidProductRepository implements ProductRepository {
   }
 
   async save(product: Product): Promise<void> {
-    await ProductModel.updateOrCreate({ id: product.id }, toRow(product))
+    await ProductModel.updateOrCreate({ id: product.id }, toRow(product), { client: this.client })
   }
 
   async delete(id: string): Promise<void> {
-    await ProductModel.query().where('id', id).delete()
+    await ProductModel.query({ client: this.client }).where('id', id).delete()
   }
 
   /**
@@ -90,7 +108,7 @@ export class LucidProductRepository implements ProductRepository {
    * without a trace is exactly what this table exists to prevent.
    */
   async recordOutcome(outcome: ProductOutcome, remaining: Product | null): Promise<void> {
-    await db.transaction(async (trx) => {
+    const write = async (trx: TransactionClientContract) => {
       if (remaining === null) {
         await ProductModel.query({ client: trx }).where('id', outcome.productId).delete()
       } else {
@@ -118,6 +136,8 @@ export class LucidProductRepository implements ProductRepository {
         },
         { client: trx },
       )
-    })
+    }
+    if (this.client) await write(this.client)
+    else await db.transaction(write)
   }
 }

@@ -24,6 +24,8 @@ export interface CreateShoppingItemInput {
   name: string
   quantity: { amount: number; unit: string }
   source: 'manual' | 'auto_expired' | 'recipe'
+  onDuplicate?: 'reject' | 'keep' | 'replace'
+  existingItemId?: string
 }
 
 /** Mirrors `updateShoppingItemValidator` — any subset of fields, same shape `updateProduct`'s patch already uses. */

@@ -193,6 +193,17 @@ test('createShoppingItem() posts the JSON payload and unwraps the created item',
   globalThis.fetch = originalFetch
 })
 
+test('getShoppingItems() rejects a failed read instead of reporting an empty list', async () => {
+  globalThis.fetch = jest.fn().mockResolvedValue({ status: 500, ok: false,
+    json: () => Promise.resolve({ error: { type: 'server_error', message: 'Liste indisponible' } }),
+  }) as unknown as typeof fetch
+  try {
+    await expect(new HttpFridgeConnector().getShoppingItems()).rejects.toThrow('Liste indisponible')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('updateShoppingItem() PATCHes the patch and returns Result.ok with the updated item', async () => {
   const fetchMock = jest.fn().mockResolvedValue({
     status: 200,

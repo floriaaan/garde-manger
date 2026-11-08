@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { CreateShoppingItem } from '#application/shopping-list/create-shopping-item.use-case'
+import type { ShoppingItemRepository } from '#domain/shopping-list/interfaces/shopping-item-repository.interface'
 import { FakeShoppingItemRepository, FIXED_CLOCK, SEQUENTIAL_IDS } from './fakes.js'
 
 function setup() {
@@ -9,6 +10,102 @@ function setup() {
 }
 
 test.group('CreateShoppingItem', () => {
+  test('restocking refuses a silent duplicate, even when units differ', async ({ assert }) => {
+    const { items, useCase } = setup()
+    await useCase.execute({
+      householdId: 'h1',
+      name: 'Lait',
+      quantity: { amount: 2, unit: 'L' },
+      source: 'manual',
+    })
+    const result = await useCase.execute({
+      householdId: 'h1',
+      name: ' LAIT ',
+      quantity: { amount: 1, unit: 'bouteille' },
+      source: 'manual',
+      onDuplicate: 'reject',
+    })
+    assert.deepEqual(result, { ok: false, error: 'shopping_item_exists' })
+    const all = await items.findByHousehold('h1')
+    assert.lengthOf(all, 1)
+    assert.equal(all[0]?.quantity.amount, 2)
+  })
+
+  test('explicit keep and replace are safe to repeat and replace the total', async ({ assert }) => {
+    const { items, useCase } = setup()
+    const first = await useCase.execute({
+      householdId: 'h1',
+      name: 'Lait',
+      quantity: { amount: 2, unit: 'L' },
+      source: 'manual',
+    })
+    if (!first.ok) throw new Error('bad fixture')
+    const input = {
+      householdId: 'h1',
+      name: 'Lait',
+      quantity: { amount: 3, unit: 'bouteilles' },
+      source: 'manual',
+      existingItemId: first.value.item.id,
+    }
+    const keep = await useCase.execute({ ...input, onDuplicate: 'keep' })
+    assert.isTrue(keep.ok)
+    assert.equal(first.value.item.quantity.amount, 2)
+    assert.equal(first.value.item.quantity.unit, 'L')
+    await useCase.execute({ ...input, onDuplicate: 'replace' })
+    await useCase.execute({ ...input, onDuplicate: 'replace' })
+    const all = await items.findByHousehold('h1')
+    assert.lengthOf(all, 1)
+    assert.equal(all[0]?.quantity.amount, 3)
+    assert.equal(all[0]?.quantity.unit, 'bouteilles')
+  })
+
+  test('a changed or cross-household target cannot be silently replaced', async ({ assert }) => {
+    const { items, useCase } = setup()
+    const first = await useCase.execute({
+      householdId: 'h1',
+      name: 'Lait',
+      quantity: { amount: 2, unit: 'L' },
+      source: 'manual',
+    })
+    if (!first.ok) throw new Error('bad fixture')
+    const input = {
+      householdId: 'h2',
+      name: 'Lait',
+      quantity: { amount: 3, unit: 'L' },
+      source: 'manual',
+      existingItemId: first.value.item.id,
+      onDuplicate: 'replace' as const,
+    }
+    assert.deepEqual(await useCase.execute(input), { ok: false, error: 'shopping_item_changed' })
+    await items.delete(first.value.item.id)
+    assert.deepEqual(await useCase.execute({ ...input, householdId: 'h1' }), {
+      ok: false,
+      error: 'shopping_item_changed',
+    })
+    assert.lengthOf(await items.findByHousehold('h1'), 0)
+  })
+
+  test('create and duplicate decision execute inside the repository household lock', async ({
+    assert,
+  }) => {
+    const { items, useCase } = setup()
+    let lockedHousehold: string | undefined
+    const repository: ShoppingItemRepository = items
+    repository.withHouseholdLock = async (householdId, action) => {
+      lockedHousehold = householdId
+      return action(items)
+    }
+    await useCase.execute({
+      householdId: 'h1',
+      name: 'Lait',
+      quantity: { amount: 1, unit: 'L' },
+      source: 'manual',
+      onDuplicate: 'reject',
+    })
+    assert.equal(lockedHousehold, 'h1')
+    assert.lengthOf(await items.findByHousehold('h1'), 1)
+  })
+
   test('no existing item with that name: creates a new one', async ({ assert }) => {
     const { items, useCase } = setup()
     const result = await useCase.execute({

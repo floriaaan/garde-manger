@@ -31,6 +31,8 @@ const STRING_ERROR_STATUS: Record<string, number> = {
   extraction_failed: 422,
   unsupported_format: 422,
   shopping_item_not_found: 404,
+  shopping_item_exists: 409,
+  shopping_item_changed: 409,
   recipe_not_found: 404,
   generation_failed: 422,
   invalid_url: 422,
@@ -74,6 +76,8 @@ const STRING_ERROR_MESSAGES: Record<string, string> = {
   unsupported_format:
     'Ce fournisseur IA ne lit pas les fichiers PDF — essayez une photo, ou un autre fournisseur.',
   shopping_item_not_found: 'Article introuvable.',
+  shopping_item_exists: 'Cet article figure déjà dans la liste de courses.',
+  shopping_item_changed: 'La liste a changé. Vérifie la quantité avant de réessayer.',
   recipe_not_found: 'Recette introuvable.',
   generation_failed: 'La génération de recette a échoué — réessayez, ou reformulez votre demande.',
   invalid_url: "Cette adresse n'est pas valide.",

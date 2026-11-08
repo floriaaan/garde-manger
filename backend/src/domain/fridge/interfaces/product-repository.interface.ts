@@ -8,6 +8,11 @@ export interface ProductFilters {
 }
 
 export interface ProductRepository {
+  withHouseholdLock?<T>(
+    householdId: string,
+    action: (products: ProductRepository) => Promise<T>,
+  ): Promise<T>
+  findOutcomeById(id: string): Promise<ProductOutcome | null>
   findById(id: string): Promise<Product | null>
   findByHousehold(householdId: string, filters?: ProductFilters): Promise<Product[]>
   findExpiringSoon(householdId: string, withinDays: number): Promise<Product[]>

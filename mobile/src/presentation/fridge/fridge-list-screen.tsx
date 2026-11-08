@@ -14,6 +14,7 @@ import { SkeletonList } from '../shared/skeleton.js'
 import { goToScan } from '../shared/scan-sheet.js'
 import { PillButton } from '../shared/pill-button.js'
 import { ProductExitSheet } from './product-exit-sheet.js'
+import { ProductRestockSheet } from './product-restock-sheet.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import type { SoftPalette } from '../dashboard/soft-palette.js'
@@ -220,7 +221,7 @@ function SelectionBar({
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
         accessibilityRole="button"
-        accessibilityLabel={t('fridge.remove_product', { count: count })}
+        accessibilityLabel={count === 1 ? t('restock.actions') : t('fridge.remove_product', { count: count })}
         style={pointerCursor}
       >
         <XStack
@@ -231,7 +232,7 @@ function SelectionBar({
           borderRadius={999}
           backgroundColor={palette.expiredBg}
         >
-          <Text fontSize={13} fontWeight="800" color={palette.expiredText}>{t('fridge.remove')}</Text>
+          <Text fontSize={13} fontWeight="800" color={palette.expiredText}>{t(count === 1 ? 'restock.actions' : 'fridge.remove')}</Text>
         </XStack>
       </Pressable>
     </XStack>
@@ -369,6 +370,7 @@ export function FridgeListScreen({
   const [hint, showHint] = useHint()
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([])
   const [exiting, setExiting] = useState(false)
+  const [restocking, setRestocking] = useState<{ product: Product; finish: boolean } | null>(null)
   const selecting = selectedIds.length > 0
   const nav = { kind: 'tab' as const, tab: 'frigo' as const, onScan: goToScan }
   const { isWide, hasMobileNav } = useAppShellLayout(nav)
@@ -437,6 +439,12 @@ export function FridgeListScreen({
   }
 
   const selectedProducts = (products.data ?? []).filter((product) => selectedIds.includes(product.id))
+
+  function openRestock(finish: boolean) {
+    if (selectedProducts.length !== 1) return
+    setExiting(false)
+    setRestocking({ product: selectedProducts[0], finish })
+  }
 
   return (
     <>
@@ -542,10 +550,27 @@ export function FridgeListScreen({
         visible={exiting}
         products={selectedProducts}
         onClose={() => setExiting(false)}
-        onConsumed={() => handleExitSelected({ kind: 'consumed' })}
+        onConsumed={() => selectedProducts.length === 1 ? openRestock(true) : void handleExitSelected({ kind: 'consumed' })}
+        onAddToShopping={selectedProducts.length === 1 ? () => openRestock(false) : undefined}
         onDiscarded={({ discardReason }) => handleExitSelected({ kind: 'discarded', discardReason })}
         onCorrection={() => handleExitSelected({ kind: 'correction' })}
       />
+      {restocking ? (
+        <ProductRestockSheet product={restocking.product} finish={restocking.finish}
+          onClose={() => setRestocking(null)}
+          onFinish={async (_inShoppingList, input) => {
+            const result = await recordOutcome.mutateAsync({ productId: restocking.product.id, input })
+            if (!result.ok) return false
+            // Keep the product snapshot until the shopping decision is done.
+            void products.refetch()
+            return true
+          }}
+          onComplete={(inShoppingList) => {
+            setRestocking(null)
+            setSelectedIds([])
+            showHint(t(inShoppingList ? 'restock.shopping_saved' : 'fridge.product_finished'))
+          }} />
+      ) : null}
     </>
   )
 }

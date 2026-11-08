@@ -125,7 +125,7 @@ export class FakeFridgeConnector implements FridgeConnector {
   private nextInviteCode = 1
   private nextHouseholdId = 2
   private shoppingItems: ShoppingItem[] = fakeShoppingItems.map((item) => ({ ...item }))
-  private products: Product[] = fakeProducts.map((p) => ({ ...p }))
+  private products: Product[] = fakeProducts.map((p) => ({ ...p, initialQuantity: p.initialQuantity ?? p.quantity.amount }))
   private nextProductId = 1
   /**
    * Every outcome recorded, oldest first — read by tests and by
@@ -472,6 +472,19 @@ export class FakeFridgeConnector implements FridgeConnector {
     const target = this.shoppingItems.find(
       (item) => !item.checked && normalizeShoppingItemName(item.name) === targetName,
     )
+    if (input.existingItemId && target?.id !== input.existingItemId) {
+      return Result.err({ type: 'shopping_item_changed', message: 'La liste a changé.' })
+    }
+    if (target && input.onDuplicate) {
+      if (input.onDuplicate === 'reject' || !input.existingItemId) {
+        return Result.err({ type: 'shopping_item_exists', message: 'Cet article figure déjà dans la liste de courses.' })
+      }
+      if (input.onDuplicate === 'replace') {
+        target.quantity = input.quantity
+        target.updatedAt = now
+      }
+      return Result.ok(target)
+    }
     if (target) {
       const merged = mergeQuantities(target.quantity, input.quantity)
       if (merged) {
@@ -835,6 +848,7 @@ export class FakeFridgeConnector implements FridgeConnector {
       id: `fake-product-new-${this.nextProductId++}`,
       name: input.name,
       quantity: input.quantity,
+      initialQuantity: input.quantity.amount,
       location: input.location,
       category: input.category,
       expiresAt: input.expiresAt ?? null,
@@ -855,6 +869,7 @@ export class FakeFridgeConnector implements FridgeConnector {
     await this.pretendNetworkLatency()
     const product = this.products.find((p) => p.id === productId)
     if (!product) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
+    product.initialQuantity = Math.max(product.initialQuantity ?? product.quantity.amount, patch.quantity?.amount ?? 0)
     Object.assign(product, patch, { updatedAt: new Date().toISOString() })
     return Result.ok(product)
   }
@@ -872,6 +887,20 @@ export class FakeFridgeConnector implements FridgeConnector {
     input: RecordProductOutcomeInput,
   ): Promise<Result<RecordedProductOutcome, ApiError>> {
     await this.pretendNetworkLatency()
+    const operationId = input.operationId
+      ? `operation:${JSON.stringify([this.household?.id ?? this.fixtureHousehold.id, this.session?.user.id ?? fakeSession.user.id, input.operationId])}`
+      : null
+    if (operationId) {
+      if (input.amount === undefined) return Result.err({ type: 'validation_failed', message: 'Une quantité explicite est requise.' })
+      const previous = this.outcomes.find((outcome) => outcome.id === operationId)
+      if (previous) {
+        if (previous.productId !== productId || previous.kind !== input.kind || previous.quantity.amount !== input.amount ||
+          previous.discardReason !== (input.discardReason ?? null)) {
+          return Result.err({ type: 'validation_failed', message: 'Cet identifiant correspond à une autre consommation.' })
+        }
+        return Result.ok({ product: this.products.find((product) => product.id === productId) ?? null, outcome: previous })
+      }
+    }
     const index = this.products.findIndex((p) => p.id === productId)
     if (index === -1) return Result.err({ type: 'product_not_found', message: 'Produit introuvable.' })
     const product = this.products[index]
@@ -884,7 +913,7 @@ export class FakeFridgeConnector implements FridgeConnector {
     }
 
     const outcome: ProductOutcome = {
-      id: `fake-outcome-${this.nextOutcomeId++}`,
+      id: operationId ?? `fake-outcome-${this.nextOutcomeId++}`,
       productId,
       recordedBy: this.session?.user.id ?? fakeSession.user.id,
       recipeId: null,

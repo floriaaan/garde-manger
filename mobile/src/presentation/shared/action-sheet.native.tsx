@@ -9,7 +9,7 @@ import { useSoftPalette } from '../dashboard/soft-palette.js'
 
 export type { ActionSheetOption } from './action-sheet-content.js'
 
-export function ActionSheet({ visible, onClose, options, title, description, closeLabel, children }: {
+export function ActionSheet({ visible, onClose, options, title, description, closeLabel, children, dismissible = true }: {
   visible: boolean
   onClose: () => void
   options: ActionSheetOption[]
@@ -17,6 +17,7 @@ export function ActionSheet({ visible, onClose, options, title, description, clo
   description?: string
   closeLabel?: string
   children?: React.ReactNode
+  dismissible?: boolean
 }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
@@ -24,10 +25,10 @@ export function ActionSheet({ visible, onClose, options, title, description, clo
   const close = () => nativeSheetStore.close(owner)
   useLayoutEffect(() => {
     if (!visible) {
-      nativeSheetStore.close(owner)
+      nativeSheetStore.close(owner, true)
       return
     }
-    nativeSheetStore.show({ owner, onClose, content: (
+    nativeSheetStore.show({ owner, onClose, dismissible, content: (
       <YStack gap="$2.5" padding="$4">
         {title ? <YStack gap="$1" paddingBottom="$2">
           <Text accessibilityRole="header" fontSize={15} fontWeight="800" color={palette.ink}>{title}</Text>
@@ -41,7 +42,7 @@ export function ActionSheet({ visible, onClose, options, title, description, clo
             option.onPress()
           },
         }} />)}
-        <Pressable testID="action-sheet-cancel" accessibilityRole="button" accessibilityLabel={closeLabel ?? t('shared.cancel')} onPress={close}>
+        <Pressable testID="action-sheet-cancel" disabled={!dismissible} accessibilityState={{ disabled: !dismissible }} accessibilityRole="button" accessibilityLabel={closeLabel ?? t('shared.cancel')} onPress={close}>
           <YStack minHeight={44} alignItems="center" justifyContent="center">
             <Text fontSize={14} fontWeight="700" color={palette.inkSecondary}>{closeLabel ?? t('shared.cancel')}</Text>
           </YStack>
@@ -49,6 +50,6 @@ export function ActionSheet({ visible, onClose, options, title, description, clo
       </YStack>
     ) })
   })
-  useEffect(() => () => nativeSheetStore.close(owner), [owner])
+  useEffect(() => () => nativeSheetStore.close(owner, true), [owner])
   return null
 }

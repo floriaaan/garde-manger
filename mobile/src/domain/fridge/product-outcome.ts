@@ -12,6 +12,8 @@ export interface RecordProductOutcomeInput {
   kind: OutcomeKind
   amount?: number
   discardReason?: DiscardReason | null
+  /** Reuse for retries of the same explicit quantity; never for a new consumption. */
+  operationId?: string
 }
 
 /** Structurally identical to the backend's `ProductOutcomeDto` (`product-outcome.dto.ts`). */
