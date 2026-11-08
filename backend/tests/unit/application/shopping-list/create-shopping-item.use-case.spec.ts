@@ -26,8 +26,9 @@ test.group('CreateShoppingItem', () => {
       onDuplicate: 'reject',
     })
     assert.deepEqual(result, { ok: false, error: 'shopping_item_exists' })
-    assert.lengthOf(await items.findByHousehold('h1'), 1)
-    assert.equal((await items.findByHousehold('h1'))[0]?.quantity.amount, 2)
+    const all = await items.findByHousehold('h1')
+    assert.lengthOf(all, 1)
+    assert.equal(all[0]?.quantity.amount, 2)
   })
 
   test('explicit keep and replace are safe to repeat and replace the total', async ({ assert }) => {

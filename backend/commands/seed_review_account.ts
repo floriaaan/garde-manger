@@ -242,7 +242,10 @@ export default class SeedReviewAccount extends BaseCommand {
         quantity: { amount: seed.amount, unit: seed.unit },
         source: 'manual',
       })
-      if (!created.ok) throw new Error(`${seed.name}: ${created.error.message}`)
+      if (!created.ok) {
+        const message = typeof created.error === 'string' ? created.error : created.error.message
+        throw new Error(`${seed.name}: ${message}`)
+      }
       if (seed.checked) {
         created.value.item.toggle(now)
         await items.save(created.value.item)
