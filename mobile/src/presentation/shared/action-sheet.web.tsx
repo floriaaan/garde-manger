@@ -19,6 +19,7 @@ export function ActionSheet({
   description,
   closeLabel,
   children,
+  dismissible = true,
 }: {
   visible: boolean
   onClose: () => void
@@ -29,13 +30,14 @@ export function ActionSheet({
   closeLabel?: string
   /** Rendered between the title and the options — for a choice the options alone can't carry. */
   children?: React.ReactNode
+  dismissible?: boolean
 }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
   if (!visible) return null
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={() => { if (dismissible) onClose() }}>
       <SafeAreaView
         testID="action-sheet-overlay"
         style={{ flex: 1, minHeight: 0, justifyContent: 'flex-end', alignItems: 'center', padding: 12 }}
@@ -49,6 +51,7 @@ export function ActionSheet({
         <Pressable
           testID="action-sheet-backdrop"
           onPress={onClose}
+          disabled={!dismissible}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: palette.scrim }}
@@ -88,6 +91,8 @@ export function ActionSheet({
               <Pressable
                 testID="action-sheet-cancel"
                 onPress={onClose}
+                disabled={!dismissible}
+                accessibilityState={{ disabled: !dismissible }}
                 accessibilityRole="button"
                 accessibilityLabel={closeLabel ?? t('shared.cancel')}
                 style={pointerCursor}

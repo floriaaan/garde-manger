@@ -20,7 +20,7 @@ import { Chip } from '../shared/chip.js'
 import { pointerCursor } from '../shared/hover.js'
 import { useSoftPalette } from '../dashboard/soft-palette.js'
 import { productStatus } from '../dashboard/product-status.js'
-import { BanIcon, CircleCheckIcon, PencilIcon } from '../dashboard/dashboard-icons.js'
+import { BanIcon, CircleCheckIcon, PencilIcon, ShoppingCartIcon } from '../dashboard/dashboard-icons.js'
 import { DISCARD_REASONS } from '../../domain/fridge/product-outcome.js'
 import type { DiscardReason } from '../../domain/fridge/product-outcome.js'
 import type { Product } from '../../domain/fridge/product.js'
@@ -39,6 +39,7 @@ export function ProductExitSheet({
   onConsumed,
   onDiscarded,
   onCorrection,
+  onAddToShopping,
 }: {
   visible: boolean
   products: readonly Product[]
@@ -46,6 +47,7 @@ export function ProductExitSheet({
   onConsumed: () => void
   onDiscarded: (details: { discardReason: DiscardReason | null; amount: number | null }) => void
   onCorrection: () => void
+  onAddToShopping?: () => void
 }) {
   const { t } = useTranslation()
   const palette = useSoftPalette()
@@ -79,9 +81,16 @@ export function ProductExitSheet({
       <ActionSheet
         visible={visible}
         onClose={onClose}
-        title={t('fridge.remove_2', { value1: subject })}
+        title={onAddToShopping ? t('restock.product_actions', { name: subject }) : t('fridge.remove_2', { value1: subject })}
         description={t('fridge.used_or_discarded_products_count_towards_the_household_s_stats')}
         options={[
+          ...(onAddToShopping ? [{
+            testID: 'product-exit-restock',
+            label: t('restock.add_title'),
+            icon: (color: string) => <ShoppingCartIcon size={18} color={color} />,
+            tint: palette.navCardTeal,
+            onPress: onAddToShopping,
+          }] : []),
           {
             testID: 'product-exit-consumed',
             label: plural ? t('fridge.used') : t('fridge.used_2'),

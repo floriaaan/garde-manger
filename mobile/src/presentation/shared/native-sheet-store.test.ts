@@ -9,6 +9,18 @@ afterEach(() => {
   jest.clearAllMocks()
 })
 
+test('a pending operation prevents user dismissal but can close on completion', () => {
+  const owner = Symbol()
+  const onClose = jest.fn()
+  store.show({ owner, onClose, content: 'enregistrement', dismissible: false })
+  store.close(owner)
+  expect(store.getSnapshot()?.owner).toBe(owner)
+  expect(router.back).not.toHaveBeenCalled()
+  store.close(owner, true)
+  expect(onClose).toHaveBeenCalledTimes(1)
+  expect(router.back).toHaveBeenCalledTimes(1)
+})
+
 test('updates a second step without opening another native presentation', () => {
   const owner = Symbol()
   const onClose = jest.fn()

@@ -25,6 +25,7 @@ import { ScreenHeader } from '../shared/screen-header.js'
 import { usePullToRefresh } from '../shared/pull-to-refresh.js'
 import { Skeleton, SkeletonGroup, SkeletonRow } from '../shared/skeleton.js'
 import { ProductExitSheet } from './product-exit-sheet.js'
+import { ProductRestockSheet } from './product-restock-sheet.js'
 import { AuthButton } from '../identity/auth-button.js'
 import { useHint } from '../shared/hint-bubble.js'
 import { goBack } from '../shared/navigation.js'
@@ -40,9 +41,10 @@ import type { DiscardReason, RecordProductOutcomeInput } from '../../domain/frid
 
 const LOCATION_LABEL = { get fridge() { return t('fridge.fridge') }, get freezer() { return t('fridge.freezer') }, get pantry() { return t('fridge.cupboard') } } as const
 
-type Gone = 'consumed' | 'discarded' | 'deleted'
+type Gone = 'consumed' | 'discarded' | 'deleted' | 'restocked'
 
 const GONE_COPY: Record<Gone, string> = {
+  get restocked() { return t('restock.finished_and_added') },
   get consumed() { return t('fridge.product_finished') },
   get discarded() { return t('fridge.product_discarded') },
   get deleted() { return t('fridge.product_deleted') },
@@ -58,31 +60,35 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
   const recordOutcome = useRecordProductOutcomeMutation()
   const [hint, showHint] = useHint()
   const [exiting, setExiting] = useState(false)
+  const [restocking, setRestocking] = useState<'add' | 'finish' | null>(null)
   const [gone, setGone] = useState<Gone | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   function leave(reason: Gone) {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     setGone(reason)
-    router.back()
+    // A restocking sheet owns its native dismissal. Keep the confirmation
+    // frame underneath it rather than popping both routes at once.
+    if (restocking === null) router.back()
   }
 
-  async function record(input: RecordProductOutcomeInput) {
+  async function record(input: RecordProductOutcomeInput, inShoppingList = false): Promise<boolean> {
     setExiting(false)
     setActionError(null)
     const result = await recordOutcome.mutateAsync({ productId, input })
     if (!result.ok) {
       setActionError(result.error.message)
-      return
+      return false
     }
     const remaining = result.value.product
     if (remaining === null) {
-      leave(input.kind)
-      return
+      leave(inShoppingList ? 'restocked' : input.kind)
+      return true
     }
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['product', productId] })
     showHint(t('fridge.left', { value1: remaining.quantity.amount, value2: remaining.quantity.unit }))
+    return true
   }
 
   async function handleCorrection() {
@@ -195,8 +201,11 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
             pendingLabel={t('fridge.updating')}
             pending={recordOutcome.isPending}
             icon={<CircleCheckIcon size={16} color={palette.accentLimeText} />}
-            onPress={() => (isPieceUnit ? record({ kind: 'consumed', amount: 1 }) : record({ kind: 'consumed' }))}
+            onPress={() => lastUnit ? setRestocking('finish') : void record({ kind: 'consumed', amount: 1 })}
           />
+
+          <AuthButton testID="fridge-detail-restock" label={t('restock.add_title')} variant="secondary"
+            disabled={recordOutcome.isPending} onPress={() => setRestocking('add')} />
 
           <AuthButton
             testID="fridge-detail-edit"
@@ -230,10 +239,20 @@ export function FridgeDetailScreen({ productId }: { productId: string }) {
       visible={exiting}
       products={[p]}
       onClose={() => setExiting(false)}
-      onConsumed={() => record({ kind: 'consumed' })}
+      onConsumed={() => { setExiting(false); setRestocking('finish') }}
+      onAddToShopping={() => { setExiting(false); setRestocking('add') }}
       onDiscarded={handleDiscarded}
       onCorrection={handleCorrection}
     />
+    {restocking ? (
+      <ProductRestockSheet product={p} finish={restocking === 'finish'}
+        onClose={() => setRestocking(null)}
+        onFinish={(inShoppingList) => record({ kind: 'consumed' }, inShoppingList)}
+        onComplete={(inShoppingList) => {
+          setRestocking(null)
+          if (inShoppingList) showHint(t('restock.shopping_saved'))
+        }} />
+    ) : null}
     </>
   )
 }

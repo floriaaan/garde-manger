@@ -153,7 +153,7 @@ test.group('fridge: product CRUD, expiring-soon, lookup, image', () => {
       .json({ kind: 'consumed', amount: 1 })
     one.assertStatus(200)
     one.assertBodyContains({
-      product: { id: productId, quantity: { amount: 5 } },
+      product: { id: productId, quantity: { amount: 5 }, initialQuantity: 6 },
       outcome: { kind: 'consumed', quantity: { amount: 1 }, price: 0.5, discardReason: null },
     })
 

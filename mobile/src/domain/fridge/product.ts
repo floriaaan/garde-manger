@@ -5,6 +5,8 @@ export interface Product {
   id: string
   name: string
   quantity: { amount: number; unit: string }
+  /** Reference stock before consumption; optional for older servers. */
+  initialQuantity?: number
   location: LocationValue
   expiresAt: string | null
   openedAt: string | null

@@ -12,6 +12,91 @@ async function signUpWithHousehold(client: import('@japa/api-client').ApiClient,
 }
 
 test.group('shopping-list: CRUD', (group) => {
+  test('restock requires a duplicate decision and repeat replacement never accumulates', async ({
+    client,
+    assert,
+  }) => {
+    const cookie = await signUpWithHousehold(client, 'restock-duplicate@example.com')
+    const input = {
+      name: 'Lait',
+      quantity: { amount: 2, unit: 'L' },
+      source: 'manual',
+      onDuplicate: 'reject',
+    }
+    const first = await client.post('/api/shopping-items').headers({ cookie }).json(input)
+    first.assertStatus(201)
+    const duplicate = await client.post('/api/shopping-items').headers({ cookie }).json(input)
+    duplicate.assertStatus(409)
+    duplicate.assertBodyContains({ error: { type: 'shopping_item_exists' } })
+
+    const keep = await client
+      .post('/api/shopping-items')
+      .headers({ cookie })
+      .json({
+        ...input,
+        quantity: { amount: 3, unit: 'bouteilles' },
+        onDuplicate: 'keep',
+        existingItemId: first.body().item.id,
+      })
+    keep.assertBodyContains({ item: { quantity: { amount: 2, unit: 'L' } } })
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const replace = await client
+        .post('/api/shopping-items')
+        .headers({ cookie })
+        .json({
+          ...input,
+          quantity: { amount: 3, unit: 'bouteilles' },
+          onDuplicate: 'replace',
+          existingItemId: first.body().item.id,
+        })
+      replace.assertBodyContains({
+        item: { id: first.body().item.id, quantity: { amount: 3, unit: 'bouteilles' } },
+      })
+    }
+    const list = await client.get('/api/shopping-items').headers({ cookie })
+    assert.lengthOf(list.body().items, 1)
+  })
+
+  test('restocking is visible to another household member and cannot target a different foyer', async ({
+    client,
+  }) => {
+    const ownerCookie = await signUpWithHousehold(client, 'restock-owner@example.com')
+    const household = await client.get('/api/households/mine').headers({ cookie: ownerCookie })
+    const signUp = await client.post('/api/auth/sign-up/email').json({
+      email: 'restock-member@example.com',
+      password: 'correct-horse-battery-staple',
+      name: 'Member',
+    })
+    const memberCookie = signUp.headers()['set-cookie']
+    if (!memberCookie) throw new Error('set-cookie header missing')
+    const join = await client
+      .post('/api/households/join')
+      .headers({ cookie: memberCookie })
+      .json({ inviteCode: household.body().household.inviteCode })
+    join.assertStatus(200)
+    const input = {
+      name: 'Lait',
+      quantity: { amount: 1, unit: 'L' },
+      source: 'manual',
+      onDuplicate: 'reject',
+    }
+    const created = await client
+      .post('/api/shopping-items')
+      .headers({ cookie: memberCookie })
+      .json(input)
+    created.assertStatus(201)
+    const ownerList = await client.get('/api/shopping-items').headers({ cookie: ownerCookie })
+    ownerList.assertBodyContains({ items: [{ id: created.body().item.id, name: 'Lait' }] })
+    const otherCookie = await signUpWithHousehold(client, 'restock-other@example.com')
+    const refused = await client
+      .post('/api/shopping-items')
+      .headers({ cookie: otherCookie })
+      .json({ ...input, onDuplicate: 'replace', existingItemId: created.body().item.id })
+    refused.assertStatus(409)
+    const otherList = await client.get('/api/shopping-items').headers({ cookie: otherCookie })
+    otherList.assertBodyContains({ items: [] })
+  })
+
   group.each.setup(async () => {
     await db.beginGlobalTransaction()
   })

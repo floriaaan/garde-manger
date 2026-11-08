@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { router } from 'expo-router'
 
-type Sheet = { owner: symbol; content: ReactNode; onClose: () => void; session: string }
+type Sheet = { owner: symbol; content: ReactNode; onClose: () => void; session: string; dismissible?: boolean }
 let sheet: Sheet | null = null
 let nextSession = 0
 let lastClosedSession: string | null = null
@@ -23,8 +23,9 @@ export const nativeSheetStore = {
     emit()
     if (opening) router.push({ pathname: '/action-sheet', params: { session } })
   },
-  close(owner?: symbol) {
+  close(owner?: symbol, force = false) {
     if (!sheet || (owner && sheet.owner !== owner)) return
+    if (sheet.dismissible === false && !force) return
     const closing = sheet
     lastClosedSession = closing.session
     sheet = null

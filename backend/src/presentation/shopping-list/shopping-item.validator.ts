@@ -11,6 +11,8 @@ export const createShoppingItemValidator = vine.compile(
     name: vine.string().trim().minLength(1).maxLength(120),
     quantity: quantitySchema,
     source: sourceSchema,
+    onDuplicate: vine.enum(['reject', 'keep', 'replace'] as const).optional(),
+    existingItemId: vine.string().trim().minLength(1).optional(),
   }),
 )
 

@@ -560,7 +560,8 @@ export class HttpFridgeConnector implements FridgeConnector {
     const result = await apiFetch<{ items: ShoppingItem[] }>('/api/shopping-items', undefined, {
       action: 'shopping_list.get_items',
     })
-    return result.ok ? result.value.items : []
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.items
   }
 
   async createShoppingItem(input: CreateShoppingItemInput): Promise<Result<ShoppingItem, ApiError>> {

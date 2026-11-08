@@ -4,6 +4,7 @@ export interface ProductDto {
   id: string
   name: string
   quantity: { amount: number; unit: string }
+  initialQuantity: number
   location: string
   expiresAt: string | null
   openedAt: string | null
@@ -22,6 +23,7 @@ export function toProductDto(product: Product): ProductDto {
     id: product.id,
     name: product.name,
     quantity: { amount: product.quantity.amount, unit: product.quantity.unit },
+    initialQuantity: product.initialQuantity,
     location: product.location.value,
     expiresAt: product.expiresAt?.toISOString() ?? null,
     openedAt: product.openedAt?.toISOString() ?? null,
